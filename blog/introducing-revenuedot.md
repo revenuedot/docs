@@ -70,7 +70,7 @@ We would rather you hear this from us than find out in production.
 - **Paywalls, experiments, targeting, Customer Center and virtual currencies** are not built. The SDK hides them instead of crashing.
 - **Amazon, Stripe, Web Billing, Paddle and Roku** receipts are refused.
 - **With the stock SDK, response signatures read as FAILED**, because we cannot sign with RevenueCat's key. You turn the check off, or build our forks with your own key.
-- **The SDK forks, the importer CLI and the MCP npm package are not published yet.** Each runs from source; the hosted MCP server at `https://mcp.revenuedot.app/mcp` works.
+- **The SDK forks are not published yet.** They run from source. The importer CLI (`npx revenuedot`) and the local MCP server (`npx -y @revenuedot/mcp`) are on npm, and the hosted MCP server at `https://mcp.revenuedot.app/mcp` works.
 
 The full list, with a workaround for each item, is in [Known issues](../docs/help/known-issues.md).
 

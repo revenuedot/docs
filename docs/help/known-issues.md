@@ -40,17 +40,15 @@ The list below is complete as of **2026-09-30**. The biggest gap: **no real App 
     - Workaround: count renewals in your backend from `RENEWAL` events.
 
 ## Migration
-14. **The importer CLI and the MCP package are not on npm yet.** `npx revenuedot import` and `npx @revenuedot/mcp` do not work yet. The hosted MCP server at `https://mcp.revenuedot.app/mcp` works.
-    - Workaround: run them from source. See [The importer](../migrate/importer.md) and [revenuedot/mcp](https://github.com/revenuedot/mcp).
-15. **Some RevenueCat data is not imported:** paywalls, targeting, experiments and virtual currency balances. Refunded subscriptions import as expired, because RevenueCat's API does not expose the refund. RevenueCat Billing renewals stay with RevenueCat.
+14. **Some RevenueCat data is not imported:** paywalls, targeting, experiments and virtual currency balances. Refunded subscriptions import as expired, because RevenueCat's API does not expose the refund. RevenueCat Billing renewals stay with RevenueCat.
     - Workaround: recreate paywalls in code, and keep RevenueCat running for RevenueCat Billing customers.
-16. **Google purchase tokens are not in RevenueCat's API.** Imported Google subscriptions wait with the key `needs_token_refresh:<order id>` until a token arrives.
+15. **Google purchase tokens are not in RevenueCat's API.** Imported Google subscriptions wait with the key `needs_token_refresh:<order id>` until a token arrives.
     - Workaround: pass `--google-tokens <csv>`, or let renewal notifications and one `syncPurchases()` in the app fill them in. `GET /v2/projects/{project_id}/import/status` counts what is left.
 
 ## Self-hosting
-17. **Run one server container per database.** Expirations and webhooks are sent by a background job inside each container.
+16. **Run one server container per database.** Expirations and webhooks are sent by a background job inside each container.
     - Workaround: scale up one container rather than out. There is no high-availability setup yet.
-18. **There is no published Docker image.** Compose builds the image from source, which takes a few minutes on the first start.
+17. **There is no published Docker image.** Compose builds the image from source, which takes a few minutes on the first start.
     - Workaround: none needed.
 
 ## Related

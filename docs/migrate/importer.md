@@ -7,19 +7,19 @@ description: "revenuedot import copies apps, SDK keys, catalog, customers, subsc
 
 Run `revenuedot import --from-revenuecat` with a RevenueCat v2 secret key and a RevenueDot secret key. It reads your RevenueCat project through RevenueCat's REST API v2 and writes it into RevenueDot: apps, public SDK keys, products, entitlements, offerings, packages, customers, aliases, attributes, subscriptions and one-time purchases. It sends no webhooks, resumes where it stopped, and a second run changes nothing that is already right.
 
-**The CLI is not on npm yet (2026-09-30).** Run it from source today; `npx revenuedot` will work once it is published.
+**The CLI is on npm as [`revenuedot`](https://www.npmjs.com/package/revenuedot)** (Node.js 18.17 or newer), so `npx revenuedot` runs the latest release.
 
 ## Run it
-From source (needs Node.js 18.17 or newer and pnpm):
+```bash
+npx revenuedot import --from-revenuecat --rc-key sk_... --rc-project proj... \
+  --to https://revenuedot.example.com --to-key sk_...
+```
+
+From source instead (needs pnpm):
 ```bash
 git clone https://github.com/revenuedot/revenuedot && cd revenuedot && pnpm install
 pnpm --filter revenuedot cli import --from-revenuecat \
   --rc-key sk_... --rc-project proj... \
-  --to https://revenuedot.example.com --to-key sk_...
-```
-Once published:
-```bash
-npx revenuedot import --from-revenuecat --rc-key sk_... --rc-project proj... \
   --to https://revenuedot.example.com --to-key sk_...
 ```
 

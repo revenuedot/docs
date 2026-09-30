@@ -2557,19 +2557,19 @@ Description: revenuedot import copies apps, SDK keys, catalog, customers, subscr
 
 Run `revenuedot import --from-revenuecat` with a RevenueCat v2 secret key and a RevenueDot secret key. It reads your RevenueCat project through RevenueCat's REST API v2 and writes it into RevenueDot: apps, public SDK keys, products, entitlements, offerings, packages, customers, aliases, attributes, subscriptions and one-time purchases. It sends no webhooks, resumes where it stopped, and a second run changes nothing that is already right.
 
-**The CLI is not on npm yet (2026-09-30).** Run it from source today; `npx revenuedot` will work once it is published.
+**The CLI is on npm as [`revenuedot`](https://www.npmjs.com/package/revenuedot)** (Node.js 18.17 or newer), so `npx revenuedot` runs the latest release.
 
 ## Run it
-From source (needs Node.js 18.17 or newer and pnpm):
+```bash
+npx revenuedot import --from-revenuecat --rc-key sk_... --rc-project proj... \
+  --to https://revenuedot.example.com --to-key sk_...
+```
+
+From source instead (needs pnpm):
 ```bash
 git clone https://github.com/revenuedot/revenuedot && cd revenuedot && pnpm install
 pnpm --filter revenuedot cli import --from-revenuecat \
   --rc-key sk_... --rc-project proj... \
-  --to https://revenuedot.example.com --to-key sk_...
-```
-Once published:
-```bash
-npx revenuedot import --from-revenuecat --rc-key sk_... --rc-project proj... \
   --to https://revenuedot.example.com --to-key sk_...
 ```
 
@@ -11652,7 +11652,7 @@ They are not implemented. The SDK endpoints answer empty or 404 in the way that 
 `purchases-js` works with Test Store (`test_`) keys against RevenueDot. Web Billing (`rcb_`), Stripe and Paddle purchases do not work yet. With the stock SDK, turn off analytics events (`flags: { collectAnalyticsEvents: false }`), because the stock SDK sends them to RevenueCat. See the [web guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/web.md).
 
 ## Can AI agents set it up?
-Yes. The hosted MCP server is live at `https://mcp.revenuedot.app/mcp`: your client signs in with OAuth, or sends a secret key. It has 17 tools for the catalog, customers, access grants, webhooks and import status ([revenuedot/mcp](https://github.com/revenuedot/mcp)). The `@revenuedot/mcp` npm package is not published yet, so run the local version from source. Agent skills for Claude Code, Codex and Cursor are in [revenuedot/agent-skills](https://github.com/revenuedot/agent-skills).
+Yes. The hosted MCP server is live at `https://mcp.revenuedot.app/mcp`: your client signs in with OAuth, or sends a secret key. It has 17 tools for the catalog, customers, access grants, webhooks and import status ([revenuedot/mcp](https://github.com/revenuedot/mcp)). The local version is on npm: `npx -y @revenuedot/mcp`. Agent skills for Claude Code, Codex and Cursor are in [revenuedot/agent-skills](https://github.com/revenuedot/agent-skills).
 
 ## Where do I report a bug?
 Open an issue on [GitHub](https://github.com/revenuedot/revenuedot/issues). Report security problems privately through the repository's Security tab, or email security@revenuedot.app.
@@ -11779,17 +11779,15 @@ The list below is complete as of **2026-09-30**. The biggest gap: **no real App 
     - Workaround: count renewals in your backend from `RENEWAL` events.
 
 ## Migration
-14. **The importer CLI and the MCP package are not on npm yet.** `npx revenuedot import` and `npx @revenuedot/mcp` do not work yet. The hosted MCP server at `https://mcp.revenuedot.app/mcp` works.
-    - Workaround: run them from source. See [The importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md) and [revenuedot/mcp](https://github.com/revenuedot/mcp).
-15. **Some RevenueCat data is not imported:** paywalls, targeting, experiments and virtual currency balances. Refunded subscriptions import as expired, because RevenueCat's API does not expose the refund. RevenueCat Billing renewals stay with RevenueCat.
+14. **Some RevenueCat data is not imported:** paywalls, targeting, experiments and virtual currency balances. Refunded subscriptions import as expired, because RevenueCat's API does not expose the refund. RevenueCat Billing renewals stay with RevenueCat.
     - Workaround: recreate paywalls in code, and keep RevenueCat running for RevenueCat Billing customers.
-16. **Google purchase tokens are not in RevenueCat's API.** Imported Google subscriptions wait with the key `needs_token_refresh:<order id>` until a token arrives.
+15. **Google purchase tokens are not in RevenueCat's API.** Imported Google subscriptions wait with the key `needs_token_refresh:<order id>` until a token arrives.
     - Workaround: pass `--google-tokens <csv>`, or let renewal notifications and one `syncPurchases()` in the app fill them in. `GET /v2/projects/{project_id}/import/status` counts what is left.
 
 ## Self-hosting
-17. **Run one server container per database.** Expirations and webhooks are sent by a background job inside each container.
+16. **Run one server container per database.** Expirations and webhooks are sent by a background job inside each container.
     - Workaround: scale up one container rather than out. There is no high-availability setup yet.
-18. **There is no published Docker image.** Compose builds the image from source, which takes a few minutes on the first start.
+17. **There is no published Docker image.** Compose builds the image from source, which takes a few minutes on the first start.
     - Workaround: none needed.
 
 ## Related
@@ -12499,7 +12497,7 @@ We would rather you hear this from us than find out in production.
 - **Paywalls, experiments, targeting, Customer Center and virtual currencies** are not built. The SDK hides them instead of crashing.
 - **Amazon, Stripe, Web Billing, Paddle and Roku** receipts are refused.
 - **With the stock SDK, response signatures read as FAILED**, because we cannot sign with RevenueCat's key. You turn the check off, or build our forks with your own key.
-- **The SDK forks, the importer CLI and the MCP npm package are not published yet.** Each runs from source; the hosted MCP server at `https://mcp.revenuedot.app/mcp` works.
+- **The SDK forks are not published yet.** They run from source. The importer CLI (`npx revenuedot`) and the local MCP server (`npx -y @revenuedot/mcp`) are on npm, and the hosted MCP server at `https://mcp.revenuedot.app/mcp` works.
 
 The full list, with a workaround for each item, is in [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md).
 
@@ -12545,17 +12543,15 @@ Rehearse everything below on a copy of your project first, then run both systems
 ## Step 1: import the project
 The importer reads your RevenueCat project through RevenueCat's REST API v2 with a read-only secret key, and writes to your RevenueDot server through its REST API. It runs on your machine, so your keys and data never pass through anyone else.
 
-It is not on npm yet, so run it from source:
+It is on npm as `revenuedot`:
 
 ```bash
-git clone https://github.com/revenuedot/revenuedot && cd revenuedot
-pnpm install
-pnpm --filter revenuedot cli import --from-revenuecat \
+npx revenuedot import --from-revenuecat \
   --rc-key sk_... --rc-project proj... \
   --to https://revenuedot.example.com --to-key sk_... --dry-run
 ```
 
-Drop `--dry-run` to write. Once the package is published, the same command becomes `npx revenuedot import ...`.
+Drop `--dry-run` to write.
 
 What comes over:
 - **The catalog**: apps, products, entitlements and the products attached to them, offerings with their metadata and the current flag, and packages.

@@ -14,17 +14,15 @@ Rehearse everything below on a copy of your project first, then run both systems
 ## Step 1: import the project
 The importer reads your RevenueCat project through RevenueCat's REST API v2 with a read-only secret key, and writes to your RevenueDot server through its REST API. It runs on your machine, so your keys and data never pass through anyone else.
 
-It is not on npm yet, so run it from source:
+It is on npm as `revenuedot`:
 
 ```bash
-git clone https://github.com/revenuedot/revenuedot && cd revenuedot
-pnpm install
-pnpm --filter revenuedot cli import --from-revenuecat \
+npx revenuedot import --from-revenuecat \
   --rc-key sk_... --rc-project proj... \
   --to https://revenuedot.example.com --to-key sk_... --dry-run
 ```
 
-Drop `--dry-run` to write. Once the package is published, the same command becomes `npx revenuedot import ...`.
+Drop `--dry-run` to write.
 
 What comes over:
 - **The catalog**: apps, products, entitlements and the products attached to them, offerings with their metadata and the current flag, and packages.
