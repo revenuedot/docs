@@ -1,0 +1,270 @@
+# RevenueDot documentation: Getting started
+
+> RevenueDot is an open-source (AGPL-3.0), self-hostable backend for in-app purchases and subscriptions that works with the RevenueCat SDK.
+> It is a free alternative to RevenueCat: an app points the RevenueCat SDK's proxy URL at a RevenueDot server and keeps its purchase code, offerings and customers.
+> It verifies App Store and Google Play purchases on the server, keeps each customer's entitlements current from store notifications, and sends webhooks in RevenueCat's payload format.
+> RevenueDot runs as one Docker image plus Postgres. The SDK forks are MIT and keep RevenueCat's class and method names. RevenueDot is pre-alpha and not affiliated with RevenueCat, Inc.
+
+Generated from https://github.com/revenuedot/docs by scripts/gen-llms.mjs. Index: https://raw.githubusercontent.com/revenuedot/docs/main/llms.txt
+
+# What is RevenueDot?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/README.md
+Description: RevenueDot is an open-source, self-hostable backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Point the SDK's proxy URL at it and keep your app code.
+
+RevenueDot is an open-source (AGPL-3.0) server for in-app purchases and subscriptions that works with the RevenueCat SDK. You run it yourself with Docker and Postgres. An app that already uses the RevenueCat SDK points the SDK at your RevenueDot server with one setting, the **proxy URL**, and keeps its purchase code.
+
+```swift
+// Point the SDK at your RevenueDot server; nothing else in the app changes.
+Purchases.proxyURL = URL(string: "https://revenuedot.example.com")!
+Purchases.configure(with: Configuration.Builder(withAPIKey: "appl_...").with(entitlementVerificationMode: .disabled).build())
+```
+
+> **Status: pre-alpha (2026-09-30).** The server works end to end with the Test Store, and its App Store and Google Play code passes its test suite against mocked store APIs. No production app runs on it yet. Every page states what exists today and what is planned.
+
+## What RevenueDot does
+- **Checks purchases with the stores.** App Store purchases are verified against Apple's signed transactions and the App Store Server API. Google Play purchases are verified with the Google Play Developer API. Nothing is trusted from the device alone.
+- **Keeps each customer's access up to date.** It turns store events (renewals, cancellations, billing problems, refunds, pauses) into **entitlements** that your app checks, such as `pro`.
+- **Serves your paywall's contents.** **Offerings** and **packages** tell the app which products to show.
+- **Tells your backend what happened.** Webhooks use RevenueCat's payload shape and carry an HMAC signature.
+- **Gives you APIs and a dashboard.** RevenueCat-compatible REST APIs (v1 and v2) and a web dashboard for the catalog, customers, apps, API keys and webhooks.
+
+## What makes it different
+| | RevenueDot |
+|---|---|
+| Source code | Open source: the server and dashboard are AGPL-3.0 ([repository](https://github.com/revenuedot/revenuedot)) |
+| Where it runs | Your own servers: one Docker image plus Postgres |
+| Price | Free to self-host. A hosted RevenueDot Cloud with a free plan is being prepared and is not open yet |
+| App changes | Set the SDK's proxy URL and turn off its response-signature check, or install the RevenueDot fork of the SDK |
+| Data | Purchases, customers and receipts stay in your own Postgres |
+
+RevenueDot is not affiliated with, endorsed by or sponsored by RevenueCat, Inc. "RevenueCat" is a trademark of RevenueCat, Inc. and is used here only to describe compatibility.
+
+## How the pieces fit
+```text
+ Your app (RevenueCat SDK, proxyURL = your server)
+      │  GET /v1/subscribers/{id}, GET .../offerings, POST /v1/receipts
+      ▼
+ RevenueDot server ◀──── App Store Server Notifications v2, Google Play real-time notifications
+      │  Postgres (customers, purchases, events)
+      ├──▶ Webhooks to your backend (INITIAL_PURCHASE, RENEWAL, EXPIRATION ...)
+      └──▶ Dashboard and REST API (catalog, customers, keys)
+```
+
+1. The app asks RevenueDot for offerings and customer info.
+2. The user buys through the App Store, Google Play or the built-in **Test Store**.
+3. The SDK posts the purchase to `POST /v1/receipts`. RevenueDot verifies it with the store and answers with updated customer info, including active entitlements.
+4. Later changes, such as renewals and refunds, arrive as store notifications. RevenueDot updates the customer and sends webhooks.
+
+## Where to go next
+- **Try it in 5 minutes:** [Quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md).
+- **Choose how your app connects:** [proxy mode, fork packages or your existing keys](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/connect-your-app.md).
+- **Learn the model:** [Concepts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/README.md).
+- **Move a live app:** [Migrate from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md).
+- **Connect your SDK:** [SDK guides](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md).
+- **Run it for real:** [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md) and [Going to production](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/going-to-production.md).
+- **Look something up:** [API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/README.md), [Help center](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/README.md), [Blog](https://raw.githubusercontent.com/revenuedot/docs/main/blog/README.md).
+
+---
+
+# How do I run RevenueDot and make a first purchase in 5 minutes?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md
+Description: Start the server with Docker Compose, seed a Test Store app with one script, buy a subscription with curl, then point the RevenueCat SDK at your server.
+
+Start the server with Docker, seed it with a Test Store app, make a purchase with `curl`, then point an SDK at it. You need no App Store or Google Play account. Most of the 5 minutes is the first image build.
+
+You need Docker with Compose v2, plus `git`, `curl` and `jq`.
+
+## 1. Start RevenueDot
+```bash
+git clone https://github.com/revenuedot/revenuedot.git
+cd revenuedot
+cp .env.example .env          # sets POSTGRES_PASSWORD; change it before the first start
+docker compose up -d          # builds the image, starts the server and Postgres
+curl http://localhost:8787/v1/health
+```
+```json
+{"status":"ok"}
+```
+
+One container serves the SDK API, the REST API and the dashboard on port 8787. To use another host port, set `REVENUEDOT_PORT=8797` in `.env`. The dashboard is at `http://localhost:8787/login`; the bare `/` path returns a small JSON document.
+
+## 2. Seed a project with a Test Store app
+The seed script uses only the public API. It creates a dashboard account and project, a Test Store app, three products, a `pro` entitlement, a `default` offering and a secret key.
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/revenuedot/examples/main/selfhost/docker-compose/seed.sh
+bash seed.sh                   # RD_URL=http://localhost:8797 bash seed.sh for another port
+```
+```text
+RevenueDot is seeded.
+  Dashboard        http://localhost:8787  (sign in as dev@example.com)
+  Project id       projqhf9p5jb
+  Test Store key   test_960d2b3001bac439c7a73d7f4214514c      <- the SDK's API key; the SDK's proxy URL is http://localhost:8787
+  Secret key       sk_8b8dc12a743e51f4de759b0b9c6d372e6d25d32fe7280672    <- server-side only (REST API, backend checks)
+Try it:
+  curl -s -H "Authorization: Bearer test_960d2b3001bac439c7a73d7f4214514c" http://localhost:8787/v1/subscribers/user_1/offerings
+```
+
+Save the two keys for the next steps:
+```bash
+export TEST_KEY=test_...   # the Test Store key printed above
+export SECRET_KEY=sk_...   # the secret key printed above
+```
+
+To see what the script does, or to do it by hand, read [the seed script](https://github.com/revenuedot/examples/blob/main/selfhost/docker-compose/seed.sh). Each step is one REST API v2 call. You can also do everything in the dashboard.
+
+## 3. Ask for offerings, as the SDK does
+```bash
+curl -s -H "Authorization: Bearer $TEST_KEY" http://localhost:8787/v1/subscribers/user_1/offerings
+```
+```json
+{"current_offering_id":"default","offerings":[{"description":"Standard plans","identifier":"default","metadata":null,"packages":[{"identifier":"$rc_monthly","platform_product_identifier":"pro_monthly"},{"identifier":"$rc_annual","platform_product_identifier":"pro_annual"},{"identifier":"$rc_lifetime","platform_product_identifier":"pro_lifetime"}]}]}
+```
+
+## 4. Make a Test Store purchase
+In an app, the SDK makes this call for you after the user confirms the Test Store dialog. The Test Store accepts any `fetch_token` of the form `test_<purchase time in ms>_<id>`.
+
+```bash
+curl -s http://localhost:8787/v1/receipts \
+  -H "Authorization: Bearer $TEST_KEY" -H "Content-Type: application/json" \
+  -d "{\"app_user_id\":\"user_1\",\"fetch_token\":\"test_$(date +%s)000_quickstart\",\"product_id\":\"pro_monthly\",\"price\":9.99,\"currency\":\"USD\"}"
+```
+
+The answer is the customer's info. `pro` is now in `entitlements`, active until one month from now:
+```json
+{
+  "request_date": "2026-09-30T19:49:29Z",
+  "subscriber": {
+    "entitlements": {
+      "pro": { "expires_date": "2026-10-30T19:49:29Z", "grace_period_expires_date": null, "product_identifier": "pro_monthly", "purchase_date": "2026-09-30T19:49:29Z" }
+    },
+    "original_app_user_id": "user_1",
+    "subscriptions": {
+      "pro_monthly": { "store": "test_store", "is_sandbox": true, "period_type": "normal", "expires_date": "2026-10-30T19:49:29Z", "...": "..." }
+    }
+  },
+  "purchased_products": { "pro_monthly": { "should_consume": false } }
+}
+```
+
+Check the same customer through the REST API with the secret key:
+```bash
+curl -s -H "Authorization: Bearer $SECRET_KEY" \
+  "http://localhost:8787/v2/projects/<project id>/customers/user_1/active_entitlements"
+```
+
+## 5. Point an SDK at your server
+Use the Test Store key as the SDK's API key and your server as its proxy URL. The shortest path is the [purchases-js web example](https://github.com/revenuedot/examples/tree/main/web/purchases-js-vite), which runs in a browser in two minutes:
+
+```bash
+git clone https://github.com/revenuedot/examples.git && cd examples/web/purchases-js-vite
+npm install
+printf "VITE_REVENUEDOT_URL=http://localhost:8787\nVITE_REVENUEDOT_API_KEY=$TEST_KEY\n" > .env.local
+npm run dev                    # open http://localhost:5199, click Buy, then "Test valid purchase"
+```
+
+In your own app, the change is the same on every platform: set the proxy URL before configuring, and turn off the response-signature check where the SDK has one.
+
+```swift
+// iOS: Point the SDK at your RevenueDot server; nothing else in the app changes.
+Purchases.proxyURL = URL(string: "http://localhost:8787")!
+Purchases.configure(with: Configuration.Builder(withAPIKey: "test_...").with(entitlementVerificationMode: .disabled).build())
+```
+```kotlin
+// Android: Point the SDK at your RevenueDot server; nothing else in the app changes.
+Purchases.proxyURL = URL("http://10.0.2.2:8787")   // the emulator reaches your computer as 10.0.2.2
+Purchases.configure(PurchasesConfiguration.Builder(context, "test_...").entitlementVerificationMode(EntitlementVerificationMode.DISABLED).build())
+```
+```ts
+// React Native / Expo: Point the SDK at your RevenueDot server; nothing else in the app changes.
+await Purchases.setProxyURL("http://localhost:8787");
+Purchases.configure({ apiKey: "test_..." });
+```
+
+Per-platform details, including Flutter, Capacitor, Kotlin Multiplatform, Unity and Cordova, are in the [SDK guides](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md). To use the RevenueDot fork packages instead, see [How do I connect my app?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/connect-your-app.md).
+
+Test Store prices are always 0 today, so the paywall shows free products. Real prices come from the App Store and Google Play. See [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md).
+
+## Next steps
+- Receive the purchase on your backend: [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md).
+- Simulate renewals, cancellations and refunds without waiting: [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
+- Learn how entitlements, offerings and customers fit together: [Concepts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/README.md).
+- Connect a real store: [App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md), [Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md).
+- Move an existing app: [Migrate from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md).
+
+---
+
+# How do I connect my app to RevenueDot?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/connect-your-app.md
+Description: Three ways. Proxy mode sets one URL in the RevenueCat SDK you already ship. The RevenueDot fork swaps the package. The importer keeps your existing RevenueCat API keys working.
+
+Set the RevenueCat SDK's proxy URL to your RevenueDot server and turn its signature check off. That is **proxy mode**, and it works today with every SDK. Later you can swap in the **RevenueDot fork** of the SDK, which verifies RevenueDot's response signatures. When you migrate, the importer lets old app versions keep their **existing RevenueCat API keys**.
+
+| Way | What you change in the app | What you get | Status (2026-09-30) |
+|---|---|---|---|
+| [Proxy mode](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/connect-your-app.md#proxy-mode-one-setting-in-the-sdk-you-already-ship) | One setting: the proxy URL, plus the verification mode | Every SDK call goes to your server | Works with all 10 SDKs |
+| [Fork packages](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/connect-your-app.md#fork-packages-a-package-swap-no-code-change) | The package name in your dependency file | Signed responses verify; no traffic to RevenueCat's hosts | Forked and patched; not on package registries yet |
+| [Keep your RevenueCat keys](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/connect-your-app.md#keep-your-revenuecat-api-keys) | Nothing | App versions already in users' hands keep working | Works (importer) |
+
+## Proxy mode: one setting in the SDK you already ship
+```swift
+// iOS. Point the SDK at your RevenueDot server; nothing else in the app changes.
+Purchases.proxyURL = URL(string: "https://revenuedot.example.com")!
+Purchases.configure(with: Configuration.Builder(withAPIKey: "appl_...").with(entitlementVerificationMode: .disabled).build())
+```
+```kotlin
+// Android. Point the SDK at your RevenueDot server; nothing else in the app changes.
+Purchases.proxyURL = URL("https://revenuedot.example.com")
+Purchases.configure(PurchasesConfiguration.Builder(context, "goog_...").entitlementVerificationMode(EntitlementVerificationMode.DISABLED).build())
+```
+```ts
+// React Native and Expo. Point the SDK at your RevenueDot server; nothing else in the app changes.
+await Purchases.setProxyURL("https://revenuedot.example.com");
+Purchases.configure({ apiKey: Platform.OS === "ios" ? "appl_..." : "goog_..." });
+```
+
+- **Set the proxy URL before `configure`.** The SDK reads it once.
+- **Turn entitlement verification off.** The stock SDK checks responses against RevenueCat's signing key. RevenueDot cannot sign with that key, so iOS and Android would report every response as `FAILED` in their default informational mode. Access still works, but the logs fill with errors. See [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md).
+- **Use the keys RevenueDot gives each app** (`appl_`, `goog_`, `test_` ...), or keep your RevenueCat keys as described below.
+- **Known limits.** The stock Android SDK still sends diagnostics, paywall events and ad events to RevenueCat's hosts. The stock purchases-js sends analytics to RevenueCat unless you set `flags: { collectAnalyticsEvents: false }`. Flutter's web build ignores the proxy URL.
+
+Every SDK's exact call is in its guide: [iOS](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/ios.md), [Android](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/android.md), [React Native](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/react-native.md), [Flutter](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/flutter.md), [Web](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/web.md), [Capacitor](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/capacitor.md), [Kotlin Multiplatform](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/kotlin-multiplatform.md), [Unity](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/unity.md), [Cordova](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/cordova.md).
+
+## Fork packages: a package swap, no code change
+RevenueDot maintains MIT forks of all ten RevenueCat SDKs. They keep every name your code imports (`import RevenueCat`, `com.revenuecat.purchases.*`, `package:purchases_flutter`), so the swap is a dependency change. Each fork:
+
+- trusts RevenueDot's response-signing key, so entitlement verification reports `VERIFIED` against a server that signs;
+- sends diagnostics and events to the proxy URL too (Android, purchases-js), and makes the proxy URL work on Flutter web;
+- defaults to `https://api.revenuedot.app` (RevenueDot Cloud, not open yet), so self-hosters still set the proxy URL.
+
+```jsonc
+// package.json (React Native): the alias keeps `import Purchases from "react-native-purchases"` working.
+"react-native-purchases": "npm:@revenuedot/react-native-purchases@10.10.2"
+```
+
+The forks are not on npm, Maven Central, CocoaPods or OpenUPM yet. Each SDK guide gives the planned package name and how to use the fork's `revenuedot/main-patches` branch today. **A self-hosted server signs with its own key**, so the official forks only verify against RevenueDot Cloud. To verify against your own server, build the forks with your key; see [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md#verify-against-your-own-server).
+
+## Keep your RevenueCat API keys
+Apps already in the store send their RevenueCat public key (`appl_...`, `goog_...`). The [importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md) sets each RevenueDot app's public key to that same string, so old app versions work against RevenueDot the moment you point traffic at it. You can also do it for one app with the API:
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/import/apps/$APP_ID/public_key" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"public_key":"appl_YourExistingRevenueCatKey"}'
+```
+
+Old app versions still call RevenueCat's API until they update, because the proxy URL lives in the app. That is why a migration runs both systems side by side for a while. See [Migrate from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md).
+
+## Which should I pick?
+- **Trying RevenueDot or self-hosting:** proxy mode with verification off.
+- **You rely on entitlement verification:** fork packages, built with your server's key when you self-host.
+- **Moving a live app:** proxy mode in the next release, your RevenueCat keys through the importer, and a [dual run](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/dual-run.md) until most users have updated.
+
+## Related
+- [Quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md)
+- [SDK guides](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md)
+- [Which key goes where](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md#which-key-goes-where)
+- [Why we forked the RevenueCat SDKs](https://raw.githubusercontent.com/revenuedot/docs/main/blog/why-we-forked-the-revenuecat-sdks.md)

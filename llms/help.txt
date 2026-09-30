@@ -1,0 +1,797 @@
+# RevenueDot documentation: Help center
+
+> RevenueDot is an open-source (AGPL-3.0), self-hostable backend for in-app purchases and subscriptions that works with the RevenueCat SDK.
+> It is a free alternative to RevenueCat: an app points the RevenueCat SDK's proxy URL at a RevenueDot server and keeps its purchase code, offerings and customers.
+> It verifies App Store and Google Play purchases on the server, keeps each customer's entitlements current from store notifications, and sends webhooks in RevenueCat's payload format.
+> RevenueDot runs as one Docker image plus Postgres. The SDK forks are MIT and keep RevenueCat's class and method names. RevenueDot is pre-alpha and not affiliated with RevenueCat, Inc.
+
+Generated from https://github.com/revenuedot/docs by scripts/gen-llms.mjs. Index: https://raw.githubusercontent.com/revenuedot/docs/main/llms.txt
+
+# Where do I find answers to common RevenueDot problems?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/README.md
+Description: The RevenueDot help center, grouped by topic. Each article answers one question, with the fix first.
+
+Pick the question closest to yours below. Each article starts with the answer, then lists causes and fixes. RevenueDot is pre-alpha, so also check [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md) before you dig in.
+
+## Getting started
+- [Frequently asked questions](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/faq.md): what RevenueDot is, what it costs, which stores and SDKs work today.
+- [Known issues and gaps as of 2026-09-30](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md): what does not work yet, and the workaround for each.
+- [Troubleshooting by symptom](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/troubleshooting.md): one table from symptom to cause to fix.
+
+## Purchases and access
+- [Why is my entitlement not active?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/entitlement-not-active.md)
+- [Why does RevenueDot answer 4xx or 5xx to a receipt?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/receipt-errors-4xx-vs-5xx.md)
+- [How do I restore purchases?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/restore-purchases.md)
+- [How do I test purchases without real money?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/test-sandbox-purchases.md)
+
+## SDK setup
+- [Why does the SDK report signature verification FAILED in proxy mode?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/signature-verification-failed.md)
+
+## Notifications and webhooks
+- [Why are store notifications not arriving?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/store-notifications-not-arriving.md)
+- [Why are webhooks not arriving?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/webhooks-not-arriving.md)
+
+## Still stuck?
+Open an issue on [GitHub](https://github.com/revenuedot/revenuedot/issues) with the request, the response body and the server log line. Report security problems privately through the **Report a vulnerability** button on the repository's Security tab.
+
+## Related
+- [Quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md)
+- [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md)
+- [API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/README.md)
+
+---
+
+# What do people most often ask about RevenueDot?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/faq.md
+Description: Short answers about what RevenueDot is, what it costs, its licenses, the stores and SDKs it supports, and what works in the pre-alpha today.
+
+RevenueDot is an open-source (AGPL-3.0), self-hostable backend for in-app purchases and subscriptions that works with the RevenueCat SDK. It is pre-alpha: the core API runs and is tested, but it is not ready for production apps yet. The answers below say what exists on 2026-09-30.
+
+## Is RevenueDot an open-source RevenueCat alternative?
+Yes. RevenueDot implements the API that the RevenueCat SDKs call, so an app keeps its purchase code and points the SDK at a RevenueDot server with one setting, the proxy URL. The server code is on [GitHub](https://github.com/revenuedot/revenuedot). RevenueDot is not affiliated with RevenueCat.
+
+## Can I self-host RevenueCat?
+No. RevenueCat's backend is a hosted service; only its SDKs are open source ([purchases-ios license](https://github.com/RevenueCat/purchases-ios/blob/main/LICENSE)). To run the backend yourself, you run RevenueDot with Docker and Postgres and keep the RevenueCat SDK in your app. See [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md).
+
+## Do I have to change my app?
+One line, plus one setting on most platforms:
+1. Set the SDK's proxy URL to your server before you configure the SDK.
+2. Turn off the SDK's response-signature check, because RevenueDot cannot sign with RevenueCat's key. See [signature verification](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/signature-verification-failed.md).
+
+```swift
+// Point the SDK at your RevenueDot server; nothing else in the app changes.
+Purchases.proxyURL = URL(string: "https://revenuedot.example.com")!
+```
+
+Every platform's version of this line is in the [SDK guides](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md).
+
+## How is RevenueDot different from RevenueCat?
+- **You can run it yourself.** Your purchase data lives in your own Postgres.
+- **The server is open source** under AGPL-3.0, so you can read the code that decides who gets access.
+- **It does far less today.** Paywalls, experiments, targeting, charts beyond the overview, Customer Center, virtual currencies and most integrations are not built. RevenueCat has all of these ([features](https://www.revenuecat.com/pricing)).
+- **It is pre-alpha.** RevenueCat is a mature hosted service.
+
+## What does it cost?
+Self-hosting is free: you pay only for your server and database. RevenueCat's Pro plan is free up to $2,500 in monthly tracked revenue and then charges 1% of tracked revenue ([pricing](https://www.revenuecat.com/pricing)). A hosted RevenueDot Cloud is planned but not live yet.
+
+## Which licenses apply?
+- The server and dashboard are AGPL-3.0.
+- The SDK forks keep RevenueCat's MIT license, with RevenueDot's copyright line added for the changes.
+- The importer CLI package, the MCP server and the agent skills are MIT.
+- The `ee/` folder is under the RevenueDot Enterprise License.
+
+Details are in [LICENSING.md](https://github.com/revenuedot/revenuedot/blob/main/LICENSING.md). If you change the server and let other people use it over a network, AGPL-3.0 asks you to offer them your changed source.
+
+## Which stores are supported?
+Receipts are accepted today for four app types:
+
+| App type | Store |
+|---|---|
+| `app_store` | Apple App Store |
+| `mac_app_store` | Mac App Store |
+| `play_store` | Google Play |
+| `test_store` | RevenueDot Test Store (no real store) |
+
+Amazon, Stripe, Web Billing, Paddle and Roku apps can be created, but their receipts answer HTTP 400 with code 7662. See [Projects and apps](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md).
+
+## Is it production-ready?
+No. The App Store and Google Play code is tested against mocked Apple and Google APIs only. No real App Store or Google Play sandbox purchase has run end to end yet. Use it for evaluation and testing, and keep RevenueCat for live customers until a release says otherwise. See [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md).
+
+## Who owns the data?
+You do, when you self-host. Customers, purchases, receipts and events live in your Postgres database. Nothing is sent to RevenueDot. Back it up like any other production database: see [Backups](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/backups.md).
+
+## Does it support StoreKit 2?
+Yes. The server verifies StoreKit 2 signed transactions (JWS) against Apple's certificate chain. It also accepts StoreKit 1 app receipts, but only when the app's App Store in-app purchase key is set, because an unsigned receipt could be forged. See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md).
+
+## Does it support Expo?
+Yes, through `react-native-purchases`, the same package you use with RevenueCat. Call `Purchases.setProxyURL` before `configure`. Test Store purchases work in Expo Go and on the web today. See the [React Native guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/react-native.md).
+
+## Does it support current Google Play Billing?
+The server reads subscriptions through the Play Developer API (`subscriptionsv2`) and acknowledges purchases, which Google requires within 3 days ([Google docs](https://developer.android.com/google/play/billing/integrate#process)). Which Play Billing Library your app uses is decided by the RevenueCat Android SDK version you ship. See [Connect Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md).
+
+## Do I need a RevenueDot SDK?
+No. The stock RevenueCat SDKs work in proxy mode. The MIT forks exist to close gaps proxy mode cannot fix, such as response signing and Android diagnostics going to RevenueCat's servers. The forks are not published to any package registry yet. See [Connect your app](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/connect-your-app.md).
+
+## Can I keep my RevenueCat API keys?
+Yes. The importer can copy your existing public app keys, so apps already in your users' hands keep working when they switch to your server. See [The importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md).
+
+## Can I migrate without losing subscribers?
+That is the design goal. Import customers and their current access, forward store notifications so RevenueCat and RevenueDot both stay current, compare them, then ship an app update with the proxy URL. See [Migrate from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md). The importer is not on npm yet; run it from source.
+
+## Do webhooks look the same as RevenueCat's?
+Yes, same body shape and the same `X-RevenueCat-Webhook-Signature` style of header, with the same retry schedule of 5, 10, 20, 40 and 80 minutes ([RevenueCat webhooks](https://www.revenuecat.com/docs/integrations/webhooks)). Some event types are accepted in filters but never sent yet. See [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md).
+
+## Does it have a dashboard?
+Yes. The same process serves a dashboard at `/login` with overview metrics, customers, catalog, webhooks, API keys and setup health.
+
+## Can I test without an App Store or Google Play account?
+Yes, with the Test Store: create a `test_store` app and use its `test_` key. See [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
+
+## What happens to paywalls, experiments and Customer Center?
+They are not implemented. The SDK endpoints answer empty or 404 in the way that makes the SDK hide those features, so your app does not crash. Paywalls built in RevenueCat do not render against RevenueDot.
+
+## Does the web SDK work?
+`purchases-js` works with Test Store (`test_`) keys against RevenueDot. Web Billing (`rcb_`), Stripe and Paddle purchases do not work yet. With the stock SDK, turn off analytics events (`flags: { collectAnalyticsEvents: false }`), because the stock SDK sends them to RevenueCat. See the [web guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/web.md).
+
+## Can AI agents set it up?
+An MCP server and agent skills are scaffolded in [revenuedot/mcp](https://github.com/revenuedot/mcp) and [revenuedot/agent-skills](https://github.com/revenuedot/agent-skills). They are not usable yet.
+
+## Where do I report a bug?
+Open an issue on [GitHub](https://github.com/revenuedot/revenuedot/issues). Report security problems privately through the repository's Security tab.
+
+## Related
+- [What is RevenueDot?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/README.md)
+- [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md)
+- [Blog: Introducing RevenueDot](https://raw.githubusercontent.com/revenuedot/docs/main/blog/introducing-revenuedot.md)
+
+---
+
+# How do I fix common RevenueDot problems?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/troubleshooting.md
+Description: A symptom-to-fix list for the SDK, receipts, store notifications, webhooks, the dashboard and self-hosting, with the cause of each.
+
+Find your symptom below; each row gives the cause and the fix. Most problems come from one of three places: the SDK is not pointed at your server, a key or ID does not match the app, or the server cannot reach, or be reached by, the store or your backend. Always read the error's `message` and the server log first. RevenueDot writes the cause into both.
+
+## SDK
+| Symptom | Cause | Fix |
+|---|---|---|
+| Requests still go to RevenueCat | The proxy URL is set after `configure`, or not at all | Set the proxy URL before `configure`. See the [SDK guides](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) |
+| Every call fails with HTTP 401, code 7225 | The public key is wrong, belongs to another server, or has a typo | Copy the app's key from the app page, or `GET /v2/projects/{project_id}/apps/{app_id}/public_api_keys` |
+| Logs say entitlement verification FAILED | The stock SDK checks RevenueCat's signing key | Turn verification off. See [signature verification](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/signature-verification-failed.md) |
+| Offerings are empty | No offering is marked current, or its packages point at products of another app | Mark an offering current and add this app's products to its packages. See [Offerings and packages](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/offerings-and-packages.md) |
+| iOS says "No base price found for product" with a `test_` key | The server was built before the 2026-09-30 Test Store fix | Rebuild the server from the current source. See [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md) |
+| Web purchases with an `rcb_` key fail | Web Billing is not supported yet | Use a Test Store (`test_`) key. See [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md) |
+| An Android emulator cannot reach `http://localhost:8787` | `localhost` is the emulator itself | Use `http://10.0.2.2:8787` |
+| Android needs HTTPS | Android blocks cleartext HTTP by default | Use HTTPS, or allow cleartext for your dev host in the network security config |
+
+## Receipts and access
+| Symptom | Cause | Fix |
+|---|---|---|
+| Purchase succeeds in the store, but the entitlement is not active | Product not attached, wrong app user ID, or the post failed | See [Why is my entitlement not active?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/entitlement-not-active.md) |
+| `/v1/receipts` answers 400, code 7103 | The receipt cannot be verified, or is for another bundle ID or package name | See [4xx or 5xx](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/receipt-errors-4xx-vs-5xx.md) |
+| `/v1/receipts` answers 500, code 7234 | A StoreKit 1 receipt, and no App Store in-app purchase key | Add the key. See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md) |
+| `/v1/receipts` answers 503, code 7101 | Apple or Google failed, or the Google service account is wrong | Run **Verify credentials** on the app page. The SDK retries on its own |
+| `/v1/receipts` answers 400, code 7662 | The app is an Amazon, Stripe, Web Billing, Paddle or Roku app | Not supported yet. Use App Store, Mac App Store, Google Play or Test Store |
+| Restore fails with 7102 | Another user owns the purchase and the transfer behaviour forbids moving it | See [How do I restore purchases?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/restore-purchases.md) |
+| Xcode StoreKit test purchases fail with 7103 | Xcode signs them with its own certificate | Add the `xcode_certificate` credential. See [Test purchases](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/test-sandbox-purchases.md) |
+
+## Store notifications
+| Symptom | Cause | Fix |
+|---|---|---|
+| `notification_status` stays `waiting` | The store has the wrong URL, or cannot reach your server | Copy `notification_url` from setup health into App Store Connect or the Pub/Sub push subscription |
+| Status stays `received` | Notifications arrive only for purchases RevenueDot does not know | Normal before the first purchase. Send a test notification, or set `track_new_purchases` |
+| Status is `failing` with a bundle ID or package name message | The app's `bundle_id` or `package_name` does not match the store | Fix it on the app |
+| Google pushes get 401, code 7224 | `pubsub_audience` is set, and the push has no valid token | Turn on push authentication with the same audience, or remove the credential |
+
+Details: [Why are store notifications not arriving?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/store-notifications-not-arriving.md)
+
+## Webhooks
+| Symptom | Cause | Fix |
+|---|---|---|
+| No deliveries in the log | A filter excludes the event, or the webhook was created after it | Check `environment`, `event_types` and `app_id` |
+| Deliveries `pending` or `failed` | Your backend answered something other than 200, or took more than 60 seconds | Answer 200 fast. Retries follow after 5, 10, 20, 40 and 80 minutes |
+| Signature check fails | Verifying parsed JSON instead of the raw body, or using another webhook's secret | Verify the raw body with this webhook's `whsec_` secret. See [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md) |
+| A self-hosted server cannot reach `localhost:3000` | `localhost` is the container itself | Use `http://host.docker.internal:3000` |
+
+Details: [Why are webhooks not arriving?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/webhooks-not-arriving.md)
+
+## Dashboard
+| Symptom | Cause | Fix |
+|---|---|---|
+| `/` shows a small JSON document | The dashboard lives at `/login` | Open `http://localhost:8787/login` |
+| You cannot sign in after a fresh start | The account is created by signing up or by the seed script | Sign up at `/signup`, or sign in as the email the seed script printed |
+
+## Self-hosting
+| Symptom | Cause | Fix |
+|---|---|---|
+| `docker compose up` fails with "port is already allocated" | Something else uses port 8787 | Set `REVENUEDOT_PORT=8797` in `.env`, then use that port in URLs and in `RD_URL` for the seed script |
+| The server exits at start with a database error | `DATABASE_URL` is wrong, or Postgres is not ready | Compose sets `DATABASE_URL` for you. Outside Compose, set it to a `postgres://` URL. Without it, the server uses an embedded database in `./.data/dev`, which is for development only |
+| The server exits at start after an upgrade | A database migration failed. Migrations run every time the server starts, before it listens | Read the log line, fix the cause, restart. Restore your backup if you need to roll back. See [Upgrades](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/upgrades.md) |
+| Postgres rejects the password after you changed `POSTGRES_PASSWORD` | The password is stored in the data volume at first start | Change it inside Postgres too with `ALTER USER`, or start over with `docker compose down -v`, which deletes all data |
+| `REVENUEDOT_SIGNING_KEY` seems ignored | The shipped `docker-compose.yml` passes only `DATABASE_URL` and `PORT` to the container | Add `REVENUEDOT_SIGNING_KEY: ${REVENUEDOT_SIGNING_KEY}` under the `revenuedot` service's `environment` |
+| The server exits with "REVENUEDOT_SIGNING_KEY must be the base64 of a 32-byte Ed25519 private key seed" | The value is not a valid seed | Generate one with `pnpm tsx scripts/signing-keygen.ts` |
+| `/.well-known/revenuedot-signing-key` answers 404 | No signing key is set | Set `REVENUEDOT_SIGNING_KEY`. See [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md) |
+| Expirations and webhooks happen late | They run in a background job every 30 seconds | Expected. Run one server container per database for now |
+
+## Related
+- [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md)
+- [Going to production](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/going-to-production.md)
+- [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md)
+
+---
+
+# What are the known issues and gaps in RevenueDot?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md
+Description: Known issues as of 2026-09-30: what does not work yet in the pre-alpha, and the workaround for each.
+
+RevenueDot is pre-alpha. The list below is complete as of **2026-09-30**. The biggest gap: **no real App Store or Google Play sandbox purchase has run end to end yet**. Store support is tested against mocked Apple and Google APIs only. Each item has a workaround where one exists.
+
+## Stores and purchases
+1. **Real store purchases are untested end to end.** The App Store and Google Play code passes tests against mocked Apple and Google APIs.
+   - Workaround: test with App Store sandbox and Google Play license testers, report what you find, and keep live customers on your current backend. See [Test purchases](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/test-sandbox-purchases.md).
+2. **Test Store products have no price.** `/rcbilling/v1/subscribers/{app_user_id}/products` answers a price of 0 for every product, because the catalog does not store Test Store prices yet. Servers built before the 2026-09-30 fix also sent `cycle_count: null`, which made the native iOS SDK stop with "No base price found for product".
+   - Workaround: rebuild the server from the current source if you see that iOS error. Test real prices with App Store sandbox or Google Play testers.
+3. **Only four app types accept receipts:** `app_store`, `mac_app_store`, `play_store` and `test_store`. Amazon, Stripe, Web Billing (`rcb_`), Paddle and Roku receipts answer HTTP 400, code 7662.
+   - Workaround: none yet.
+4. **StoreKit 1 receipts need the App Store in-app purchase key.** Without it, RevenueDot answers HTTP 500, code 7234, so the SDK keeps retrying.
+   - Workaround: add the key. For local development only, set the `allow_unsigned_receipts` credential. See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md).
+5. **The App Store app-specific shared secret is stored but not used.** RevenueDot verifies with the in-app purchase key and Apple's signed transactions instead.
+   - Workaround: add the in-app purchase key.
+6. **Revenue in currencies other than USD is not converted.** The USD revenue figure uses the amount as paid, so a purchase of 9.99 EUR counts as 9.99 USD in metrics and `total_revenue_in_usd`. Webhook `price_in_purchased_currency` and `currency` are correct.
+   - Workaround: compute USD revenue in your backend from the webhook's currency fields.
+
+## SDK features
+7. **Paywalls, Customer Center, virtual currencies, targeting and experiments are not implemented.** The SDK endpoints answer empty results or 404, so the SDK hides these features instead of crashing. Paywalls built in RevenueCat do not render.
+   - Workaround: build the paywall in your own UI code from the offerings.
+8. **The stock Android SDK sends some traffic to RevenueCat.** Diagnostics, paywall events and ad events ignore the proxy URL.
+   - Workaround: the RevenueDot Android fork fixes it, but it is not published yet. You can build it from the `revenuedot/main-patches` branch of [revenuedot/purchases-android](https://github.com/revenuedot/purchases-android).
+9. **The stock web SDK sends analytics events to RevenueCat.**
+   - Workaround: configure purchases-js with `flags: { collectAnalyticsEvents: false }`.
+10. **Flutter web ignores the proxy URL with the stock SDK.** Flutter on iOS and Android works.
+    - Workaround: the RevenueDot Flutter fork fixes it; use it as a git dependency on [revenuedot/purchases-flutter](https://github.com/revenuedot/purchases-flutter).
+11. **The stock SDK reports signature verification FAILED.** RevenueDot cannot sign with RevenueCat's key.
+    - Workaround: turn verification off, never use ENFORCED. See [signature verification](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/signature-verification-failed.md).
+12. **The SDK forks are not published to any registry.** npm, CocoaPods, Maven Central and OpenUPM releases need publishing credentials that are not set up yet. The forks' default host, `https://api.revenuedot.app`, is not live either.
+    - Workaround: use the stock RevenueCat SDK with a proxy URL, or build a fork from its `revenuedot/main-patches` branch.
+
+## Webhooks and events
+13. **Six event types are never sent yet:** `TEMPORARY_ENTITLEMENT_GRANT`, `VIRTUAL_CURRENCY_TRANSACTION`, `INVOICE_ISSUANCE`, `EXPERIMENT_ENROLLMENT`, `PURCHASE_REDEEMED` and `SUBSCRIBER_ALIAS`. You can select them in filters.
+    - Workaround: none needed unless your backend relies on them.
+14. **Webhook payloads leave out `renewal_number`, `experiments` and `metadata`.** Every other field matches RevenueCat's sample payloads.
+    - Workaround: count renewals in your backend from `RENEWAL` events.
+15. **Moving a one-time purchase to another user sends no `TRANSFER` event.** Subscriptions send one.
+    - Workaround: listen for `NON_RENEWING_PURCHASE` and check ownership with the REST API.
+
+## Migration
+16. **The importer CLI is not on npm yet.** `npx revenuedot import` does not work yet.
+    - Workaround: run it from source. See [The importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md).
+17. **Some RevenueCat data is not imported:** paywalls, targeting, experiments and virtual currency balances. Refunded subscriptions import as expired, because RevenueCat's API does not expose the refund. RevenueCat Billing renewals stay with RevenueCat.
+    - Workaround: recreate paywalls in code, and keep RevenueCat running for RevenueCat Billing customers.
+18. **Google purchase tokens are not in RevenueCat's API.** Imported Google subscriptions wait with the key `needs_token_refresh:<order id>` until a token arrives.
+    - Workaround: pass `--google-tokens <csv>`, or let renewal notifications and one `syncPurchases()` in the app fill them in. `GET /v2/projects/{project_id}/import/status` counts what is left.
+
+## Self-hosting
+19. **The shipped `docker-compose.yml` does not pass `REVENUEDOT_SIGNING_KEY`.**
+    - Workaround: add it with a `docker-compose.override.yml`. See [Set the signing key](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#set-the-signing-key).
+20. **Run one server container per database.** Expirations and webhooks are sent by a background job inside each container.
+    - Workaround: scale up one container rather than out. There is no high-availability setup yet.
+21. **There is no published Docker image.** Compose builds the image from source, which takes a few minutes on the first start.
+    - Workaround: none needed.
+
+## Related
+- [Frequently asked questions](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/faq.md)
+- [Troubleshooting by symptom](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/troubleshooting.md)
+- [What differs from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/what-differs.md)
+
+---
+
+# Why is my entitlement not active?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/entitlement-not-active.md
+Description: Usually the product is not attached to the entitlement, the purchase belongs to another app user ID, the receipt post failed, or the access has ended. Here is how to tell which.
+
+An entitlement is active only when the customer has an unexpired purchase of a product that is **attached to that entitlement**. Most of the time one of four things is wrong: the product is not attached, the purchase landed on a different app user ID, the receipt post failed, or the access has ended. Check them in that order.
+
+## Check what the server sees
+Ask for the customer the way the SDK does:
+
+```bash
+curl -s -H "Authorization: Bearer $PUBLIC_KEY" \
+  https://revenuedot.example.com/v1/subscribers/user_1
+```
+
+Read two parts of the answer:
+- `subscriber.subscriptions` and `subscriber.non_subscriptions` list what the customer bought.
+- `subscriber.entitlements` lists what that gives them.
+
+A purchase with no matching entitlement means the catalog is wrong. No purchase at all means the receipt never arrived or went to another customer. You can see the same on the dashboard's customer page, or with `GET /v2/projects/{project_id}/customers/{customer_id}/active_entitlements` and your secret key.
+
+## Causes and fixes
+1. **The product is not attached to the entitlement.** Attach it on the entitlement's dashboard page, or call `POST /v2/projects/{project_id}/entitlements/{entitlement_id}/actions/attach_products` with the product IDs. See [Products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md).
+2. **The product's store identifier does not match the store.** The product's `store_identifier` must equal the App Store product ID or the Google Play product ID exactly. A Google subscription matches either its subscription ID or `<subscription id>:<base plan id>`. Compare it with the `subscriptions` key in the customer info.
+3. **Only one store's product is attached.** Products are created per app. If the Android product ID differs from the iOS one, an Android purchase unlocks nothing until you create the Android product and attach it too.
+4. **The purchase belongs to another app user ID.** Purchases made before `logIn` sit on the anonymous ID (`$RCAnonymousID:...`) and move to the user on login. A restore can move a purchase away from another user, depending on the project's transfer behaviour. See [Anonymous app user IDs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/customers-and-app-user-ids.md#anonymous-app-user-ids) and [How do I restore purchases?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/restore-purchases.md)
+5. **The receipt post failed.** A 5xx leaves the purchase on the device for a retry, so access appears only after the cause is fixed. A 4xx means RevenueDot refused the purchase for good. Check the server log and see [Why does RevenueDot answer 4xx or 5xx to a receipt?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/receipt-errors-4xx-vs-5xx.md)
+6. **The access has ended.** Check `expires_date` in `subscriptions`. A refund sets `refunded_at` and ends access. A billing problem keeps access only while `grace_period_expires_date` is in the future.
+7. **Store notifications are not arriving.** Renewals and cancellations after the first purchase reach RevenueDot through App Store Server Notifications and Google's real-time notifications. Without them, a renewed subscription can look expired. See [Why are store notifications not arriving?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/store-notifications-not-arriving.md)
+8. **The app still shows old customer info.** The SDK caches customer info. Call `getCustomerInfo` again, or restart the app, after you fix the catalog.
+9. **The SDK is not talking to your server.** If the proxy URL is set after `configure`, or not at all, the SDK asks RevenueCat instead. Set the proxy URL first. See the [SDK guides](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md).
+
+## Access without a purchase
+To give a customer access by hand, for example after a support ticket, grant a promotional entitlement:
+
+```bash
+curl -s -X POST https://revenuedot.example.com/v1/subscribers/user_1/entitlements/pro/promotional \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"duration":"weekly"}'
+```
+
+The customer info then shows `pro` with the `PROMOTIONAL` store until it ends. See [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md).
+
+## Related
+- [Products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md)
+- [Offerings and packages](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/offerings-and-packages.md)
+- [Troubleshooting by symptom](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/troubleshooting.md)
+
+---
+
+# Why does RevenueDot answer 4xx or 5xx to a receipt?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/receipt-errors-4xx-vs-5xx.md
+Description: A 4xx tells the SDK the purchase is permanently bad, so it finishes the transaction for good. A 5xx means try again later, so the SDK keeps the transaction and retries.
+
+The HTTP status tells the SDK what to do with the store transaction. A **4xx** means the purchase can never be accepted, so the SDK finishes (or, on Android, stops retrying) the transaction for good. A **5xx** means RevenueDot or the store had a temporary problem, so the SDK keeps the transaction open and posts it again later. RevenueDot never answers 4xx for its own failures, so a server bug cannot make a paying customer lose a purchase.
+
+The SDK side of this rule is in the SDKs' own source. In purchases-ios, a failed post is "finishable" only when the status is not a server error ([NetworkError.swift](https://github.com/RevenueCat/purchases-ios/blob/main/Sources/Networking/HTTPClient/NetworkError.swift)). purchases-android makes the same split with `isServerError` ([Backend.kt](https://github.com/RevenueCat/purchases-android/blob/main/purchases/src/main/kotlin/com/revenuecat/purchases/common/Backend.kt)).
+
+## What every error looks like
+Every error has a JSON body with a numeric `code` and a `message`:
+
+```bash
+curl -s -w '\n%{http_code}\n' http://localhost:8787/v1/receipts \
+  -H "Authorization: Bearer $TEST_KEY" -H "Content-Type: application/json" \
+  -d '{"app_user_id":"user_1","fetch_token":"not-a-token","product_id":"pro_monthly"}'
+```
+```text
+{"code":7103,"message":"The receipt is not a valid Test Store purchase token."}
+400
+```
+
+## The codes, and where each one comes from
+The codes are defined in [`apps/server/src/errors.ts`](https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/errors.ts). They are the numbers the RevenueCat SDKs already understand.
+
+### Permanent: 4xx, the SDK finishes the transaction
+| HTTP | Code | Meaning | Thrown in | When |
+|---|---|---|---|---|
+| 401 | 7225 | Invalid API key | `routes/sdk.ts` | The `Authorization: Bearer` key is missing or unknown. Every SDK call answers this, not only receipts |
+| 400 | 7220 | Invalid app user ID | `routes/sdk.ts` | `app_user_id` is empty or longer than 100 characters |
+| 400 | 7000 | Bad request | `routes/sdk.ts` | A receipt posted with a secret key (`sk_`) has no `X-Platform` header, so RevenueDot cannot tell which app it is for |
+| 400 | 7662 | Receipts for this store are not supported yet | `routes/sdk.ts` | The key belongs to an Amazon, Stripe, Web Billing, Paddle or Roku app |
+| 400 | 7103 | Invalid receipt | `routes/sdk.ts` | The body has neither `fetch_token` nor `app_transaction` |
+| 400 | 7103 | Invalid receipt | `stores/test-store.ts` | The Test Store token is not `test_<ms>_<id>`, or `product_id` is missing |
+| 400 | 7103 | Invalid receipt | `stores/apple/index.ts` | The StoreKit 2 transaction's signature does not verify, the bundle ID does not match the app, the app receipt cannot be parsed, or it is an Xcode receipt without the `xcode_certificate` credential |
+| 400 | 7103 | Invalid receipt | `stores/google/index.ts`, `stores/google/api.ts` | The purchase token is missing or Google says it is not valid, `product_ids` is missing for a one-time product, or a pending purchase was cancelled |
+| 400 | 7102 | Receipt already in use | `services/purchases.ts` | Another known user owns this purchase and the project's transfer behaviour is `keep`, or `transfer_if_no_active` while that user still has an active subscription |
+
+### Temporary: 5xx, the SDK retries
+| HTTP | Code | Meaning | Thrown in | When |
+|---|---|---|---|---|
+| 500 | 7234 | App Store in-app purchase key problem | `stores/apple/index.ts` | A StoreKit 1 receipt arrived and the app has no in-app purchase key. The SDK retries after you add the key |
+| 500 | 7234 | App Store in-app purchase key problem | `stores/apple/api.ts` | The key is incomplete, the private key is not a valid `.p8`, or Apple rejected it with 401 |
+| 503 | 7101 | Store problem | `stores/apple/api.ts`, `stores/apple/index.ts` | Apple could not be reached, answered 429 or 5xx, or returned something RevenueDot could not verify |
+| 503 | 7101 | Store problem | `stores/google/index.ts`, `stores/google/api.ts` | The Google purchase is still pending payment, the service account is missing or rejected, the package name is wrong, or Google failed |
+| 500 | 7110 | Internal error | `errors.ts` | Anything unexpected inside RevenueDot, such as a database error |
+
+A wrong App Store key or Google service account is your setup problem, not the customer's. That is why it answers 5xx: the purchase stays on the device until you fix the credentials.
+
+## What to do
+1. **Read the `message`.** It names the cause, for example the bundle ID it expected.
+2. **For 7225,** check that the SDK uses the public key of an app in this project. See [Which key goes where](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md#which-key-goes-where).
+3. **For 7103 from the App Store,** check the app's `bundle_id` matches the build you are testing. For Xcode StoreKit testing, add the `xcode_certificate` credential. See [How do I test purchases without real money?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/test-sandbox-purchases.md)
+4. **For 7103 from Google,** check the app's `package_name`, and that the purchase was made by this app.
+5. **For 7102,** decide who should own restored purchases and set `transfer_behavior`. See [How do I restore purchases?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/restore-purchases.md)
+6. **For 7662,** use an App Store, Mac App Store, Google Play or Test Store app. Other stores are not supported yet.
+7. **For 7234,** add the App Store in-app purchase key to the app. See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md). For local development only, you can set `allow_unsigned_receipts`.
+8. **For 7101 from Google,** run **Verify credentials** on the app page, or `POST /v2/projects/{project_id}/apps/{app_id}/actions/verify_credentials`, and grant the service account access in Play Console. See [Connect Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md).
+9. **For 7110,** read the server log. The error is printed there with its stack. Open an issue if it looks like a bug.
+
+After you fix a 5xx cause, you do not need to change the app. The transaction is still unfinished on the device, so the SDK posts it again the next time it retries pending transactions.
+
+## Related
+- [Why is my entitlement not active?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/entitlement-not-active.md)
+- [Troubleshooting by symptom](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/troubleshooting.md)
+- [API errors](https://raw.githubusercontent.com/revenuedot/docs/main/api/errors.md)
+- [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md)
+
+---
+
+# How do I restore purchases?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/restore-purchases.md
+Description: Call restorePurchases from a Restore button, or syncPurchases silently. The project's transfer behaviour decides who owns a purchase another user already has.
+
+Call the SDK's `restorePurchases()` from a **Restore purchases** button, the same code you use with RevenueCat. The SDK posts the device's store receipts to `POST /v1/receipts`, and RevenueDot answers with the updated customer info. If the purchase already belongs to another user, the project's **transfer behaviour** decides what happens: by default the purchase moves to the user who restored it, and RevenueDot sends a `TRANSFER` webhook.
+
+## Restore or sync
+| Call | When to use it | What the user sees |
+|---|---|---|
+| `restorePurchases()` | The user taps **Restore purchases** | On iOS, it may ask the user to sign in to their Apple account |
+| `syncPurchases()` | Silently, for example once after a migration, so RevenueDot learns about purchases it has not seen | Nothing |
+
+```swift
+// iOS
+let customerInfo = try await Purchases.shared.restorePurchases()
+```
+
+```kotlin
+// Android
+Purchases.sharedInstance.restorePurchasesWith(
+  onError = { error -> /* show error.message */ },
+  onSuccess = { customerInfo -> /* check customerInfo.entitlements */ },
+)
+```
+
+```ts
+// React Native
+const customerInfo = await Purchases.restorePurchases();
+```
+
+RevenueCat recommends calling restore only from a button, not on every launch ([RevenueCat docs](https://www.revenuecat.com/docs/getting-started/restoring-purchases)). The same advice applies here.
+
+## Who owns a restored purchase
+RevenueDot follows the project setting `transfer_behavior`. The four values match RevenueCat's options ([RevenueCat docs](https://www.revenuecat.com/docs/projects/restore-behavior)).
+
+| `transfer_behavior` | When another known user already owns the purchase |
+|---|---|
+| `transfer` (default) | The purchase moves to the user who restored it. RevenueDot sends a `TRANSFER` event |
+| `transfer_if_no_active` | The purchase moves only if the current owner has no active subscription. Otherwise the restore fails with 7102 |
+| `keep` | The purchase stays with its owner. The restore fails with HTTP 400, code 7102, "The receipt is already in use by another subscriber." |
+| `share` | The two users are merged into one customer, so both IDs share the purchase |
+
+Two cases never depend on the setting:
+- If the current owner is **anonymous** (`$RCAnonymousID:...`), it is always merged into the user who restored.
+- If the user restoring is **anonymous** and the owner is a known user, the anonymous ID is merged into the owner.
+
+Change the setting on the dashboard's project settings, or with the API:
+
+```bash
+curl -s -X POST https://revenuedot.example.com/v2/projects/$PROJECT_ID \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"transfer_behavior":"transfer_if_no_active","sandbox_transfer_behavior":"transfer"}'
+```
+
+`sandbox_transfer_behavior` applies to sandbox purchases. Leave it `null` to use `transfer_behavior` for both. More background is in [Who owns a restored purchase](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/customers-and-app-user-ids.md#who-owns-a-restored-purchase).
+
+## The TRANSFER webhook
+When a subscription moves, your webhook receives an event like this one, captured from a local run:
+
+```json
+{
+  "api_version": "1.0",
+  "event": {
+    "id": "90CB2D5B-DDD2-4F25-9430-4E5290CC493A",
+    "type": "TRANSFER",
+    "store": "TEST_STORE",
+    "app_id": "appvnrm0a5h",
+    "environment": "SANDBOX",
+    "transferred_from": ["alice"],
+    "transferred_to": ["bob"],
+    "event_timestamp_ms": 1790800924235,
+    "subscriber_attributes": {}
+  }
+}
+```
+
+Use it to move access in your own database from the `transferred_from` IDs to the `transferred_to` IDs.
+
+## If the restore fails with 7102
+1. The project uses `keep`, or `transfer_if_no_active` while the owner still has an active subscription.
+2. Tell the user the purchase belongs to another account, and ask them to sign in with that account.
+3. If the rule is too strict for your app, switch to `transfer`.
+
+## If the restore finds nothing
+1. Check that the user is signed in to the same Apple or Google account that bought.
+2. Check that the purchase is for this app's bundle ID or package name.
+3. Check the server log for a 5xx on `/v1/receipts`. See [Why does RevenueDot answer 4xx or 5xx to a receipt?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/receipt-errors-4xx-vs-5xx.md)
+
+## Related
+- [Customers and app user IDs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/customers-and-app-user-ids.md)
+- [Why is my entitlement not active?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/entitlement-not-active.md)
+- [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md)
+
+---
+
+# Why does the SDK report signature verification FAILED in proxy mode?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/signature-verification-failed.md
+Description: The stock RevenueCat SDK checks responses against RevenueCat's signing key, which RevenueDot cannot use. Turn verification off, or build the SDK forks with your own key.
+
+The stock RevenueCat SDK trusts only RevenueCat's response-signing key, and RevenueDot cannot sign with it. So when entitlement verification is on, every RevenueDot response reads as `FAILED`. Access is still granted in the default informational mode, and nothing breaks. The fix is to turn verification off in the app, or to use the RevenueDot SDK forks built with your own server's key. **Never use ENFORCED mode with the stock SDK against RevenueDot**: it would reject every response.
+
+RevenueCat calls this feature Trusted Entitlements. Its modes are disabled, informational and enforced ([RevenueCat docs](https://www.revenuecat.com/docs/customers/trusted-entitlements)).
+
+## What each SDK does by default
+| SDK | Default mode | What you see | Fix with the stock SDK |
+|---|---|---|---|
+| iOS, Android (native) | Informational | A logged verification failure; access is still granted; `EntitlementInfos.verification` is `FAILED` | Set the mode to disabled |
+| Unity | Informational | Same as native | Set **Entitlement Verification Mode** to **Disabled** on the Purchases component in the Inspector |
+| Capacitor | None passed, so the native default applies (informational) | Same as native | Pass `ENTITLEMENT_VERIFICATION_MODE.DISABLED` to `configure` |
+| React Native, Flutter, Kotlin Multiplatform | Disabled | Nothing | Nothing to do |
+| Cordova | No option | A logged verification failure; access is still granted | Nothing you can change; ignore the log line |
+| Web (purchases-js) | Does not verify | Nothing | Nothing to do |
+
+## Turn verification off
+```swift
+// iOS: Point the SDK at your RevenueDot server; nothing else in the app changes.
+Purchases.proxyURL = URL(string: "https://revenuedot.example.com")!
+Purchases.configure(with: Configuration.Builder(withAPIKey: "appl_...")
+  .with(entitlementVerificationMode: .disabled)
+  .build())
+```
+
+```kotlin
+// Android: Point the SDK at your RevenueDot server; nothing else in the app changes.
+Purchases.proxyURL = URL("https://revenuedot.example.com")
+Purchases.configure(
+  PurchasesConfiguration.Builder(context, "goog_...")
+    .entitlementVerificationMode(EntitlementVerificationMode.DISABLED)
+    .build()
+)
+```
+
+```ts
+// Capacitor: Point the SDK at your RevenueDot server; nothing else in the app changes.
+await Purchases.setProxyURL({ url: "https://revenuedot.example.com" });
+await Purchases.configure({ apiKey: "appl_...", entitlementVerificationMode: ENTITLEMENT_VERIFICATION_MODE.DISABLED });
+```
+
+On React Native, Flutter and Kotlin Multiplatform, leave the mode at its default. If your code sets it to informational, remove that line.
+
+## Get VERIFIED instead: sign with your own key
+RevenueDot can sign responses exactly the way the SDKs check them. It signs every 2xx and 3xx response under `/v1` and `/rcbilling` when `REVENUEDOT_SIGNING_KEY` is set. For your app to accept those signatures, the SDK must carry your public key, which means building the forks.
+
+1. **Make a key pair** in a checkout of the server repo:
+   ```bash
+   pnpm tsx scripts/signing-keygen.ts
+   ```
+   ```text
+   REVENUEDOT_SIGNING_KEY=<base64 private seed>
+   public key: <base64 public key>
+   ```
+2. **Give the server the private seed** as the `REVENUEDOT_SIGNING_KEY` environment variable, and restart it. Keep it out of every repository.
+3. **Check the public key** the server now serves:
+   ```bash
+   curl -s https://revenuedot.example.com/.well-known/revenuedot-signing-key
+   ```
+   ```json
+   {"algorithm":"Ed25519","public_key":"ZzwPxGlon0E8ErpDh9QAH0Jh6+E6D6qufvTSetXZY9Y=","encoding":"base64","header":"X-Signature","docs":"https://revenuedot.app/docs"}
+   ```
+   Without a key it answers 404 with "Response signing is not configured on this server."
+4. **Build the forks with your host and key:**
+   ```bash
+   pnpm tsx scripts/forks/apply.ts --var apiHost=https://revenuedot.example.com --var signingPublicKey=<your public key>
+   ```
+   You can also set `REVENUEDOT_FORK_API_HOST` and `REVENUEDOT_FORK_SIGNING_PUBLIC_KEY`. Then build the fork for your platform and ship it in your app.
+5. **Turn verification back on** (informational) in the app, and check that `verification` reads `VERIFIED`.
+
+The official RevenueDot forks trust RevenueDot Cloud's key (`gXdn2hmqR/TbdtQwK02laE0YgFz0Rtf918LICLrgZhg=`). A self-hosted server cannot sign with that key, so the official builds still report `FAILED` against your server. The forks are not published to any registry yet as of 2026-09-30. Full details are in [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md).
+
+## Related
+- [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md)
+- [Connect your app](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/connect-your-app.md)
+- [SDK changes when migrating](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/sdk-changes.md)
+- [Blog: Why we forked the RevenueCat SDKs](https://raw.githubusercontent.com/revenuedot/docs/main/blog/why-we-forked-the-revenuecat-sdks.md)
+
+---
+
+# Why are store notifications not arriving?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/store-notifications-not-arriving.md
+Description: Check notification_status in setup health. Most failures are a wrong URL, a bundle ID or package name mismatch, Pub/Sub push auth, or purchases RevenueDot has never seen.
+
+Start with the app's `notification_status` in setup health. It tells you whether nothing has arrived (`waiting`), something arrived but none of it counted (`received`), the newest one failed (`failing`), or all is well (`ready`). The usual causes are a wrong URL in App Store Connect or Pub/Sub, a bundle ID or package name that does not match the app, a Pub/Sub push token RevenueDot rejects, or notifications about purchases RevenueDot has never seen.
+
+## Read the status
+```bash
+curl -s -H "Authorization: Bearer $SECRET_KEY" \
+  https://revenuedot.example.com/v2/projects/$PROJECT_ID/setup_health
+```
+
+Each app in `apps` carries these fields. The dashboard shows the same on the app page.
+
+| Field | Meaning |
+|---|---|
+| `notification_url` | The URL to give the store: `/v1/notifications/apple/{app_id}` or `/v1/notifications/google/{app_id}` |
+| `notification_status` | `ready`, `failing`, `received` or `waiting` (below) |
+| `last_notification_at` | The last time a notification was processed for a purchase RevenueDot knows, or was the store's test message |
+| `last_notification_received_at` | The last time anything arrived |
+| `last_notification_error` | The newest failure: `at`, `type` and `message` |
+
+| `notification_status` | What it means | What to do |
+|---|---|---|
+| `waiting` | Nothing has ever arrived for this app | Check the URL in the store console, and that the server is reachable from the internet over HTTPS |
+| `received` | Notifications arrive, but none was for a purchase RevenueDot knows | Normal before the first purchase. Send the store's test notification, or turn on `track_new_purchases` (below) |
+| `failing` | The newest notification failed, and no later one succeeded | Read `last_notification_error.message` |
+| `ready` | A notification was processed for a known purchase, or was the store's test message | Nothing |
+
+The logic is in [`notification-health.ts`](https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/routes/v2/notification-health.ts).
+
+## Send a test notification
+- **App Store:** use **Request a Test Notification** from the App Store Server API ([Apple docs](https://developer.apple.com/documentation/appstoreserverapi/request-a-test-notification)). A valid test turns the app `ready`.
+- **Google Play:** click **Send Test Message** where you set up real-time developer notifications in Play Console ([Google docs](https://developer.android.com/google/play/billing/getting-ready)). The test message turns the app `ready`.
+
+## Causes and fixes
+1. **The URL is wrong or unreachable.** Copy `notification_url` exactly. It must be the public HTTPS address of your server. Behind a proxy, RevenueDot builds it from `X-Forwarded-Host` and `X-Forwarded-Proto`.
+2. **App Store Connect only has the production URL.** Sandbox purchases need the same URL in the **Sandbox Server URL** field, and the version must be **Version 2** notifications. See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md).
+3. **The bundle ID does not match.** RevenueDot answers 400 and records "The notification is for bundle id X, not Y." Fix `bundle_id` on the app, or point this bundle's notifications at the right app ID.
+4. **The Apple app ID does not match.** If the app has an `app_apple_id` credential, production notifications for another Apple app ID are refused with 400.
+5. **The package name does not match.** RevenueDot answers 200 so Pub/Sub stops redelivering, and records "package X does not match the app's Y". The status turns `failing`. Fix `package_name`, or use a separate topic per app.
+6. **Pub/Sub push authentication fails.** If the app has the `pubsub_audience` credential, every push must carry a Google-signed token for that audience, and, when `pubsub_service_account` is set, from that service account. A missing or wrong token gets HTTP 401 with code 7224. Turn on authentication on the push subscription with the same audience and service account ([Google docs](https://cloud.google.com/pubsub/docs/authenticate-push-subscriptions)), or remove `pubsub_audience`.
+7. **The purchases are unknown to RevenueDot.** A notification for a purchase no app has posted to `/v1/receipts` is stored but not applied, and the status stays `received`. This is normal in a dual run until users open the app. To create those purchases from notifications, set `track_new_purchases`:
+   ```bash
+   curl -s -X POST https://revenuedot.example.com/v2/projects/$PROJECT_ID/apps/$APP_ID \
+     -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+     -d '{"app_store":{"track_new_purchases":true}}'
+   ```
+   Use `play_store` instead of `app_store` for a Google Play app. For the App Store, the purchase lands on the customer named by the transaction's `appAccountToken` when it matches one. Otherwise it lands on a new anonymous customer until the app posts it.
+8. **Google cannot be reached with the service account.** Google notifications only carry a purchase token, so RevenueDot reads the purchase from the Play Developer API. A missing or rejected service account makes each notification fail with 500 and Pub/Sub retries it. See [Connect Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md).
+
+## What RevenueDot answers, and why
+The stores redeliver anything that is not a 2xx. RevenueDot answers so that a store retries only what could succeed later.
+
+| Store | Answer | When |
+|---|---|---|
+| App Store | 200 `{"ok":true}` | The payload verified, including notifications for purchases RevenueDot does not track |
+| App Store | 400 | The payload cannot be verified or belongs to another app: not JSON, no `signedPayload`, a bad signature, another bundle ID or Apple app ID |
+| App Store | 404 | No App Store app has this ID |
+| App Store | 500 | RevenueDot itself failed; Apple retries |
+| Google Play | 200 with `status` | `processed`, `unknown_purchase`, `ignored` (unreadable data or another package), `invalid_token` or `duplicate` |
+| Google Play | 400, code 7000 | The body is not a Pub/Sub push message |
+| Google Play | 401, code 7224 | The Pub/Sub push token is missing or invalid |
+| Google Play | 404 | No Google Play app has this ID |
+| Google Play | 500 or 503 | A temporary failure at RevenueDot or Google; Pub/Sub retries |
+
+Every notification is stored before it is processed, so you can see it even when it failed. During a dual run, RevenueDot also copies the exact body to the app's `notification_forward_url`. `last_forward` in `GET /v2/projects/{project_id}/apps/{app_id}/store_settings` shows the last forward's HTTP status, where 0 means no answer within 10 seconds. See [Dual run](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/dual-run.md).
+
+## Related
+- [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md)
+- [Connect Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md)
+- [Why is my entitlement not active?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/entitlement-not-active.md)
+
+---
+
+# How do I test purchases without real money?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/test-sandbox-purchases.md
+Description: Use the Test Store for the fastest loop, then App Store sandbox, StoreKit testing in Xcode with the xcode_certificate credential, or Google Play license testers.
+
+Start with the **Test Store**: it needs no App Store or Google Play account and works in seconds. Then test with each store's own sandbox: **App Store sandbox** accounts, **StoreKit testing in Xcode** (after you give RevenueDot Xcode's certificate), and **Google Play license testers**. RevenueDot marks all of these purchases as sandbox, so they stay out of your production numbers and webhooks carry `"environment": "SANDBOX"`.
+
+> App Store and Google Play support is tested against mocked Apple and Google APIs only. No real sandbox purchase has run end to end yet (2026-09-30). Please report what you find.
+
+## Test Store: no store account needed
+1. Create an app with `type: test_store`, or run the [seed script](https://github.com/revenuedot/examples/blob/main/selfhost/docker-compose/seed.sh).
+2. Use its `test_` key as the SDK's API key and your server as the proxy URL.
+3. Buy. The SDK shows a Test Store dialog and posts a `fetch_token` of the form `test_<ms>_<id>`.
+
+You can also post a purchase yourself:
+
+```bash
+curl -s http://localhost:8787/v1/receipts \
+  -H "Authorization: Bearer $TEST_KEY" -H "Content-Type: application/json" \
+  -d "{\"app_user_id\":\"user_1\",\"fetch_token\":\"test_$(date +%s)000_demo\",\"product_id\":\"pro_monthly\",\"price\":9.99,\"currency\":\"USD\"}"
+```
+
+To test what happens later in a subscription's life, simulate it with your secret key. `scenario` is one of `purchase`, `trial`, `trial_conversion`, `renewal`, `cancel`, `billing_issue`, `refund` or `expire`:
+
+```bash
+curl -s -X POST http://localhost:8787/v2/projects/$PROJECT_ID/test_purchases \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"app_user_id":"user_refund","product_id":"pro_monthly","scenario":"refund"}'
+```
+
+The answer lists the events it produced, here `"event_types":["INITIAL_PURCHASE","CANCELLATION"]`, and your webhooks receive them. See [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
+
+The native iOS SDK cannot load Test Store products yet. Use purchases-js or React Native (Expo Go or web) for Test Store runs. See [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md).
+
+## App Store sandbox
+1. Connect the app: set its `bundle_id` and add the App Store in-app purchase key. See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md).
+2. Create a sandbox Apple account in App Store Connect ([Apple docs](https://developer.apple.com/documentation/storekit/testing-in-app-purchases-with-sandbox)).
+3. Run a development or TestFlight build and buy with that account.
+
+Sandbox transactions are signed by Apple, so RevenueDot verifies them like production ones and stores them with `is_sandbox: true`. Sandbox subscriptions renew on Apple's shortened schedule, and renewals reach RevenueDot through App Store Server Notifications. Put the notification URL in App Store Connect's **Sandbox Server URL** too. See [Why are store notifications not arriving?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/store-notifications-not-arriving.md)
+
+## StoreKit testing in Xcode
+Xcode signs local test transactions with its own certificate, not Apple's ([Apple docs](https://developer.apple.com/documentation/xcode/setting-up-storekit-testing-in-xcode)). RevenueDot refuses them with code 7103 until you give it that certificate:
+
+1. Open your `.storekit` configuration file in Xcode and choose **Editor → Save Public Certificate**.
+2. Store the certificate on the app as the `xcode_certificate` credential. PEM text or base64 DER both work:
+   ```bash
+   CERT=$(base64 < StoreKitTestCertificate.cer | tr -d '\n')
+   curl -s -X POST http://localhost:8787/v2/projects/$PROJECT_ID/apps/$APP_ID \
+     -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+     -d "{\"app_store\":{\"xcode_certificate\":\"$CERT\"}}"
+   ```
+3. Buy in the simulator. RevenueDot now accepts the local transactions.
+
+Use this only on a development server. Anyone with the certificate can sign transactions it will accept.
+
+## Google Play license testers
+1. Connect the app: set its `package_name` and add the service account. See [Connect Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md).
+2. Add tester accounts under **License testing** in Play Console, and publish the app to an internal testing track ([Google docs](https://developer.android.com/google/play/billing/test)).
+3. Install from the track and buy with a tester account. Google uses test cards and shortened renewal periods.
+
+RevenueDot reads the purchase from the Play Developer API and acknowledges it. Google tells RevenueDot it is a test purchase, so it is stored as sandbox.
+
+## Keep test purchases apart
+- Set `sandbox_transfer_behavior` on the project if testers share devices and you want restores to behave differently in sandbox. See [How do I restore purchases?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/restore-purchases.md)
+- Point a webhook at a staging backend with `environment: "sandbox"`, and your production webhook at `environment: "production"`. See [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md).
+
+## Related
+- [Sandbox](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/sandbox.md)
+- [Sandbox testing guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/sandbox-testing.md)
+- [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md)
+
+---
+
+# Why are webhooks not arriving?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/webhooks-not-arriving.md
+Description: Check the webhook's delivery log first. Most misses are a filter that excludes the event, a backend that answers something other than 200, or a URL the server cannot reach.
+
+Open the webhook's delivery log first: it shows every attempt with its HTTP status and error. No delivery at all means a filter excluded the event, or the webhook did not exist yet when the event happened. Deliveries marked `pending` or `failed` mean your backend answered something other than **HTTP 200**, timed out after 60 seconds, or could not be reached.
+
+## Look at the deliveries
+```bash
+curl -s -H "Authorization: Bearer $SECRET_KEY" \
+  "https://revenuedot.example.com/v2/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID/deliveries?status=failed"
+```
+
+The dashboard's **Webhooks** page shows the same log. For a project-wide view, `GET /v2/projects/{project_id}/setup_health` has a `webhooks` block with the delivered share over the last 24 hours and every webhook whose last attempt failed.
+
+To check the wiring end to end, send a `TEST` event:
+```bash
+curl -s -X POST -H "Authorization: Bearer $SECRET_KEY" \
+  https://revenuedot.example.com/v2/projects/$PROJECT_ID/integrations/webhooks/$WEBHOOK_ID/test
+```
+
+## No delivery at all
+1. **The environment filter excludes it.** A webhook with `environment: "production"` never receives sandbox or Test Store events. Test Store purchases are always sandbox. Set `environment` to `null` for both.
+2. **The event type filter excludes it.** If `event_types` is set, only those types are sent.
+3. **The app filter excludes it.** If `app_id` is set, events from other apps are skipped.
+4. **The webhook did not exist yet.** Deliveries are queued when the event happens, for the webhooks that exist then. A webhook you add later does not get older events.
+5. **No event happened.** An imported customer produces no events unless the import ran with `--emit-events`. A purchase RevenueDot has not seen, reported only by a store notification, produces nothing unless `track_new_purchases` is on. See [Why are store notifications not arriving?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/store-notifications-not-arriving.md)
+6. **The event type is never sent yet.** RevenueDot accepts `TEMPORARY_ENTITLEMENT_GRANT`, `VIRTUAL_CURRENCY_TRANSACTION`, `INVOICE_ISSUANCE`, `EXPERIMENT_ENROLLMENT`, `PURCHASE_REDEEMED` and `SUBSCRIBER_ALIAS` in filters, but does not produce them yet. See [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md).
+
+## Deliveries that fail
+1. **Your backend answers something other than 200.** Only 200 counts as delivered. A 201, 204 or redirect is a failure and is retried. Answer 200 as soon as you have stored the event, and do slow work afterwards.
+2. **Your backend is too slow.** RevenueDot waits 60 seconds, then counts the attempt as failed.
+3. **Signature checks reject the request.** Verify `X-RevenueCat-Webhook-Signature` against the raw request body, not re-serialized JSON, with the `whsec_` secret of this webhook. The header is `t=<unix seconds>,v1=<hex HMAC-SHA256 of "<t>.<body>">`. A new signature is made for every attempt. See [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md) for verification code.
+4. **The `Authorization` header does not match.** If you set `authorization_header` on the webhook, RevenueDot sends it exactly as stored. Compare it with what your backend expects.
+5. **The server cannot reach the URL.** A self-hosted container cannot reach `localhost` on your computer. Use `http://host.docker.internal:<port>` on Mac and Windows, and on Linux add `extra_hosts: ["host.docker.internal:host-gateway"]` to the service.
+
+## Retries and timing
+- The server sends due webhooks from a background job every 30 seconds, and right after a purchase.
+- A failed attempt is retried after 5, 10, 20, 40 and 80 minutes. After that the delivery is marked `failed`. This matches RevenueCat's schedule ([RevenueCat docs](https://www.revenuecat.com/docs/integrations/webhooks)).
+- Retry by hand from the dashboard, or with `POST /v2/projects/{project_id}/webhooks/{webhook_id}/deliveries/{delivery_id}/retry`.
+- Delivery is at least once. Deduplicate on `event.id`.
+
+A real delivery, captured from a local run, looks like this:
+
+```text
+POST /api/webhooks/revenuedot
+content-type: application/json
+user-agent: RevenueDot-Webhooks/1.0
+x-revenuecat-webhook-signature: t=1790800914,v1=5e6c0809f9b7b24f7ae36f4744b3b04868222411db4b24c60e6e390c5e9c495f
+
+{"event":{"id":"E6BD2240-52BB-444A-8C96-AA85468119C6","type":"INITIAL_PURCHASE","store":"PROMOTIONAL","app_user_id":"user_9","environment":"PRODUCTION","product_id":"rc_promo_pro_weekly","period_type":"PROMOTIONAL", "...": "..."},"api_version":"1.0"}
+```
+
+## Related
+- [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md)
+- [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md)
+- [Troubleshooting by symptom](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/troubleshooting.md)

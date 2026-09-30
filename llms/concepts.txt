@@ -1,0 +1,405 @@
+# RevenueDot documentation: Concepts
+
+> RevenueDot is an open-source (AGPL-3.0), self-hostable backend for in-app purchases and subscriptions that works with the RevenueCat SDK.
+> It is a free alternative to RevenueCat: an app points the RevenueCat SDK's proxy URL at a RevenueDot server and keeps its purchase code, offerings and customers.
+> It verifies App Store and Google Play purchases on the server, keeps each customer's entitlements current from store notifications, and sends webhooks in RevenueCat's payload format.
+> RevenueDot runs as one Docker image plus Postgres. The SDK forks are MIT and keep RevenueCat's class and method names. RevenueDot is pre-alpha and not affiliated with RevenueCat, Inc.
+
+Generated from https://github.com/revenuedot/docs by scripts/gen-llms.mjs. Index: https://raw.githubusercontent.com/revenuedot/docs/main/llms.txt
+
+# How is RevenueDot organized?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/README.md
+Description: A server holds projects. A project holds apps (one per store), a catalog of products, entitlements, offerings and packages, and customers with their purchases and events.
+
+A RevenueDot server holds **projects**. A project holds **apps** (one per store), a **catalog** (products, entitlements, offerings, packages) and **customers** (with their subscriptions, one-time purchases and events). Your app checks **entitlements**, not products.
+
+```text
+Project "Scanner"
+├── Apps            App Store app (appl_ key) · Google Play app (goog_ key) · Test Store app (test_ key)
+├── Products        pro_monthly (App Store) · pro:monthly (Google Play) · pro_monthly (Test Store) · lifetime
+├── Entitlements    pro  ← unlocked by any of the products above
+├── Offerings       default (current)  →  packages $rc_monthly, $rc_annual  →  one product per app
+└── Customers       user_42 (aliases: $RCAnonymousID:ab12…, user_42)
+                      ├── subscriptions and one-time purchases, per store
+                      └── events: INITIAL_PURCHASE, RENEWAL, CANCELLATION, EXPIRATION …
+```
+
+## The pages in this section
+| Page | What it explains |
+|---|---|
+| [Projects, apps and API keys](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md) | What a project is, which app types exist, and which key goes where |
+| [Products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md) | How store products map to the access your app checks |
+| [Offerings and packages](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/offerings-and-packages.md) | How the paywall's contents are chosen without an app update |
+| [Customers and app user IDs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/customers-and-app-user-ids.md) | Anonymous IDs, `logIn`, aliases, and who owns a restored purchase |
+| [Subscriptions and events](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/subscriptions-and-events.md) | Lifecycle states, grace periods, refunds, and the events each change produces |
+| [Sandbox and production](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/sandbox.md) | How test purchases are kept apart from real ones |
+
+## Words used across the docs
+| Word | Meaning |
+|---|---|
+| **Proxy URL** | The SDK setting that sends every SDK request to your RevenueDot server instead of RevenueCat's API |
+| **Public app key** | A per-app key the SDK sends (`appl_`, `goog_`, `test_` …). Safe to ship in an app |
+| **Secret key** | A per-project key (`sk_…`) for the REST API and your backend. Never ship it in an app |
+| **App user ID** | The ID the SDK uses for the current user: either your own ID or an anonymous `$RCAnonymousID:…` |
+| **Customer info** | The JSON the SDK decodes into `CustomerInfo`: entitlements, subscriptions and one-time purchases |
+| **Test Store** | RevenueDot's built-in store for development. Purchases need no App Store or Google Play account and are always sandbox |
+| **Sandbox** | Test purchases (App Store sandbox, Google Play test purchases, the Test Store). They are kept apart from production in metrics and can be filtered for webhooks. See [Sandbox and production](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/sandbox.md) |
+
+---
+
+# What are projects, apps and API keys?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md
+Description: A project is one product you sell. An app is that product on one store, with its own public SDK key. Secret keys belong to a project and unlock the REST API.
+
+A **project** is one product you sell, such as "Scanner". It owns the catalog, the customers, the webhooks and the secret keys. An **app** is that product on one store. Each app has its own public key, which the SDK sends with every request.
+
+## Projects
+- Signing up in the dashboard (`/signup`) or with `POST /auth/signup` creates your account and its first project.
+- More projects: dashboard → **New project**, or `POST /v2/projects` while signed in to the dashboard. A secret key belongs to one project, so it cannot create projects.
+- Project settings (`GET` or `POST /v2/projects/{project_id}`): `name`, `transfer_behavior` and `sandbox_transfer_behavior`. See [Customers and app user IDs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/customers-and-app-user-ids.md#who-owns-a-restored-purchase).
+- Deleting a project deletes everything in it. Only an admin can do it, and only from the dashboard.
+
+## Apps
+Create an app per store with `POST /v2/projects/{project_id}/apps` or on the dashboard's **Apps** page.
+
+| `type` | Store | Public key prefix | Store id field | Receipts accepted today |
+|---|---|---|---|---|
+| `app_store` | Apple App Store (iOS, iPadOS, tvOS, visionOS, watchOS) | `appl_` | `app_store.bundle_id` | Yes |
+| `mac_app_store` | Mac App Store | `mac_` | `mac_app_store.bundle_id` | Yes |
+| `play_store` | Google Play | `goog_` | `play_store.package_name` | Yes |
+| `test_store` | RevenueDot Test Store | `test_` | none | Yes |
+| `amazon` | Amazon Appstore | `amzn_` | `amazon.package_name` | No (Tier 2) |
+| `stripe`, `rc_billing`, `paddle`, `roku` | Web and other stores | `strp_`, `rcb_`, `pdl_`, `roku_` | none | No (planned) |
+
+```bash
+curl -s -X POST http://localhost:8787/v2/projects/$PROJECT_ID/apps \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"Scanner (iOS)","type":"app_store","app_store":{"bundle_id":"com.example.scanner"}}'
+```
+```json
+{"object":"app","id":"appk6jbcorn","name":"Scanner (iOS)","created_at":1790798214712,"type":"app_store","project_id":"projujvzn2wl","custom_url_scheme":"rc-3c3d62a884","app_store":{"bundle_id":"com.example.scanner","app_store_connect_api_key_configured":false,"subscription_key_configured":false,"app_store_connect_vendor_number":null}}
+```
+
+Store credentials, such as Apple's in-app purchase key and Google's service account, belong to the app. They are never returned by the API; responses only say whether each is configured. Setup is in [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md) and [Connect Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md).
+
+## Which key goes where
+| Key | Looks like | Where it lives | What it can do |
+|---|---|---|---|
+| Public app key | `appl_…`, `goog_…`, `test_…` | In your app, passed to `Purchases.configure` | The [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) for that app's project: customer info, offerings, receipts, logIn, attributes |
+| Secret key | `sk_…` | Your backend and scripts only | [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md) and [v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) for one project, limited by its permissions |
+| Dashboard session | cookie `rd_session` | Your browser | The dashboard, and `/v2` for every project you are a member of |
+| Webhook signing secret | `whsec_…` | Your backend | Verifying webhook signatures |
+
+Get an app's public key with `GET /v2/projects/{project_id}/apps/{app_id}/public_api_keys` or on the app's dashboard page. Create secret keys on **API keys** or with `POST /v2/projects/{project_id}/api_keys`. The key is returned once. See [Authentication](https://raw.githubusercontent.com/revenuedot/docs/main/api/authentication.md).
+
+## Related
+- [Products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md)
+- [REST API v2: apps](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#apps)
+
+---
+
+# How do products and entitlements work?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md
+Description: A product is one item on one store. An entitlement is the access your app checks, such as pro. Attach every product that should unlock it; the app then checks the entitlement, never a product id.
+
+A **product** is one thing a store sells, such as `pro_monthly` on the App Store. An **entitlement** is the access your app checks, such as `pro`. You attach products to an entitlement, and any purchase of any attached product unlocks it. Your app checks `customerInfo.entitlements["pro"]`, so adding a yearly plan or a Google Play product later needs no app update.
+
+```text
+Entitlement "pro"
+├── pro_monthly        App Store app      subscription P1M
+├── pro_annual         App Store app      subscription P1Y
+├── pro:monthly        Google Play app    subscription (base plan "monthly")
+└── pro_lifetime       Test Store app     non_consumable
+```
+
+## Products
+A product belongs to one app. Create it in the dashboard (**Products**) or with the API:
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"store_identifier":"pro_monthly","app_id":"'$APP_ID'","type":"subscription","display_name":"Pro monthly","subscription":{"duration":"P1M"}}'
+```
+
+| Field | What to put there |
+|---|---|
+| `store_identifier` | The store's product id, exactly as in App Store Connect or Play Console. For Google Play subscriptions use `subscriptionId:basePlanId`, for example `pro:monthly`. A plain `pro` also matches every base plan of that subscription |
+| `type` | `subscription`, `non_consumable` (a lifetime unlock), `consumable` (coins, credits), `non_renewing_subscription` or `one_time` |
+| `subscription.duration` | ISO 8601 period: `P1W`, `P1M`, `P3M`, `P6M`, `P1Y`, or any other such as `P3D`. The Test Store uses it as the period length, and MRR uses it for every store |
+| `display_name` | Your own label for the dashboard |
+
+- **Store ids must match.** RevenueDot matches purchases to products by `store_identifier`. A purchase of an unknown product is still saved and still appears in customer info, but it unlocks nothing.
+- **Consumables never unlock an entitlement.** The Android SDK consumes them when RevenueDot answers `should_consume: true`, so they can be bought again.
+- **Archive instead of delete** when a product is retired: `POST .../products/{product_id}/actions/archive`. Archived products leave offerings. Deleting a product detaches it from entitlements and packages; purchase history keeps the store id.
+
+## Entitlements
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/entitlements" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"lookup_key":"pro","display_name":"Pro access"}'
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/entitlements/$ENTITLEMENT_ID/actions/attach_products" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"product_ids":["'$MONTHLY_ID'","'$ANNUAL_ID'"]}'
+```
+
+The `lookup_key` is the name apps see. The entitlement's `id` (`entl...`) is what REST API v2 uses, for example in `grant_entitlement`.
+
+## How RevenueDot decides whether an entitlement is active
+RevenueDot computes entitlements from every purchase the customer owns. The rules come from `packages/core/src/entitlements.ts`:
+
+1. **Each attached purchase is a candidate.** Subscriptions, non-consumable one-time purchases and promotional grants count. Consumables do not.
+2. **Access ends at the right time.** For a subscription, access ends at the refund time if it was refunded, else at the end of the grace period if the store granted one, else at the store's expiry. A lifetime purchase never ends unless it is refunded.
+3. **The best candidate wins.** A lifetime unlock beats everything. Otherwise the purchase whose access ends last wins.
+4. **Expired entitlements stay listed.** Customer info lists every entitlement a customer ever had, with its `expires_date`. The SDK's `isActive` compares that date with the server time, so an entitlement with a past `expires_date` is inactive.
+
+```json
+"entitlements": {
+  "pro": { "expires_date": "2026-10-30T20:41:54Z", "grace_period_expires_date": null, "product_identifier": "pro_monthly", "purchase_date": "2026-09-30T20:41:54Z" }
+}
+```
+
+## Give access without a purchase
+Grant promotional access to a customer, for example for support or a partnership. It appears as a subscription from the `promotional` store and unlocks the entitlement until it ends.
+
+```bash
+# REST API v2: until a date (epoch milliseconds)
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_42/actions/grant_entitlement" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"entitlement_id":"'$ENTITLEMENT_ID'","expires_at":1830000000000}'
+# REST API v1: by lookup key, for a fixed duration
+curl -s -X POST "$REVENUEDOT_URL/v1/subscribers/user_42/entitlements/pro/promotional" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" -d '{"duration":"monthly"}'
+```
+
+A grant that ends within 2 hours of an existing grant for the same entitlement is treated as a duplicate and changes nothing. Revoke grants with `revoke_granted_entitlement` (v2) or `revoke_promotionals` (v1).
+
+## Related
+- [Offerings and packages](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/offerings-and-packages.md)
+- [Why is my entitlement not active?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/entitlement-not-active.md)
+- [REST API v2: products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md)
+
+---
+
+# How do offerings and packages decide what my paywall shows?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/offerings-and-packages.md
+Description: An offering is a set of packages, and each package holds one product per app. The SDK shows the current offering, so you change the paywall's products on the server without an app update.
+
+The SDK asks RevenueDot for **offerings** and shows the **current** one. An offering holds **packages** such as "Monthly" and "Yearly". Each package holds one product per app, so the same offering serves your iOS and Android apps. To change prices or plans, change the current offering on the server; the app picks it up on its next `getOfferings()` call.
+
+```text
+Offering "default" (current)          metadata: {"headline":"Go Pro"}
+├── $rc_monthly  "Monthly"   →  pro_monthly (App Store)   ·  pro:monthly (Google Play)
+├── $rc_annual   "Yearly"    →  pro_annual  (App Store)   ·  pro:annual  (Google Play)
+└── $rc_lifetime "Lifetime"  →  pro_lifetime (App Store)
+```
+
+## What the SDK receives
+`GET /v1/subscribers/{app_user_id}/offerings` answers only the packages whose product belongs to the calling app (the app is known from the public key):
+
+```json
+{"current_offering_id":"default","offerings":[{"description":"Standard plans","identifier":"default","metadata":null,"packages":[{"identifier":"$rc_monthly","platform_product_identifier":"pro_monthly"},{"identifier":"$rc_annual","platform_product_identifier":"pro_annual"},{"identifier":"$rc_lifetime","platform_product_identifier":"pro_lifetime"}]}]}
+```
+
+The SDK then loads prices and titles from the store (or from RevenueDot for Test Store products) and builds `Offerings`, `Offering` and `Package` objects. For Google Play products stored as `subscription:basePlan`, the package also carries `platform_product_plan_identifier`.
+
+## Build an offering
+```bash
+B="$REVENUEDOT_URL/v2/projects/$PROJECT_ID"; H="Authorization: Bearer $SECRET_KEY"
+# 1. The offering. The project's first offering becomes current.
+curl -s -X POST "$B/offerings" -H "$H" -H "Content-Type: application/json" -d '{"lookup_key":"default","display_name":"Standard plans"}'
+# 2. A package, placed first.
+curl -s -X POST "$B/offerings/$OFFERING_ID/packages" -H "$H" -H "Content-Type: application/json" -d '{"lookup_key":"$rc_monthly","display_name":"Monthly","position":0}'
+# 3. One product per app in the package.
+curl -s -X POST "$B/packages/$PACKAGE_ID/actions/attach_products" -H "$H" -H "Content-Type: application/json" \
+  -d '{"products":[{"product_id":"'$IOS_MONTHLY'","eligibility_criteria":"all"},{"product_id":"'$ANDROID_MONTHLY'","eligibility_criteria":"all"}]}'
+```
+
+- **Use the standard package lookup keys** (`$rc_weekly`, `$rc_monthly`, `$rc_two_month`, `$rc_three_month`, `$rc_six_month`, `$rc_annual`, `$rc_lifetime`) so the SDK's shortcuts such as `offering.monthly` work. Any other key is a custom package.
+- **Order** follows `position`, lowest first, then creation time.
+- **One product per app per package.** Two products of the same app can share a package only when their `eligibility_criteria` do not overlap (`google_sdk_lt_6` and `google_sdk_ge_6`); otherwise the API answers 409.
+- **Metadata** is free-form JSON on the offering (`metadata`). Use it for paywall copy or feature flags; the SDK exposes it as `offering.metadata`.
+
+## Change the paywall without an app update
+- **Make another offering current:** `POST .../offerings/{offering_id}` with `{"is_current": true}`. Exactly one offering is current. An archived offering cannot be made current.
+- **Show one customer a different offering:** `POST .../customers/{customer_id}/actions/assign_offering` with `{"offering_id": "ofrng..."}` (v2), or `POST /v1/subscribers/{app_user_id}/offerings/{offering}/override` (v1). That customer's `current_offering_id` becomes this offering. Send `null` (v2) or `DELETE /v1/subscribers/{app_user_id}/offerings/override` to undo it.
+- **Retire an offering:** archive it (`.../actions/archive`). The current offering cannot be archived; make another one current first.
+
+Experiments, targeting rules and server-driven paywalls are not built yet (planned for Tier 2). The SDK's paywall components get no paywall from RevenueDot today.
+
+## Related
+- [Products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md)
+- [REST API v2: offerings and packages](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md)
+- [SDK endpoints: offerings](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md)
+
+---
+
+# How do customers, app user IDs and logIn work?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/customers-and-app-user-ids.md
+Description: A customer is one person with one or more app user IDs. The SDK starts with an anonymous ID; logIn attaches your own ID; the project's transfer behaviour decides who owns a restored purchase.
+
+A **customer** is one person. They can have several **app user IDs**: the anonymous ID the SDK made on first launch and the ID you pass to `logIn`. Purchases belong to the customer, so they follow the person across IDs. When a purchase that already belongs to someone else is restored, the project's **transfer behaviour** decides who gets it.
+
+## Anonymous app user IDs
+Without an ID, the SDK generates one like `$RCAnonymousID:4f2c9a...` and stores it on the device. RevenueDot creates the customer the first time the SDK asks for customer info (`GET /v1/subscribers/{id}` answers 201 for a new customer).
+
+- Anonymous IDs are fine for apps without accounts. Restores then move purchases to the device's current anonymous ID.
+- An anonymous ID is lost when the app is deleted, so give users an account if they buy on several devices.
+
+## logIn: attach your own ID
+`Purchases.logIn("user_42")` calls `POST /v1/subscribers/identify` with the current and the new ID. What happens depends on who already exists (`apps/server/src/repo/customers.ts`):
+
+| Current ID | `user_42` already exists? | Result | Status |
+|---|---|---|---|
+| Anonymous, with no other IDs | No | The anonymous customer takes `user_42` as a second ID and keeps its purchases | 201 |
+| Anonymous, with no other IDs | Yes | The anonymous customer is merged into `user_42`, unless `user_42` already has an anonymous ID of its own | 200 |
+| A known ID (not anonymous) | No | A new, empty customer `user_42` | 201 |
+| A known ID | Yes | Switches to `user_42`; nothing is merged | 200 |
+
+`logOut` makes the SDK generate a new anonymous ID. `GET /v2/projects/{project_id}/customers/{customer_id}/aliases` lists every ID of a customer, and any of them works as `customer_id` in REST API v2.
+
+## Who owns a restored purchase
+A store purchase has one owner. When a different customer posts the same receipt (a restore or `syncPurchases()` on a second account, or after reinstalling), RevenueDot applies these rules in order (`apps/server/src/services/purchases.ts`):
+
+1. **The owner is anonymous only:** the old anonymous customer is merged into the one posting the receipt. No setting changes this.
+2. **The poster is anonymous only and the owner has a real ID:** the poster's anonymous ID is merged into the owner, like logging in as them.
+3. **Otherwise** the project's `transfer_behavior` decides:
+
+| `transfer_behavior` | What happens | Event |
+|---|---|---|
+| `transfer` (default) | The purchase moves to the customer who restored it | `TRANSFER` |
+| `transfer_if_no_active` | It moves only if the current owner has no active subscription; otherwise the receipt post fails with 7102 "receipt already in use" | `TRANSFER` when it moves |
+| `keep` | It stays with the first owner; the receipt post fails with 7102 | none |
+| `share` | The two customers are merged, so both IDs have access | none |
+
+Set it in the dashboard (**Project settings**) or with the API. `sandbox_transfer_behavior` overrides it for sandbox purchases; `null` uses the main setting.
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"transfer_behavior":"transfer_if_no_active","sandbox_transfer_behavior":"transfer"}'
+```
+
+Store notifications never move a purchase: only a receipt posted from a device does. A `TRANSFER` webhook carries `transferred_from` and `transferred_to`, the ID lists of both customers.
+
+## Attributes
+Customers carry key-value **attributes**. The SDK sets them with `setEmail`, `setDisplayName`, `setAttributes` and similar calls (`POST /v1/subscribers/{app_user_id}/attributes`). Keys that start with `$` are reserved names such as `$email`; RevenueDot refuses an invalid `$email` with code 7263 and saves the others. Attributes appear in webhooks as `subscriber_attributes` and in REST API v2 under `/attributes`. A null value deletes an attribute.
+
+## Related
+- [How do I restore purchases?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/restore-purchases.md)
+- [Subscriptions and events](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/subscriptions-and-events.md)
+- [SDK endpoints: identity](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md)
+
+---
+
+# How does RevenueDot track a subscription's lifecycle and which events does it send?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/subscriptions-and-events.md
+Description: RevenueDot keeps one record per subscription, updates it from receipts and store notifications, compares the old and new state, and records RevenueCat-style events such as RENEWAL and EXPIRATION.
+
+RevenueDot keeps one record per subscription and updates it whenever the device posts a receipt or the store sends a notification. After each update it compares the old state with the new one, and every difference becomes an **event** with RevenueCat's name, such as `RENEWAL` or `CANCELLATION`. Events are stored, shown in the dashboard and sent to your webhooks.
+
+```text
+ receipt (device) ─┐                      ┌─▶ customer info (entitlements)
+                   ├─▶ subscription state ─┤
+ store notification┘      old vs new       └─▶ events ─▶ webhooks, event log
+                                ▲
+            a job every 30 seconds records EXPIRATION when access runs out
+```
+
+## One record per subscription
+A subscription is keyed by the store's own id, so every renewal updates the same record:
+- **App Store:** the `original_transaction_id`.
+- **Google Play:** the purchase token.
+- **Test Store:** the `test_<ms>_<id>` token.
+
+The record holds the product, the current period, the expiry, the grace period end, whether auto-renew is off (`unsubscribe_detected_at`), billing problems (`billing_issues_detected_at`), refunds, pauses, family sharing and the price.
+
+## Which change produces which event
+The rules live in `packages/core/src/events.ts`.
+
+| What changed | Event |
+|---|---|
+| A subscription is seen for the first time (including a free trial) | `INITIAL_PURCHASE` |
+| A new period started: a renewal, a trial converting, a lapsed customer coming back, a recovered billing problem | `RENEWAL` (`is_trial_conversion: true` after a trial) |
+| Auto-renew was turned off | `CANCELLATION` with `cancel_reason` `UNSUBSCRIBE`, `BILLING_ERROR`, `PRICE_INCREASE`, `DEVELOPER_INITIATED` or `UNKNOWN` |
+| Auto-renew was turned back on | `UNCANCELLATION` |
+| The store refunded it | `CANCELLATION` with `cancel_reason: CUSTOMER_SUPPORT` and a negative price |
+| A refund was reversed | `REFUND_REVERSED` |
+| A renewal charge failed | `BILLING_ISSUE` (with `grace_period_expiration_at_ms`) |
+| The product changed now (upgrade), or a change is scheduled for the next renewal (downgrade, crossgrade) | `PRODUCT_CHANGE` (with `new_product_id`) |
+| The period got longer without a payment (App Store extension, Google Play deferral) | `SUBSCRIPTION_EXTENDED` |
+| A Google Play pause was scheduled | `SUBSCRIPTION_PAUSED` (with `auto_resume_at_ms`) |
+| The store asks for, or gets, consent to a price increase | `PRICE_INCREASE_CONSENT_REQUIRED`, `PRICE_INCREASE_CONSENT_APPROVED` |
+| Access ended (including the grace period) | `EXPIRATION` with `expiration_reason` |
+| A one-time purchase | `NON_RENEWING_PURCHASE` |
+| A purchase moved to another customer on restore | `TRANSFER` |
+
+`EXPIRATION` comes from a background job, not from the store: every 30 seconds (every minute on RevenueDot Cloud) the server records `EXPIRATION` for subscriptions whose access has ended and that were not refunded. The same job sends due webhooks and, once a day per Google Play app, checks Google's voided purchases for refunds.
+
+Every event's payload is on [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md).
+
+## States in REST API v2
+REST API v2 reports each subscription's `status`, computed from the record (`apps/server/src/routes/v2/shapes.ts`):
+
+| `status` | Meaning | `gives_access` |
+|---|---|---|
+| `trialing` | In a free trial | yes |
+| `active` | Paid and current | yes |
+| `in_grace_period` | The period ended, the charge failed, and the store grants a grace period | yes |
+| `in_billing_retry` | Access ended while the store still retries the charge | no |
+| `paused` | A Google Play subscription is paused | no |
+| `expired` | Access ended | no |
+
+`auto_renewal_status` is `will_renew`, `will_not_renew`, `will_change_product` or `will_pause`.
+
+## Where changes come from
+- **Receipts from the device** (`POST /v1/receipts`): every purchase, restore and `syncPurchases()`. With the App Store in-app purchase key, RevenueDot asks Apple's App Store Server API for the full history and renewal state. For Google Play it reads the purchase from the Play Developer API and acknowledges it within Google's 3-day limit.
+- **App Store Server Notifications v2:** `SUBSCRIBED`, `DID_RENEW`, `DID_FAIL_TO_RENEW`, `GRACE_PERIOD_EXPIRED`, `DID_CHANGE_RENEWAL_STATUS`, `DID_CHANGE_RENEWAL_PREF`, `EXPIRED`, `REFUND`, `REFUND_REVERSED`, `REVOKE`, `RENEWAL_EXTENDED`, `OFFER_REDEEMED`, `ONE_TIME_CHARGE` and `PRICE_INCREASE` update the record. Other types are stored and acknowledged. See [App Store setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md).
+- **Google Play real-time developer notifications:** each subscription or one-time product notification makes RevenueDot read the purchase again from the Play Developer API; voided-purchase notifications record refunds. See [Google Play setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md).
+- **REST API actions:** grants, refunds, cancels, extensions and deferrals.
+
+Store notifications about a purchase RevenueDot has never seen are stored but not applied, unless the app's **Track new purchases from server-to-server notifications** setting is on. The purchase appears when the device posts its receipt.
+
+## Money in events
+`price` (USD) and `price_in_purchased_currency` carry money only on `INITIAL_PURCHASE`, `RENEWAL`, `NON_RENEWING_PURCHASE`, `REFUND_REVERSED` and refunds (negative). Other events report 0. A free trial start reports 0. **Known gap:** RevenueDot has no exchange rates yet, so a non-USD price is reported as the same number in `price`.
+
+## Related
+- [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md)
+- [Customers and app user IDs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/customers-and-app-user-ids.md)
+- [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md): produce each event on purpose
+
+---
+
+# How does RevenueDot keep sandbox purchases apart from real ones?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/sandbox.md
+Description: Every purchase carries an environment, sandbox or production, taken from the store. Metrics count production by default, and each webhook can receive one environment or both.
+
+Every purchase and every event carries an **environment**: `sandbox` or `production`. RevenueDot takes it from the store, so you never set it yourself. Sandbox purchases unlock entitlements exactly like real ones, but metrics count production only by default, and each webhook chooses which environment it receives.
+
+## Where sandbox purchases come from
+| Source | Environment |
+|---|---|
+| App Store sandbox accounts and TestFlight | `sandbox` (from Apple's signed transaction) |
+| StoreKit testing in Xcode | `sandbox`, accepted only when the app has the StoreKit test certificate (`xcode_certificate`) |
+| Google Play license testers and test tracks | `sandbox` (Google's test purchase flag) |
+| The RevenueDot [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md) (`test_` keys) | always `sandbox` |
+| Real purchases | `production` |
+
+## What changes with the environment
+- **Customer info:** each subscription has `is_sandbox`. Entitlements do not care about the environment.
+- **Webhooks:** `event.environment` is `SANDBOX` or `PRODUCTION`. A webhook with `environment: "production"` receives only real events; `null` receives both. Use a separate webhook URL for sandbox while you develop.
+- **Metrics:** `GET /v2/projects/{project_id}/metrics/overview` counts production. Add `?environment=sandbox` to see test purchases (a RevenueDot extension).
+- **REST API v2:** subscriptions and purchases have `environment`, and customer lists of subscriptions, purchases and events accept `?environment=`.
+- **Restores:** a project can use a different transfer behaviour for sandbox purchases (`sandbox_transfer_behavior`). See [who owns a restored purchase](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/customers-and-app-user-ids.md#who-owns-a-restored-purchase).
+- **Store notifications:** App Store Connect has one production URL and one sandbox URL. Point both at the same RevenueDot notification URL; each notification says its environment.
+
+## Related
+- [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md)
+- [Test with App Store sandbox and Google Play testers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/sandbox-testing.md)
+- [How do I test purchases without real money?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/test-sandbox-purchases.md)

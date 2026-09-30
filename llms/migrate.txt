@@ -1,0 +1,738 @@
+# RevenueDot documentation: Migrate from RevenueCat
+
+> RevenueDot is an open-source (AGPL-3.0), self-hostable backend for in-app purchases and subscriptions that works with the RevenueCat SDK.
+> It is a free alternative to RevenueCat: an app points the RevenueCat SDK's proxy URL at a RevenueDot server and keeps its purchase code, offerings and customers.
+> It verifies App Store and Google Play purchases on the server, keeps each customer's entitlements current from store notifications, and sends webhooks in RevenueCat's payload format.
+> RevenueDot runs as one Docker image plus Postgres. The SDK forks are MIT and keep RevenueCat's class and method names. RevenueDot is pre-alpha and not affiliated with RevenueCat, Inc.
+
+Generated from https://github.com/revenuedot/docs by scripts/gen-llms.mjs. Index: https://raw.githubusercontent.com/revenuedot/docs/main/llms.txt
+
+# How do I migrate from RevenueCat to RevenueDot?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md
+Description: Import your project with the revenuedot CLI, run both systems side by side with notification forwarding, ship an app update that sets the proxy URL, then cut over. No customer loses access.
+
+Move in four phases: import the project, run both systems side by side, ship an app update that points the SDK at RevenueDot, then cut over. The importer copies your catalog, customers and purchases and keeps your SDK keys, so no customer loses access on switch day. **The importer is in the RevenueDot repository today but not on npm yet (2026-09-30)**; you run it from source.
+
+## The four phases
+1. **Import and set up RevenueDot next to RevenueCat.**
+   - Run the [importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md): catalog, customers, subscriptions, purchases and the public SDK keys.
+   - Enter each app's store credentials in RevenueDot (App Store in-app purchase key, Google Play service account). They cannot be exported from RevenueCat.
+   - Run the importer again, so it confirms Apple transaction ids and looks up Google purchase tokens with those credentials.
+   - Check the result with `import verify`.
+2. **Route store notifications through RevenueDot.** Point App Store Server Notifications at RevenueDot and forward them to RevenueCat. For Google Play, add a second Pub/Sub push subscription or forward the same way. Keep acting on RevenueCat's webhooks. See [Dual run](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/dual-run.md).
+3. **Ship the app update.** Set the SDK's proxy URL, turn off signature checks, and call `syncPurchases()` once on first launch. Users still on older versions keep talking to RevenueCat, which stays correct because notifications are forwarded. Keep re-running the importer while they do. See [SDK changes](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/sdk-changes.md).
+4. **Cut over.** When `import verify` shows no differences and few users run old versions, create your webhooks in RevenueDot, turn off RevenueCat's, remove the forwarding URLs, and turn RevenueCat off. See the [cutover checklist](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/cutover-checklist.md).
+
+## What the importer brings over
+| Data | Notes |
+|---|---|
+| Apps | Matched by store and bundle id or package name; created if missing |
+| Public SDK keys (`appl_`, `goog_`, ...) | Each app's production key, so app builds you already shipped keep working |
+| Products, entitlements, offerings, packages | With product attachments, metadata, positions and the current offering |
+| Customers and aliases | First and last seen dates, platform, country, app version; customers that share an alias merge into one |
+| Attributes | With their original update times |
+| Subscriptions | Current period, status, auto-renew, grace period, billing issues, sandbox flag, family sharing, price and every store transaction id |
+| One-time purchases | Transaction id, date, price, refunds, consumable or not |
+| Promotional access | As promotional grants for the same entitlements |
+| Revenue history | One row per store transaction, for charts |
+
+The import records **no events and sends no webhooks**, so your backend does not see a second copy of every old purchase. Pass `--emit-events` if you want them.
+
+## What it does not bring over
+- **Store credentials.** RevenueCat's API does not return them. The import report lists every app that needs them.
+- **Paywalls, targeting rules, experiments and virtual currency balances.** RevenueDot does not have these features yet; see [What differs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/what-differs.md).
+- **Integrations other than webhooks, and the webhooks themselves.** Create webhooks in RevenueDot at cutover.
+- **Refunds of subscriptions.** RevenueCat's [API v2](https://www.revenuecat.com/docs/api-v2) subscription object does not show them, so a refunded subscription imports as expired.
+- **RevenueCat Billing renewals.** Current access is imported, but those subscriptions keep renewing through RevenueCat.
+- **Google Play purchase tokens.** RevenueCat's API gives order ids only. RevenueDot looks the tokens up with your service account, from a CSV you pass, from Google's next renewal notification, or from the app's `syncPurchases()`. Access is kept in the meantime. See [Google Play purchase tokens](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md#google-play-purchase-tokens).
+
+## What is tested
+- The importer runs in tests against a fake RevenueCat API, whose responses are checked against RevenueCat's published OpenAPI schemas, and the real RevenueDot server.
+- Store notification forwarding was verified: a notification sent to RevenueDot reached the forwarding URL byte for byte.
+- No real App Store or Google Play sandbox purchase has run end to end yet; store handling is tested against mocked Apple and Google APIs.
+
+## Related
+- [The importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md)
+- [Dual run](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/dual-run.md)
+- [SDK changes](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/sdk-changes.md)
+- [Cutover checklist](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/cutover-checklist.md)
+- [What differs from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/what-differs.md)
+- [Connect your app](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/connect-your-app.md)
+
+---
+
+# How do I import a RevenueCat project with the revenuedot CLI?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md
+Description: revenuedot import copies apps, SDK keys, catalog, customers, subscriptions and purchases from RevenueCat's API v2 into RevenueDot. It resumes after a stop and is safe to run again.
+
+Run `revenuedot import --from-revenuecat` with a RevenueCat v2 secret key and a RevenueDot secret key. It reads your RevenueCat project through RevenueCat's REST API v2 and writes it into RevenueDot: apps, public SDK keys, products, entitlements, offerings, packages, customers, aliases, attributes, subscriptions and one-time purchases. It sends no webhooks, resumes where it stopped, and a second run changes nothing that is already right.
+
+**The CLI is not on npm yet (2026-09-30).** Run it from source today; `npx revenuedot` will work once it is published.
+
+## Run it
+From source (needs Node.js 18.17 or newer and pnpm):
+```bash
+git clone https://github.com/revenuedot/revenuedot && cd revenuedot && pnpm install
+pnpm --filter revenuedot cli import --from-revenuecat \
+  --rc-key sk_... --rc-project proj... \
+  --to https://revenuedot.example.com --to-key sk_...
+```
+Once published:
+```bash
+npx revenuedot import --from-revenuecat --rc-key sk_... --rc-project proj... \
+  --to https://revenuedot.example.com --to-key sk_...
+```
+
+You need:
+1. **A RevenueCat secret API key, version 2**, with read access to project configuration (apps, products, entitlements, offerings, packages) and customer information (customers, subscriptions, purchases). A RevenueCat OAuth token (`atk_...`) also works. A public SDK key does not.
+2. **Your RevenueCat project id** (`proj...`). It is in the RevenueCat dashboard URL.
+3. **A running RevenueDot server and a secret key** (`sk_...`) for the project you import into. Create one on the dashboard's **API keys** page. See [Which key goes where](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md#which-key-goes-where).
+
+## Commands
+| Command | What it does | Needs |
+|---|---|---|
+| `revenuedot import --from-revenuecat` | Imports the catalog, then customers page by page | `--rc-key`, `--rc-project`, `--to`, `--to-key` |
+| `revenuedot import verify` | Compares every customer's active entitlements between RevenueCat and RevenueDot | `--rc-key`, `--rc-project`, `--to`, `--to-key` |
+| `revenuedot import plan` | Prints the cutover steps with your app ids and URLs filled in | `--to`, `--to-key` (`--rc-project` optional) |
+
+## Flags
+| Flag | Meaning | Default |
+|---|---|---|
+| `--rc-key <key>` | RevenueCat secret key, v2 (`sk_...`) or OAuth token (`atk_...`) | `REVENUECAT_API_KEY` |
+| `--rc-project <id>` | RevenueCat project id | `REVENUECAT_PROJECT_ID` |
+| `--to <url>` | Your RevenueDot server, e.g. `http://localhost:8787` | `REVENUEDOT_URL` |
+| `--to-key <key>` | RevenueDot secret key of the target project | `REVENUEDOT_API_KEY` |
+| `--to-project <id>` | RevenueDot project id | the key's project |
+| `--state <file>` | State file for resuming | `./revenuedot-import-<rc project>.json` |
+| `--dry-run` | Read everything and report what would change; write nothing | off |
+| `--restart` | Ignore the state file and start from the first customer | off |
+| `--concurrency <n>` | Customers fetched in parallel | 4 |
+| `--limit <n>` | Import only the first n customers, for a trial run | all |
+| `--google-tokens <csv>` | Google Play purchase tokens you already have | none |
+| `--no-public-keys` | Keep RevenueDot's own SDK keys instead of copying RevenueCat's | off (keys are copied) |
+| `--emit-events` | Record lifecycle events and send webhooks for imported purchases | off |
+| `--json` | Print the report as JSON | off |
+| `-h`, `--help` | Show help | |
+
+Two more flags exist for testing and are not in `--help`: `--rc-url <url>` (RevenueCat's API base, default `https://api.revenuecat.com`) and `--page-size <n>` (customers per RevenueCat page, default 100). `--from-revenuecat` names the source; it is accepted but not required.
+
+**Environment variables** keep keys out of your shell history: `REVENUECAT_API_KEY`, `REVENUECAT_PROJECT_ID`, `REVENUEDOT_URL`, `REVENUEDOT_API_KEY`. A flag wins over its variable.
+
+**Exit codes:** `0` success; `1` failure, or differences found by `import verify`; `2` wrong usage, such as a missing flag or a public key passed as `--rc-key`.
+
+Source: [`packages/importer/src/cli.ts`](https://github.com/revenuedot/revenuedot/blob/main/packages/importer/src/cli.ts).
+
+## Start with a dry run
+```bash
+npx revenuedot import --from-revenuecat --rc-key sk_... --rc-project proj... \
+  --to http://localhost:8787 --to-key sk_... --dry-run
+```
+A dry run reads the whole RevenueCat project and prints what it would create. It writes nothing to RevenueDot and does not save a state file. Add `--limit 50` to try the real import on 50 customers first.
+
+## Stop and resume at any time
+- Progress shows on one line on stderr. The report goes to stdout.
+- The state file (`revenuedot-import-<rc project>.json` by default) records the catalog mapping, the last customer page that finished, the counts and the problems found.
+- If the run stops (network error, Ctrl-C, a closed laptop), run the same command again. It continues after the last finished page.
+- When a pass has finished, running the command again starts a new full pass. The catalog is always re-synced. Because the import is idempotent, this is how you keep RevenueDot current during the [dual run](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/dual-run.md); a daily run is safe.
+- A state file belongs to one RevenueCat project and one RevenueDot project. Use `--state` with another file, or `--restart`, to import somewhere else.
+
+**Speed:** about 5 requests per customer. RevenueCat allows 480 requests a minute ([rate limits](https://www.revenuecat.com/docs/api-v2)), so expect about 90 customers a minute (100,000 customers take about 18 hours). On a 429 the importer waits for `Retry-After`, and it retries 5xx answers.
+
+## Read the report
+```text
+Import finished: RevenueCat project proj1ab2c3d4 -> https://revenuedot.example.com (project projujvzn2wl).
+
+Catalog
+  Apps           2 created, 0 already there
+  Products       6 created, 0 already there
+  Entitlements   1 created, 0 already there
+  Offerings      2 created, 0 already there
+  Packages       4 created, 0 already there
+  SDK keys       2 kept (existing app builds keep working with RevenueDot)
+
+Customers (pass 1, complete)
+  1200 customers imported (1180 new, 20 merged with existing ones)
+  950 subscriptions, 130 one-time purchases
+  310 Google Play subscriptions need a purchase token (add the service account and run again; see "revenuedot import plan")
+
+Store credentials to re-enter in RevenueDot (they cannot be exported)
+  - ...
+```
+The problem sections are **Store credentials to re-enter**, **Skipped**, **Errors** and **Notes**. Each shows 50 lines; the full list is in the state file. `--json` prints everything.
+
+After the first import, enter each app's store credentials in the dashboard (**Apps** → your app) and **run the import again**. With the credentials in place, RevenueDot:
+- confirms each App Store subscription's `original_transaction_id` with Apple, and
+- looks up each Google Play subscription's purchase token from its order id.
+
+That is how RevenueDot recognises the imported subscription when the store or the app reports on it later, instead of creating a second one. See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md) and [Connect Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md).
+
+## Check the result with import verify
+```bash
+npx revenuedot import verify --rc-key sk_... --rc-project proj... \
+  --to https://revenuedot.example.com --to-key sk_...
+```
+For every customer it compares the active entitlements (by identifier), their expiry dates, and how many subscriptions give access. It prints totals for customers, active subscriptions and active entitlements on both sides, then each difference, and exits with `1` when there is one. Purchases made since the last import show up as differences: run the import again, then verify again. `--limit` and `--concurrency` work here too.
+
+## Print the cutover plan
+```bash
+npx revenuedot import plan --to https://revenuedot.example.com --to-key sk_... --rc-project proj...
+```
+It prints numbered steps for your project: import status, which apps still need store credentials, the notification URL of each app and the forwarding call, the SDK change, the daily re-import, and the final cutover. The same steps are in the [cutover checklist](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/cutover-checklist.md).
+
+## Google Play purchase tokens
+RevenueCat's [API v2](https://www.revenuecat.com/docs/api-v2) gives Google Play order ids, not purchase tokens, and Google's API needs the token. RevenueDot gets tokens in four ways:
+1. **Your service account.** After you add it to the app, the next import looks up tokens by order id with Google's orders API.
+2. **A CSV file** you pass with `--google-tokens tokens.csv`, for example an export from RevenueCat support.
+3. **Google's next renewal notification** for that subscription, which carries the token.
+4. **The app's `syncPurchases()`** call, once after the update.
+
+Until a subscription has its token, its key is `needs_token_refresh:<order id>` and the customer **keeps access**. A later import with the token upgrades the row in place.
+
+The CSV needs a header row. Columns are matched by name, case-insensitive, and separated by commas, semicolons or tabs:
+
+| Meaning | Accepted column names |
+|---|---|
+| Purchase token (required) | `purchase_token`, `token`, `fetch_token` |
+| Order id | `order_id`, `orderid`, `store_transaction_id`, `store_subscription_identifier` |
+| App user id | `app_user_id`, `rc_original_app_user_id`, `customer_id` |
+| Product id | `product_id`, `product_identifier` |
+
+Each row needs the token plus either an order id, or an app user id and a product id. Renewal order ids like `GPA.1234-5678-9012-34567..0` also match their base order id.
+```csv
+purchase_token,order_id
+abcdefghijk.AO-J1Oz...,GPA.3312-8841-2231-55120
+```
+
+## The server endpoints it calls
+The importer writes through three RevenueDot endpoints. They are RevenueDot extensions, not part of RevenueCat's API. You can call them yourself, for example to import from your own database. All take a secret key.
+
+**`POST /v2/projects/{project_id}/import/customers`** takes up to 100 customers per call. It needs the `customer_information:customers:read_write` permission.
+```bash
+curl -s -X POST https://revenuedot.example.com/v2/projects/$PROJECT_ID/import/customers \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{
+  "customers": [{
+    "id": "user_123",
+    "aliases": ["$RCAnonymousID:0f3c9a..."],
+    "first_seen_at": 1719830400000,
+    "attributes": [{ "name": "$email", "value": "a@example.com", "updated_at": 1719830400000 }],
+    "subscriptions": [{
+      "app_id": "app1a2b3c4d", "store": "app_store", "product_identifier": "pro_monthly", "environment": "production",
+      "starts_at": 1719830400000, "current_period_starts_at": 1725105600000, "current_period_ends_at": 1727784000000,
+      "status": "active", "auto_renewal_status": "will_renew",
+      "store_subscription_identifier": "2000000712345678", "original_transaction_id": "2000000612345678"
+    }],
+    "purchases": [{
+      "app_id": "app1a2b3c4d", "store": "app_store", "product_identifier": "lifetime",
+      "purchased_at": 1719830400000, "store_purchase_identifier": "2000000512345678", "status": "owned"
+    }]
+  }]
+}'
+```
+```json
+{"object":"import_result","emit_events":false,"customers":[{"id":"user_123","status":"created","subscriptions":1,"purchases":1,"needs_token_refresh":0,"notes":[]}]}
+```
+- Dates are milliseconds since 1970.
+- Subscriptions are keyed the way the stores report them: App Store by `original_transaction_id`, Google Play by `purchase_token` (send it when you have it), others by `store_subscription_identifier`.
+- `emit_events` (default `false`): `true` records lifecycle events and queues webhooks as if the purchases just happened.
+- `resolve_store_ids` (default `true`): use the app's store credentials, when set, to confirm Apple original transaction ids and look up Google purchase tokens.
+- Each customer's `status` is `created`, `updated` or `merged`. Customers that share an alias with an existing customer merge into one.
+- Subscriptions that already ended import as expired, so the expiration job sends nothing for old history.
+
+**`POST /v2/projects/{project_id}/import/apps/{app_id}/public_key`** sets an app's public SDK key to the key your shipped builds use. It needs `project_configuration:apps:read_write`. The key must start with the app type's prefix (for example `appl_` for `app_store`, `goog_` for `play_store`), and no other app may use it.
+```bash
+curl -s -X POST https://revenuedot.example.com/v2/projects/$PROJECT_ID/import/apps/$APP_ID/public_key \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"public_key":"appl_AbCdEfGhIjKlMnOp"}'
+```
+```json
+{"object":"public_api_key","id":"pk_app1a2b3c4d","key":"appl_AbCdEfGhIjKlMnOp","environment":"production","app_id":"app1a2b3c4d","created_at":1790798214712}
+```
+
+**`GET /v2/projects/{project_id}/import/status`** counts what is in the project and how many Google Play subscriptions still wait for a purchase token. It needs `customer_information:customers:read`.
+```bash
+curl -s https://revenuedot.example.com/v2/projects/$PROJECT_ID/import/status -H "Authorization: Bearer $SECRET_KEY"
+```
+```json
+{"object":"import_status","customers":1200,"subscriptions":950,"needs_token_refresh":310,"needs_token_refresh_by_app":{"app9l7z3oij":310}}
+```
+The full reference is in [REST API extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md).
+
+## Use it from code
+The package exports `runImport`, `formatReport`, `verifyImport` and `buildPlan`:
+```ts
+import { formatReport, runImport } from "revenuedot";
+
+const report = await runImport({
+  rcKey: process.env.REVENUECAT_API_KEY!, rcProject: "proj1ab2c3d4",
+  to: "http://localhost:8787", toKey: process.env.REVENUEDOT_API_KEY!,
+  statePath: "./import-state.json",
+});
+console.log(formatReport(report));
+```
+
+## Related
+- [Migrate from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md)
+- [Dual run](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/dual-run.md)
+- [Cutover checklist](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/cutover-checklist.md)
+- [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md)
+- [Authentication](https://raw.githubusercontent.com/revenuedot/docs/main/api/authentication.md)
+
+---
+
+# How do I run RevenueDot and RevenueCat side by side?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/dual-run.md
+Description: Send store notifications to RevenueDot and let it forward the exact body to RevenueCat, turn on track_new_purchases, keep acting on RevenueCat's webhooks, and compare with revenuedot import verify.
+
+Point the stores' server notifications at RevenueDot and set each app's forwarding URL to RevenueCat's notification URL. RevenueDot stores each notification, applies it, and copies the exact body to RevenueCat, so both stay current while old app versions still talk to RevenueCat. Turn on **Track new purchases from server-to-server notifications**, keep acting on RevenueCat's webhooks until cutover, and compare the two systems with `revenuedot import verify`.
+
+## Why a dual run is needed
+- App Store Connect accepts one production and one sandbox notification URL per app ([Apple's guide](https://developer.apple.com/documentation/appstoreservernotifications/enabling-app-store-server-notifications)), so only one system can receive Apple's notifications directly.
+- Users on app versions from before your update keep calling RevenueCat. RevenueCat must keep seeing renewals, cancellations and refunds for them.
+- Users on the new version call RevenueDot. RevenueDot must see the same store events.
+
+## Forward App Store notifications
+1. Copy the app's notification URL from RevenueDot: the app's page in the dashboard, or `notification_url` in `GET /v2/projects/{project_id}/apps/{app_id}/store_settings`. It looks like `https://revenuedot.example.com/v1/notifications/apple/{app_id}`.
+2. Copy RevenueCat's App Store Server Notification URL from your RevenueCat app settings.
+3. Set RevenueDot's forwarding URL to RevenueCat's. In the dashboard, it is the app page field **Forward notifications to RevenueCat or your own server**. With the API:
+   ```bash
+   curl -s -X POST https://revenuedot.example.com/v2/projects/$PROJECT_ID/apps/$APP_ID \
+     -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+     -d '{"app_store":{"notification_forward_url":"https://<RevenueCat App Store notification URL>"}}'
+   ```
+   Use `mac_app_store` for a Mac App Store app. Send `null` or `""` to turn forwarding off.
+4. In App Store Connect → your app → **App Information** → **App Store Server Notifications**, set both the production and the sandbox URL to RevenueDot's notification URL, version 2. See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md).
+
+## Forward Google Play notifications
+Google Play publishes to one Pub/Sub topic ([Google's guide](https://developer.android.com/google/play/billing/getting-ready#configure-rtdn)), and a topic can have many push subscriptions ([Pub/Sub subscriptions](https://cloud.google.com/pubsub/docs/subscriber)).
+- **If the topic is in your Google Cloud project**, add a second push subscription to RevenueDot's URL, `https://revenuedot.example.com/v1/notifications/google/{app_id}`. RevenueCat's subscription keeps receiving every message, so nothing needs forwarding.
+- **Otherwise**, point the push subscription at RevenueDot and set the forwarding URL to RevenueCat's Google notification URL, the same way as for Apple, with `play_store`:
+  ```bash
+  -d '{"play_store":{"notification_forward_url":"https://<RevenueCat Google notification URL>"}}'
+  ```
+
+See [Connect Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md).
+
+## How forwarding behaves
+- RevenueDot stores the raw notification first, then forwards the **exact body** with the same content type.
+- Forwarding is fire-and-forget with a **10 second timeout**. It never delays the answer to Apple or Google.
+- RevenueDot records the HTTP status of each forward, or `0` when there was no answer. The latest one is `last_forward` in `store_settings` and on the app page.
+- A Google message that Pub/Sub redelivers is forwarded only the first time.
+- Forwarding was verified end to end with a test URL: the body arrived byte for byte and the URL answered 200. It has not yet run against RevenueCat's real notification endpoints.
+
+## Track new purchases from notifications
+Turn this on for each App Store and Google Play app during the dual run. It is the dashboard checkbox **Track new purchases from server-to-server notifications**, stored as `track_new_purchases`:
+```bash
+curl -s -X POST https://revenuedot.example.com/v2/projects/$PROJECT_ID/apps/$APP_ID \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"app_store":{"track_new_purchases":true}}'
+```
+- **Off (default):** a notification about a purchase RevenueDot has never seen is stored but not applied.
+- **On:** RevenueDot creates the subscription from the notification. For Apple it uses the transaction's `appAccountToken` as the app user id when there is one; otherwise the owner is a new anonymous customer until the app syncs.
+
+Customers you imported are already known, so their notifications apply either way. The setting matters for purchases made on old app versions after your last import.
+
+## Keep your webhooks on RevenueCat until cutover
+- **Keep acting on RevenueCat's webhooks.** If RevenueDot sent webhooks to the same handler, your backend would process every purchase twice.
+- To compare, create a RevenueDot webhook that points at a separate endpoint which **only logs**. RevenueDot uses RevenueCat's payload shape, `{ "api_version": "1.0", "event": { ... } }`, so the same parser works. Deduplicate on `event.id`.
+- Imported history sends no webhooks, so the comparison endpoint sees only new events.
+- Differences to expect are listed in [What differs from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/what-differs.md#webhooks).
+
+Webhook setup, signature checks and retries: [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md).
+
+## Re-import and compare
+Re-run the import while old app versions still call RevenueCat. It is idempotent, so a daily run is safe:
+```bash
+npx revenuedot import --from-revenuecat --rc-key sk_... --rc-project proj... \
+  --to https://revenuedot.example.com --to-key sk_...
+npx revenuedot import verify --rc-key sk_... --rc-project proj... \
+  --to https://revenuedot.example.com --to-key sk_...
+```
+`import verify` compares each customer's active entitlements, their expiry dates and how many subscriptions give access. It exits with `1` when anything differs. A difference that remains after a fresh import points to data the import could not bring over; the details are in [The importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md#check-the-result-with-import-verify).
+
+## Related
+- [Migrate from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md)
+- [Cutover checklist](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/cutover-checklist.md)
+- [Store notifications not arriving](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/store-notifications-not-arriving.md)
+- [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md)
+
+---
+
+# What do I change in my app's SDK code to move to RevenueDot?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/sdk-changes.md
+Description: In proxy mode, set the proxy URL before configure, turn off signature checks and sync purchases once. With a fork, swap the package and keep your code. Diffs for all ten SDKs.
+
+In **proxy mode** you add a few lines: set the proxy URL before `configure`, turn off signature checks, and call `syncPurchases()` once after the update. With a **fork**, you swap the package in your manifest and keep every line of code. Proxy mode works today; the forks are not published yet (2026-09-30).
+
+## Proxy mode or fork swap
+| | Proxy mode | Fork swap |
+|---|---|---|
+| Works today | Yes | No: not on any registry yet |
+| Code change | 2 to 5 lines at startup | None; the manifest changes |
+| Signature checks | Must be off (or informational); they would fail | Verify against RevenueDot Cloud's key; self-hosters use their own build or keep them off |
+| Android diagnostics, paywall and ad events | Still go to RevenueCat | Go to your server |
+| Web analytics events | Turn off, or they go to RevenueCat | Go to your server |
+| Flutter web | Does not work | Works |
+| Proxy URL | Required | Still required while `api.revenuedot.app` is not live, and always when you self-host |
+
+**Keys:** if you ran the [importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md), each app keeps its RevenueCat public key, so the `apiKey` lines below stay as they are. Otherwise use the keys RevenueDot shows for each app.
+
+**Sync once:** `syncPurchases()` sends the device's store purchases to RevenueDot, so current subscribers keep access even where their history was not imported. On Google Play it also delivers any purchase token the importer could not find. Call it once, on the first launch after the update.
+
+## iOS
+```diff
+ import RevenueCat
+
++// Point the SDK at your RevenueDot server; nothing else in the app changes. Set it before configure.
++Purchases.proxyURL = URL(string: "https://revenuedot.example.com")!
+-Purchases.configure(withAPIKey: "appl_...")
++Purchases.configure(
++    with: Configuration.Builder(withAPIKey: "appl_...")
++        // The default (informational) logs every RevenueDot response as failed signature verification.
++        .with(entitlementVerificationMode: .disabled)
++        .build()
++)
++// Once, after this update: send purchases made while the app talked to RevenueCat.
++_ = try? await Purchases.shared.syncPurchases()
+```
+Fork swap (planned): `pod 'RevenueCat'` becomes `pod 'RevenueDotPurchases'`, or the SPM URL becomes `https://github.com/revenuedot/purchases-ios`. `import RevenueCat` stays. Guide: [iOS](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/ios.md).
+
+## Android
+```diff
+ override fun onCreate() {
+     super.onCreate()
++    // Point the SDK at your RevenueDot server; nothing else in the app changes. Must be set before configure.
++    Purchases.proxyURL = URL("https://revenuedot.example.com")
+     Purchases.configure(
+         PurchasesConfiguration.Builder(this, "goog_...")
++            // The default (INFORMATIONAL) logs every RevenueDot response as failed signature verification.
++            .entitlementVerificationMode(EntitlementVerificationMode.DISABLED)
+             .build()
+     )
++    // Once, after this update: send purchases made while the app talked to RevenueCat.
++    Purchases.sharedInstance.syncPurchases()
+ }
+```
+Fork swap (planned):
+```diff
+-implementation("com.revenuecat.purchases:purchases:<version>")
++implementation("app.revenuedot.purchases:purchases:<version>")
+```
+Guide: [Android](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/android.md).
+
+## React Native and Expo
+```diff
+ import Purchases from "react-native-purchases";
+
++// Point the SDK at your RevenueDot server; nothing else in the app changes. Await it before configure.
++await Purchases.setProxyURL("https://revenuedot.example.com");
+ Purchases.configure({
+   apiKey: Platform.OS === "ios" ? "appl_..." : "goog_...",
+-  entitlementVerificationMode: ENTITLEMENT_VERIFICATION_MODE.INFORMATIONAL,
++  // DISABLED is the React Native default; RevenueDot does not sign responses with RevenueCat's key.
+ });
++// Once, after this update: send purchases made while the app talked to RevenueCat.
++await Purchases.syncPurchasesForResult();
+```
+Fork swap (planned), in `package.json`:
+```diff
+-"react-native-purchases": "<version>",
++"react-native-purchases": "npm:@revenuedot/react-native-purchases@<version>",
+```
+Guide: [React Native](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/react-native.md).
+
+## Flutter
+```diff
+ import 'package:purchases_flutter/purchases_flutter.dart';
+
+ Future<void> initPurchases() async {
++  // Point the SDK at your RevenueDot server; nothing else in the app changes. Await it before configure.
++  await Purchases.setProxyURL('https://revenuedot.example.com');
+   await Purchases.configure(PurchasesConfiguration(Platform.isIOS ? 'appl_...' : 'goog_...'));
++  // Once, after this update: send purchases made while the app talked to RevenueCat.
++  await Purchases.syncPurchases();
+ }
+```
+Flutter web cannot use a proxy URL with the stock package. Fork swap (planned), in `pubspec.yaml`:
+```diff
+-  purchases_flutter: ^<version>
++  purchases_flutter:
++    git:
++      url: https://github.com/revenuedot/purchases-flutter.git
++      ref: <version>-revenuedot
+```
+Guide: [Flutter](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/flutter.md).
+
+## Web (purchases-js)
+```diff
+ const purchases = Purchases.configure({
+   apiKey: "test_...",
+   appUserId,
++  // Point the SDK at your RevenueDot server; nothing else in the app changes. No trailing slash.
++  httpConfig: { proxyURL: "https://revenuedot.example.com" },
++  // Analytics events do not use the proxy URL; turn them off to keep all traffic on your server.
++  flags: { collectAnalyticsEvents: false },
+ });
+```
+Only Test Store (`test_`) keys work against RevenueDot today; Web Billing (`rcb_`), Stripe and Paddle do not. Fork swap (planned):
+```diff
+-"@revenuecat/purchases-js": "<version>",
++"@revenuecat/purchases-js": "npm:@revenuedot/purchases-js@<version>",
+```
+Guide: [Web](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/web.md).
+
+## Capacitor and Ionic
+```diff
+-import { Purchases } from "@revenuecat/purchases-capacitor";
++import { ENTITLEMENT_VERIFICATION_MODE, Purchases } from "@revenuecat/purchases-capacitor";
+
++// Point the SDK at your RevenueDot server; nothing else in the app changes. Await it before configure.
++await Purchases.setProxyURL({ url: "https://revenuedot.example.com" });
+ await Purchases.configure({
+   apiKey: isIOS ? "appl_..." : "goog_...",
++  // Capacitor passes no default, so the native default (informational signature checks) would apply.
++  entitlementVerificationMode: ENTITLEMENT_VERIFICATION_MODE.DISABLED,
+ });
++// Once, after this update: send purchases made while the app talked to RevenueCat.
++await Purchases.syncPurchases();
+```
+Fork swap (planned), only through the alias so Capacitor's native names stay:
+```diff
+-"@revenuecat/purchases-capacitor": "<version>",
++"@revenuecat/purchases-capacitor": "npm:@revenuedot/purchases-capacitor@<version>",
+```
+Guide: [Capacitor](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/capacitor.md).
+
+## Kotlin Multiplatform
+```diff
+ fun initPurchases(apiKey: String) {
++    // Point the SDK at your RevenueDot server; nothing else in the app changes. A String, set before configure.
++    Purchases.proxyURL = "https://revenuedot.example.com"
+     Purchases.configure(PurchasesConfiguration(apiKey) {
++        // DISABLED is the KMP default; keep it, RevenueDot does not sign responses with RevenueCat's key.
++        verificationMode = EntitlementVerificationMode.DISABLED
+     })
+ }
+```
+Then call `Purchases.sharedInstance.awaitSyncPurchases()` once from a coroutine. Fork swap (planned):
+```diff
+-implementation("com.revenuecat.purchases:purchases-kmp-core:<version>")
++implementation("app.revenuedot.purchases:purchases-kmp-core:<version>")
+```
+Guide: [Kotlin Multiplatform](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/kotlin-multiplatform.md).
+
+## Unity
+In the Inspector, on the GameObject that holds the **Purchases** component:
+
+| Field | Before | After |
+|---|---|---|
+| Proxy URL | (empty) | `https://revenuedot.example.com` |
+| Entitlement Verification Mode | Informational | Disabled |
+
+There is no public `SetProxyURL` method; the field applies also when you configure from code:
+```diff
+ var purchases = GetComponent<Purchases>();
+-purchases.Configure(Purchases.PurchasesConfiguration.Builder.Init("appl_...").Build());
++purchases.Configure(Purchases.PurchasesConfiguration.Builder.Init("appl_...")
++    .SetEntitlementVerificationMode(Purchases.EntitlementVerificationMode.Disabled)
++    .Build());
++// Once, after this update: send purchases made while the app talked to RevenueCat.
++purchases.SyncPurchases();
+```
+Fork swap (planned): OpenUPM package `com.revenuecat.purchases-unity` becomes `com.revenuedot.purchases-unity`. Guide: [Unity](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/unity.md).
+
+## Cordova
+```diff
+ document.addEventListener("deviceready", () => {
++  // Point the SDK at your RevenueDot server; nothing else in the app changes. Call it before configure.
++  Purchases.setProxyURL("https://revenuedot.example.com");
+   Purchases.configureWith({ apiKey: device.platform === "iOS" ? "appl_..." : "goog_..." });
++  // Once, after this update: send purchases made while the app talked to RevenueCat.
++  Purchases.syncPurchases();
+ });
+```
+Cordova has no option to turn off signature checks, so the SDK logs a verification failure for every RevenueDot response and still grants access. Fork swap (planned): `cordova plugin add @revenuedot/cordova-plugin-purchases`; the plugin id stays `cordova-plugin-purchases`. Guide: [Cordova](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/cordova.md).
+
+## purchases-hybrid-common
+No change. Apps never depend on it directly: the React Native, Flutter, Capacitor, Unity and Cordova packages bring it in, and their fork packages bring in RevenueDot's build. See [Hybrid common](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/hybrid-common.md).
+
+## Related
+- [All SDKs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md)
+- [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md)
+- [Cutover checklist](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/cutover-checklist.md)
+- [What differs from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/what-differs.md)
+
+---
+
+# What is the checklist for cutting over from RevenueCat to RevenueDot?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/cutover-checklist.md
+Description: The migration steps in order, from starting the server to turning RevenueCat off, as a checklist. Each step says how to check it is done.
+
+Work through these steps in order. RevenueCat keeps running until the last section, so any step can be paused or undone. `revenuedot import plan` prints the same steps with your app ids and URLs filled in.
+
+## 1. Set up RevenueDot
+- [ ] Run a RevenueDot server that the internet can reach over HTTPS. See [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md) and [Going to production](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/going-to-production.md). Check: `GET https://revenuedot.example.com/v1/health` returns `{"status":"ok"}`.
+- [ ] Create a project and a secret key (`sk_...`) on the dashboard's **API keys** page.
+- [ ] Create a RevenueCat v2 secret key with read access to project configuration and customer information.
+- [ ] Optional: set `REVENUEDOT_SIGNING_KEY` if you plan to use fork builds with your own key. See [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md).
+
+## 2. Import
+- [ ] Dry run: `npx revenuedot import --from-revenuecat --rc-key sk_... --rc-project proj... --to https://revenuedot.example.com --to-key sk_... --dry-run`. Until the CLI is on npm, run it from source; see [The importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md#run-it).
+- [ ] Import: the same command without `--dry-run`. Re-run it until the report says the pass is complete.
+- [ ] Add each app's store credentials in the dashboard: the App Store in-app purchase key, and the Google Play service account with "View financial data". See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md) and [Connect Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md).
+- [ ] Click **Check credentials** on each app page, so Apple and Google confirm the credentials work.
+- [ ] Run the import again, so Apple transaction ids are confirmed and Google purchase tokens are looked up.
+- [ ] Optional: pass `--google-tokens tokens.csv` if you have a token export.
+- [ ] Check `GET /v2/projects/{project_id}/import/status`: `needs_token_refresh` should be falling. The rest arrive with renewals and `syncPurchases()`.
+- [ ] Run `npx revenuedot import verify ...`. Fix or explain every difference.
+
+## 3. Run side by side
+- [ ] For each App Store app, set RevenueDot's forwarding URL to RevenueCat's App Store notification URL. See [Dual run](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/dual-run.md#forward-app-store-notifications).
+- [ ] In App Store Connect, set the production and sandbox Server Notification URLs (version 2) to RevenueDot's `notification_url`.
+- [ ] For each Google Play app, add a second Pub/Sub push subscription to RevenueDot's URL, or forward like Apple. See [Dual run](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/dual-run.md#forward-google-play-notifications).
+- [ ] Turn on **Track new purchases from server-to-server notifications** for each store app.
+- [ ] Check the app page: notifications show a recent "last received" time, and the last forward shows status 200.
+- [ ] Keep acting on RevenueCat's webhooks. If you add a RevenueDot webhook now, point it at an endpoint that only logs.
+
+## 4. Ship the app update
+- [ ] Set the proxy URL before `configure`, and turn signature checks off. Per SDK: [SDK changes](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/sdk-changes.md).
+- [ ] Call `syncPurchases()` once on the first launch after the update.
+- [ ] Test the build against RevenueDot with the [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md) and the stores' sandboxes. See [Sandbox testing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/sandbox-testing.md).
+- [ ] Release the update.
+- [ ] Watch the SDK compatibility panel on the **Apps** page and the customer timeline for purchases from the new version.
+
+## 5. Keep both in step
+- [ ] Re-run the import daily while old app versions still call RevenueCat.
+- [ ] Run `import verify` after each re-import.
+- [ ] Optional: raise the minimum app version, so old versions stop calling RevenueCat sooner.
+
+## 6. Cut over
+- [ ] `import verify` shows no differences, and few active users run an old version.
+- [ ] Create your webhooks in RevenueDot. Save each signing secret (`whsec_...`) and verify signatures. See [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md).
+- [ ] Turn off the webhooks in RevenueCat, in the same hour.
+- [ ] Remove each forwarding URL: send `"notification_forward_url": null`.
+- [ ] Move dashboards, alerts and internal tools to RevenueDot's [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md); it uses the same shapes.
+- [ ] Turn RevenueCat off for this project.
+
+## Related
+- [Migrate from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md)
+- [The importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md)
+- [Dual run](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/dual-run.md)
+- [What differs from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/what-differs.md)
+
+---
+
+# What differs between RevenueDot and RevenueCat?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/what-differs.md
+Description: Every known difference as of 2026-09-30, from failed signature checks with the stock SDK to webhook events not sent yet and features planned for later tiers, with sources.
+
+RevenueDot answers the RevenueCat SDKs, REST API v1 and v2, and webhook payloads in RevenueCat's shapes, so purchases, entitlements, offerings and customer info work the same. The differences are: stock SDKs report failed signature checks, a few SDK features answer empty because they are not built yet, some webhook event types are never sent, and paywalls, experiments, charts and several stores are planned for later tiers. This page lists every known difference as of 2026-09-30. RevenueDot is pre-alpha, and no real App Store or Google Play sandbox purchase has run end to end yet.
+
+## SDK behaviour
+**Signature checks (Trusted Entitlements)**
+- The stock SDKs verify responses with RevenueCat's signing key, which RevenueDot cannot use. Every RevenueDot response reads as verification failed.
+- iOS, Android and Unity default to informational: they log the failure and still grant access. Set disabled. React Native, Flutter and Kotlin Multiplatform default to disabled. Capacitor passes no default, so the native informational default applies. Cordova has no option. purchases-js does not verify.
+- **Enforced mode fails every request** with a stock SDK against RevenueDot.
+- RevenueDot signs responses with its own Ed25519 key when `REVENUEDOT_SIGNING_KEY` is set, and the RevenueDot forks trust RevenueDot Cloud's key. See [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md).
+- Source: [`prd/sdk-forks/PRD.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/sdk-forks/PRD.md), section 4.
+
+**Traffic that bypasses the proxy URL in stock SDKs**
+- Android sends diagnostics, paywall events and ad events to RevenueCat's hosts even with a proxy URL.
+- purchases-js sends analytics events to RevenueCat unless you set `flags: { collectAnalyticsEvents: false }`.
+- Flutter web ignores `setProxyURL`, so web calls still go to RevenueCat.
+- The RevenueDot forks fix all three. Source: [`prd/sdk-forks/PRD.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/sdk-forks/PRD.md), section 2.
+
+**SDK features that answer empty today**
+| SDK feature | What RevenueDot answers | Effect in the app |
+|---|---|---|
+| Customer Center | `GET /v1/customercenter/{id}` answers 404; support tickets answer `{"sent": false}` | The SDK has no Customer Center configuration to show |
+| Virtual currencies | `{"virtual_currencies": {}}` | Balances are always empty |
+| Paywalls built in RevenueCat's editor | Offerings carry no paywall | Remote paywall designs do not appear |
+| Targeting and placements | Offerings carry no placements | Every user gets the current offering |
+| Remote config (`/v1/config/...`) | 204, no body | Nothing to apply |
+| Analytics and diagnostics (`/v1/events`, `/v1/diagnostics`) | Accepted, then dropped | No effect |
+| Attribution (`/v1/subscribers/{id}/attribution`, `adservices_attribution`) | Accepted, then dropped | No effect |
+| SDK health report | Always "passed" | No effect |
+
+Source: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/routes/sdk.ts).
+
+**Stores and receipts**
+- RevenueDot accepts purchases only for App Store, Mac App Store, Google Play and Test Store apps. Receipts for Amazon, Web Billing (`rcb_`), Stripe, Paddle and Roku apps answer HTTP 400 with code 7662.
+- purchases-js therefore works only with Test Store (`test_`) keys.
+- StoreKit 1 receipts need the App Store in-app purchase key on the app. Without it RevenueDot answers code 7234 as HTTP 500, so the SDK retries after you add the key. For development, `allow_unsigned_receipts` skips this.
+- The app-specific shared secret is stored but not used.
+- Temporary failures, RevenueDot's or a store's, answer 5xx so the SDK retries. A 4xx means the purchase is permanently bad. See [Receipt errors: 4xx vs 5xx](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/receipt-errors-4xx-vs-5xx.md).
+
+**Test Store**
+- Test Store prices are 0, because the catalog does not store Test Store prices yet.
+- Servers older than the 2026-09-30 fix send `cycle_count: null` in `GET /rcbilling/v1/subscribers/{id}/products`, and the native iOS SDK then reports "No base price found for product". Update the server if you see it.
+- Test Store purchases are always sandbox purchases. See [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
+
+**Other SDK details**
+- Unity has no public `SetProxyURL` method; use the **Proxy URL** field on the Purchases component. See [Unity](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/unity.md).
+- Restores follow the project's `transfer_behavior`: `transfer` (default), `transfer_if_no_active`, `keep` or `share`. With `keep`, a restore of a receipt another user owns fails with code 7102. See [Customers and app user IDs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/customers-and-app-user-ids.md#who-owns-a-restored-purchase).
+
+## API
+- **Keys:** the same prefixes as RevenueCat. Public app keys are `appl_`, `mac_`, `goog_`, `test_`, `amzn_`, `strp_`, `rcb_`, `pdl_` and `roku_`; secret keys are `sk_` and belong to one project. See [Projects, apps and API keys](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md).
+- **REST API v1:** all 15 endpoints, with RevenueCat's shapes. See [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md).
+- **REST API v2:** projects, apps, products, entitlements, offerings, packages, customers, subscriptions, purchases and webhook integrations, with RevenueCat's shapes, pagination and errors. The rest of RevenueCat's v2 API, the audit log and team roles are planned for Tier 2. See [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md).
+- **Extensions that RevenueCat's API does not have:** the import endpoints, `notification_forward_url` on apps, `POST /v2/projects/{project_id}/test_purchases`, store settings and credential checks, mass subscription extension, and webhook delivery logs with retry. See [REST API extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md).
+- **Dashboard sessions** can call `/v2` for every project you belong to; a secret key covers one project.
+- **The importer** is RevenueDot's own; see [The importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md).
+
+## Webhooks
+- **Payload:** RevenueCat's shape, `{ "api_version": "1.0", "event": { ... } }`, sent as a `POST` with JSON.
+- **Headers:** an optional `Authorization` header you configure, plus `X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256>` signed with your `whsec_...` secret, and `User-Agent: RevenueDot-Webhooks/1.0`.
+- **Delivery:** only HTTP 200 counts as delivered. Failed deliveries retry after 5, 10, 20, 40 and 80 minutes, then stop. Each attempt times out after 60 seconds. You can retry by hand in the dashboard or the API.
+- **Event types sent today:** `INITIAL_PURCHASE`, `RENEWAL`, `CANCELLATION`, `UNCANCELLATION`, `NON_RENEWING_PURCHASE`, `SUBSCRIPTION_PAUSED`, `EXPIRATION`, `BILLING_ISSUE`, `PRODUCT_CHANGE`, `SUBSCRIPTION_EXTENDED`, `REFUND_REVERSED`, `TRANSFER`, `PRICE_INCREASE_CONSENT_REQUIRED`, `PRICE_INCREASE_CONSENT_APPROVED` and `TEST`.
+- **Accepted in filters but never sent yet:** `TEMPORARY_ENTITLEMENT_GRANT`, `VIRTUAL_CURRENCY_TRANSACTION`, `INVOICE_ISSUANCE`, `EXPERIMENT_ENROLLMENT`, `PURCHASE_REDEEMED` and `SUBSCRIBER_ALIAS`.
+- **Refunds** arrive as `CANCELLATION` with `cancel_reason: "CUSTOMER_SUPPORT"` and a negative price.
+- **Imported history sends no webhooks**, unless you import with `--emit-events`.
+- **Integrations:** webhooks are the only integration today. Slack, Segment, Amplitude, Mixpanel, PostHog, Firebase, BigQuery, AppsFlyer, Adjust and Meta are planned for Tier 2.
+
+Details: [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md) and [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md). Source: [`apps/server/src/services/webhooks.ts`](https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/webhooks.ts).
+
+## Migration
+- **Not imported:** paywalls, targeting rules, experiments, virtual currency balances, integrations other than webhooks, and store credentials.
+- **Refunded subscriptions import as expired**, because RevenueCat's [API v2](https://www.revenuecat.com/docs/api-v2) subscription object does not show refunds.
+- **RevenueCat Billing subscriptions** keep renewing through RevenueCat; only their current access is imported.
+- **Google Play purchase tokens** are not in RevenueCat's [API v2](https://www.revenuecat.com/docs/api-v2), which gives order ids. Until RevenueDot finds a token, the subscription is marked `needs_token_refresh` and the customer keeps access.
+
+Source: [`prd/migration/PRD.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/migration/PRD.md).
+
+## Features not built yet, by tier
+**Tier 1 (the current build), not finished**
+- SDK fork packages are built but not published to any registry.
+- Real App Store and Google Play sandbox purchases have not run end to end; store handling is tested against mocked Apple and Google APIs.
+- RevenueDot Cloud (`api.revenuedot.app`) is not live.
+
+**Tier 2 (planned)**
+- The full REST API v2, the audit log and team roles.
+- All 21 webhook event types and the integrations listed above; scheduled data exports to S3, R2 or GCS.
+- All 42 charts, with the SQL published.
+- Paywalls: serving the paywall designs the SDKs render, a visual editor and an asset CDN.
+- Targeting, placements and experiments (offering A/B tests).
+- Customer Center configuration, virtual currencies, offline entitlements, promotional-offer signing and win-back offers.
+- Amazon Appstore, and Stripe subscriptions from your own Stripe account.
+- Moving between self-host and cloud in one step, and a full export.
+
+**Tier 3 (planned)**
+- SSO/SAML, SCIM, custom roles, several organizations, data-location controls and compliance exports.
+- High-availability self-host (Helm, Terraform, clustering).
+- Web billing with hosted checkout, web-to-app funnels and redemption links.
+- Failed-payment recovery, refund defense and win-back flows.
+- Paddle, Roku and Galaxy stores; attribution; benchmarks.
+
+Source: [`prd/SCOPE.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/SCOPE.md).
+
+## Related
+- [Migrate from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md)
+- [SDK changes](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/sdk-changes.md)
+- [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md)
+- [All SDKs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md)

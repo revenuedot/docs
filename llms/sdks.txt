@@ -1,0 +1,1059 @@
+# RevenueDot documentation: SDK guides
+
+> RevenueDot is an open-source (AGPL-3.0), self-hostable backend for in-app purchases and subscriptions that works with the RevenueCat SDK.
+> It is a free alternative to RevenueCat: an app points the RevenueCat SDK's proxy URL at a RevenueDot server and keeps its purchase code, offerings and customers.
+> It verifies App Store and Google Play purchases on the server, keeps each customer's entitlements current from store notifications, and sends webhooks in RevenueCat's payload format.
+> RevenueDot runs as one Docker image plus Postgres. The SDK forks are MIT and keep RevenueCat's class and method names. RevenueDot is pre-alpha and not affiliated with RevenueCat, Inc.
+
+Generated from https://github.com/revenuedot/docs by scripts/gen-llms.mjs. Index: https://raw.githubusercontent.com/revenuedot/docs/main/llms.txt
+
+# Which RevenueCat SDKs work with RevenueDot?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md
+Description: All nine RevenueCat app SDKs work with RevenueDot in proxy mode today. Set the proxy URL and turn off signature checks. RevenueDot forks of all ten SDK repos exist but are not published yet.
+
+All nine RevenueCat app SDKs work with RevenueDot today in **proxy mode**: you keep the SDK you ship, set one proxy URL before `configure`, and turn off signature checks. RevenueDot also keeps a fork of each SDK repo (ten in total, counting the shared hybrid layer). The forks keep every import name, but **none of them is published to a package registry yet** (as of 2026-09-30).
+
+## Pick a mode
+- **Proxy mode** works now. It is one setting in your app. The stock SDK checks response signatures against RevenueCat's key, so every RevenueDot response reads as "verification failed" unless you turn the check off. See [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md).
+- **Fork packages** will replace the stock package without code changes once they are published. They trust RevenueDot's signing key and send every request, including analytics and diagnostics, to your server.
+- **Keep your RevenueCat keys**: the [importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md) copies each app's public key into RevenueDot, so builds you already shipped keep the same `appl_` or `goog_` key. See [Connect your app](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/connect-your-app.md).
+
+## Every SDK at a glance
+| SDK | Proxy mode today | How to set the proxy URL | Signature check default (stock SDK) | Planned fork package | Guide |
+|---|---|---|---|---|---|
+| iOS, macOS, tvOS, watchOS, visionOS | Yes | `Purchases.proxyURL = URL(string: "...")!` | Informational: logs a failure, still grants access. Set `.disabled` | CocoaPods `RevenueDotPurchases`, SPM `github.com/revenuedot/purchases-ios` | [iOS](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/ios.md) |
+| Android | Yes. Diagnostics, paywall events and ad events still go to RevenueCat | `Purchases.proxyURL = URL("...")` | Informational. Set `DISABLED` | Maven `app.revenuedot.purchases:purchases` | [Android](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/android.md) |
+| React Native and Expo | Yes, on iOS, Android, Expo Go and web | `await Purchases.setProxyURL("...")` | Disabled | npm `@revenuedot/react-native-purchases` | [React Native](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/react-native.md) |
+| Flutter | Yes on iOS and Android. **Not on Flutter web** with the stock SDK | `await Purchases.setProxyURL('...')` | Disabled | git `github.com/revenuedot/purchases-flutter` | [Flutter](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/flutter.md) |
+| Web (purchases-js) | Yes, with Test Store (`test_`) keys only | `httpConfig: { proxyURL: "..." }` in `configure` | No signature checks | npm `@revenuedot/purchases-js` | [Web](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/web.md) |
+| Capacitor and Ionic | Yes | `await Purchases.setProxyURL({ url: "..." })` | No default passed, so the native informational default applies. Pass `DISABLED` | npm `@revenuedot/purchases-capacitor` | [Capacitor](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/capacitor.md) |
+| Kotlin Multiplatform | Yes | `Purchases.proxyURL = "..."` (a `String`) | Disabled | Maven `app.revenuedot.purchases:purchases-kmp-core` | [Kotlin Multiplatform](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/kotlin-multiplatform.md) |
+| Unity | Yes | The **Proxy URL** field on the Purchases component | Informational. Set **Disabled** in the Inspector | OpenUPM `com.revenuedot.purchases-unity` | [Unity](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/unity.md) |
+| Cordova | Yes | `Purchases.setProxyURL("...")` before `configureWith` | No option: logs a failure, still grants access | npm `@revenuedot/cordova-plugin-purchases` | [Cordova](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/cordova.md) |
+| purchases-hybrid-common | Not installed by apps | Wrappers pass the proxy URL through it | Wrappers pass the mode through it | pods `RevenueDotPurchasesHybridCommon`, Maven `app.revenuedot.purchases:purchases-hybrid-common` | [Hybrid common](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/hybrid-common.md) |
+
+**Never use `ENFORCED` mode with a stock SDK against RevenueDot.** Every call would fail, because RevenueDot cannot sign with RevenueCat's key.
+
+## What the forks change
+Each fork lives in `github.com/revenuedot/<repo>` on the branch `revenuedot/main-patches`, which is the upstream code plus one patch commit. The patches change only these things:
+- The default API host becomes `https://api.revenuedot.app`. That host is not live yet, so self-hosters still set the proxy URL.
+- The SDK trusts RevenueDot's response-signing key instead of RevenueCat's.
+- Registry names change (table above). Module and package names that your code imports stay the same, so `import RevenueCat` and `com.revenuecat.purchases.*` still work.
+- Android: diagnostics, paywall events and ad events follow the proxy URL.
+- purchases-js: analytics events follow `httpConfig.proxyURL`, and checkout reads "Secure checkout by RevenueDot".
+- Flutter web: `Purchases.setProxyURL` works.
+- Each README gets a banner saying the fork is maintained by RevenueDot and not affiliated with RevenueCat.
+
+Source: [`prd/sdk-forks/PRD.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/sdk-forks/PRD.md).
+
+## What is tested today
+- The web SDK fork ran end to end against a real RevenueDot server: configure, customer info, offerings, a Test Store purchase, and the `pro` entitlement turning active.
+- Purchases through the real App Store and Google Play sandboxes have not run end to end yet. Store handling is tested against mocked Apple and Google APIs.
+- The [React Native Expo example](https://github.com/revenuedot/examples/tree/main/mobile/react-native-expo) and the [purchases-js Vite example](https://github.com/revenuedot/examples/tree/main/web/purchases-js-vite) run against RevenueDot with a Test Store key.
+
+## Related
+- [Connect your app](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/connect-your-app.md)
+- [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md)
+- [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md)
+- [SDK changes when you migrate](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/sdk-changes.md)
+- [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md)
+
+---
+
+# How do I use RevenueDot with the iOS SDK?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/ios.md
+Description: Set Purchases.proxyURL before configure and turn entitlement verification off. The RevenueCat iOS SDK 5.x then talks to your RevenueDot server with no other code change.
+
+Set `Purchases.proxyURL` to your RevenueDot server before you call `Purchases.configure`, and set the entitlement verification mode to `.disabled`. The rest of your RevenueCat iOS SDK code stays the same. This covers iOS, iPadOS, macOS, tvOS, watchOS and visionOS apps on SDK 5.x.
+
+## Use the RevenueCat SDK you already ship (proxy mode)
+```swift
+import RevenueCat
+
+// Point the SDK at your RevenueDot server; nothing else in the app changes.
+Purchases.proxyURL = URL(string: "https://revenuedot.example.com")!
+Purchases.configure(
+    with: Configuration.Builder(withAPIKey: "appl_...")
+        // The default (.informational) logs every RevenueDot response as a failed signature check.
+        .with(entitlementVerificationMode: .disabled)
+        .build()
+)
+```
+- Set `proxyURL` **before** `configure`. It is a static property on `Purchases`.
+- Use the app's public key from RevenueDot (`appl_...`, or `mac_...` for a Mac App Store app). If you ran the [importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md), your existing RevenueCat key keeps working. See [Which key goes where](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md#which-key-goes-where).
+- For local testing, the simulator reaches your Mac at `http://localhost:8787`.
+
+**After you migrate from RevenueCat, call `syncPurchases()` once** on the first launch of the update. It sends the device's existing App Store purchases to RevenueDot, so current subscribers keep access even if their history was not imported.
+```swift
+// Once, after this update: send purchases made while the app talked to RevenueCat.
+if !UserDefaults.standard.bool(forKey: "revenuedotSynced") {
+    _ = try? await Purchases.shared.syncPurchases()
+    UserDefaults.standard.set(true, forKey: "revenuedotSynced")
+}
+```
+
+## Use the RevenueDot fork
+The fork is [github.com/revenuedot/purchases-ios](https://github.com/revenuedot/purchases-ios). It keeps the Swift modules `RevenueCat` and `RevenueCatUI`, so every `import RevenueCat` stays. It trusts RevenueDot's signing key, and its default host is `https://api.revenuedot.app`.
+
+**It is not published yet (2026-09-30).** These are the planned install lines:
+```ruby
+# Podfile (planned; the pods are not on CocoaPods trunk yet)
+pod 'RevenueDotPurchases', '<version>'
+pod 'RevenueDotPurchasesUI', '<version>'   # only if you use RevenueCatUI
+```
+```swift
+// Package.swift (planned release tags look like 5.92.0-revenuedot)
+.package(url: "https://github.com/revenuedot/purchases-ios", exact: "<version>-revenuedot")
+// Products: "RevenueCat" and "RevenueCatUI"
+```
+
+**You can use it today from the patch branch.** The branch is `revenuedot/main-patches` (upstream 5.92.0 in development plus the RevenueDot patches). A second branch, `revenuedot/release-5.91.0`, is the 5.91.0 release plus the patches.
+```swift
+// Swift Package Manager, from the branch
+.package(url: "https://github.com/revenuedot/purchases-ios", branch: "revenuedot/main-patches")
+```
+```ruby
+# CocoaPods, from the branch
+pod 'RevenueDotPurchases', :git => 'https://github.com/revenuedot/purchases-ios.git', :branch => 'revenuedot/main-patches'
+```
+Keep setting `Purchases.proxyURL` to your server while `api.revenuedot.app` is not live, and whenever you self-host.
+
+## Trusted Entitlements
+- **Stock SDK:** it checks signatures with RevenueCat's key, so RevenueDot responses read as failed. The default mode, `.informational`, logs the failure and still grants access. Set `.disabled` to stop the noise. **Never use `.enforced` with the stock SDK**: every request would fail.
+- **Fork:** it trusts RevenueDot Cloud's key. A self-hosted server signs with its own key (`REVENUEDOT_SIGNING_KEY`), so keep `.disabled` or `.informational`, or build the fork with your own public key.
+
+Details, key generation and self-host builds: [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md).
+
+## Check an entitlement and make a purchase
+The API is RevenueCat's, unchanged.
+```swift
+let customerInfo = try await Purchases.shared.customerInfo()
+let isPro = customerInfo.entitlements["pro"]?.isActive == true
+
+let offerings = try await Purchases.shared.offerings()
+if let package = offerings.current?.availablePackages.first {
+    let result = try await Purchases.shared.purchase(package: package)
+    if !result.userCancelled, result.customerInfo.entitlements["pro"]?.isActive == true {
+        // Unlock pro features.
+    }
+}
+```
+The purchase goes to `POST /v1/receipts`. RevenueDot verifies it with Apple, which needs the App Store in-app purchase key on the app. See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md).
+
+## Test Store
+Create a `test_store` app in RevenueDot and pass its `test_...` key to `configure`. The SDK then shows a Test Store alert instead of the App Store sheet.
+- **Test Store keys only work in Debug builds.** In a Release build the SDK shows a "Wrong API Key" alert and stops the app on purpose.
+- **Known issue on older servers:** the native iOS SDK could not load Test Store products from RevenueDot and reported "No base price found for product". The server sent `cycle_count: null` in `GET /rcbilling/v1/subscribers/{id}/products`. The server's `main` branch fixed this on 2026-09-30. If you see the error, update your server. See [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md).
+- Test Store prices show as 0, because the catalog does not store Test Store prices yet.
+- To test with Apple's sandbox or Xcode's StoreKit testing instead, see [Sandbox testing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/sandbox-testing.md).
+
+More: [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
+
+## Migrate from RevenueCat
+```diff
+ import RevenueCat
+
++// Point the SDK at your RevenueDot server; nothing else in the app changes. Set it before configure.
++Purchases.proxyURL = URL(string: "https://revenuedot.example.com")!
+-Purchases.configure(withAPIKey: "appl_...")
++Purchases.configure(
++    with: Configuration.Builder(withAPIKey: "appl_...")
++        // The default (informational) logs every RevenueDot response as failed signature verification.
++        .with(entitlementVerificationMode: .disabled)
++        .build()
++)
++// Once, after this update: send purchases made while the app talked to RevenueCat.
++_ = try? await Purchases.shared.syncPurchases()
+```
+The full order of steps is in [Migrate from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md).
+
+## Examples
+- **Coming soon:** a SwiftUI paywall app, `mobile/ios-swiftui` in [revenuedot/examples](https://github.com/revenuedot/examples/tree/main/mobile/ios-swiftui). It is not public yet.
+
+## Related
+- [All SDKs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md)
+- [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md)
+- [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md)
+- [Restore purchases](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/restore-purchases.md)
+- [Receipt errors: 4xx vs 5xx](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/receipt-errors-4xx-vs-5xx.md)
+
+---
+
+# How do I use RevenueDot with the Android SDK?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/android.md
+Description: Set Purchases.proxyURL before configure and set EntitlementVerificationMode.DISABLED. The stock SDK still sends diagnostics, paywall and ad events to RevenueCat; the fork fixes that.
+
+Set `Purchases.proxyURL` to your RevenueDot server before `Purchases.configure`, and set `EntitlementVerificationMode.DISABLED`. Purchases, customer info and offerings then go to RevenueDot. **The stock Android SDK still sends diagnostics, paywall events and ad events to RevenueCat's hosts**, even with a proxy URL; the RevenueDot fork sends them to your server.
+
+## Use the RevenueCat SDK you already ship (proxy mode)
+```kotlin
+import com.revenuecat.purchases.EntitlementVerificationMode
+import com.revenuecat.purchases.Purchases
+import com.revenuecat.purchases.PurchasesConfiguration
+import java.net.URL
+
+class MainApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        // Point the SDK at your RevenueDot server; nothing else in the app changes.
+        Purchases.proxyURL = URL("https://revenuedot.example.com")
+        Purchases.configure(
+            PurchasesConfiguration.Builder(this, "goog_...")
+                // The default (INFORMATIONAL) logs every RevenueDot response as a failed signature check.
+                .entitlementVerificationMode(EntitlementVerificationMode.DISABLED)
+                .build()
+        )
+    }
+}
+```
+- Set `proxyURL` **before** `configure`.
+- Use the app's `goog_...` key from RevenueDot, or your old RevenueCat key if the [importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md) kept it. See [Which key goes where](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md#which-key-goes-where).
+- The Android emulator reaches your computer at `http://10.0.2.2:8787`. Plain `http` also needs a network security config that allows cleartext traffic to that host.
+
+**After you migrate from RevenueCat, call `syncPurchases()` once** on the first launch of the update. It sends the device's Google Play purchases, with their purchase tokens, to RevenueDot. That is also how RevenueDot gets any purchase token the importer could not find.
+```kotlin
+// Once, after this update: send purchases made while the app talked to RevenueCat.
+Purchases.sharedInstance.syncPurchases()
+```
+
+## Use the RevenueDot fork
+The fork is [github.com/revenuedot/purchases-android](https://github.com/revenuedot/purchases-android). Kotlin packages stay `com.revenuecat.purchases.*`, so imports do not change. On top of the new default host and signing key, it makes **diagnostics, paywall events and ad events follow `proxyURL`**.
+
+**It is not published yet (2026-09-30).** The planned Maven coordinates keep the upstream artifact ids under a new group:
+```kotlin
+// build.gradle.kts (planned; not on Maven Central yet)
+implementation("app.revenuedot.purchases:purchases:<version>")
+implementation("app.revenuedot.purchases:purchases-ui:<version>") // only if you use RevenueCat UI
+```
+Versions match upstream. The patch branch `revenuedot/main-patches` is at `10.24.0-SNAPSHOT`.
+
+**To try it today**, build it into your local Maven repository. We have not tested this path ourselves.
+```bash
+git clone -b revenuedot/main-patches https://github.com/revenuedot/purchases-android
+cd purchases-android
+./gradlew :purchases:publishToMavenLocal
+```
+Then add `mavenLocal()` to your repositories and depend on `app.revenuedot.purchases:purchases:10.24.0-SNAPSHOT`. Keep setting `Purchases.proxyURL` while `api.revenuedot.app` is not live, and whenever you self-host.
+
+## Trusted Entitlements
+- **Stock SDK:** it checks signatures with RevenueCat's key, so RevenueDot responses read as failed. The default, `INFORMATIONAL`, logs the failure and still grants access. Set `DISABLED`. **Never use `ENFORCED` with the stock SDK**: every request would fail.
+- **Fork:** it trusts RevenueDot Cloud's key. A self-hosted server signs with its own key, so keep `DISABLED` or `INFORMATIONAL`, or build the fork with your own public key.
+
+See [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md).
+
+## Check an entitlement and make a purchase
+The API is RevenueCat's, unchanged. These are the coroutine helpers.
+```kotlin
+val customerInfo = Purchases.sharedInstance.awaitCustomerInfo()
+val isPro = customerInfo.entitlements["pro"]?.isActive == true
+
+val offerings = Purchases.sharedInstance.awaitOfferings()
+val pkg = offerings.current?.availablePackages?.firstOrNull() ?: return
+try {
+    val result = Purchases.sharedInstance.awaitPurchase(PurchaseParams.Builder(activity, pkg).build())
+    val nowPro = result.customerInfo.entitlements["pro"]?.isActive == true
+} catch (e: PurchasesTransactionException) {
+    if (e.userCancelled) return
+}
+```
+The purchase goes to `POST /v1/receipts` with the Google Play purchase token. RevenueDot verifies it with Google, which needs the app's service account. See [Connect Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md).
+
+## Test Store
+Create a `test_store` app in RevenueDot and pass its `test_...` key to `configure`. The SDK shows a Test Store dialog instead of Google Play's purchase sheet.
+- **Test Store keys only work in debug builds.** In a release build the SDK shows an error screen and stops the app on purpose. Ship with the `goog_` key.
+- Test Store prices show as 0, because the catalog does not store Test Store prices yet.
+- For Google Play test tracks and license testers, see [Sandbox testing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/sandbox-testing.md).
+
+More: [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
+
+## Migrate from RevenueCat
+```diff
+ override fun onCreate() {
+     super.onCreate()
++    // Point the SDK at your RevenueDot server; nothing else in the app changes. Must be set before configure.
++    Purchases.proxyURL = URL("https://revenuedot.example.com")
+     Purchases.configure(
+         PurchasesConfiguration.Builder(this, "goog_...")
++            // The default (INFORMATIONAL) logs every RevenueDot response as failed signature verification.
++            .entitlementVerificationMode(EntitlementVerificationMode.DISABLED)
+             .build()
+     )
++    // Once, after this update: send purchases made while the app talked to RevenueCat.
++    Purchases.sharedInstance.syncPurchases()
+ }
+```
+The full order of steps is in [Migrate from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md).
+
+## Examples
+- **Coming soon:** a Jetpack Compose paywall app, `mobile/android-compose` in [revenuedot/examples](https://github.com/revenuedot/examples/tree/main/mobile/android-compose). It is not public yet.
+
+## Related
+- [All SDKs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md)
+- [Connect Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md)
+- [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md)
+- [What differs from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/what-differs.md)
+
+---
+
+# How do I use RevenueDot with React Native and Expo?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/react-native.md
+Description: Await Purchases.setProxyURL before configure. Verification is already off by default in react-native-purchases, and Expo Go and web work with a Test Store key.
+
+Call `await Purchases.setProxyURL("https://revenuedot.example.com")` before `Purchases.configure`. That is the whole change: `react-native-purchases` already defaults to `ENTITLEMENT_VERIFICATION_MODE.DISABLED`. It works on iOS and Android builds, and in Expo Go and on the web with a Test Store (`test_`) key.
+
+## Use the RevenueCat SDK you already ship (proxy mode)
+```ts
+import { Platform } from "react-native";
+import Purchases from "react-native-purchases";
+
+// Point the SDK at your RevenueDot server; nothing else in the app changes.
+await Purchases.setProxyURL("https://revenuedot.example.com");
+Purchases.configure({
+  apiKey: Platform.OS === "ios" ? "appl_..." : "goog_...",
+  // Leave entitlementVerificationMode unset: DISABLED is the React Native default.
+});
+```
+- `setProxyURL` returns a promise. Await it before `configure`.
+- If your code sets `entitlementVerificationMode: ENTITLEMENT_VERIFICATION_MODE.INFORMATIONAL` or `ENFORCED`, remove it. See [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/react-native.md#trusted-entitlements-are-off-by-default).
+- Use each app's public key from RevenueDot, or your old RevenueCat keys if the [importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md) kept them. See [Which key goes where](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md#which-key-goes-where).
+
+**After you migrate from RevenueCat, sync once** on the first launch of the update. It sends the device's store purchases to RevenueDot, so current subscribers keep access.
+```ts
+// Once, after this update: send purchases made while the app talked to RevenueCat.
+await Purchases.syncPurchasesForResult();
+```
+`Purchases.syncPurchases()` does the same and returns nothing.
+
+## Use the RevenueDot fork
+The fork is [github.com/revenuedot/react-native-purchases](https://github.com/revenuedot/react-native-purchases). It depends on RevenueDot's [hybrid common](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/hybrid-common.md) builds, which trust RevenueDot's signing key.
+
+**It is not published yet (2026-09-30).** The planned install uses npm aliases, so every `import ... from "react-native-purchases"` stays as it is:
+```json
+{
+  "dependencies": {
+    "react-native-purchases": "npm:@revenuedot/react-native-purchases@<version>",
+    "react-native-purchases-ui": "npm:@revenuedot/react-native-purchases-ui@<version>"
+  }
+}
+```
+The patch branch `revenuedot/main-patches` is at version 10.10.2. Installing it from git does not work yet: it needs `@revenuedot/purchases-typescript-internal`, the `RevenueDotPurchasesHybridCommon` pod and the `app.revenuedot.purchases:purchases-hybrid-common` Maven artifact, and none of them is published. Use proxy mode until then.
+
+## Trusted Entitlements are off by default
+- **Stock SDK:** the default is `DISABLED`, which is what you want against RevenueDot. `INFORMATIONAL` logs every response as a failed signature check. **`ENFORCED` would fail every request.**
+- **Fork:** it trusts RevenueDot Cloud's key. A self-hosted server signs with its own key, so keep `DISABLED`, or build the forks with your own public key.
+- In Expo Go and on the web, the SDK runs in browser mode and does not check signatures.
+
+See [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md).
+
+## Check an entitlement and make a purchase
+```ts
+const customerInfo = await Purchases.getCustomerInfo();
+const isPro = customerInfo.entitlements.active["pro"] !== undefined;
+
+const offerings = await Purchases.getOfferings();
+const pkg = offerings.current?.availablePackages[0];
+if (pkg) {
+  try {
+    const { customerInfo: after } = await Purchases.purchasePackage(pkg);
+    const nowPro = after.entitlements.active["pro"] !== undefined;
+  } catch (e: any) {
+    if (!e.userCancelled) throw e;
+  }
+}
+```
+
+## Test Store
+Create a `test_store` app in RevenueDot and use its `test_...` key.
+- **Expo Go and web:** `react-native-purchases` runs in browser mode there and only accepts `test_` and `rcb_` keys. RevenueDot accepts only `test_` of those two today. Tap a package, then **Test valid purchase** in the dialog.
+- **Native iOS builds:** see the iOS Test Store note in [iOS](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/ios.md#test-store). Servers older than the 2026-09-30 fix could not serve Test Store products to the native iOS SDK.
+- **Native builds** accept `test_` keys only in debug builds. Ship with the `appl_` and `goog_` keys.
+- Test Store prices show as $0.00, because the catalog does not store Test Store prices yet.
+
+More: [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
+
+## Migrate from RevenueCat
+```diff
+ import Purchases from "react-native-purchases";
+
++// Point the SDK at your RevenueDot server; nothing else in the app changes. Await it before configure.
++await Purchases.setProxyURL("https://revenuedot.example.com");
+ Purchases.configure({
+   apiKey: Platform.OS === "ios" ? "appl_..." : "goog_...",
+-  entitlementVerificationMode: ENTITLEMENT_VERIFICATION_MODE.INFORMATIONAL,
++  // DISABLED is the React Native default; RevenueDot does not sign responses with RevenueCat's key.
+ });
++// Once, after this update: send purchases made while the app talked to RevenueCat.
++await Purchases.syncPurchasesForResult();
+```
+The full order of steps is in [Migrate from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md).
+
+## Examples
+- [mobile/react-native-expo](https://github.com/revenuedot/examples/tree/main/mobile/react-native-expo): an Expo app that loads offerings, buys through the Test Store and shows the entitlement. It was run on the web against RevenueDot; native builds are not verified yet.
+
+## Related
+- [All SDKs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md)
+- [Hybrid common](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/hybrid-common.md)
+- [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md)
+- [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md)
+
+---
+
+# How do I use RevenueDot with Flutter?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/flutter.md
+Description: Await Purchases.setProxyURL before configure on iOS and Android. Flutter web ignores the proxy URL in the stock purchases_flutter package; the RevenueDot fork fixes it.
+
+Call `await Purchases.setProxyURL('https://revenuedot.example.com')` before `Purchases.configure`. Verification is already `disabled` by default in `purchases_flutter`, so there is nothing else to change on iOS and Android. **Flutter web does not work in proxy mode with the stock package**: its web plugin ignores `setProxyURL`, so web calls still go to RevenueCat. The RevenueDot fork fixes this.
+
+## Use the RevenueCat SDK you already ship (proxy mode)
+```dart
+import 'dart:io' show Platform;
+import 'package:purchases_flutter/purchases_flutter.dart';
+
+Future<void> initPurchases() async {
+  // Point the SDK at your RevenueDot server; nothing else in the app changes.
+  await Purchases.setProxyURL('https://revenuedot.example.com');
+  await Purchases.configure(
+    PurchasesConfiguration(Platform.isIOS ? 'appl_...' : 'goog_...'),
+    // entitlementVerificationMode stays at its default, EntitlementVerificationMode.disabled.
+  );
+}
+```
+- Await `setProxyURL` before `configure`.
+- Use each app's public key from RevenueDot, or your old RevenueCat keys if the [importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md) kept them. See [Which key goes where](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md#which-key-goes-where).
+
+**After you migrate from RevenueCat, sync once** on the first launch of the update, so current subscribers keep access:
+```dart
+// Once, after this update: send purchases made while the app talked to RevenueCat.
+await Purchases.syncPurchases();
+```
+
+## Use the RevenueDot fork
+The fork is [github.com/revenuedot/purchases-flutter](https://github.com/revenuedot/purchases-flutter). The package names stay `purchases_flutter` and `purchases_ui_flutter`, so every `import 'package:purchases_flutter/purchases_flutter.dart'` keeps working. It also **makes `setProxyURL` work on Flutter web**.
+
+**It is not published yet (2026-09-30).** It will ship as a git dependency with release tags `<version>-revenuedot`, because pub.dev names belong to RevenueCat:
+```yaml
+# pubspec.yaml (planned)
+dependencies:
+  purchases_flutter:
+    git:
+      url: https://github.com/revenuedot/purchases-flutter.git
+      ref: <version>-revenuedot
+```
+The patch branch `revenuedot/main-patches` is at version 10.13.2. Pointing `ref` at that branch resolves the Dart package, but iOS and Android builds fail today: the native side needs the `RevenueDotPurchasesHybridCommon` pod and the `app.revenuedot.purchases:purchases-hybrid-common` Maven artifact, which are not published. See [Hybrid common](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/hybrid-common.md).
+
+## Trusted Entitlements are off by default
+- **Stock package:** `entitlementVerificationMode` defaults to `EntitlementVerificationMode.disabled`, which is right for RevenueDot. `informational` logs every response as a failed signature check, and **`enforced` would fail every request**.
+- **Fork:** it trusts RevenueDot Cloud's key. A self-hosted server signs with its own key, so keep `disabled`, or build the forks with your own public key.
+
+See [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md).
+
+## Check an entitlement and make a purchase
+```dart
+import 'package:flutter/services.dart' show PlatformException;
+
+final customerInfo = await Purchases.getCustomerInfo();
+final isPro = customerInfo.entitlements.active.containsKey('pro');
+
+final offerings = await Purchases.getOfferings();
+final package = offerings.current?.availablePackages.first;
+if (package != null) {
+  try {
+    final result = await Purchases.purchase(PurchaseParams.package(package));
+    final nowPro = result.customerInfo.entitlements.active.containsKey('pro');
+  } on PlatformException catch (e) {
+    if (PurchasesErrorHelper.getErrorCode(e) != PurchasesErrorCode.purchaseCancelledError) rethrow;
+  }
+}
+```
+`Purchases.purchasePackage` still works but is deprecated in 10.x.
+
+## Test Store
+Create a `test_store` app in RevenueDot and use its `test_...` key. The Test Store dialog replaces the store sheet; tap **Test valid purchase**.
+- **Native builds** accept `test_` keys only in debug builds. Ship with the `appl_` and `goog_` keys.
+- **iOS:** servers older than the 2026-09-30 fix could not serve Test Store products to the native iOS SDK. See [iOS](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/ios.md#test-store).
+- **Flutter web** needs the fork, because the stock web plugin ignores the proxy URL.
+- Test Store prices show as 0, because the catalog does not store Test Store prices yet.
+
+More: [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
+
+## Migrate from RevenueCat
+```diff
+ import 'package:purchases_flutter/purchases_flutter.dart';
+
+ Future<void> initPurchases() async {
++  // Point the SDK at your RevenueDot server; nothing else in the app changes. Await it before configure.
++  await Purchases.setProxyURL('https://revenuedot.example.com');
+   await Purchases.configure(PurchasesConfiguration(Platform.isIOS ? 'appl_...' : 'goog_...'));
++  // Once, after this update: send purchases made while the app talked to RevenueCat.
++  await Purchases.syncPurchases();
+ }
+```
+The full order of steps is in [Migrate from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md).
+
+## Examples
+- **Coming soon:** a Flutter paywall app, `mobile/flutter` in [revenuedot/examples](https://github.com/revenuedot/examples/tree/main/mobile/flutter). It is not public yet and has not run on a device.
+
+## Related
+- [All SDKs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md)
+- [Hybrid common](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/hybrid-common.md)
+- [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md)
+- [What differs from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/what-differs.md)
+
+---
+
+# How do I use RevenueDot with the web SDK (purchases-js)?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/web.md
+Description: Pass httpConfig.proxyURL to Purchases.configure and turn off analytics events. Only Test Store (test_) keys work against RevenueDot today; Web Billing, Stripe and Paddle do not.
+
+Pass `httpConfig: { proxyURL: "https://revenuedot.example.com" }` to `Purchases.configure`, and set `flags: { collectAnalyticsEvents: false }` so the stock SDK does not send analytics events to RevenueCat. **Only Test Store (`test_`) keys work against RevenueDot today.** Web Billing (`rcb_`), Stripe (`strp_`) and Paddle (`pdl_`) purchases do not: RevenueDot answers their receipts with error 7662.
+
+## Use the RevenueCat SDK you already ship (proxy mode)
+```ts
+import { Purchases } from "@revenuecat/purchases-js";
+
+const purchases = Purchases.configure({
+  apiKey: "test_...",
+  appUserId: "user_123",
+  // Point the SDK at your RevenueDot server; nothing else in the app changes. No trailing slash.
+  httpConfig: { proxyURL: "https://revenuedot.example.com" },
+  // The stock SDK sends analytics events to RevenueCat even with a proxy URL; turn them off.
+  flags: { collectAnalyticsEvents: false },
+});
+```
+- The SDK rejects a proxy URL that ends with `/`.
+- purchases-js needs an `appUserId`. Pass your signed-in user's id, or one from `Purchases.generateRevenueCatAnonymousAppUserId()`. See [Anonymous app user IDs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/customers-and-app-user-ids.md#anonymous-app-user-ids).
+- Your RevenueDot server allows browser calls to `/v1` and `/rcbilling` from any origin.
+- There is no store history to sync on the web, so no `syncPurchases` step is needed after a migration.
+
+## Use the RevenueDot fork
+The fork is [github.com/revenuedot/purchases-js](https://github.com/revenuedot/purchases-js). It sends **analytics events to `httpConfig.proxyURL`** too, and the checkout reads "Secure checkout by RevenueDot". Its default host is `https://api.revenuedot.app`, which is not live yet, so keep setting `proxyURL`.
+
+**It is not published yet (2026-09-30).** The planned install keeps your imports through an npm alias:
+```json
+{
+  "dependencies": {
+    "@revenuecat/purchases-js": "npm:@revenuedot/purchases-js@<version>"
+  }
+}
+```
+**To use it today**, build a tarball from the patch branch (version 1.67.0). It needs Node and pnpm:
+```bash
+git clone -b revenuedot/main-patches https://github.com/revenuedot/purchases-js
+cd purchases-js
+pnpm install && pnpm build && pnpm pack
+# In your app:
+npm install "@revenuecat/purchases-js@file:../purchases-js/revenuedot-purchases-js-1.67.0.tgz"
+```
+With the fork you can leave `collectAnalyticsEvents` on. The fork's web build ran end to end against a real RevenueDot server: configure, customer info, offerings, a Test Store purchase, and the `pro` entitlement turning active, with every request going to the proxy URL.
+
+## Trusted Entitlements do not apply
+purchases-js does not check response signatures, so there is nothing to turn off. The server still signs `/v1` and `/rcbilling` responses when `REVENUEDOT_SIGNING_KEY` is set, for the native SDKs. See [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md).
+
+## Check an entitlement and make a purchase
+```ts
+const customerInfo = await purchases.getCustomerInfo();
+const isPro = "pro" in customerInfo.entitlements.active;
+
+const offerings = await purchases.getOfferings();
+const rcPackage = offerings.current?.availablePackages[0];
+if (rcPackage) {
+  const { customerInfo: after } = await purchases.purchase({ rcPackage });
+  const nowPro = "pro" in after.entitlements.active;
+}
+```
+With a `test_` key, `purchase` opens the Test Store modal instead of a payment form.
+
+## Test Store is the only web store today
+- Create a `test_store` app in RevenueDot and use its `test_...` key. See [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
+- Test Store purchases are always sandbox purchases.
+- Prices show as 0, because the catalog does not store Test Store prices yet.
+- `rcb_`, `strp_` and `pdl_` apps can be created, but RevenueDot does not accept their purchases yet. Web Billing is planned for a later tier; see [What differs from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/what-differs.md).
+
+## Migrate from RevenueCat
+```diff
+ const purchases = Purchases.configure({
+   apiKey: "test_...",
+   appUserId,
++  // Point the SDK at your RevenueDot server; nothing else in the app changes. No trailing slash.
++  httpConfig: { proxyURL: "https://revenuedot.example.com" },
++  // Analytics events do not use the proxy URL; turn them off to keep all traffic on your server.
++  flags: { collectAnalyticsEvents: false },
+ });
+```
+If you sell through RevenueCat Web Billing today, keep those subscriptions on RevenueCat: the importer copies their current access, but renewals stay with RevenueCat. See [Migrate from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md).
+
+## Examples
+- [web/purchases-js-vite](https://github.com/revenuedot/examples/tree/main/web/purchases-js-vite): a Vite page that configures purchases-js with a proxy URL, buys through the Test Store and shows the entitlement.
+
+## Related
+- [All SDKs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md)
+- [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md)
+- [Customers and app user IDs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/customers-and-app-user-ids.md)
+- [What differs from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/what-differs.md)
+
+---
+
+# How do I use RevenueDot with Capacitor and Ionic?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/capacitor.md
+Description: Await Purchases.setProxyURL({ url }) before configure, and pass entitlementVerificationMode DISABLED, because the Capacitor plugin passes no default and the native informational default applies.
+
+Call `await Purchases.setProxyURL({ url: "https://revenuedot.example.com" })` before `Purchases.configure`, and pass `entitlementVerificationMode: ENTITLEMENT_VERIFICATION_MODE.DISABLED`. The Capacitor plugin passes no default of its own, so without it the native iOS and Android default (informational) applies and logs every RevenueDot response as a failed signature check.
+
+## Use the RevenueCat SDK you already ship (proxy mode)
+```ts
+import { Capacitor } from "@capacitor/core";
+import { ENTITLEMENT_VERIFICATION_MODE, Purchases } from "@revenuecat/purchases-capacitor";
+
+// Point the SDK at your RevenueDot server; nothing else in the app changes.
+await Purchases.setProxyURL({ url: "https://revenuedot.example.com" });
+await Purchases.configure({
+  apiKey: Capacitor.getPlatform() === "ios" ? "appl_..." : "goog_...",
+  // Capacitor passes no default, so the native default (informational signature checks) would apply.
+  entitlementVerificationMode: ENTITLEMENT_VERIFICATION_MODE.DISABLED,
+});
+```
+- `setProxyURL` takes an object `{ url }`, not a string. Await it before `configure`.
+- Use each app's public key from RevenueDot, or your old RevenueCat keys if the [importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md) kept them. See [Which key goes where](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md#which-key-goes-where).
+
+**After you migrate from RevenueCat, sync once** on the first launch of the update, so current subscribers keep access:
+```ts
+// Once, after this update: send purchases made while the app talked to RevenueCat.
+await Purchases.syncPurchases();
+```
+
+## Use the RevenueDot fork
+The fork is [github.com/revenuedot/purchases-capacitor](https://github.com/revenuedot/purchases-capacitor). It depends on RevenueDot's [hybrid common](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/hybrid-common.md) builds, which trust RevenueDot's signing key.
+
+**It is not published yet (2026-09-30).** Install it **only through the alias** below. Capacitor derives the native pod and Swift package names from the npm package name, so the alias keeps them as `RevenuecatPurchasesCapacitor`. A direct install of `@revenuedot/purchases-capacitor` would change those names and is not supported.
+```json
+{
+  "dependencies": {
+    "@revenuecat/purchases-capacitor": "npm:@revenuedot/purchases-capacitor@<version>",
+    "@revenuecat/purchases-capacitor-ui": "npm:@revenuedot/purchases-capacitor-ui@<version>"
+  }
+}
+```
+Then run `npx cap sync`. The patch branch `revenuedot/main-patches` is at version 13.6.1. It cannot be installed from git yet, because its native dependencies (`RevenueDotPurchasesHybridCommon` 19.4.1 and `app.revenuedot.purchases:purchases-hybrid-common:19.4.1`) are not published. Use proxy mode until then.
+
+## Trusted Entitlements
+- **Stock plugin:** pass `DISABLED`. The native default, `INFORMATIONAL`, logs every RevenueDot response as a failed check but still grants access. **`ENFORCED` would fail every request.**
+- **Fork:** it trusts RevenueDot Cloud's key. A self-hosted server signs with its own key, so keep `DISABLED`, or build the forks with your own public key.
+
+See [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md).
+
+## Check an entitlement and make a purchase
+```ts
+const { customerInfo } = await Purchases.getCustomerInfo();
+const isPro = customerInfo.entitlements.active["pro"] !== undefined;
+
+const offerings = await Purchases.getOfferings();
+const aPackage = offerings.current?.availablePackages[0];
+if (aPackage) {
+  const result = await Purchases.purchasePackage({ aPackage });
+  const nowPro = result.customerInfo.entitlements.active["pro"] !== undefined;
+}
+```
+`getCustomerInfo` resolves to `{ customerInfo }`, and `purchasePackage` takes `{ aPackage }`.
+
+## Test Store
+Create a `test_store` app in RevenueDot and use its `test_...` key on a debug build. The Test Store dialog replaces the store sheet.
+- Native builds accept `test_` keys only in debug builds. Ship with the `appl_` and `goog_` keys.
+- iOS: servers older than the 2026-09-30 fix could not serve Test Store products to the native iOS SDK. See [iOS](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/ios.md#test-store).
+- Test Store prices show as 0, because the catalog does not store Test Store prices yet.
+
+More: [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
+
+## Migrate from RevenueCat
+```diff
+-import { Purchases } from "@revenuecat/purchases-capacitor";
++import { ENTITLEMENT_VERIFICATION_MODE, Purchases } from "@revenuecat/purchases-capacitor";
+
++// Point the SDK at your RevenueDot server; nothing else in the app changes. Await it before configure.
++await Purchases.setProxyURL({ url: "https://revenuedot.example.com" });
+ await Purchases.configure({
+   apiKey: isIOS ? "appl_..." : "goog_...",
++  // Capacitor passes no default, so the native default (informational signature checks) would apply.
++  entitlementVerificationMode: ENTITLEMENT_VERIFICATION_MODE.DISABLED,
+ });
++// Once, after this update: send purchases made while the app talked to RevenueCat.
++await Purchases.syncPurchases();
+```
+The full order of steps is in [Migrate from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md).
+
+## Examples
+There is no Capacitor example yet. The [React Native Expo example](https://github.com/revenuedot/examples/tree/main/mobile/react-native-expo) shows the same calls in a JavaScript app.
+
+## Related
+- [All SDKs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md)
+- [Hybrid common](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/hybrid-common.md)
+- [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md)
+- [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md)
+
+---
+
+# How do I use RevenueDot with Kotlin Multiplatform?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/kotlin-multiplatform.md
+Description: Set Purchases.proxyURL, a String, before Purchases.configure in common code. purchases-kmp already defaults to EntitlementVerificationMode.DISABLED, so nothing else changes.
+
+Set `Purchases.proxyURL = "https://revenuedot.example.com"` in common code before `Purchases.configure`. In `purchases-kmp` the proxy URL is a `String`, not a `URL`. The default verification mode is already `EntitlementVerificationMode.DISABLED`, so nothing else changes on Android or iOS.
+
+## Use the RevenueCat SDK you already ship (proxy mode)
+```kotlin
+import com.revenuecat.purchases.kmp.Purchases
+import com.revenuecat.purchases.kmp.PurchasesConfiguration
+import com.revenuecat.purchases.kmp.models.EntitlementVerificationMode
+
+fun initPurchases(apiKey: String) {
+    // Point the SDK at your RevenueDot server; nothing else in the app changes.
+    Purchases.proxyURL = "https://revenuedot.example.com"
+    Purchases.configure(PurchasesConfiguration(apiKey) {
+        // DISABLED is the KMP default; keep it, RevenueDot does not sign responses with RevenueCat's key.
+        verificationMode = EntitlementVerificationMode.DISABLED
+    })
+}
+```
+- Set `proxyURL` before `configure`. It applies to both the Android and the iOS targets.
+- Pass the `appl_...` key on iOS and the `goog_...` key on Android, from RevenueDot or kept by the [importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md). See [Which key goes where](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md#which-key-goes-where).
+- On Android, the stock native SDK underneath still sends diagnostics, paywall events and ad events to RevenueCat. See [Android](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/android.md).
+
+**After you migrate from RevenueCat, sync once** on the first launch of the update, so current subscribers keep access:
+```kotlin
+// Once, after this update: send purchases made while the app talked to RevenueCat.
+Purchases.sharedInstance.awaitSyncPurchases()
+```
+`awaitSyncPurchases` is a suspend function in `com.revenuecat.purchases.kmp.ktx`. The callback form is `syncPurchases(onError = { }, onSuccess = { })`.
+
+## Use the RevenueDot fork
+The fork is [github.com/revenuedot/purchases-kmp](https://github.com/revenuedot/purchases-kmp). Kotlin packages stay `com.revenuecat.purchases.kmp.*`. It builds its iOS side from RevenueDot's purchases-ios fork (a git submodule at 5.91.0) and its Android side from RevenueDot's Android fork, so both trust RevenueDot's signing key and send events to your proxy URL.
+
+**It is not published yet (2026-09-30).** The planned Maven coordinates:
+```kotlin
+// build.gradle.kts, commonMain dependencies (planned; not on Maven Central yet)
+implementation("app.revenuedot.purchases:purchases-kmp-core:<version>")
+implementation("app.revenuedot.purchases:purchases-kmp-ui:<version>") // paywalls, optional
+```
+The other published modules are `purchases-kmp-models`, `-mappings`, `-either` and `-result`; `-core` pulls in what it needs. The patch branch `revenuedot/main-patches` is at `3.11.0-SNAPSHOT`. Building it today needs the unpublished Android fork (`app.revenuedot.purchases:purchases`) in a local Maven repository first, so proxy mode is the practical choice until the release.
+
+## Trusted Entitlements are off by default
+- **Stock SDK:** the default is `DISABLED`, which is right for RevenueDot. `INFORMATIONAL` logs every response as a failed check, and **`ENFORCED` would fail every request**.
+- **Fork:** it trusts RevenueDot Cloud's key. A self-hosted server signs with its own key, so keep `DISABLED`, or build the forks with your own public key.
+
+See [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md).
+
+## Check an entitlement and make a purchase
+```kotlin
+import com.revenuecat.purchases.kmp.ktx.awaitCustomerInfo
+import com.revenuecat.purchases.kmp.ktx.awaitOfferings
+import com.revenuecat.purchases.kmp.ktx.awaitPurchase
+
+val customerInfo = Purchases.sharedInstance.awaitCustomerInfo()
+val isPro = customerInfo.entitlements.active.containsKey("pro")
+
+val offerings = Purchases.sharedInstance.awaitOfferings()
+val pkg = offerings.current?.availablePackages?.firstOrNull() ?: return
+val result = Purchases.sharedInstance.awaitPurchase(pkg)
+val nowPro = result.customerInfo.entitlements.active.containsKey("pro")
+```
+`awaitPurchase` throws `PurchasesTransactionException` when the purchase fails or the user cancels; check its `userCancelled`.
+
+## Test Store
+Create a `test_store` app in RevenueDot and pass its `test_...` key on a debug build. The Test Store dialog replaces the store sheet.
+- Native SDKs accept `test_` keys only in debug builds.
+- iOS: servers older than the 2026-09-30 fix could not serve Test Store products to the native iOS SDK. See [iOS](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/ios.md#test-store).
+- Test Store prices show as 0, because the catalog does not store Test Store prices yet.
+
+More: [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
+
+## Migrate from RevenueCat
+```diff
+ fun initPurchases(apiKey: String) {
++    // Point the SDK at your RevenueDot server; nothing else in the app changes. A String, set before configure.
++    Purchases.proxyURL = "https://revenuedot.example.com"
+     Purchases.configure(PurchasesConfiguration(apiKey) {
++        // DISABLED is the KMP default; keep it, RevenueDot does not sign responses with RevenueCat's key.
++        verificationMode = EntitlementVerificationMode.DISABLED
+     })
++    // Once, after this update (from a coroutine): send purchases made while the app talked to RevenueCat.
++    // Purchases.sharedInstance.awaitSyncPurchases()
+ }
+```
+The full order of steps is in [Migrate from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md).
+
+## Examples
+There is no Kotlin Multiplatform example yet. The calls match the [Android](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/android.md) guide.
+
+## Related
+- [All SDKs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md)
+- [Android](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/android.md)
+- [iOS](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/ios.md)
+- [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md)
+
+---
+
+# How do I use RevenueDot with Unity?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/unity.md
+Description: Fill in the Proxy URL field on the Purchases component and set Entitlement Verification Mode to Disabled in the Inspector. Unity has no public SetProxyURL method.
+
+In the Inspector, on the GameObject with the **Purchases** component, set **Proxy URL** to your RevenueDot server and **Entitlement Verification Mode** to **Disabled**. Unity has no public `SetProxyURL` method, so the field is the only way to set the proxy. The component applies it before it configures the SDK, also when you configure from code.
+
+## Use the RevenueCat SDK you already ship (proxy mode)
+| Inspector field | Before | After |
+|---|---|---|
+| Proxy URL (under **Advanced**) | empty | `https://revenuedot.example.com` |
+| Entitlement Verification Mode | Informational | Disabled |
+| Revenue Cat API Key Apple / Google | your RevenueCat keys | the `appl_` and `goog_` keys from RevenueDot, or the RevenueCat keys if the [importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md) kept them |
+
+If you configure at runtime (**Use Runtime Setup** checked), the Proxy URL field still applies: `Purchases.Start()` sets it before it checks that box. The field's tooltip says otherwise, but the code applies it.
+```csharp
+using UnityEngine;
+
+public class Store : MonoBehaviour
+{
+    void Start()
+    {
+        // Point the SDK at your RevenueDot server; nothing else in the app changes.
+        // (The proxy URL comes from the Proxy URL field on this Purchases component.)
+        var purchases = GetComponent<Purchases>();
+        purchases.Configure(Purchases.PurchasesConfiguration.Builder.Init("appl_...")
+            // The default (Informational) logs every RevenueDot response as a failed signature check.
+            .SetEntitlementVerificationMode(Purchases.EntitlementVerificationMode.Disabled)
+            .Build());
+    }
+}
+```
+
+**After you migrate from RevenueCat, sync once** on the first launch of the update, so current subscribers keep access:
+```csharp
+// Once, after this update: send purchases made while the app talked to RevenueCat.
+GetComponent<Purchases>().SyncPurchases();
+```
+
+## Use the RevenueDot fork
+The fork is [github.com/revenuedot/purchases-unity](https://github.com/revenuedot/purchases-unity). C# namespaces and assembly names stay the same, so `using RevenueCat;` keeps working. Its native dependencies are RevenueDot's [hybrid common](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/hybrid-common.md) builds, pulled in by the External Dependency Manager (EDM4U).
+
+**It is not published yet (2026-09-30).** The planned install is from OpenUPM:
+```bash
+openupm add com.revenuedot.purchases-unity
+openupm add com.revenuedot.purchases-ui-unity   # paywalls, optional
+```
+The patch branch `revenuedot/main-patches` is at version 9.11.1. It cannot build a working app yet, because its native dependencies (`RevenueDotPurchasesHybridCommon` 19.4.1 and `app.revenuedot.purchases:purchases-hybrid-common:19.4.1`) are not published. Use proxy mode until then.
+
+## Trusted Entitlements
+- **Stock SDK:** the Inspector offers **Disabled** and **Informational**, and the default is Informational. It logs every RevenueDot response as a failed check but still grants access. Choose **Disabled**.
+- **Fork:** it trusts RevenueDot Cloud's key. A self-hosted server signs with its own key, so keep Disabled, or build the forks with your own public key.
+
+See [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md).
+
+## Check an entitlement and make a purchase
+```csharp
+var purchases = GetComponent<Purchases>();
+
+purchases.GetCustomerInfo((customerInfo, error) =>
+{
+    if (error != null) return;
+    bool isPro = customerInfo.Entitlements.Active.ContainsKey("pro");
+});
+
+purchases.GetOfferings((offerings, error) =>
+{
+    if (error != null || offerings.Current == null) return;
+    var package = offerings.Current.AvailablePackages[0];
+    purchases.PurchasePackage(package, result =>
+    {
+        if (result.UserCancelled || result.Error != null) return;
+        bool nowPro = result.CustomerInfo.Entitlements.Active.ContainsKey("pro");
+    });
+});
+```
+
+## Test Store
+Create a `test_store` app in RevenueDot and use its `test_...` key.
+- Purchases only run on an iOS or Android device or simulator. In the Unity Editor the SDK uses a no-op wrapper and makes no requests.
+- Native SDKs accept `test_` keys only in debug builds.
+- iOS: servers older than the 2026-09-30 fix could not serve Test Store products to the native iOS SDK. See [iOS](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/ios.md#test-store).
+- Test Store prices show as 0, because the catalog does not store Test Store prices yet.
+
+More: [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
+
+## Migrate from RevenueCat
+In the Inspector:
+
+| Field | Before | After |
+|---|---|---|
+| Proxy URL | (empty) | `https://revenuedot.example.com` |
+| Entitlement Verification Mode | Informational | Disabled |
+
+```diff
+ var purchases = GetComponent<Purchases>();
+-purchases.Configure(Purchases.PurchasesConfiguration.Builder.Init("appl_...").Build());
++purchases.Configure(Purchases.PurchasesConfiguration.Builder.Init("appl_...")
++    .SetEntitlementVerificationMode(Purchases.EntitlementVerificationMode.Disabled)
++    .Build());
++// Once, after this update: send purchases made while the app talked to RevenueCat.
++purchases.SyncPurchases();
+```
+The full order of steps is in [Migrate from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md).
+
+## Examples
+There is no Unity example yet.
+
+## Related
+- [All SDKs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md)
+- [Hybrid common](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/hybrid-common.md)
+- [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md)
+- [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md)
+
+---
+
+# How do I use RevenueDot with Cordova?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/cordova.md
+Description: Call Purchases.setProxyURL before configureWith. Cordova has no option to turn off signature checks, so it logs a verification failure for every response and still grants access.
+
+Call `Purchases.setProxyURL("https://revenuedot.example.com")` before `Purchases.configureWith`. **The Cordova plugin has no option to turn off signature checks**, so the native SDKs log "failed verification" for every RevenueDot response. Access is still granted, because the native default mode is informational.
+
+## Use the RevenueCat SDK you already ship (proxy mode)
+```js
+document.addEventListener("deviceready", () => {
+  // Point the SDK at your RevenueDot server; nothing else in the app changes.
+  Purchases.setProxyURL("https://revenuedot.example.com");
+  Purchases.configureWith({
+    apiKey: device.platform === "iOS" ? "appl_..." : "goog_...",
+  });
+});
+```
+- `setProxyURL` returns nothing. Call it before `configureWith`.
+- `device.platform` comes from `cordova-plugin-device`.
+- Use each app's public key from RevenueDot, or your old RevenueCat keys if the [importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md) kept them. See [Which key goes where](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md#which-key-goes-where).
+
+**After you migrate from RevenueCat, sync once** on the first launch of the update, so current subscribers keep access:
+```js
+// Once, after this update: send purchases made while the app talked to RevenueCat.
+Purchases.syncPurchases();
+```
+
+## Use the RevenueDot fork
+The fork is [github.com/revenuedot/cordova-plugin-purchases](https://github.com/revenuedot/cordova-plugin-purchases). The plugin id stays `cordova-plugin-purchases` and the global stays `Purchases`, so `config.xml` and your code do not change. Because it trusts RevenueDot's signing key, the verification log noise goes away when your server signs with that key.
+
+**It is not published yet (2026-09-30).** The planned install:
+```bash
+cordova plugin add @revenuedot/cordova-plugin-purchases
+```
+The patch branch `revenuedot/main-patches` is at version 8.2.3. It cannot be installed from git yet, because its native dependencies (`RevenueDotPurchasesHybridCommon` 19.4.1 and `app.revenuedot.purchases:purchases-hybrid-common:19.4.1`) are not published. Use proxy mode until then.
+
+## Trusted Entitlements
+- **Stock plugin:** `configureWith` takes no verification mode, so the native default, informational, applies. Every RevenueDot response is logged as a failed check, and access is still granted. You cannot turn this off from JavaScript.
+- **Fork:** it trusts RevenueDot Cloud's key. A self-hosted server signs with its own key, so the log noise stays unless you build the forks with your own public key.
+
+See [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md).
+
+## Check an entitlement and make a purchase
+The plugin uses callbacks.
+```js
+Purchases.getCustomerInfo(
+  (customerInfo) => {
+    const isPro = customerInfo.entitlements.active["pro"] !== undefined;
+  },
+  (error) => console.error(error)
+);
+
+Purchases.getOfferings(
+  (offerings) => {
+    const aPackage = offerings.current && offerings.current.availablePackages[0];
+    if (!aPackage) return;
+    Purchases.purchasePackage(
+      aPackage,
+      ({ customerInfo }) => {
+        const nowPro = customerInfo.entitlements.active["pro"] !== undefined;
+      },
+      ({ error, userCancelled }) => { if (!userCancelled) console.error(error); }
+    );
+  },
+  (error) => console.error(error)
+);
+```
+
+## Test Store
+Create a `test_store` app in RevenueDot and use its `test_...` key on a debug build. The Test Store dialog replaces the store sheet.
+- Native SDKs accept `test_` keys only in debug builds.
+- iOS: servers older than the 2026-09-30 fix could not serve Test Store products to the native iOS SDK. See [iOS](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/ios.md#test-store).
+- Test Store prices show as 0, because the catalog does not store Test Store prices yet.
+
+More: [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
+
+## Migrate from RevenueCat
+```diff
+ document.addEventListener("deviceready", () => {
++  // Point the SDK at your RevenueDot server; nothing else in the app changes. Call it before configure.
++  Purchases.setProxyURL("https://revenuedot.example.com");
+   Purchases.configureWith({ apiKey: device.platform === "iOS" ? "appl_..." : "goog_..." });
++  // Once, after this update: send purchases made while the app talked to RevenueCat.
++  Purchases.syncPurchases();
+ });
+```
+The full order of steps is in [Migrate from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md).
+
+## Examples
+There is no Cordova example yet.
+
+## Related
+- [All SDKs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md)
+- [Hybrid common](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/hybrid-common.md)
+- [Signature verification failed](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/signature-verification-failed.md)
+- [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md)
+
+---
+
+# What is purchases-hybrid-common, and do I need to install it?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/hybrid-common.md
+Description: purchases-hybrid-common is the shared native and TypeScript layer under the React Native, Flutter, Capacitor, Unity and Cordova SDKs. App developers never install it directly; the wrapper pulls it in.
+
+`purchases-hybrid-common` is the shared layer that the cross-platform SDKs (React Native, Flutter, Capacitor, Unity and Cordova) sit on. It turns their calls into calls on the native iOS and Android SDKs. **You never install it yourself**: your wrapper depends on it, and setting the proxy URL and verification mode in the wrapper is all you need.
+
+## What it contains
+| Part | What it does | RevenueDot fork name (planned) | Keeps the name |
+|---|---|---|---|
+| iOS layer | Swift bridge over the iOS SDK | pods `RevenueDotPurchasesHybridCommon`, `RevenueDotPurchasesHybridCommonUI` | modules `PurchasesHybridCommon`, `PurchasesHybridCommonUI` |
+| Android layer | Kotlin bridge over the Android SDK | Maven `app.revenuedot.purchases:purchases-hybrid-common` (and `-ui`) | Kotlin packages |
+| TypeScript types | Shared types and enums such as `ENTITLEMENT_VERIFICATION_MODE` | npm `@revenuedot/purchases-typescript-internal` and `-esm` | installed through npm aliases, so imports stay `@revenuecat/...` |
+| Web mappings | Runs purchases-js in browser mode (Expo Go, React Native web, Flutter web) | npm `@revenuedot/purchases-js-hybrid-mappings` | installed through an npm alias |
+
+The fork is [github.com/revenuedot/purchases-hybrid-common](https://github.com/revenuedot/purchases-hybrid-common), branch `revenuedot/main-patches`, version 19.4.1.
+
+## Which wrappers use it
+| Wrapper | Native layer | TypeScript or web packages | Fork pin |
+|---|---|---|---|
+| [React Native](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/react-native.md) | Yes | `purchases-typescript-internal`, `purchases-js-hybrid-mappings` | 19.4.1 |
+| [Flutter](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/flutter.md) | Yes | A copy of the web mappings for Flutter web | 19.4.1 |
+| [Capacitor](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/capacitor.md) | Yes | `purchases-typescript-internal-esm` | 19.4.1 |
+| [Unity](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/unity.md) | Yes, through EDM4U | none | 19.4.1 |
+| [Cordova](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/cordova.md) | Yes | none | 19.4.1 |
+
+[Kotlin Multiplatform](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/kotlin-multiplatform.md) does not use it: it builds on the iOS and Android SDKs directly. The native [iOS](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/ios.md), [Android](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/android.md) and [web](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/web.md) SDKs do not use it either.
+
+## How the forks fit together
+The RevenueDot forks pin each other, so a wrapper fork gets the RevenueDot builds all the way down:
+- The hybrid-common fork depends on RevenueDot's iOS fork (`RevenueDotPurchases` 5.91.0) and Android fork (`app.revenuedot.purchases:purchases` 10.23.3).
+- The web mappings depend on RevenueDot's purchases-js fork through an npm alias.
+- Every wrapper fork depends on hybrid-common 19.4.1.
+
+That chain is why the wrapper forks cannot be used before release: nothing in it is on CocoaPods, Maven Central or npm yet (2026-09-30). Publishing runs in dependency order: iOS and Android first, then hybrid-common, then purchases-js and the web mappings, then the wrappers.
+
+## What it means for proxy mode
+- You do nothing here. The wrapper's `setProxyURL` and verification option pass through hybrid-common to the native SDK.
+- With the stock wrappers, hybrid-common is RevenueCat's build, which trusts RevenueCat's signing key. That is why you turn verification off. See [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md).
+
+## Related
+- [All SDKs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md)
+- [SDK changes when you migrate](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/sdk-changes.md)
+- [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md)
