@@ -14,16 +14,19 @@ In the Inspector, on the GameObject with the **Purchases** component, set **Prox
 | Entitlement Verification Mode | Informational | Disabled |
 | Revenue Cat API Key Apple / Google | your RevenueCat keys | the `appl_` and `goog_` keys from RevenueDot, or the RevenueCat keys if the [importer](../migrate/importer.md) kept them |
 
-If you configure at runtime (**Use Runtime Setup** checked), the Proxy URL field still applies: `Purchases.Start()` sets it before it checks that box. The field's tooltip says otherwise, but the code applies it.
+If you configure at runtime (**Use Runtime Setup** checked), the Proxy URL field still applies: `Purchases.Start()` sets it before it checks that box. The field's tooltip says otherwise, but the code applies it. Your script must run after `Purchases.Start()`, which also creates the native wrapper; calling `Configure` before it throws a `NullReferenceException`. `[DefaultExecutionOrder(100)]` makes Unity call your `Start()` after it.
 ```csharp
 using UnityEngine;
 
+// Runs after Purchases.Start(), which creates the native wrapper and applies the Proxy URL field.
+[DefaultExecutionOrder(100)]
+[RequireComponent(typeof(Purchases))]
 public class Store : MonoBehaviour
 {
     void Start()
     {
-        // Point the SDK at your RevenueDot server; nothing else in the app changes.
-        // (The proxy URL comes from the Proxy URL field on this Purchases component.)
+        // Needs "Use Runtime Setup" checked on the Purchases component.
+        // The proxy URL comes from the Proxy URL field on that component.
         var purchases = GetComponent<Purchases>();
         purchases.Configure(Purchases.PurchasesConfiguration.Builder.Init("appl_...")
             // The default (Informational) logs every RevenueDot response as a failed signature check.
