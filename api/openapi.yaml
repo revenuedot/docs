@@ -2671,9 +2671,10 @@ paths:
               type: string
               enum:
                 - items.app
+                - items.indicative_price
           style: form
           explode: true
-          description: "`items.app` embeds each product's app."
+          description: "`items.app` embeds each product's app. `items.indicative_price` adds each product's Test Store price."
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/StartingAfter"
       responses:
@@ -2718,12 +2719,23 @@ paths:
       tags:
         - Products
       summary: Create a product
-      description: "`store_identifier` is the store's product id. For Google Play subscriptions use `subscriptionId:basePlanId`. Set `subscription.duration` (ISO 8601, for example P1M): the Test Store uses it as the period, and MRR uses it for every store."
+      description: "`store_identifier` is the store's product id. For Google Play subscriptions use `subscriptionId:basePlanId`. Set `subscription.duration` (ISO 8601, for example P1M): the Test Store uses it as the period, and MRR uses it for every store. `test_store_price` sets what the SDK shows for a Test Store product."
       security:
         - secretApiKey: []
         - dashboardSession: []
       parameters:
         - $ref: "#/components/parameters/ProjectId"
+        - name: expand
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - indicative_price
+          style: form
+          explode: true
+          description: "`indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price)."
       requestBody:
         required: true
         content:
@@ -2768,6 +2780,21 @@ paths:
                         - string
                         - "null"
                       description: ISO 8601 period such as P1W, P1M, P1Y or P3D.
+                test_store_price:
+                  type:
+                    - object
+                    - "null"
+                  required:
+                    - amount_micros
+                    - currency
+                  properties:
+                    amount_micros:
+                      type: integer
+                      description: "Price in micros: 9.99 is 9990000."
+                    currency:
+                      type: string
+                      description: ISO 4217 code such as USD or EUR.
+                  description: RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`.
               required:
                 - store_identifier
                 - app_id
@@ -2837,9 +2864,10 @@ paths:
               type: string
               enum:
                 - app
+                - indicative_price
           style: form
           explode: true
-          description: "`app` embeds the app."
+          description: "`app` embeds the app. `indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price)."
       responses:
         "200":
           description: The product.
@@ -2874,7 +2902,7 @@ paths:
       tags:
         - Products
       summary: Update a product
-      description: RevenueDot also lets you correct `type` and `subscription.duration` (null clears it).
+      description: RevenueDot also lets you correct `type` and `subscription.duration` (null clears it), and set or clear `test_store_price`.
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -2886,6 +2914,18 @@ paths:
           schema:
             type: string
           description: Product id.
+        - name: expand
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - app
+                - indicative_price
+          style: form
+          explode: true
+          description: "`indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price)."
       requestBody:
         required: true
         content:
@@ -2910,8 +2950,26 @@ paths:
                       type:
                         - string
                         - "null"
+                test_store_price:
+                  type:
+                    - object
+                    - "null"
+                  required:
+                    - amount_micros
+                    - currency
+                  properties:
+                    amount_micros:
+                      type: integer
+                      description: "Price in micros: 9.99 is 9990000."
+                    currency:
+                      type: string
+                      description: ISO 4217 code such as USD or EUR.
+                  description: RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`.
             example:
               display_name: Pro (monthly)
+              test_store_price:
+                amount_micros: 9990000
+                currency: USD
       responses:
         "200":
           description: The product.
@@ -5942,6 +6000,7 @@ paths:
       tags:
         - Webhook integrations
       summary: Update a webhook
+      description: "`enabled` is a RevenueDot extension: false pauses deliveries without deleting the webhook. Events recorded while it is off are not sent; queued retries resume when it is turned on. Read it with `GET /v2/projects/{project_id}/webhooks`."
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -5980,6 +6039,11 @@ paths:
                   type:
                     - string
                     - "null"
+                enabled:
+                  type: boolean
+                  description: RevenueDot extension. False pauses deliveries.
+            example:
+              enabled: false
       responses:
         "200":
           description: The webhook.
@@ -6872,7 +6936,7 @@ paths:
       tags:
         - Webhook deliveries
       summary: Send a TEST event to one webhook
-      description: Queues a purchase-shaped TEST event, signed and retried like any delivery. The webhook's filters do not apply.
+      description: Queues a purchase-shaped TEST event, signed and retried like any delivery. The webhook's filters do not apply. A paused webhook (`enabled` false) answers 422.
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -6897,9 +6961,61 @@ paths:
           $ref: "#/components/responses/V2Error403"
         "404":
           $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
       x-source: routes/v2/setup.ts
       x-scopes:
         - project_configuration:integrations:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/webhooks:
+    get:
+      operationId: listWebhookStates
+      tags:
+        - Webhook deliveries
+      summary: Whether each webhook is enabled
+      description: RevenueCat's webhook object has no `enabled` field, so it is read here. Set it with `POST .../integrations/webhooks/{id}`.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: A page of results.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/WebhookState"
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/extensions.ts
+      x-scopes:
+        - project_configuration:integrations:read
       x-revenuedot-extension: true
   /v2/projects/{project_id}/webhooks/{webhook_id}/deliveries:
     get:
@@ -11780,6 +11896,11 @@ components:
             - "null"
         app:
           $ref: "#/components/schemas/App"
+        indicative_price:
+          oneOf:
+            - $ref: "#/components/schemas/IndicativePrice"
+            - type: "null"
+          description: "With `expand=indicative_price`: the Test Store price, or null."
       required:
         - object
         - id
@@ -11789,6 +11910,41 @@ components:
         - created_at
         - app_id
         - display_name
+    IndicativePrice:
+      type: object
+      properties:
+        object:
+          type: string
+          const: indicative_price
+        currency:
+          type: string
+          description: ISO 4217 code.
+        country:
+          type: "null"
+        amount_micros:
+          type: integer
+          description: "Price in micros: 9.99 is 9990000."
+      required:
+        - object
+        - currency
+        - country
+        - amount_micros
+    WebhookState:
+      type: object
+      properties:
+        object:
+          type: string
+          const: webhook_state
+        id:
+          type: string
+          description: Webhook id (wh_...).
+        enabled:
+          type: boolean
+          description: False while deliveries are paused.
+      required:
+        - object
+        - id
+        - enabled
     Entitlement:
       type: object
       properties:
@@ -12215,8 +12371,10 @@ components:
         total_revenue_in_usd:
           $ref: "#/components/schemas/MonetaryAmount"
         presented_offering_id:
-          type: "null"
-          description: Always null today; webhooks carry the offering.
+          type:
+            - string
+            - "null"
+          description: Offering the purchase was made from (its id, or the identifier the SDK sent when no such offering exists).
         entitlements:
           type: object
           required:
@@ -12298,7 +12456,10 @@ components:
             - owned
             - refunded
         presented_offering_id:
-          type: "null"
+          type:
+            - string
+            - "null"
+          description: Offering the purchase was made from (its id, or the identifier the SDK sent when no such offering exists).
         entitlements:
           type: object
           required:

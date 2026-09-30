@@ -346,7 +346,7 @@ Store products.
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `app_id` | string | no | Only this app's products. |
-| `expand` | array of `items.app` | no | `items.app` embeds each product's app. |
+| `expand` | array of `items.app`, `items.indicative_price` | no | `items.app` embeds each product's app. `items.indicative_price` adds each product's Test Store price. |
 | `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
 | `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
 
@@ -367,13 +367,19 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products" -H "Authorization: Be
 
 `POST /v2/projects/{project_id}/products` · Auth: secret key or dashboard session · Permissions: `project_configuration:products:read_write`
 
-`store_identifier` is the store's product id. For Google Play subscriptions use `subscriptionId:basePlanId`. Set `subscription.duration` (ISO 8601, for example P1M): the Test Store uses it as the period, and MRR uses it for every store.
+`store_identifier` is the store's product id. For Google Play subscriptions use `subscriptionId:basePlanId`. Set `subscription.duration` (ISO 8601, for example P1M): the Test Store uses it as the period, and MRR uses it for every store. `test_store_price` sets what the SDK shows for a Test Store product.
 
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `expand` | array of `indicative_price` | no | `indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price). |
 
 **Request body** (`application/json`)
 
@@ -387,6 +393,9 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products" -H "Authorization: Be
 | `price_identifier` | string or null | no | Accepted and ignored. |
 | `subscription` | object or null | no |  |
 | `subscription.duration` | string or null | no | ISO 8601 period such as P1W, P1M, P1Y or P3D. |
+| `test_store_price` | object or null | no | RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`. |
+| `test_store_price.amount_micros` | integer | yes | Price in micros: 9.99 is 9990000. |
+| `test_store_price.currency` | string | yes | ISO 4217 code such as USD or EUR. |
 
 **Example request**
 
@@ -439,7 +448,7 @@ Example 201 response:
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `expand` | array of `app` | no | `app` embeds the app. |
+| `expand` | array of `app`, `indicative_price` | no | `app` embeds the app. `indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price). |
 
 **Example request**
 
@@ -478,7 +487,7 @@ Example 200 response:
 
 `POST /v2/projects/{project_id}/products/{product_id}` · Auth: secret key or dashboard session · Permissions: `project_configuration:products:read_write`
 
-RevenueDot also lets you correct `type` and `subscription.duration` (null clears it).
+RevenueDot also lets you correct `type` and `subscription.duration` (null clears it), and set or clear `test_store_price`.
 
 **Path parameters**
 
@@ -486,6 +495,12 @@ RevenueDot also lets you correct `type` and `subscription.duration` (null clears
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
 | `product_id` | string | yes | Product id. |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `expand` | array of `app`, `indicative_price` | no | `indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price). |
 
 **Request body** (`application/json`)
 
@@ -495,12 +510,15 @@ RevenueDot also lets you correct `type` and `subscription.duration` (null clears
 | `type` | `subscription`, `one_time`, `consumable`, `non_consumable`, `non_renewing_subscription` | no |  |
 | `subscription` | object | no |  |
 | `subscription.duration` | string or null | no |  |
+| `test_store_price` | object or null | no | RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`. |
+| `test_store_price.amount_micros` | integer | yes | Price in micros: 9.99 is 9990000. |
+| `test_store_price.currency` | string | yes | ISO 4217 code such as USD or EUR. |
 
 **Example request**
 
 ```bash
 curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products/$PRODUCT_ID" -H "Authorization: Bearer $SECRET_KEY" \
-  -H "Content-Type: application/json" -d '{"display_name":"Pro (monthly)"}'
+  -H "Content-Type: application/json" -d '{"display_name":"Pro (monthly)","test_store_price":{"amount_micros":9990000,"currency":"USD"}}'
 ```
 
 **Responses**
@@ -2558,6 +2576,8 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/webhooks/$WEBHOOK_
 
 `POST /v2/projects/{project_id}/integrations/webhooks/{webhook_integration_id}` · Auth: secret key or dashboard session · Permissions: `project_configuration:integrations:read_write`
 
+`enabled` is a RevenueDot extension: false pauses deliveries without deleting the webhook. Events recorded while it is off are not sent; queued retries resume when it is turned on. Read it with `GET /v2/projects/{project_id}/webhooks`.
+
 **Path parameters**
 
 | Name | Type | Required | Description |
@@ -2575,11 +2595,13 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/webhooks/$WEBHOOK_
 | `environment` | string or null | no |  |
 | `event_types` | array of string | no |  |
 | `app_id` | string or null | no |  |
+| `enabled` | boolean | no | RevenueDot extension. False pauses deliveries. |
 
 **Example request**
 
 ```bash
-curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/webhooks/$WEBHOOK_INTEGRATION_ID" -H "Authorization: Bearer $SECRET_KEY"
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/webhooks/$WEBHOOK_INTEGRATION_ID" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"enabled":false}'
 ```
 
 **Responses**
@@ -2798,6 +2820,15 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `products.next_page` | string or null | yes | Path of the next page, or null on the last page. |
 | `products.url` | string | yes | Path of this list. |
 
+### IndicativePrice
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"indicative_price"` | yes |  |
+| `currency` | string | yes | ISO 4217 code. |
+| `country` | null | yes |  |
+| `amount_micros` | integer | yes | Price in micros: 9.99 is 9990000. |
+
 ### MonetaryAmount
 
 | Field | Type | Required | Description |
@@ -2887,6 +2918,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `app_id` | string | yes |  |
 | `display_name` | string or null | yes |  |
 | `app` | App | no | Only the object for the app's own `type` is present. Store secrets are never returned. |
+| `indicative_price` | IndicativePrice or null | no | With `expand=indicative_price`: the Test Store price, or null. |
 
 ### Project
 
@@ -2923,7 +2955,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `revenue_in_usd` | MonetaryAmount | no |  |
 | `quantity` | integer | no |  |
 | `status` | `owned`, `refunded` | yes |  |
-| `presented_offering_id` | null | no |  |
+| `presented_offering_id` | string or null | no | Offering the purchase was made from (its id, or the identifier the SDK sent when no such offering exists). |
 | `entitlements` | object | no |  |
 | `entitlements.object` | `"list"` | yes |  |
 | `entitlements.items` | array of Entitlement | yes |  |
@@ -2953,7 +2985,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `auto_renewal_status` | `will_renew`, `will_not_renew`, `will_change_product`, `will_pause` | yes |  |
 | `status` | `trialing`, `active`, `in_grace_period`, `in_billing_retry`, `paused`, `expired` | yes |  |
 | `total_revenue_in_usd` | MonetaryAmount | no |  |
-| `presented_offering_id` | null | no | Always null today; webhooks carry the offering. |
+| `presented_offering_id` | string or null | no | Offering the purchase was made from (its id, or the identifier the SDK sent when no such offering exists). |
 | `entitlements` | object | no |  |
 | `entitlements.object` | `"list"` | yes |  |
 | `entitlements.items` | array of Entitlement | yes |  |

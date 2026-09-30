@@ -24,6 +24,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/webhooks" 
 - `environment`: `production`, `sandbox`, or `null` for both.
 - `event_types`: lower-case types such as `["initial_purchase","renewal"]`; empty means all.
 - `app_id`: only one app's events; `null` for all apps.
+- **Pause without deleting:** send `{"enabled":false}` to `POST /v2/projects/{project_id}/integrations/webhooks/{id}`, or use the Deliveries switch on the webhook's dashboard page. Events recorded while it is paused are not sent; queued retries resume when you turn it back on. `enabled` is a RevenueDot addition; read it with `GET /v2/projects/{project_id}/webhooks`.
 
 ## 2. What a delivery looks like
 ```http

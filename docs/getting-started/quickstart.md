@@ -118,7 +118,7 @@ Purchases.configure({ apiKey: "test_..." });
 
 Per-platform details, including Flutter, Capacitor, Kotlin Multiplatform, Unity and Cordova, are in the [SDK guides](../sdks/README.md). To use the RevenueDot fork packages instead, see [How do I connect my app?](connect-your-app.md).
 
-Test Store prices are always 0 today, so the paywall shows free products. Real prices come from the App Store and Google Play. See [Known issues](../help/known-issues.md).
+Give each Test Store product a price in the dashboard (Product catalog, Edit product, Test Store price) so the paywall shows it; a product without one shows 0. Real prices come from the App Store and Google Play. See [Test Store](../guides/test-store.md).
 
 ## Next steps
 - Receive the purchase on your backend: [Webhooks](../guides/webhooks.md).

@@ -67,7 +67,7 @@ if (aPackage) {
 Create a `test_store` app in RevenueDot and use its `test_...` key on a debug build. The Test Store dialog replaces the store sheet.
 - Native builds accept `test_` keys only in debug builds. Ship with the `appl_` and `goog_` keys.
 - iOS: servers older than the 2026-09-30 fix could not serve Test Store products to the native iOS SDK. See [iOS](ios.md#test-store).
-- Test Store prices show as 0, because the catalog does not store Test Store prices yet.
+- Test Store prices come from each product's Test Store price. Set it in the dashboard (Product catalog, Edit product) or with `test_store_price` on `POST /v2/projects/{project_id}/products`; a product without one shows 0.
 
 More: [Test Store](../guides/test-store.md).
 

@@ -85,7 +85,7 @@ The purchase goes to `POST /v1/receipts`. RevenueDot verifies it with Apple, whi
 Create a `test_store` app in RevenueDot and pass its `test_...` key to `configure`. The SDK then shows a Test Store alert instead of the App Store sheet.
 - **Test Store keys only work in Debug builds.** In a Release build the SDK shows a "Wrong API Key" alert and stops the app on purpose.
 - **Known issue on older servers:** the native iOS SDK could not load Test Store products from RevenueDot and reported "No base price found for product". The server sent `cycle_count: null` in `GET /rcbilling/v1/subscribers/{id}/products`. The server's `main` branch fixed this on 2026-09-30. If you see the error, update your server. See [Known issues](../help/known-issues.md).
-- Test Store prices show as 0, because the catalog does not store Test Store prices yet.
+- Test Store prices come from each product's Test Store price. Set it in the dashboard (Product catalog, Edit product) or with `test_store_price` on `POST /v2/projects/{project_id}/products`; a product without one shows 0.
 - To test with Apple's sandbox or Xcode's StoreKit testing instead, see [Sandbox testing](../guides/sandbox-testing.md).
 
 More: [Test Store](../guides/test-store.md).

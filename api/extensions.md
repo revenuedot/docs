@@ -11,13 +11,13 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (32)
+## Operations on this page (33)
 
 - **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects)
 - **Project settings**: [Get a project with its settings](#get-a-project-with-its-settings), [Update a project's name and transfer behaviour](#update-a-projects-name-and-transfer-behaviour), [Delete a project and everything in it](#delete-a-project-and-everything-in-it)
 - **Store setup**: [Store setup state of an app](#store-setup-state-of-an-app), [Check store credentials with Apple or Google](#check-store-credentials-with-apple-or-google), [Extend every active App Store subscriber of a product](#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](#status-of-a-mass-extension), [Setup health](#setup-health)
 - **API keys**: [List secret keys](#list-secret-keys), [Create a secret key](#create-a-secret-key), [Delete a secret key](#delete-a-secret-key)
-- **Webhook deliveries**: [Send a TEST event to one webhook](#send-a-test-event-to-one-webhook), [Delivery log of a webhook](#delivery-log-of-a-webhook), [Retry a delivery now](#retry-a-delivery-now)
+- **Webhook deliveries**: [Send a TEST event to one webhook](#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](#whether-each-webhook-is-enabled), [Delivery log of a webhook](#delivery-log-of-a-webhook), [Retry a delivery now](#retry-a-delivery-now)
 - **Event log**: [Event log](#event-log), [Transaction feed](#transaction-feed)
 - **Test Store**: [Simulate a Test Store purchase or lifecycle](#simulate-a-test-store-purchase-or-lifecycle)
 - **Dashboard data**: [Daily history of an overview metric](#daily-history-of-an-overview-metric), [Dashboard rows for customers](#dashboard-rows-for-customers)
@@ -589,7 +589,7 @@ Delivery log, manual retry and test events.
 
 `POST /v2/projects/{project_id}/integrations/webhooks/{webhook_integration_id}/test` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
 
-Queues a purchase-shaped TEST event, signed and retried like any delivery. The webhook's filters do not apply.
+Queues a purchase-shaped TEST event, signed and retried like any delivery. The webhook's filters do not apply. A paused webhook (`enabled` false) answers 422.
 
 **Path parameters**
 
@@ -607,6 +607,32 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/webhooks/$
 **Responses**
 
 - **201**: The queued delivery. Returns [WebhookDelivery](#webhookdelivery).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### Whether each webhook is enabled
+
+`GET /v2/projects/{project_id}/webhooks` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read`
+
+RevenueCat's webhook object has no `enabled` field, so it is read here. Set it with `POST .../integrations/webhooks/{id}`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/webhooks" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: A page of results. Returns a list of [WebhookState](#webhookstate).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
@@ -1404,6 +1430,15 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `needs_token_refresh` | integer | yes | Google Play subscriptions still waiting for their purchase token. |
 | `needs_token_refresh_by_app` | object | yes |  |
 
+### IndicativePrice
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"indicative_price"` | yes |  |
+| `currency` | string | yes | ISO 4217 code. |
+| `country` | null | yes |  |
+| `amount_micros` | integer | yes | Price in micros: 9.99 is 9990000. |
+
 ### MassExtension
 
 | Field | Type | Required | Description |
@@ -1475,6 +1510,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `app_id` | string | yes |  |
 | `display_name` | string or null | yes |  |
 | `app` | App | no | Only the object for the app's own `type` is present. Store secrets are never returned. |
+| `indicative_price` | IndicativePrice or null | no | With `expand=indicative_price`: the Test Store price, or null. |
 
 ### Project
 
@@ -1524,7 +1560,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `revenue_in_usd` | MonetaryAmount | no |  |
 | `quantity` | integer | no |  |
 | `status` | `owned`, `refunded` | yes |  |
-| `presented_offering_id` | null | no |  |
+| `presented_offering_id` | string or null | no | Offering the purchase was made from (its id, or the identifier the SDK sent when no such offering exists). |
 | `entitlements` | object | no |  |
 | `entitlements.object` | `"list"` | yes |  |
 | `entitlements.items` | array of Entitlement | yes |  |
@@ -1628,7 +1664,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `auto_renewal_status` | `will_renew`, `will_not_renew`, `will_change_product`, `will_pause` | yes |  |
 | `status` | `trialing`, `active`, `in_grace_period`, `in_billing_retry`, `paused`, `expired` | yes |  |
 | `total_revenue_in_usd` | MonetaryAmount | no |  |
-| `presented_offering_id` | null | no | Always null today; webhooks carry the offering. |
+| `presented_offering_id` | string or null | no | Offering the purchase was made from (its id, or the identifier the SDK sent when no such offering exists). |
 | `entitlements` | object | no |  |
 | `entitlements.object` | `"list"` | yes |  |
 | `entitlements.items` | array of Entitlement | yes |  |
@@ -1699,6 +1735,14 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `response_ms` | integer or null | no | Duration of the last attempt. |
 | `last_error` | string or null | no |  |
 | `created_at` | integer | no | Queued at. Epoch milliseconds. |
+
+### WebhookState
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"webhook_state"` | yes |  |
+| `id` | string | yes | Webhook id (wh_...). |
+| `enabled` | boolean | yes | False while deliveries are paused. |
 
 ## Related
 

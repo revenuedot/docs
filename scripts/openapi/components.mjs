@@ -171,7 +171,12 @@ export const schemas = {
     one_time: obj({ is_consumable: { type: ["boolean", "null"] } }),
     created_at: ms("Creation time."), app_id: str(), display_name: nstr(),
     app: ref("App"),
+    indicative_price: { oneOf: [ref("IndicativePrice"), { type: "null" }], description: "With `expand=indicative_price`: the Test Store price, or null." },
   }, ["object", "id", "store_identifier", "type", "state", "created_at", "app_id", "display_name"]),
+  IndicativePrice: obj({
+    object: { type: "string", const: "indicative_price" }, currency: str("ISO 4217 code."), country: { type: "null" }, amount_micros: int("Price in micros: 9.99 is 9990000."),
+  }, ["object", "currency", "country", "amount_micros"]),
+  WebhookState: obj({ object: { type: "string", const: "webhook_state" }, id: str("Webhook id (wh_...)."), enabled: bool("False while deliveries are paused.") }, ["object", "id", "enabled"]),
   Entitlement: obj({
     object: { type: "string", const: "entitlement" }, id: str("Entitlement id (entl...)."), project_id: str(),
     lookup_key: str("What apps check, for example `pro`."), display_name: str(), created_at: ms("Creation time."), state: en(["active", "inactive"]),
@@ -206,7 +211,7 @@ export const schemas = {
     current_period_starts_at: ms("Start of the current period."), current_period_ends_at: nms("End of the current period."), ends_at: nms("End of access."),
     gives_access: bool(), pending_payment: bool(), auto_renewal_status: en(["will_renew", "will_not_renew", "will_change_product", "will_pause"]),
     status: en(["trialing", "active", "in_grace_period", "in_billing_retry", "paused", "expired"]),
-    total_revenue_in_usd: ref("MonetaryAmount"), presented_offering_id: { type: "null", description: "Always null today; webhooks carry the offering." },
+    total_revenue_in_usd: ref("MonetaryAmount"), presented_offering_id: nstr("Offering the purchase was made from (its id, or the identifier the SDK sent when no such offering exists)."),
     entitlements: embeddedList(ref("Entitlement")), environment: en(["production", "sandbox"]),
     store: str(), store_subscription_identifier: str("Latest store transaction id, order id or token."), ownership: en(["purchased", "family_shared"]),
     country: str("ISO 3166-1 alpha-2, when known."), management_url: { type: "null" },
@@ -214,7 +219,7 @@ export const schemas = {
   Purchase: obj({
     object: { type: "string", const: "purchase" }, id: str(), customer_id: str(), original_customer_id: str(), product_id: str(),
     purchased_at: ms("Purchase time."), revenue_in_usd: ref("MonetaryAmount"), quantity: int(), status: en(["owned", "refunded"]),
-    presented_offering_id: { type: "null" }, entitlements: embeddedList(ref("Entitlement")), environment: en(["production", "sandbox"]),
+    presented_offering_id: nstr("Offering the purchase was made from (its id, or the identifier the SDK sent when no such offering exists)."), entitlements: embeddedList(ref("Entitlement")), environment: en(["production", "sandbox"]),
     store: str(), store_purchase_identifier: str(), ownership: en(["purchased"]), country: str(),
   }, ["object", "id", "customer_id", "product_id", "purchased_at", "status", "environment", "store"]),
   SubscriptionTransaction: obj({

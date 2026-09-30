@@ -83,7 +83,7 @@ The purchase goes to `POST /v1/receipts` with the Google Play purchase token. Re
 ## Test Store
 Create a `test_store` app in RevenueDot and pass its `test_...` key to `configure`. The SDK shows a Test Store dialog instead of Google Play's purchase sheet.
 - **Test Store keys only work in debug builds.** In a release build the SDK shows an error screen and stops the app on purpose. Ship with the `goog_` key.
-- Test Store prices show as 0, because the catalog does not store Test Store prices yet.
+- Test Store prices come from each product's Test Store price. Set it in the dashboard (Product catalog, Edit product) or with `test_store_price` on `POST /v2/projects/{project_id}/products`; a product without one shows 0.
 - For Google Play test tracks and license testers, see [Sandbox testing](../guides/sandbox-testing.md).
 
 More: [Test Store](../guides/test-store.md).

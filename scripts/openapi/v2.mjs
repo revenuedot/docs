@@ -8,6 +8,9 @@ const project = param("ProjectId");
 const page = [param("Limit"), param("StartingAfter")];
 const pathParam = (name, description) => ({ name, in: "path", required: true, schema: str(), description });
 const expand = (values, description) => ({ name: "expand", in: "query", schema: arr(en(values)), style: "form", explode: true, description });
+const testStorePrice = { type: ["object", "null"], required: ["amount_micros", "currency"], properties: { amount_micros: int("Price in micros: 9.99 is 9990000."), currency: str("ISO 4217 code such as USD or EUR.") },
+  description: "RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`." };
+const priceExpand = "`indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price)."
 const E = (...c) => v2Errors(401, 403, ...c);
 const list = (schema, description = "A page of results.", example) => ok(description, listOf(schema), example);
 const del = (object) => ok("Deleted.", ref("Deleted"), { object, id: "…", deleted_at: 1790801342625 });
@@ -89,22 +92,24 @@ RevenueDot extensions in the store object: \`notification_forward_url\` (copy st
   // ---- Products ----------------------------------------------------------------------------------------------------
   [`${P}/products`]: {
     get: op({ id: "listProducts", tag: "Products", summary: "List products", security: SECRET, source: R.products, scopes: ["project_configuration:products:read"],
-      parameters: [project, { name: "app_id", in: "query", schema: str(), description: "Only this app's products." }, expand(["items.app"], "`items.app` embeds each product's app."), ...page],
+      parameters: [project, { name: "app_id", in: "query", schema: str(), description: "Only this app's products." }, expand(["items.app", "items.indicative_price"], "`items.app` embeds each product's app. `items.indicative_price` adds each product's Test Store price."), ...page],
       responses: { 200: list(ref("Product")), ...E(404) } }),
-    post: op({ id: "createProduct", tag: "Products", summary: "Create a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read_write"], parameters: [project],
-      description: "`store_identifier` is the store's product id. For Google Play subscriptions use `subscriptionId:basePlanId`. Set `subscription.duration` (ISO 8601, for example P1M): the Test Store uses it as the period, and MRR uses it for every store.",
+    post: op({ id: "createProduct", tag: "Products", summary: "Create a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read_write"],
+      parameters: [project, expand(["indicative_price"], priceExpand)],
+      description: "`store_identifier` is the store's product id. For Google Play subscriptions use `subscriptionId:basePlanId`. Set `subscription.duration` (ISO 8601, for example P1M): the Test Store uses it as the period, and MRR uses it for every store. `test_store_price` sets what the SDK shows for a Test Store product.",
       requestBody: body(obj({
         store_identifier: str(undefined, { maxLength: 255 }), app_id: str(), type: en(["subscription", "one_time", "consumable", "non_consumable", "non_renewing_subscription"]),
         display_name: nstr(), title: nstr("Alias of display_name."), price_identifier: nstr("Accepted and ignored."),
         subscription: { type: ["object", "null"], properties: { duration: nstr("ISO 8601 period such as P1W, P1M, P1Y or P3D.") } },
+        test_store_price: testStorePrice,
       }, ["store_identifier", "app_id", "type"]), { store_identifier: "pro_monthly", app_id: "appvnrm0a5h", type: "subscription", display_name: "Pro monthly", subscription: { duration: "P1M" } }),
       responses: { 201: ok("The product.", ref("Product"), productExample), ...v2Errors(400, 401, 403, 404, 409) } }),
   },
   [`${P}/products/{product_id}`]: {
-    get: op({ id: "getProduct", tag: "Products", summary: "Get a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read"], parameters: [project, pathParam("product_id", "Product id (prod...)."), expand(["app"], "`app` embeds the app.")], responses: { 200: ok("The product.", ref("Product"), productExample), ...E(404) } }),
-    post: op({ id: "updateProduct", tag: "Products", summary: "Update a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read_write"], parameters: [project, pathParam("product_id", "Product id.")],
-      description: "RevenueDot also lets you correct `type` and `subscription.duration` (null clears it).",
-      requestBody: body(obj({ display_name: str(), type: en(["subscription", "one_time", "consumable", "non_consumable", "non_renewing_subscription"]), subscription: obj({ duration: nstr() }) }), { display_name: "Pro (monthly)" }),
+    get: op({ id: "getProduct", tag: "Products", summary: "Get a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read"], parameters: [project, pathParam("product_id", "Product id (prod...)."), expand(["app", "indicative_price"], `\`app\` embeds the app. ${priceExpand}`)], responses: { 200: ok("The product.", ref("Product"), productExample), ...E(404) } }),
+    post: op({ id: "updateProduct", tag: "Products", summary: "Update a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read_write"], parameters: [project, pathParam("product_id", "Product id."), expand(["app", "indicative_price"], priceExpand)],
+      description: "RevenueDot also lets you correct `type` and `subscription.duration` (null clears it), and set or clear `test_store_price`.",
+      requestBody: body(obj({ display_name: str(), type: en(["subscription", "one_time", "consumable", "non_consumable", "non_renewing_subscription"]), subscription: obj({ duration: nstr() }), test_store_price: testStorePrice }), { display_name: "Pro (monthly)", test_store_price: { amount_micros: 9990000, currency: "USD" } }),
       responses: { 200: ok("The product.", ref("Product")), ...v2Errors(400, 401, 403, 404) } }),
     delete: op({ id: "deleteProduct", tag: "Products", summary: "Delete a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read_write"], parameters: [project, pathParam("product_id", "Product id.")],
       description: "Detaches it from entitlements and packages. Purchase history keeps the store id.", responses: { 200: del("product"), ...E(404) } }),
@@ -301,7 +306,8 @@ RevenueDot extensions in the store object: \`notification_forward_url\` (copy st
   [`${P}/integrations/webhooks/{webhook_integration_id}`]: {
     get: op({ id: "getWebhook", tag: "Webhook integrations", summary: "Get a webhook", security: SECRET, source: R.integrations, scopes: ["project_configuration:integrations:read"], parameters: [project, pathParam("webhook_integration_id", "Webhook id (wh_...).")], responses: { 200: ok("The webhook.", ref("WebhookIntegration")), ...E(404) } }),
     post: op({ id: "updateWebhook", tag: "Webhook integrations", summary: "Update a webhook", security: SECRET, source: R.integrations, scopes: ["project_configuration:integrations:read_write"], parameters: [project, pathParam("webhook_integration_id", "Webhook id.")],
-      requestBody: body(obj({ name: str(), url: str(), authorization_header: nstr(), environment: { type: ["string", "null"] }, event_types: arr(str()), app_id: nstr() })), responses: { 200: ok("The webhook.", ref("WebhookIntegration")), ...v2Errors(400, 401, 403, 404) } }),
+      description: "`enabled` is a RevenueDot extension: false pauses deliveries without deleting the webhook. Events recorded while it is off are not sent; queued retries resume when it is turned on. Read it with `GET /v2/projects/{project_id}/webhooks`.",
+      requestBody: body(obj({ name: str(), url: str(), authorization_header: nstr(), environment: { type: ["string", "null"] }, event_types: arr(str()), app_id: nstr(), enabled: bool("RevenueDot extension. False pauses deliveries.") }), { enabled: false }), responses: { 200: ok("The webhook.", ref("WebhookIntegration")), ...v2Errors(400, 401, 403, 404) } }),
     delete: op({ id: "deleteWebhook", tag: "Webhook integrations", summary: "Delete a webhook", security: SECRET, source: R.integrations, scopes: ["project_configuration:integrations:read_write"], parameters: [project, pathParam("webhook_integration_id", "Webhook id.")], description: "Pending deliveries are deleted with it.", responses: { 200: del("webhook_integration"), ...E(404) } }),
   },
 };
@@ -386,8 +392,13 @@ export const extensionPaths = {
   },
   [`${P}/integrations/webhooks/{webhook_integration_id}/test`]: {
     post: op({ id: "testWebhook", tag: "Webhook deliveries", summary: "Send a TEST event to one webhook", security: SECRET, source: R.setup, extension: true, scopes: ["project_configuration:integrations:read_write"], parameters: [project, pathParam("webhook_integration_id", "Webhook id.")],
-      description: "Queues a purchase-shaped TEST event, signed and retried like any delivery. The webhook's filters do not apply.",
-      responses: { 201: ok("The queued delivery.", ref("WebhookDelivery")), ...E(404) } }),
+      description: "Queues a purchase-shaped TEST event, signed and retried like any delivery. The webhook's filters do not apply. A paused webhook (`enabled` false) answers 422.",
+      responses: { 201: ok("The queued delivery.", ref("WebhookDelivery")), ...v2Errors(401, 403, 404, 422) } }),
+  },
+  [`${P}/webhooks`]: {
+    get: op({ id: "listWebhookStates", tag: "Webhook deliveries", summary: "Whether each webhook is enabled", security: SECRET, source: R.ext, extension: true, scopes: ["project_configuration:integrations:read"], parameters: [project],
+      description: "RevenueCat's webhook object has no `enabled` field, so it is read here. Set it with `POST .../integrations/webhooks/{id}`.",
+      responses: { 200: list(ref("WebhookState")), ...E(404) } }),
   },
   [`${P}/webhooks/{webhook_id}/deliveries`]: {
     get: op({ id: "listWebhookDeliveries", tag: "Webhook deliveries", summary: "Delivery log of a webhook", security: SECRET, source: R.ext, extension: true, scopes: ["project_configuration:integrations:read"],

@@ -19,7 +19,7 @@ curl -s -X POST "$B/products" -H "$H" -H "Content-Type: application/json" \
 Attach the products to your entitlement and offering like any other app's products. The [seed script](https://github.com/revenuedot/examples/blob/main/selfhost/docker-compose/seed.sh) does all of this in one run; see the [Quickstart](../getting-started/quickstart.md).
 
 - **The product's `subscription.duration` is the period.** A `P1M` product expires one month after purchase. Without a duration, one month is used.
-- **Prices are 0.** RevenueDot does not store Test Store prices yet, so the SDK shows free products. The price the SDK posts with the purchase is recorded.
+- **The price is the product's Test Store price.** Set it in the dashboard (Edit product, Test Store price) or with `"test_store_price":{"amount_micros":9990000,"currency":"USD"}` in the create or update call. A product without one shows 0. The price the SDK posts with the purchase is recorded.
 
 ## Buy in the app
 Configure the SDK with the `test_` key and your server as the proxy URL, then call `purchase` as usual. The SDK shows its Test Store dialog; choose the successful purchase. The SDK posts `fetch_token = test_<purchase time in ms>_<id>` to `POST /v1/receipts`, and RevenueDot accepts any token of that form.

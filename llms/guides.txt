@@ -221,6 +221,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/webhooks" 
 - `environment`: `production`, `sandbox`, or `null` for both.
 - `event_types`: lower-case types such as `["initial_purchase","renewal"]`; empty means all.
 - `app_id`: only one app's events; `null` for all apps.
+- **Pause without deleting:** send `{"enabled":false}` to `POST /v2/projects/{project_id}/integrations/webhooks/{id}`, or use the Deliveries switch on the webhook's dashboard page. Events recorded while it is paused are not sent; queued retries resume when you turn it back on. `enabled` is a RevenueDot addition; read it with `GET /v2/projects/{project_id}/webhooks`.
 
 ## 2. What a delivery looks like
 ```http
@@ -442,7 +443,7 @@ curl -s -X POST "$B/products" -H "$H" -H "Content-Type: application/json" \
 Attach the products to your entitlement and offering like any other app's products. The [seed script](https://github.com/revenuedot/examples/blob/main/selfhost/docker-compose/seed.sh) does all of this in one run; see the [Quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md).
 
 - **The product's `subscription.duration` is the period.** A `P1M` product expires one month after purchase. Without a duration, one month is used.
-- **Prices are 0.** RevenueDot does not store Test Store prices yet, so the SDK shows free products. The price the SDK posts with the purchase is recorded.
+- **The price is the product's Test Store price.** Set it in the dashboard (Edit product, Test Store price) or with `"test_store_price":{"amount_micros":9990000,"currency":"USD"}` in the create or update call. A product without one shows 0. The price the SDK posts with the purchase is recorded.
 
 ## Buy in the app
 Configure the SDK with the `test_` key and your server as the proxy URL, then call `purchase` as usual. The SDK shows its Test Store dialog; choose the successful purchase. The SDK posts `fetch_token = test_<purchase time in ms>_<id>` to `POST /v1/receipts`, and RevenueDot accepts any token of that form.

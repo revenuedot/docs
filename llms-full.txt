@@ -188,7 +188,7 @@ Purchases.configure({ apiKey: "test_..." });
 
 Per-platform details, including Flutter, Capacitor, Kotlin Multiplatform, Unity and Cordova, are in the [SDK guides](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md). To use the RevenueDot fork packages instead, see [How do I connect my app?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/connect-your-app.md).
 
-Test Store prices are always 0 today, so the paywall shows free products. Real prices come from the App Store and Google Play. See [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md).
+Give each Test Store product a price in the dashboard (Product catalog, Edit product, Test Store price) so the paywall shows it; a product without one shows 0. Real prices come from the App Store and Google Play. See [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
 
 ## Next steps
 - Receive the purchase on your backend: [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md).
@@ -634,7 +634,7 @@ REST API v2 reports each subscription's `status`, computed from the record (`app
 Store notifications about a purchase RevenueDot has never seen are stored but not applied, unless the app's **Track new purchases from server-to-server notifications** setting is on. The purchase appears when the device posts its receipt.
 
 ## Money in events
-`price` (USD) and `price_in_purchased_currency` carry money only on `INITIAL_PURCHASE`, `RENEWAL`, `NON_RENEWING_PURCHASE`, `REFUND_REVERSED` and refunds (negative). Other events report 0. A free trial start reports 0. **Known gap:** RevenueDot has no exchange rates yet, so a non-USD price is reported as the same number in `price`.
+`price` (USD) and `price_in_purchased_currency` carry money only on `INITIAL_PURCHASE`, `RENEWAL`, `NON_RENEWING_PURCHASE`, `REFUND_REVERSED` and refunds (negative). Other events report 0. A free trial start reports 0. `price` is converted to USD at the ECB reference rate of the purchase date (the last business day before it on weekends and holidays). A currency the ECB does not publish has a null `price`.
 
 ## Related
 - [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md)
@@ -814,7 +814,7 @@ The purchase goes to `POST /v1/receipts`. RevenueDot verifies it with Apple, whi
 Create a `test_store` app in RevenueDot and pass its `test_...` key to `configure`. The SDK then shows a Test Store alert instead of the App Store sheet.
 - **Test Store keys only work in Debug builds.** In a Release build the SDK shows a "Wrong API Key" alert and stops the app on purpose.
 - **Known issue on older servers:** the native iOS SDK could not load Test Store products from RevenueDot and reported "No base price found for product". The server sent `cycle_count: null` in `GET /rcbilling/v1/subscribers/{id}/products`. The server's `main` branch fixed this on 2026-09-30. If you see the error, update your server. See [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md).
-- Test Store prices show as 0, because the catalog does not store Test Store prices yet.
+- Test Store prices come from each product's Test Store price. Set it in the dashboard (Product catalog, Edit product) or with `test_store_price` on `POST /v2/projects/{project_id}/products`; a product without one shows 0.
 - To test with Apple's sandbox or Xcode's StoreKit testing instead, see [Sandbox testing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/sandbox-testing.md).
 
 More: [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
@@ -932,7 +932,7 @@ The purchase goes to `POST /v1/receipts` with the Google Play purchase token. Re
 ## Test Store
 Create a `test_store` app in RevenueDot and pass its `test_...` key to `configure`. The SDK shows a Test Store dialog instead of Google Play's purchase sheet.
 - **Test Store keys only work in debug builds.** In a release build the SDK shows an error screen and stops the app on purpose. Ship with the `goog_` key.
-- Test Store prices show as 0, because the catalog does not store Test Store prices yet.
+- Test Store prices come from each product's Test Store price. Set it in the dashboard (Product catalog, Edit product) or with `test_store_price` on `POST /v2/projects/{project_id}/products`; a product without one shows 0.
 - For Google Play test tracks and license testers, see [Sandbox testing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/sandbox-testing.md).
 
 More: [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
@@ -1039,7 +1039,7 @@ Create a `test_store` app in RevenueDot and use its `test_...` key.
 - **Expo Go and web:** `react-native-purchases` runs in browser mode there and only accepts `test_` and `rcb_` keys. RevenueDot accepts only `test_` of those two today. Tap a package, then **Test valid purchase** in the dialog.
 - **Native iOS builds:** see the iOS Test Store note in [iOS](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/ios.md#test-store). Servers older than the 2026-09-30 fix could not serve Test Store products to the native iOS SDK.
 - **Native builds** accept `test_` keys only in debug builds. Ship with the `appl_` and `goog_` keys.
-- Test Store prices show as $0.00, because the catalog does not store Test Store prices yet.
+- Test Store prices come from each product's Test Store price. Set it in the dashboard (Product catalog, Edit product) or with `test_store_price` on `POST /v2/projects/{project_id}/products`; a product without one shows 0.
 
 More: [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
 
@@ -1145,7 +1145,7 @@ Create a `test_store` app in RevenueDot and use its `test_...` key. The Test Sto
 - **Native builds** accept `test_` keys only in debug builds. Ship with the `appl_` and `goog_` keys.
 - **iOS:** servers older than the 2026-09-30 fix could not serve Test Store products to the native iOS SDK. See [iOS](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/ios.md#test-store).
 - **Flutter web** needs the fork, because the stock web plugin ignores the proxy URL.
-- Test Store prices show as 0, because the catalog does not store Test Store prices yet.
+- Test Store prices come from each product's Test Store price. Set it in the dashboard (Product catalog, Edit product) or with `test_store_price` on `POST /v2/projects/{project_id}/products`; a product without one shows 0.
 
 More: [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
 
@@ -1240,7 +1240,7 @@ With a `test_` key, `purchase` opens the Test Store modal instead of a payment f
 ## Test Store is the only web store today
 - Create a `test_store` app in RevenueDot and use its `test_...` key. See [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
 - Test Store purchases are always sandbox purchases.
-- Prices show as 0, because the catalog does not store Test Store prices yet.
+- Test Store prices come from each product's Test Store price. Set it in the dashboard (Product catalog, Edit product) or with `test_store_price` on `POST /v2/projects/{project_id}/products`; a product without one shows 0.
 - `rcb_`, `strp_` and `pdl_` apps can be created, but RevenueDot does not accept their purchases yet. Web Billing is planned for a later tier; see [What differs from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/what-differs.md).
 
 ## Migrate from RevenueCat
@@ -1334,7 +1334,7 @@ if (aPackage) {
 Create a `test_store` app in RevenueDot and use its `test_...` key on a debug build. The Test Store dialog replaces the store sheet.
 - Native builds accept `test_` keys only in debug builds. Ship with the `appl_` and `goog_` keys.
 - iOS: servers older than the 2026-09-30 fix could not serve Test Store products to the native iOS SDK. See [iOS](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/ios.md#test-store).
-- Test Store prices show as 0, because the catalog does not store Test Store prices yet.
+- Test Store prices come from each product's Test Store price. Set it in the dashboard (Product catalog, Edit product) or with `test_store_price` on `POST /v2/projects/{project_id}/products`; a product without one shows 0.
 
 More: [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
 
@@ -1436,7 +1436,7 @@ val nowPro = result.customerInfo.entitlements.active.containsKey("pro")
 Create a `test_store` app in RevenueDot and pass its `test_...` key on a debug build. The Test Store dialog replaces the store sheet.
 - Native SDKs accept `test_` keys only in debug builds.
 - iOS: servers older than the 2026-09-30 fix could not serve Test Store products to the native iOS SDK. See [iOS](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/ios.md#test-store).
-- Test Store prices show as 0, because the catalog does not store Test Store prices yet.
+- Test Store prices come from each product's Test Store price. Set it in the dashboard (Product catalog, Edit product) or with `test_store_price` on `POST /v2/projects/{project_id}/products`; a product without one shows 0.
 
 More: [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
 
@@ -1480,16 +1480,19 @@ In the Inspector, on the GameObject with the **Purchases** component, set **Prox
 | Entitlement Verification Mode | Informational | Disabled |
 | Revenue Cat API Key Apple / Google | your RevenueCat keys | the `appl_` and `goog_` keys from RevenueDot, or the RevenueCat keys if the [importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md) kept them |
 
-If you configure at runtime (**Use Runtime Setup** checked), the Proxy URL field still applies: `Purchases.Start()` sets it before it checks that box. The field's tooltip says otherwise, but the code applies it.
+If you configure at runtime (**Use Runtime Setup** checked), the Proxy URL field still applies: `Purchases.Start()` sets it before it checks that box. The field's tooltip says otherwise, but the code applies it. Your script must run after `Purchases.Start()`, which also creates the native wrapper; calling `Configure` before it throws a `NullReferenceException`. `[DefaultExecutionOrder(100)]` makes Unity call your `Start()` after it.
 ```csharp
 using UnityEngine;
 
+// Runs after Purchases.Start(), which creates the native wrapper and applies the Proxy URL field.
+[DefaultExecutionOrder(100)]
+[RequireComponent(typeof(Purchases))]
 public class Store : MonoBehaviour
 {
     void Start()
     {
-        // Point the SDK at your RevenueDot server; nothing else in the app changes.
-        // (The proxy URL comes from the Proxy URL field on this Purchases component.)
+        // Needs "Use Runtime Setup" checked on the Purchases component.
+        // The proxy URL comes from the Proxy URL field on that component.
         var purchases = GetComponent<Purchases>();
         purchases.Configure(Purchases.PurchasesConfiguration.Builder.Init("appl_...")
             // The default (Informational) logs every RevenueDot response as a failed signature check.
@@ -1548,7 +1551,7 @@ Create a `test_store` app in RevenueDot and use its `test_...` key.
 - Purchases only run on an iOS or Android device or simulator. In the Unity Editor the SDK uses a no-op wrapper and makes no requests.
 - Native SDKs accept `test_` keys only in debug builds.
 - iOS: servers older than the 2026-09-30 fix could not serve Test Store products to the native iOS SDK. See [iOS](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/ios.md#test-store).
-- Test Store prices show as 0, because the catalog does not store Test Store prices yet.
+- Test Store prices come from each product's Test Store price. Set it in the dashboard (Product catalog, Edit product) or with `test_store_price` on `POST /v2/projects/{project_id}/products`; a product without one shows 0.
 
 More: [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
 
@@ -1654,7 +1657,7 @@ Purchases.getOfferings(
 Create a `test_store` app in RevenueDot and use its `test_...` key on a debug build. The Test Store dialog replaces the store sheet.
 - Native SDKs accept `test_` keys only in debug builds.
 - iOS: servers older than the 2026-09-30 fix could not serve Test Store products to the native iOS SDK. See [iOS](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/ios.md#test-store).
-- Test Store prices show as 0, because the catalog does not store Test Store prices yet.
+- Test Store prices come from each product's Test Store price. Set it in the dashboard (Product catalog, Edit product) or with `test_store_price` on `POST /v2/projects/{project_id}/products`; a product without one shows 0.
 
 More: [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
 
@@ -1943,6 +1946,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/webhooks" 
 - `environment`: `production`, `sandbox`, or `null` for both.
 - `event_types`: lower-case types such as `["initial_purchase","renewal"]`; empty means all.
 - `app_id`: only one app's events; `null` for all apps.
+- **Pause without deleting:** send `{"enabled":false}` to `POST /v2/projects/{project_id}/integrations/webhooks/{id}`, or use the Deliveries switch on the webhook's dashboard page. Events recorded while it is paused are not sent; queued retries resume when you turn it back on. `enabled` is a RevenueDot addition; read it with `GET /v2/projects/{project_id}/webhooks`.
 
 ## 2. What a delivery looks like
 ```http
@@ -2164,7 +2168,7 @@ curl -s -X POST "$B/products" -H "$H" -H "Content-Type: application/json" \
 Attach the products to your entitlement and offering like any other app's products. The [seed script](https://github.com/revenuedot/examples/blob/main/selfhost/docker-compose/seed.sh) does all of this in one run; see the [Quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md).
 
 - **The product's `subscription.duration` is the period.** A `P1M` product expires one month after purchase. Without a duration, one month is used.
-- **Prices are 0.** RevenueDot does not store Test Store prices yet, so the SDK shows free products. The price the SDK posts with the purchase is recorded.
+- **The price is the product's Test Store price.** Set it in the dashboard (Edit product, Test Store price) or with `"test_store_price":{"amount_micros":9990000,"currency":"USD"}` in the create or update call. A product without one shows 0. The price the SDK posts with the purchase is recorded.
 
 ## Buy in the app
 Configure the SDK with the `test_` key and your server as the proxy URL, then call `purchase` as usual. The SDK shows its Test Store dialog; choose the successful purchase. The SDK posts `fetch_token = test_<purchase time in ms>_<id>` to `POST /v1/receipts`, and RevenueDot accepts any token of that form.
@@ -3153,7 +3157,7 @@ Source: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenued
 - Temporary failures, RevenueDot's or a store's, answer 5xx so the SDK retries. A 4xx means the purchase is permanently bad. See [Receipt errors: 4xx vs 5xx](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/receipt-errors-4xx-vs-5xx.md).
 
 **Test Store**
-- Test Store prices are 0, because the catalog does not store Test Store prices yet.
+- Test Store prices are set on the product with `test_store_price` (`amount_micros`, `currency`) on product create and update, not with RevenueCat's separate `test_store_prices` endpoint. Read them with `expand=indicative_price`.
 - Servers older than the 2026-09-30 fix send `cycle_count: null` in `GET /rcbilling/v1/subscribers/{id}/products`, and the native iOS SDK then reports "No base price found for product". Update the server if you see it.
 - Test Store purchases are always sandbox purchases. See [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
 
@@ -3235,7 +3239,7 @@ One RevenueDot server answers every API below on one port. The reference is gene
 | SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 27 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
 | REST API v1 | `/v1/subscribers/...` | secret key | 10 | [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md) |
 | REST API v2 | `/v2/projects/...` | secret key or dashboard session | 73 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
-| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...` | secret key, session or none | 32 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
+| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...` | secret key, session or none | 33 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
 | Webhooks (sent by RevenueDot) | your URL | HMAC signature | 15 event types | [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md) |
 
 ## Quick example
@@ -5914,7 +5918,7 @@ Store products.
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `app_id` | string | no | Only this app's products. |
-| `expand` | array of `items.app` | no | `items.app` embeds each product's app. |
+| `expand` | array of `items.app`, `items.indicative_price` | no | `items.app` embeds each product's app. `items.indicative_price` adds each product's Test Store price. |
 | `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
 | `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
 
@@ -5935,13 +5939,19 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products" -H "Authorization: Be
 
 `POST /v2/projects/{project_id}/products` · Auth: secret key or dashboard session · Permissions: `project_configuration:products:read_write`
 
-`store_identifier` is the store's product id. For Google Play subscriptions use `subscriptionId:basePlanId`. Set `subscription.duration` (ISO 8601, for example P1M): the Test Store uses it as the period, and MRR uses it for every store.
+`store_identifier` is the store's product id. For Google Play subscriptions use `subscriptionId:basePlanId`. Set `subscription.duration` (ISO 8601, for example P1M): the Test Store uses it as the period, and MRR uses it for every store. `test_store_price` sets what the SDK shows for a Test Store product.
 
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `expand` | array of `indicative_price` | no | `indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price). |
 
 **Request body** (`application/json`)
 
@@ -5955,6 +5965,9 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products" -H "Authorization: Be
 | `price_identifier` | string or null | no | Accepted and ignored. |
 | `subscription` | object or null | no |  |
 | `subscription.duration` | string or null | no | ISO 8601 period such as P1W, P1M, P1Y or P3D. |
+| `test_store_price` | object or null | no | RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`. |
+| `test_store_price.amount_micros` | integer | yes | Price in micros: 9.99 is 9990000. |
+| `test_store_price.currency` | string | yes | ISO 4217 code such as USD or EUR. |
 
 **Example request**
 
@@ -6007,7 +6020,7 @@ Example 201 response:
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `expand` | array of `app` | no | `app` embeds the app. |
+| `expand` | array of `app`, `indicative_price` | no | `app` embeds the app. `indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price). |
 
 **Example request**
 
@@ -6046,7 +6059,7 @@ Example 200 response:
 
 `POST /v2/projects/{project_id}/products/{product_id}` · Auth: secret key or dashboard session · Permissions: `project_configuration:products:read_write`
 
-RevenueDot also lets you correct `type` and `subscription.duration` (null clears it).
+RevenueDot also lets you correct `type` and `subscription.duration` (null clears it), and set or clear `test_store_price`.
 
 **Path parameters**
 
@@ -6054,6 +6067,12 @@ RevenueDot also lets you correct `type` and `subscription.duration` (null clears
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
 | `product_id` | string | yes | Product id. |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `expand` | array of `app`, `indicative_price` | no | `indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price). |
 
 **Request body** (`application/json`)
 
@@ -6063,12 +6082,15 @@ RevenueDot also lets you correct `type` and `subscription.duration` (null clears
 | `type` | `subscription`, `one_time`, `consumable`, `non_consumable`, `non_renewing_subscription` | no |  |
 | `subscription` | object | no |  |
 | `subscription.duration` | string or null | no |  |
+| `test_store_price` | object or null | no | RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`. |
+| `test_store_price.amount_micros` | integer | yes | Price in micros: 9.99 is 9990000. |
+| `test_store_price.currency` | string | yes | ISO 4217 code such as USD or EUR. |
 
 **Example request**
 
 ```bash
 curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products/$PRODUCT_ID" -H "Authorization: Bearer $SECRET_KEY" \
-  -H "Content-Type: application/json" -d '{"display_name":"Pro (monthly)"}'
+  -H "Content-Type: application/json" -d '{"display_name":"Pro (monthly)","test_store_price":{"amount_micros":9990000,"currency":"USD"}}'
 ```
 
 **Responses**
@@ -8126,6 +8148,8 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/webhooks/$WEBHOOK_
 
 `POST /v2/projects/{project_id}/integrations/webhooks/{webhook_integration_id}` · Auth: secret key or dashboard session · Permissions: `project_configuration:integrations:read_write`
 
+`enabled` is a RevenueDot extension: false pauses deliveries without deleting the webhook. Events recorded while it is off are not sent; queued retries resume when it is turned on. Read it with `GET /v2/projects/{project_id}/webhooks`.
+
 **Path parameters**
 
 | Name | Type | Required | Description |
@@ -8143,11 +8167,13 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/webhooks/$WEBHOOK_
 | `environment` | string or null | no |  |
 | `event_types` | array of string | no |  |
 | `app_id` | string or null | no |  |
+| `enabled` | boolean | no | RevenueDot extension. False pauses deliveries. |
 
 **Example request**
 
 ```bash
-curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/webhooks/$WEBHOOK_INTEGRATION_ID" -H "Authorization: Bearer $SECRET_KEY"
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/webhooks/$WEBHOOK_INTEGRATION_ID" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"enabled":false}'
 ```
 
 **Responses**
@@ -8366,6 +8392,15 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `products.next_page` | string or null | yes | Path of the next page, or null on the last page. |
 | `products.url` | string | yes | Path of this list. |
 
+### IndicativePrice
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"indicative_price"` | yes |  |
+| `currency` | string | yes | ISO 4217 code. |
+| `country` | null | yes |  |
+| `amount_micros` | integer | yes | Price in micros: 9.99 is 9990000. |
+
 ### MonetaryAmount
 
 | Field | Type | Required | Description |
@@ -8455,6 +8490,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `app_id` | string | yes |  |
 | `display_name` | string or null | yes |  |
 | `app` | App | no | Only the object for the app's own `type` is present. Store secrets are never returned. |
+| `indicative_price` | IndicativePrice or null | no | With `expand=indicative_price`: the Test Store price, or null. |
 
 ### Project
 
@@ -8491,7 +8527,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `revenue_in_usd` | MonetaryAmount | no |  |
 | `quantity` | integer | no |  |
 | `status` | `owned`, `refunded` | yes |  |
-| `presented_offering_id` | null | no |  |
+| `presented_offering_id` | string or null | no | Offering the purchase was made from (its id, or the identifier the SDK sent when no such offering exists). |
 | `entitlements` | object | no |  |
 | `entitlements.object` | `"list"` | yes |  |
 | `entitlements.items` | array of Entitlement | yes |  |
@@ -8521,7 +8557,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `auto_renewal_status` | `will_renew`, `will_not_renew`, `will_change_product`, `will_pause` | yes |  |
 | `status` | `trialing`, `active`, `in_grace_period`, `in_billing_retry`, `paused`, `expired` | yes |  |
 | `total_revenue_in_usd` | MonetaryAmount | no |  |
-| `presented_offering_id` | null | no | Always null today; webhooks carry the offering. |
+| `presented_offering_id` | string or null | no | Offering the purchase was made from (its id, or the identifier the SDK sent when no such offering exists). |
 | `entitlements` | object | no |  |
 | `entitlements.object` | `"list"` | yes |  |
 | `entitlements.items` | array of Entitlement | yes |  |
@@ -8591,13 +8627,13 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (32)
+## Operations on this page (33)
 
 - **Dashboard auth**: [Whether sign-up is open](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-sign-up-is-open), [Create a dashboard account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-dashboard-account), [Sign in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-in), [Sign out](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out), [The signed-in user and their projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-signed-in-user-and-their-projects)
 - **Project settings**: [Get a project with its settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-project-with-its-settings), [Update a project's name and transfer behaviour](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-a-projects-name-and-transfer-behaviour), [Delete a project and everything in it](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-project-and-everything-in-it)
 - **Store setup**: [Store setup state of an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#store-setup-state-of-an-app), [Check store credentials with Apple or Google](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-store-credentials-with-apple-or-google), [Extend every active App Store subscriber of a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#status-of-a-mass-extension), [Setup health](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#setup-health)
 - **API keys**: [List secret keys](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-secret-keys), [Create a secret key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-secret-key), [Delete a secret key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-secret-key)
-- **Webhook deliveries**: [Send a TEST event to one webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-test-event-to-one-webhook), [Delivery log of a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delivery-log-of-a-webhook), [Retry a delivery now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#retry-a-delivery-now)
+- **Webhook deliveries**: [Send a TEST event to one webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-each-webhook-is-enabled), [Delivery log of a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delivery-log-of-a-webhook), [Retry a delivery now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#retry-a-delivery-now)
 - **Event log**: [Event log](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#event-log), [Transaction feed](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#transaction-feed)
 - **Test Store**: [Simulate a Test Store purchase or lifecycle](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#simulate-a-test-store-purchase-or-lifecycle)
 - **Dashboard data**: [Daily history of an overview metric](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#daily-history-of-an-overview-metric), [Dashboard rows for customers](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#dashboard-rows-for-customers)
@@ -9169,7 +9205,7 @@ Delivery log, manual retry and test events.
 
 `POST /v2/projects/{project_id}/integrations/webhooks/{webhook_integration_id}/test` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
 
-Queues a purchase-shaped TEST event, signed and retried like any delivery. The webhook's filters do not apply.
+Queues a purchase-shaped TEST event, signed and retried like any delivery. The webhook's filters do not apply. A paused webhook (`enabled` false) answers 422.
 
 **Path parameters**
 
@@ -9187,6 +9223,32 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/webhooks/$
 **Responses**
 
 - **201**: The queued delivery. Returns [WebhookDelivery](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#webhookdelivery).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Whether each webhook is enabled
+
+`GET /v2/projects/{project_id}/webhooks` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read`
+
+RevenueCat's webhook object has no `enabled` field, so it is read here. Set it with `POST .../integrations/webhooks/{id}`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/webhooks" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: A page of results. Returns a list of [WebhookState](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#webhookstate).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
@@ -9984,6 +10046,15 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `needs_token_refresh` | integer | yes | Google Play subscriptions still waiting for their purchase token. |
 | `needs_token_refresh_by_app` | object | yes |  |
 
+### IndicativePrice
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"indicative_price"` | yes |  |
+| `currency` | string | yes | ISO 4217 code. |
+| `country` | null | yes |  |
+| `amount_micros` | integer | yes | Price in micros: 9.99 is 9990000. |
+
 ### MassExtension
 
 | Field | Type | Required | Description |
@@ -10055,6 +10126,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `app_id` | string | yes |  |
 | `display_name` | string or null | yes |  |
 | `app` | App | no | Only the object for the app's own `type` is present. Store secrets are never returned. |
+| `indicative_price` | IndicativePrice or null | no | With `expand=indicative_price`: the Test Store price, or null. |
 
 ### Project
 
@@ -10104,7 +10176,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `revenue_in_usd` | MonetaryAmount | no |  |
 | `quantity` | integer | no |  |
 | `status` | `owned`, `refunded` | yes |  |
-| `presented_offering_id` | null | no |  |
+| `presented_offering_id` | string or null | no | Offering the purchase was made from (its id, or the identifier the SDK sent when no such offering exists). |
 | `entitlements` | object | no |  |
 | `entitlements.object` | `"list"` | yes |  |
 | `entitlements.items` | array of Entitlement | yes |  |
@@ -10208,7 +10280,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `auto_renewal_status` | `will_renew`, `will_not_renew`, `will_change_product`, `will_pause` | yes |  |
 | `status` | `trialing`, `active`, `in_grace_period`, `in_billing_retry`, `paused`, `expired` | yes |  |
 | `total_revenue_in_usd` | MonetaryAmount | no |  |
-| `presented_offering_id` | null | no | Always null today; webhooks carry the offering. |
+| `presented_offering_id` | string or null | no | Offering the purchase was made from (its id, or the identifier the SDK sent when no such offering exists). |
 | `entitlements` | object | no |  |
 | `entitlements.object` | `"list"` | yes |  |
 | `entitlements.items` | array of Entitlement | yes |  |
@@ -10279,6 +10351,14 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `response_ms` | integer or null | no | Duration of the last attempt. |
 | `last_error` | string or null | no |  |
 | `created_at` | integer | no | Queued at. Epoch milliseconds. |
+
+### WebhookState
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"webhook_state"` | yes |  |
+| `id` | string | yes | Webhook id (wh_...). |
+| `enabled` | boolean | yes | False while deliveries are paused. |
 
 ## Related
 
@@ -11669,53 +11749,47 @@ The list below is complete as of **2026-09-30**. The biggest gap: **no real App 
 ## Stores and purchases
 1. **Real store purchases are untested end to end.** The App Store and Google Play code passes tests against mocked Apple and Google APIs.
    - Workaround: test with App Store sandbox and Google Play license testers, report what you find, and keep live customers on your current backend. See [Test purchases](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/test-sandbox-purchases.md).
-2. **Test Store products have no price.** `/rcbilling/v1/subscribers/{app_user_id}/products` answers a price of 0 for every product, because the catalog does not store Test Store prices yet. Servers built before the 2026-09-30 fix also sent `cycle_count: null`, which made the native iOS SDK stop with "No base price found for product".
-   - Workaround: rebuild the server from the current source if you see that iOS error. Test real prices with App Store sandbox or Google Play testers.
-3. **Only four app types accept receipts:** `app_store`, `mac_app_store`, `play_store` and `test_store`. Amazon, Stripe, Web Billing (`rcb_`), Paddle and Roku receipts answer HTTP 400, code 7662.
+2. **Only four app types accept receipts:** `app_store`, `mac_app_store`, `play_store` and `test_store`. Amazon, Stripe, Web Billing (`rcb_`), Paddle and Roku receipts answer HTTP 400, code 7662.
    - Workaround: none yet.
-4. **StoreKit 1 receipts need the App Store in-app purchase key.** Without it, RevenueDot answers HTTP 500, code 7234, so the SDK keeps retrying.
+3. **StoreKit 1 receipts need the App Store in-app purchase key.** Without it, RevenueDot answers HTTP 500, code 7234, so the SDK keeps retrying.
    - Workaround: add the key. For local development only, set the `allow_unsigned_receipts` credential. See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md).
-5. **The App Store app-specific shared secret is stored but not used.** RevenueDot verifies with the in-app purchase key and Apple's signed transactions instead.
+4. **The App Store app-specific shared secret is stored but not used.** RevenueDot verifies with the in-app purchase key and Apple's signed transactions instead.
    - Workaround: add the in-app purchase key.
-6. **Revenue in currencies other than USD is not converted.** The USD revenue figure uses the amount as paid, so a purchase of 9.99 EUR counts as 9.99 USD in metrics and `total_revenue_in_usd`. Webhook `price_in_purchased_currency` and `currency` are correct.
-   - Workaround: compute USD revenue in your backend from the webhook's currency fields.
+5. **Currencies the ECB does not publish have no USD value.** RevenueDot converts prices to USD at the ECB reference rate of the purchase date, which covers about 30 currencies (EUR, GBP, JPY, CAD, AUD, BRL, INR and others). A price in another currency, for example SAR or AED, reports null USD revenue and counts 0 in metrics. Webhook `price_in_purchased_currency` and `currency` are correct.
+   - Workaround: compute USD revenue in your backend from the webhook's currency fields for those currencies.
 
 ## SDK features
-7. **Paywalls, Customer Center, virtual currencies, targeting and experiments are not implemented.** The SDK endpoints answer empty results or 404, so the SDK hides these features instead of crashing. Paywalls built in RevenueCat do not render.
+6. **Paywalls, Customer Center, virtual currencies, targeting and experiments are not implemented.** The SDK endpoints answer empty results or 404, so the SDK hides these features instead of crashing. Paywalls built in RevenueCat do not render.
    - Workaround: build the paywall in your own UI code from the offerings.
-8. **The stock Android SDK sends some traffic to RevenueCat.** Diagnostics, paywall events and ad events ignore the proxy URL.
+7. **The stock Android SDK sends some traffic to RevenueCat.** Diagnostics, paywall events and ad events ignore the proxy URL.
    - Workaround: the RevenueDot Android fork fixes it, but it is not published yet. You can build it from the `revenuedot/main-patches` branch of [revenuedot/purchases-android](https://github.com/revenuedot/purchases-android).
-9. **The stock web SDK sends analytics events to RevenueCat.**
+8. **The stock web SDK sends analytics events to RevenueCat.**
    - Workaround: configure purchases-js with `flags: { collectAnalyticsEvents: false }`.
-10. **Flutter web ignores the proxy URL with the stock SDK.** Flutter on iOS and Android works.
+9. **Flutter web ignores the proxy URL with the stock SDK.** Flutter on iOS and Android works.
     - Workaround: the RevenueDot Flutter fork fixes it; use it as a git dependency on [revenuedot/purchases-flutter](https://github.com/revenuedot/purchases-flutter).
-11. **The stock SDK reports signature verification FAILED.** RevenueDot cannot sign with RevenueCat's key.
+10. **The stock SDK reports signature verification FAILED.** RevenueDot cannot sign with RevenueCat's key.
     - Workaround: turn verification off, never use ENFORCED. See [signature verification](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/signature-verification-failed.md).
-12. **The SDK forks are not published to any registry.** npm, CocoaPods, Maven Central and OpenUPM releases need publishing credentials that are not set up yet. The forks' default host, `https://api.revenuedot.app`, is not live either.
+11. **The SDK forks are not published to any registry.** npm, CocoaPods, Maven Central and OpenUPM releases need publishing credentials that are not set up yet. The forks' default host, `https://api.revenuedot.app`, is not live either.
     - Workaround: use the stock RevenueCat SDK with a proxy URL, or build a fork from its `revenuedot/main-patches` branch.
 
 ## Webhooks and events
-13. **Six event types are never sent yet:** `TEMPORARY_ENTITLEMENT_GRANT`, `VIRTUAL_CURRENCY_TRANSACTION`, `INVOICE_ISSUANCE`, `EXPERIMENT_ENROLLMENT`, `PURCHASE_REDEEMED` and `SUBSCRIBER_ALIAS`. You can select them in filters.
+12. **Six event types are never sent yet:** `TEMPORARY_ENTITLEMENT_GRANT`, `VIRTUAL_CURRENCY_TRANSACTION`, `INVOICE_ISSUANCE`, `EXPERIMENT_ENROLLMENT`, `PURCHASE_REDEEMED` and `SUBSCRIBER_ALIAS`. You can select them in filters.
     - Workaround: none needed unless your backend relies on them.
-14. **Webhook payloads leave out `renewal_number`, `experiments` and `metadata`.** Every other field matches RevenueCat's sample payloads.
+13. **Webhook payloads leave out `renewal_number`, `experiments` and `metadata`.** Every other field matches RevenueCat's sample payloads.
     - Workaround: count renewals in your backend from `RENEWAL` events.
-15. **Moving a one-time purchase to another user sends no `TRANSFER` event.** Subscriptions send one.
-    - Workaround: listen for `NON_RENEWING_PURCHASE` and check ownership with the REST API.
 
 ## Migration
-16. **The importer CLI is not on npm yet.** `npx revenuedot import` does not work yet.
+14. **The importer CLI is not on npm yet.** `npx revenuedot import` does not work yet.
     - Workaround: run it from source. See [The importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md).
-17. **Some RevenueCat data is not imported:** paywalls, targeting, experiments and virtual currency balances. Refunded subscriptions import as expired, because RevenueCat's API does not expose the refund. RevenueCat Billing renewals stay with RevenueCat.
+15. **Some RevenueCat data is not imported:** paywalls, targeting, experiments and virtual currency balances. Refunded subscriptions import as expired, because RevenueCat's API does not expose the refund. RevenueCat Billing renewals stay with RevenueCat.
     - Workaround: recreate paywalls in code, and keep RevenueCat running for RevenueCat Billing customers.
-18. **Google purchase tokens are not in RevenueCat's API.** Imported Google subscriptions wait with the key `needs_token_refresh:<order id>` until a token arrives.
+16. **Google purchase tokens are not in RevenueCat's API.** Imported Google subscriptions wait with the key `needs_token_refresh:<order id>` until a token arrives.
     - Workaround: pass `--google-tokens <csv>`, or let renewal notifications and one `syncPurchases()` in the app fill them in. `GET /v2/projects/{project_id}/import/status` counts what is left.
 
 ## Self-hosting
-19. **The shipped `docker-compose.yml` does not pass `REVENUEDOT_SIGNING_KEY`.**
-    - Workaround: add it with a `docker-compose.override.yml`. See [Set the signing key](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#set-the-signing-key).
-20. **Run one server container per database.** Expirations and webhooks are sent by a background job inside each container.
+17. **Run one server container per database.** Expirations and webhooks are sent by a background job inside each container.
     - Workaround: scale up one container rather than out. There is no high-availability setup yet.
-21. **There is no published Docker image.** Compose builds the image from source, which takes a few minutes on the first start.
+18. **There is no published Docker image.** Compose builds the image from source, which takes a few minutes on the first start.
     - Workaround: none needed.
 
 ## Related

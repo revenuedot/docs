@@ -66,7 +66,7 @@ With a `test_` key, `purchase` opens the Test Store modal instead of a payment f
 ## Test Store is the only web store today
 - Create a `test_store` app in RevenueDot and use its `test_...` key. See [Test Store](../guides/test-store.md).
 - Test Store purchases are always sandbox purchases.
-- Prices show as 0, because the catalog does not store Test Store prices yet.
+- Test Store prices come from each product's Test Store price. Set it in the dashboard (Product catalog, Edit product) or with `test_store_price` on `POST /v2/projects/{project_id}/products`; a product without one shows 0.
 - `rcb_`, `strp_` and `pdl_` apps can be created, but RevenueDot does not accept their purchases yet. Web Billing is planned for a later tier; see [What differs from RevenueCat](../migrate/what-differs.md).
 
 ## Migrate from RevenueCat
