@@ -70,7 +70,7 @@ REST API v2 reports each subscription's `status`, computed from the record (`app
 Store notifications about a purchase RevenueDot has never seen are stored but not applied, unless the app's **Track new purchases from server-to-server notifications** setting is on. The purchase appears when the device posts its receipt.
 
 ## Money in events
-`price` (USD) and `price_in_purchased_currency` carry money only on `INITIAL_PURCHASE`, `RENEWAL`, `NON_RENEWING_PURCHASE`, `REFUND_REVERSED` and refunds (negative). Other events report 0. A free trial start reports 0. `price` is converted to USD at the ECB reference rate of the purchase date (the last business day before it on weekends and holidays). A currency the ECB does not publish has a null `price`.
+`price` (USD) and `price_in_purchased_currency` carry money only on `INITIAL_PURCHASE`, `RENEWAL`, `NON_RENEWING_PURCHASE`, `REFUND_REVERSED` and refunds (negative). Other events report 0. A free trial start reports 0. `price` is converted to USD at the exchange rate of the purchase date: the ECB reference rate for the about 30 currencies the ECB publishes (the last business day before it on weekends and holidays), and the [currency-api](https://github.com/fawazahmed0/exchange-api) daily rate for every other currency.
 
 ## Related
 - [Webhooks](../guides/webhooks.md)
