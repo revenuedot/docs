@@ -12,6 +12,9 @@ Pick the question closest to yours below. Each article starts with the answer, t
 - [Known issues and gaps as of 2026-09-30](known-issues.md): what does not work yet, and the workaround for each.
 - [Troubleshooting by symptom](troubleshooting.md): one table from symptom to cause to fix.
 
+## Account
+- [What do I do if I forgot my RevenueDot password?](forgot-password.md)
+
 ## Purchases and access
 - [Why is my entitlement not active?](entitlement-not-active.md)
 - [Why does RevenueDot answer 4xx or 5xx to a receipt?](receipt-errors-4xx-vs-5xx.md)

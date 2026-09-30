@@ -77,7 +77,7 @@ Reserved for RevenueCat compatibility. RevenueDot does not send it today.
 
 ### rate_limit_error
 
-Reserved for RevenueCat compatibility. RevenueDot has no rate limit today.
+Too many requests of one kind: project invites (50 per project per day). The error is `retryable`; try again later. The dashboard's password reset and email verification endpoints answer 429 with the same `type`.
 
 <a id="authentication-error"></a>
 

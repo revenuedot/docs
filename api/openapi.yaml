@@ -106,7 +106,10 @@ tags:
     description: Dashboard users of the project.
     x-page: rest-v2
   - name: Dashboard auth
-    description: Sign-up and sign-in for the dashboard. The session cookie also authorizes REST API v2.
+    description: Sign-up, sign-in, password reset, email confirmation, invites and account settings for the dashboard. The session cookie also authorizes REST API v2.
+    x-page: extensions
+  - name: Members and invites
+    description: Invite people to a project by email, change their role, remove them. Dashboard session only.
     x-page: extensions
   - name: Project settings
     description: Project name, transfer behaviour and deletion.
@@ -6138,7 +6141,10 @@ paths:
       tags:
         - Dashboard auth
       summary: Create a dashboard account
-      description: Creates the user and a first project, and sets the `rd_session` cookie (30 days; `Secure` over https). On a self-hosted server only the first account (the owner) can sign up, unless the server runs with `REVENUEDOT_ALLOW_SIGNUP=true`.
+      description: |-
+        Creates the user and a first project, and sets the `rd_session` cookie (30 days; `Secure` over https). On a self-hosted server only the first account (the owner) can sign up, unless the server runs with `REVENUEDOT_ALLOW_SIGNUP=true`.
+
+        With `invite_token` (from an invite link), the account joins the inviting project instead of getting a new one, and sign-up works even where it is closed. The email must be the invited address; the account counts as verified. On RevenueDot Cloud, an account without an invite gets an email with a confirmation link (valid 24 hours).
       security: []
       requestBody:
         required: true
@@ -6153,13 +6159,18 @@ paths:
                 password:
                   type: string
                   minLength: 8
+                  maxLength: 200
                 name:
                   type: string
                   maxLength: 100
                 project_name:
                   type: string
-                  description: "Default: My project."
+                  description: "Default: My project. Ignored with `invite_token`."
                   maxLength: 100
+                invite_token:
+                  type: string
+                  description: RevenueDot extension. The token from an invite link (`/invite?token=...`).
+                  maxLength: 200
               required:
                 - email
                 - password
@@ -6169,7 +6180,7 @@ paths:
               project_name: My app
       responses:
         "201":
-          description: Signed up and signed in.
+          description: Signed up and signed in. With an invite, `project_id` is the project joined.
           content:
             application/json:
               schema:
@@ -6177,10 +6188,13 @@ paths:
                 properties:
                   ok:
                     type: boolean
+                  project_id:
+                    type: string
+                    description: Only with `invite_token`.
               example:
                 ok: true
         "400":
-          description: Invalid email or password.
+          description: Invalid email or password, or an invite that is not valid (`invite_invalid`) or for another address (`invite_email_mismatch`).
           content:
             application/json:
               schema:
@@ -6649,6 +6663,12 @@ paths:
                         type:
                           - string
                           - "null"
+                      email_verified:
+                        type: boolean
+                        description: Whether the user confirmed their email address. Always true for accounts created from an invite or after a password reset.
+                      alert_emails:
+                        type: boolean
+                        description: Whether the user gets alert emails for projects they administer.
                   account:
                     type: object
                     properties:
@@ -6660,10 +6680,25 @@ paths:
                       plan:
                         type: string
                         description: The account plan (`free` on RevenueDot Cloud).
+                      email_verification_required:
+                        type: boolean
+                        description: True on RevenueDot Cloud until the user confirms their email. Until then they cannot invite people or create secret API keys. Always false on a self-hosted server.
                   projects:
                     type: array
                     items:
                       type: object
+              example:
+                user:
+                  id: usr_8k2m4q
+                  email: dev@example.com
+                  name: Dana
+                  email_verified: true
+                  alert_emails: true
+                account:
+                  edition: cloud
+                  plan: free
+                  email_verification_required: false
+                projects: []
         "401":
           description: Not signed in.
           content:
@@ -6675,7 +6710,882 @@ paths:
                     type: string
                   message:
                     type: string
+              example:
+                type: authentication_error
+                message: Not signed in.
       x-source: routes/auth.ts
+      x-revenuedot-extension: true
+    post:
+      operationId: updateMe
+      tags:
+        - Dashboard auth
+      summary: Update account settings
+      description: The display name and whether the user gets [alert emails](../docs/guides/alerts.md) for projects they administer. Send only the fields to change. A null or empty `name` clears it.
+      security:
+        - dashboardSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 100
+                alert_emails:
+                  type: boolean
+                  description: False stops alert emails for every project.
+            example:
+              alert_emails: false
+      responses:
+        "200":
+          description: The updated user.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      email:
+                        type: string
+                      name:
+                        type:
+                          - string
+                          - "null"
+                      email_verified:
+                        type: boolean
+                        description: Whether the user confirmed their email address. Always true for accounts created from an invite or after a password reset.
+                      alert_emails:
+                        type: boolean
+                        description: Whether the user gets alert emails for projects they administer.
+              example:
+                user:
+                  id: usr_8k2m4q
+                  email: dev@example.com
+                  name: Dana
+                  email_verified: true
+                  alert_emails: false
+        "400":
+          description: Invalid field.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authentication_error
+                message: Not signed in.
+      x-source: routes/auth.ts
+      x-revenuedot-extension: true
+  /auth/password/forgot:
+    post:
+      operationId: forgotPassword
+      tags:
+        - Dashboard auth
+      summary: Email a password reset link
+      description: |-
+        Always answers 200 with the same body, whether or not an account uses the address, so the answer does not reveal who has an account. If one does, it gets a link to `/reset-password` that works once and expires after 1 hour.
+
+        Limits: 5 requests per IP address per 15 minutes (then 429), and 3 emails per address per hour (further requests answer 200 but send nothing). See [I forgot my password](../docs/help/forgot-password.md).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  maxLength: 320
+              required:
+                - email
+            example:
+              email: dev@example.com
+      responses:
+        "200":
+          description: Accepted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  message:
+                    type: string
+              example:
+                ok: true
+                message: If an account uses this email, we sent it a link to reset the password. The link expires in 1 hour.
+        "400":
+          description: Not a valid email address.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "429":
+          description: Too many requests from this IP address.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: rate_limit_error
+                message: Too many password reset requests. Try again in 15 minutes.
+      x-source: routes/auth.ts
+      x-revenuedot-extension: true
+  /auth/password/check:
+    post:
+      operationId: checkPasswordReset
+      tags:
+        - Dashboard auth
+      summary: Check a password reset link
+      description: Tells the reset page whether the link still works before the user types a new password. Does not use up the link.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                  description: The `token` from the reset link.
+                  maxLength: 200
+              required:
+                - token
+      responses:
+        "200":
+          description: Whether the link works.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  email:
+                    type: string
+                    description: The account's email, when valid.
+                  reason:
+                    type: string
+                    enum:
+                      - invalid
+                      - expired
+                      - used
+                  message:
+                    type: string
+                    description: Why it does not work.
+              example:
+                valid: false
+                reason: expired
+                message: This link has expired. Ask for a new one.
+        "400":
+          description: Missing token.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/auth.ts
+      x-revenuedot-extension: true
+  /auth/password/reset:
+    post:
+      operationId: resetPassword
+      tags:
+        - Dashboard auth
+      summary: Set a new password from a reset link
+      description: Sets the password, signs the user out on every device, marks the email as confirmed (the link proved the inbox) and signs this browser in with a new `rd_session` cookie. Every other open reset link of the user stops working.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                  maxLength: 200
+                password:
+                  type: string
+                  minLength: 8
+                  maxLength: 200
+              required:
+                - token
+                - password
+            example:
+              token: …
+              password: a-new-long-password
+      responses:
+        "200":
+          description: Password changed and signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+              example:
+                ok: true
+        "400":
+          description: The password is too short or too long, or the link is not valid (`token_invalid` with a `reason`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - invalid
+                      - expired
+                      - used
+                  message:
+                    type: string
+              example:
+                type: token_invalid
+                reason: used
+                message: This link was already used. Ask for a new one if you still need it.
+      x-source: routes/auth.ts
+      x-revenuedot-extension: true
+  /auth/email/verify:
+    post:
+      operationId: verifyEmail
+      tags:
+        - Dashboard auth
+      summary: Confirm an email address
+      description: "RevenueDot Cloud only: the link in the confirmation email sent at sign-up (valid 24 hours, works once). Self-hosted servers treat every account as confirmed."
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                  description: The `token` from the confirmation link.
+                  maxLength: 200
+              required:
+                - token
+      responses:
+        "200":
+          description: Confirmed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  email:
+                    type: string
+              example:
+                ok: true
+                email: dev@example.com
+        "400":
+          description: The link is not valid (`token_invalid` with a `reason`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - invalid
+                      - expired
+                      - used
+                  message:
+                    type: string
+      x-source: routes/auth.ts
+      x-revenuedot-extension: true
+  /auth/email/verify/resend:
+    post:
+      operationId: resendVerification
+      tags:
+        - Dashboard auth
+      summary: Send a new confirmation email
+      description: "Up to 5 per user per hour. An account that is already confirmed gets `already_verified: true` and no email."
+      security:
+        - dashboardSession: []
+      responses:
+        "200":
+          description: Sent, or already confirmed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  email:
+                    type: string
+                  already_verified:
+                    type: boolean
+              example:
+                ok: true
+                email: dev@example.com
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authentication_error
+                message: Not signed in.
+        "429":
+          description: Too many emails this hour.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: rate_limit_error
+                message: Too many emails sent. Try again in an hour.
+        "502":
+          description: The mail server did not accept the email.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/auth.ts
+      x-revenuedot-extension: true
+  /auth/invites/{token}:
+    get:
+      operationId: getInvite
+      tags:
+        - Dashboard auth
+      summary: Look up an invite
+      description: "What the invite page shows: the project, the role, who sent it and whether the invited address has an account already (sign in and accept, or sign up with `invite_token`)."
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The `token` from the invite link (`/invite?token=...`).
+      responses:
+        "200":
+          description: The invite.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    const: invite
+                  email:
+                    type: string
+                  role:
+                    type: string
+                    enum:
+                      - admin
+                      - developer
+                      - viewer
+                  project:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                  invited_by:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      name:
+                        type:
+                          - string
+                          - "null"
+                      email:
+                        type: string
+                  expires_at:
+                    type: integer
+                    format: int64
+                    description: When the link stops working. Epoch milliseconds.
+                  account_exists:
+                    type: boolean
+                    description: Whether an account uses the invited address.
+              example:
+                object: invite
+                email: sam@example.com
+                role: developer
+                project:
+                  id: proj18pzzkao
+                  name: My app
+                invited_by:
+                  name: Dana
+                  email: dev@example.com
+                expires_at: 1791405714000
+                account_exists: false
+        "404":
+          description: Not valid, expired, already accepted or revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - invalid
+                      - expired
+                      - accepted
+                      - revoked
+                  message:
+                    type: string
+              example:
+                type: invite_invalid
+                reason: expired
+                message: This invite has expired. Ask the person who invited you for a new one.
+      x-source: routes/auth.ts
+      x-revenuedot-extension: true
+  /auth/invites/{token}/accept:
+    post:
+      operationId: acceptInvite
+      tags:
+        - Dashboard auth
+      summary: Accept an invite
+      description: For a user who already has an account, signed in with the invited address. Adds them to the project with the invite's role; someone who is already a member keeps their role. Also marks their email as confirmed.
+      security:
+        - dashboardSession: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The `token` from the invite link (`/invite?token=...`).
+      responses:
+        "200":
+          description: Joined.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  project_id:
+                    type: string
+              example:
+                ok: true
+                project_id: proj18pzzkao
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authentication_error
+                message: Not signed in.
+        "403":
+          description: Signed in with another address.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: invite_email_mismatch
+                message: This invite is for sam@example.com, and you are signed in as dev@example.com. Sign in with the invited address.
+        "404":
+          description: The invite is no longer valid.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/auth.ts
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/invites:
+    get:
+      operationId: listInvites
+      tags:
+        - Members and invites
+      summary: List open invites
+      description: "Invites nobody has accepted or revoked, oldest first. Expired ones stay listed so an admin can resend them. Needs a dashboard session: secret API keys cannot manage members."
+      security:
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: Open invites.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Invite"
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+              example:
+                object: list
+                items:
+                  - object: invite
+                    id: inv_4f8k2m9q1x7z
+                    email: sam@example.com
+                    role: developer
+                    status: pending
+                    invited_by: usr_8k2m4q
+                    created_at: 1790800914012
+                    last_sent_at: 1790800914012
+                    expires_at: 1791405714012
+                next_page: null
+                url: /v2/projects/proj18pzzkao/invites
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/members.ts
+      x-scopes:
+        - project_configuration:collaborators:read
+      x-revenuedot-extension: true
+    post:
+      operationId: createInvite
+      tags:
+        - Members and invites
+      summary: Invite someone by email
+      description: |-
+        Admins only. Emails a link that lasts 7 days. Inviting an address that already has an open invite replaces it: the role changes, a new link goes out and the old one stops working. See [Invite your team](../docs/guides/team.md).
+
+        On RevenueDot Cloud the admin needs a confirmed email address. A project can send 50 invites (including resends) per day; after that the answer is 429. `email_sent` is false when the mail server refused the email; the invite still exists and can be resent.
+      security:
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  maxLength: 320
+                role:
+                  type: string
+                  enum:
+                    - admin
+                    - developer
+                    - viewer
+              required:
+                - email
+                - role
+            example:
+              email: sam@example.com
+              role: developer
+      responses:
+        "201":
+          description: The invite.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Invite"
+                  - type: object
+                    properties:
+                      email_sent:
+                        type: boolean
+                        description: Whether the mail server accepted the email.
+              example:
+                object: invite
+                id: inv_4f8k2m9q1x7z
+                email: sam@example.com
+                role: developer
+                status: pending
+                invited_by: usr_8k2m4q
+                created_at: 1790800914012
+                last_sent_at: 1790800914012
+                expires_at: 1791405714012
+                email_sent: true
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "409":
+          $ref: "#/components/responses/V2Error409"
+        "429":
+          $ref: "#/components/responses/V2Error429"
+      x-source: routes/v2/members.ts
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/invites/{invite_id}/actions/resend:
+    post:
+      operationId: resendInvite
+      tags:
+        - Members and invites
+      summary: Resend an invite
+      description: Admins only. Sends a new link valid for 7 more days; the old link stops working. Works on expired invites. Counts toward the 50 invites per project per day.
+      security:
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: invite_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Invite id (inv_...).
+      responses:
+        "200":
+          description: The invite.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Invite"
+                  - type: object
+                    properties:
+                      email_sent:
+                        type: boolean
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "429":
+          $ref: "#/components/responses/V2Error429"
+      x-source: routes/v2/members.ts
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/invites/{invite_id}:
+    delete:
+      operationId: revokeInvite
+      tags:
+        - Members and invites
+      summary: Revoke an invite
+      description: Admins only. The link stops working at once.
+      security:
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: invite_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Invite id (inv_...).
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deleted"
+              example:
+                object: invite
+                id: …
+                deleted_at: 1790801342625
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/members.ts
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/collaborators/{user_id}:
+    post:
+      operationId: updateCollaborator
+      tags:
+        - Members and invites
+      summary: Change a member's role
+      description: "Admins only. A project always keeps at least one admin, so the last admin cannot be demoted (400). The response uses RevenueCat's role names: `viewer` comes back as `read_only`."
+      security:
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The member's user id (the collaborator `id`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role:
+                  type: string
+                  enum:
+                    - admin
+                    - developer
+                    - viewer
+              required:
+                - role
+            example:
+              role: viewer
+      responses:
+        "200":
+          description: The member.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Collaborator"
+              example:
+                object: collaborator
+                id: usr_3n7p1x
+                name: Sam
+                email: sam@example.com
+                role: read_only
+                accepted_at: 1790800914012
+                has_mfa: false
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/members.ts
+      x-revenuedot-extension: true
+    delete:
+      operationId: removeCollaborator
+      tags:
+        - Members and invites
+      summary: Remove a member, or leave the project
+      description: "Any member can remove themselves. Removing someone else takes an admin. The last admin cannot leave or be removed (422): make someone else an admin first, or delete the project."
+      security:
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The member's user id. Your own id leaves the project.
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deleted"
+              example:
+                object: collaborator
+                id: …
+                deleted_at: 1790801342625
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/members.ts
       x-revenuedot-extension: true
   /v2/projects/{project_id}/apps/{app_id}/store_settings:
     get:
@@ -11576,7 +12486,7 @@ components:
             resource_already_exists: An object with this id or lookup key already exists (409). Fetch it instead of creating it.
             resource_missing: The object does not exist in this project (404). Another project's ids also answer 404, so ids cannot be probed.
             idempotency_error: Reserved for RevenueCat compatibility. RevenueDot does not send it today.
-            rate_limit_error: Reserved for RevenueCat compatibility. RevenueDot has no rate limit today.
+            rate_limit_error: "Too many requests of one kind: project invites (50 per project per day). The error is `retryable`; try again later. The dashboard's password reset and email verification endpoints answer 429 with the same `type`."
             authentication_error: No API key, an unknown key, or no dashboard session (401).
             authorization_error: The key lacks a permission, a public app key was used, or the action needs a dashboard admin (403).
             store_error: "The App Store or Google Play refused the action (422) or could not be reached (503, `retryable: true`)."
@@ -12614,7 +13524,9 @@ components:
           type: string
           enum:
             - admin
+            - developer
             - read_only
+          description: RevenueCat's role names. `read_only` is the dashboard's Viewer role.
         accepted_at:
           type: integer
           format: int64
@@ -12627,6 +13539,57 @@ components:
         - id
         - email
         - role
+    Invite:
+      type: object
+      properties:
+        object:
+          type: string
+          const: invite
+        id:
+          type: string
+          description: inv_...
+        email:
+          type: string
+          description: The invited address, lowercased.
+        role:
+          type: string
+          enum:
+            - admin
+            - developer
+            - viewer
+          description: The role the person gets when they accept.
+        status:
+          type: string
+          enum:
+            - pending
+            - expired
+            - accepted
+            - revoked
+          description: Lists only show `pending` and `expired`. An expired invite can be resent.
+        invited_by:
+          type:
+            - string
+            - "null"
+          description: User id of the admin who last sent it.
+        created_at:
+          type: integer
+          format: int64
+          description: When it was created. Epoch milliseconds.
+        last_sent_at:
+          type: integer
+          format: int64
+          description: When the last email went out. Epoch milliseconds.
+        expires_at:
+          type: integer
+          format: int64
+          description: "When the link stops working: 7 days after it was last sent. Epoch milliseconds."
+      required:
+        - object
+        - id
+        - email
+        - role
+        - status
+        - expires_at
     OverviewMetrics:
       type: object
       properties:
@@ -13545,6 +14508,18 @@ components:
             message: The current offering cannot be archived. Make another offering current first.
             doc_url: https://revenuedot.app/docs/api/errors#unprocessable-entity-error
             retryable: false
+    V2Error429:
+      description: Too many requests. Retry later.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/V2Error"
+          example:
+            object: error
+            type: rate_limit_error
+            message: This project sent too many invites today. Try again tomorrow.
+            doc_url: https://revenuedot.app/docs/api/errors#rate-limit-error
+            retryable: true
     V2Error503:
       description: The store could not be reached. Retry later.
       content:

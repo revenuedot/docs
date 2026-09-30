@@ -11,9 +11,10 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (33)
+## Operations on this page (47)
 
-- **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects)
+- **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects), [Update account settings](#update-account-settings), [Email a password reset link](#email-a-password-reset-link), [Check a password reset link](#check-a-password-reset-link), [Set a new password from a reset link](#set-a-new-password-from-a-reset-link), [Confirm an email address](#confirm-an-email-address), [Send a new confirmation email](#send-a-new-confirmation-email), [Look up an invite](#look-up-an-invite), [Accept an invite](#accept-an-invite)
+- **Members and invites**: [List open invites](#list-open-invites), [Invite someone by email](#invite-someone-by-email), [Resend an invite](#resend-an-invite), [Revoke an invite](#revoke-an-invite), [Change a member's role](#change-a-members-role), [Remove a member, or leave the project](#remove-a-member-or-leave-the-project)
 - **Project settings**: [Get a project with its settings](#get-a-project-with-its-settings), [Update a project's name and transfer behaviour](#update-a-projects-name-and-transfer-behaviour), [Delete a project and everything in it](#delete-a-project-and-everything-in-it)
 - **Store setup**: [Store setup state of an app](#store-setup-state-of-an-app), [Check store credentials with Apple or Google](#check-store-credentials-with-apple-or-google), [Extend every active App Store subscriber of a product](#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](#status-of-a-mass-extension), [Setup health](#setup-health)
 - **API keys**: [List secret keys](#list-secret-keys), [Create a secret key](#create-a-secret-key), [Delete a secret key](#delete-a-secret-key)
@@ -26,7 +27,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 
 ## Dashboard auth
 
-Sign-up and sign-in for the dashboard. The session cookie also authorizes REST API v2.
+Sign-up, sign-in, password reset, email confirmation, invites and account settings for the dashboard. The session cookie also authorizes REST API v2.
 
 ### Whether sign-up is open
 
@@ -59,6 +60,8 @@ Example 200 response:
 
 Creates the user and a first project, and sets the `rd_session` cookie (30 days; `Secure` over https). On a self-hosted server only the first account (the owner) can sign up, unless the server runs with `REVENUEDOT_ALLOW_SIGNUP=true`.
 
+With `invite_token` (from an invite link), the account joins the inviting project instead of getting a new one, and sign-up works even where it is closed. The email must be the invited address; the account counts as verified. On RevenueDot Cloud, an account without an invite gets an email with a confirmation link (valid 24 hours).
+
 **Request body** (`application/json`)
 
 | Field | Type | Required | Description |
@@ -66,7 +69,8 @@ Creates the user and a first project, and sets the `rd_session` cookie (30 days;
 | `email` | string | yes |  |
 | `password` | string | yes |  |
 | `name` | string | no |  |
-| `project_name` | string | no | Default: My project. |
+| `project_name` | string | no | Default: My project. Ignored with `invite_token`. |
+| `invite_token` | string | no | RevenueDot extension. The token from an invite link (`/invite?token=...`). |
 
 **Example request**
 
@@ -77,8 +81,8 @@ curl -s -X POST "$REVENUEDOT_URL/auth/signup" \
 
 **Responses**
 
-- **201**: Signed up and signed in.
-- **400**: Invalid email or password.
+- **201**: Signed up and signed in. With an invite, `project_id` is the project joined.
+- **400**: Invalid email or password, or an invite that is not valid (`invite_invalid`) or for another address (`invite_email_mismatch`).
 - **403**: Sign-up is closed: the server has an owner already.
 - **409**: The email is taken.
 
@@ -157,6 +161,560 @@ curl -s "$REVENUEDOT_URL/auth/me"
 
 - **200**: The user.
 - **401**: Not signed in.
+
+Example 200 response:
+
+```json
+{
+  "user": {
+    "id": "usr_8k2m4q",
+    "email": "dev@example.com",
+    "name": "Dana",
+    "email_verified": true,
+    "alert_emails": true
+  },
+  "account": {
+    "edition": "cloud",
+    "plan": "free",
+    "email_verification_required": false
+  },
+  "projects": []
+}
+```
+
+### Update account settings
+
+`POST /auth/me` · Auth: dashboard session · RevenueDot extension
+
+The display name and whether the user gets [alert emails](../docs/guides/alerts.md) for projects they administer. Send only the fields to change. A null or empty `name` clears it.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string or null | no |  |
+| `alert_emails` | boolean | no | False stops alert emails for every project. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/auth/me" \
+  -H "Content-Type: application/json" -d '{"alert_emails":false}'
+```
+
+**Responses**
+
+- **200**: The updated user.
+- **400**: Invalid field.
+- **401**: Not signed in.
+
+Example 200 response:
+
+```json
+{
+  "user": {
+    "id": "usr_8k2m4q",
+    "email": "dev@example.com",
+    "name": "Dana",
+    "email_verified": true,
+    "alert_emails": false
+  }
+}
+```
+
+### Email a password reset link
+
+`POST /auth/password/forgot` · Auth: none · RevenueDot extension
+
+Always answers 200 with the same body, whether or not an account uses the address, so the answer does not reveal who has an account. If one does, it gets a link to `/reset-password` that works once and expires after 1 hour.
+
+Limits: 5 requests per IP address per 15 minutes (then 429), and 3 emails per address per hour (further requests answer 200 but send nothing). See [I forgot my password](../docs/help/forgot-password.md).
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `email` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/auth/password/forgot" \
+  -H "Content-Type: application/json" -d '{"email":"dev@example.com"}'
+```
+
+**Responses**
+
+- **200**: Accepted.
+- **400**: Not a valid email address.
+- **429**: Too many requests from this IP address.
+
+Example 200 response:
+
+```json
+{
+  "ok": true,
+  "message": "If an account uses this email, we sent it a link to reset the password. The link expires in 1 hour."
+}
+```
+
+### Check a password reset link
+
+`POST /auth/password/check` · Auth: none · RevenueDot extension
+
+Tells the reset page whether the link still works before the user types a new password. Does not use up the link.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes | The `token` from the reset link. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/auth/password/check"
+```
+
+**Responses**
+
+- **200**: Whether the link works.
+- **400**: Missing token.
+
+Example 200 response:
+
+```json
+{
+  "valid": false,
+  "reason": "expired",
+  "message": "This link has expired. Ask for a new one."
+}
+```
+
+### Set a new password from a reset link
+
+`POST /auth/password/reset` · Auth: none · RevenueDot extension
+
+Sets the password, signs the user out on every device, marks the email as confirmed (the link proved the inbox) and signs this browser in with a new `rd_session` cookie. Every other open reset link of the user stops working.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+| `password` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/auth/password/reset" \
+  -H "Content-Type: application/json" -d '{"token":"…","password":"a-new-long-password"}'
+```
+
+**Responses**
+
+- **200**: Password changed and signed in.
+- **400**: The password is too short or too long, or the link is not valid (`token_invalid` with a `reason`).
+
+Example 200 response:
+
+```json
+{
+  "ok": true
+}
+```
+
+### Confirm an email address
+
+`POST /auth/email/verify` · Auth: none · RevenueDot extension
+
+RevenueDot Cloud only: the link in the confirmation email sent at sign-up (valid 24 hours, works once). Self-hosted servers treat every account as confirmed.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes | The `token` from the confirmation link. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/auth/email/verify"
+```
+
+**Responses**
+
+- **200**: Confirmed.
+- **400**: The link is not valid (`token_invalid` with a `reason`).
+
+Example 200 response:
+
+```json
+{
+  "ok": true,
+  "email": "dev@example.com"
+}
+```
+
+### Send a new confirmation email
+
+`POST /auth/email/verify/resend` · Auth: dashboard session · RevenueDot extension
+
+Up to 5 per user per hour. An account that is already confirmed gets `already_verified: true` and no email.
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/auth/email/verify/resend"
+```
+
+**Responses**
+
+- **200**: Sent, or already confirmed.
+- **401**: Not signed in.
+- **429**: Too many emails this hour.
+- **502**: The mail server did not accept the email.
+
+Example 200 response:
+
+```json
+{
+  "ok": true,
+  "email": "dev@example.com"
+}
+```
+
+### Look up an invite
+
+`GET /auth/invites/{token}` · Auth: none · RevenueDot extension
+
+What the invite page shows: the project, the role, who sent it and whether the invited address has an account already (sign in and accept, or sign up with `invite_token`).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes | The `token` from the invite link (`/invite?token=...`). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/auth/invites/$TOKEN"
+```
+
+**Responses**
+
+- **200**: The invite.
+- **404**: Not valid, expired, already accepted or revoked.
+
+Example 200 response:
+
+```json
+{
+  "object": "invite",
+  "email": "sam@example.com",
+  "role": "developer",
+  "project": {
+    "id": "proj18pzzkao",
+    "name": "My app"
+  },
+  "invited_by": {
+    "name": "Dana",
+    "email": "dev@example.com"
+  },
+  "expires_at": 1791405714000,
+  "account_exists": false
+}
+```
+
+### Accept an invite
+
+`POST /auth/invites/{token}/accept` · Auth: dashboard session · RevenueDot extension
+
+For a user who already has an account, signed in with the invited address. Adds them to the project with the invite's role; someone who is already a member keeps their role. Also marks their email as confirmed.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes | The `token` from the invite link (`/invite?token=...`). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/auth/invites/$TOKEN/accept"
+```
+
+**Responses**
+
+- **200**: Joined.
+- **401**: Not signed in.
+- **403**: Signed in with another address.
+- **404**: The invite is no longer valid.
+
+Example 200 response:
+
+```json
+{
+  "ok": true,
+  "project_id": "proj18pzzkao"
+}
+```
+
+## Members and invites
+
+Invite people to a project by email, change their role, remove them. Dashboard session only.
+
+### List open invites
+
+`GET /v2/projects/{project_id}/invites` · Auth: dashboard session · RevenueDot extension · Permissions: `project_configuration:collaborators:read`
+
+Invites nobody has accepted or revoked, oldest first. Expired ones stay listed so an admin can resend them. Needs a dashboard session: secret API keys cannot manage members.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/invites"
+```
+
+**Responses**
+
+- **200**: Open invites. Returns a list of [Invite](#invite).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "items": [
+    {
+      "object": "invite",
+      "id": "inv_4f8k2m9q1x7z",
+      "email": "sam@example.com",
+      "role": "developer",
+      "status": "pending",
+      "invited_by": "usr_8k2m4q",
+      "created_at": 1790800914012,
+      "last_sent_at": 1790800914012,
+      "expires_at": 1791405714012
+    }
+  ],
+  "next_page": null,
+  "url": "/v2/projects/proj18pzzkao/invites"
+}
+```
+
+### Invite someone by email
+
+`POST /v2/projects/{project_id}/invites` · Auth: dashboard session · RevenueDot extension
+
+Admins only. Emails a link that lasts 7 days. Inviting an address that already has an open invite replaces it: the role changes, a new link goes out and the old one stops working. See [Invite your team](../docs/guides/team.md).
+
+On RevenueDot Cloud the admin needs a confirmed email address. A project can send 50 invites (including resends) per day; after that the answer is 429. `email_sent` is false when the mail server refused the email; the invite still exists and can be resent.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `email` | string | yes |  |
+| `role` | `admin`, `developer`, `viewer` | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/invites" \
+  -H "Content-Type: application/json" -d '{"email":"sam@example.com","role":"developer"}'
+```
+
+**Responses**
+
+- **201**: The invite.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
+- **429**: Too many requests. Retry later. Returns [V2Error](#v2error).
+
+Example 201 response:
+
+```json
+{
+  "object": "invite",
+  "id": "inv_4f8k2m9q1x7z",
+  "email": "sam@example.com",
+  "role": "developer",
+  "status": "pending",
+  "invited_by": "usr_8k2m4q",
+  "created_at": 1790800914012,
+  "last_sent_at": 1790800914012,
+  "expires_at": 1791405714012,
+  "email_sent": true
+}
+```
+
+### Resend an invite
+
+`POST /v2/projects/{project_id}/invites/{invite_id}/actions/resend` · Auth: dashboard session · RevenueDot extension
+
+Admins only. Sends a new link valid for 7 more days; the old link stops working. Works on expired invites. Counts toward the 50 invites per project per day.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `invite_id` | string | yes | Invite id (inv_...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/invites/$INVITE_ID/actions/resend"
+```
+
+**Responses**
+
+- **200**: The invite.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **429**: Too many requests. Retry later. Returns [V2Error](#v2error).
+
+### Revoke an invite
+
+`DELETE /v2/projects/{project_id}/invites/{invite_id}` · Auth: dashboard session · RevenueDot extension
+
+Admins only. The link stops working at once.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `invite_id` | string | yes | Invite id (inv_...). |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/invites/$INVITE_ID"
+```
+
+**Responses**
+
+- **200**: Deleted. Returns [Deleted](#deleted).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "invite",
+  "id": "…",
+  "deleted_at": 1790801342625
+}
+```
+
+### Change a member's role
+
+`POST /v2/projects/{project_id}/collaborators/{user_id}` · Auth: dashboard session · RevenueDot extension
+
+Admins only. A project always keeps at least one admin, so the last admin cannot be demoted (400). The response uses RevenueCat's role names: `viewer` comes back as `read_only`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `user_id` | string | yes | The member's user id (the collaborator `id`). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `role` | `admin`, `developer`, `viewer` | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/collaborators/$USER_ID" \
+  -H "Content-Type: application/json" -d '{"role":"viewer"}'
+```
+
+**Responses**
+
+- **200**: The member. Returns [Collaborator](#collaborator).
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "collaborator",
+  "id": "usr_3n7p1x",
+  "name": "Sam",
+  "email": "sam@example.com",
+  "role": "read_only",
+  "accepted_at": 1790800914012,
+  "has_mfa": false
+}
+```
+
+### Remove a member, or leave the project
+
+`DELETE /v2/projects/{project_id}/collaborators/{user_id}` · Auth: dashboard session · RevenueDot extension
+
+Any member can remove themselves. Removing someone else takes an admin. The last admin cannot leave or be removed (422): make someone else an admin first, or delete the project.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `user_id` | string | yes | The member's user id. Your own id leaves the project. |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/collaborators/$USER_ID"
+```
+
+**Responses**
+
+- **200**: Deleted. Returns [Deleted](#deleted).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "collaborator",
+  "id": "…",
+  "deleted_at": 1790801342625
+}
+```
 
 ## Project settings
 
@@ -1297,6 +1855,18 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `paddle.paddle_is_sandbox` | boolean | no |  |
 | `paddle.paddle_api_key` | null | no |  |
 
+### Collaborator
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"collaborator"` | yes |  |
+| `id` | string | yes |  |
+| `name` | string or null | no |  |
+| `email` | string | yes |  |
+| `role` | `admin`, `developer`, `read_only` | yes | RevenueCat's role names. `read_only` is the dashboard's Viewer role. |
+| `accepted_at` | integer | no | When the user joined. Epoch milliseconds. |
+| `has_mfa` | boolean | no | Always false. |
+
 ### CredentialsCheck
 
 | Field | Type | Required | Description |
@@ -1438,6 +2008,20 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `currency` | string | yes | ISO 4217 code. |
 | `country` | null | yes |  |
 | `amount_micros` | integer | yes | Price in micros: 9.99 is 9990000. |
+
+### Invite
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"invite"` | yes |  |
+| `id` | string | yes | inv_... |
+| `email` | string | yes | The invited address, lowercased. |
+| `role` | `admin`, `developer`, `viewer` | yes | The role the person gets when they accept. |
+| `status` | `pending`, `expired`, `accepted`, `revoked` | yes | Lists only show `pending` and `expired`. An expired invite can be resent. |
+| `invited_by` | string or null | no | User id of the admin who last sent it. |
+| `created_at` | integer | no | When it was created. Epoch milliseconds. |
+| `last_sent_at` | integer | no | When the last email went out. Epoch milliseconds. |
+| `expires_at` | integer | yes | When the link stops working: 7 days after it was last sent. Epoch milliseconds. |
 
 ### MassExtension
 

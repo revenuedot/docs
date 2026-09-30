@@ -1,7 +1,7 @@
 // RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
 // This file: REST API v2 (RevenueCat-compatible paths) and RevenueDot's v2 extensions in the OpenAPI document.
 // Docs: https://revenuedot.app/docs/api/rest-v2   Migrate from RevenueCat: https://revenuedot.app/docs/migrate
-import { NONE, SECRET, SESSION, arr, body, bool, en, int, listOf, nstr, num, obj, ok, op, param, ref, str, v2Errors } from "./common.mjs";
+import { NONE, SECRET, SESSION, arr, body, bool, en, int, listOf, ms, nstr, num, obj, ok, op, param, ref, str, v2Errors } from "./common.mjs";
 
 const P = "/v2/projects/{project_id}";
 const project = param("ProjectId");
@@ -17,12 +17,19 @@ const del = (object) => ok("Deleted.", ref("Deleted"), { object, id: "…", dele
 const archive = (tag, id, what, source, scopes) => ({
   [`${P}/${what}s/{${what}_id}/actions/archive`]: { post: op({ id: `archive${id}`, tag, summary: `Archive ${/^[aeiou]/.test(what) ? "an" : "a"} ${what}`, security: SECRET, source, scopes, parameters: [project, pathParam(`${what}_id`, `${id} id.`)], responses: { 200: ok(`The archived ${what}.`, ref(id)), ...E(404, ...(what === "offering" ? [422] : [])) } }) },
 });
+const errBody = obj({ type: str(), message: str() });
+const authErr = ok("Not signed in.", errBody, { type: "authentication_error", message: "Not signed in." });
+const accountUser = obj({ id: str(), email: str(), name: nstr(), email_verified: bool("Whether the user confirmed their email address. Always true for accounts created from an invite or after a password reset."), alert_emails: bool("Whether the user gets alert emails for projects they administer.") });
+const tokenReason = en(["invalid", "expired", "used"]);
+const inviteToken = pathParam("token", "The `token` from the invite link (`/invite?token=...`).");
+const inviteId = pathParam("invite_id", "Invite id (inv_...).");
+const inviteExample = { object: "invite", id: "inv_4f8k2m9q1x7z", email: "sam@example.com", role: "developer", status: "pending", invited_by: "usr_8k2m4q", created_at: 1790800914012, last_sent_at: 1790800914012, expires_at: 1791405714012 };
 const ReasonCode = en(["undeclared", "customer_satisfaction", "other", "service_issue_or_outage"], "Apple's reason for the extension. Required for App Store subscriptions.");
 
 const R = {
   projects: "routes/v2/projects.ts", setup: "routes/v2/setup.ts", apps: "routes/v2/apps.ts", products: "routes/v2/products.ts",
   entitlements: "routes/v2/entitlements.ts", offerings: "routes/v2/offerings.ts", customers: "routes/v2/customers.ts",
-  metrics: "routes/v2/metrics.ts", integrations: "routes/v2/integrations.ts", ext: "routes/v2/extensions.ts", import: "routes/v2/import.ts", auth: "routes/auth.ts", oauth: "routes/oauth.ts",
+  metrics: "routes/v2/metrics.ts", integrations: "routes/v2/integrations.ts", ext: "routes/v2/extensions.ts", import: "routes/v2/import.ts", auth: "routes/auth.ts", oauth: "routes/oauth.ts", members: "routes/v2/members.ts",
 };
 
 const productExample = { object: "product", id: "prode0zhpfisko", store_identifier: "pro_monthly", type: "subscription", state: "active", subscription: { duration: "P1M", grace_period_duration: null, trial_duration: null }, created_at: 1790800900948, app_id: "appvnrm0a5h", display_name: "Pro monthly" };
@@ -321,9 +328,12 @@ export const extensionPaths = {
   },
   "/auth/signup": {
     post: op({ id: "signup", tag: "Dashboard auth", summary: "Create a dashboard account", security: NONE, source: R.auth, extension: true,
-      description: "Creates the user and a first project, and sets the `rd_session` cookie (30 days; `Secure` over https). On a self-hosted server only the first account (the owner) can sign up, unless the server runs with `REVENUEDOT_ALLOW_SIGNUP=true`.",
-      requestBody: body(obj({ email: str(undefined, { format: "email" }), password: str(undefined, { minLength: 8 }), name: str(undefined, { maxLength: 100 }), project_name: str("Default: My project.", { maxLength: 100 }) }, ["email", "password"]), { email: "dev@example.com", password: "change-me-please", project_name: "My app" }),
-      responses: { 201: ok("Signed up and signed in.", obj({ ok: bool() }), { ok: true }), 400: ok("Invalid email or password.", obj({ type: str(), message: str() })), 403: ok("Sign-up is closed: the server has an owner already.", obj({ type: str(), message: str() }), { type: "signup_closed", message: "Sign-up is closed on this server: it has an owner account already. The owner can open it by setting REVENUEDOT_ALLOW_SIGNUP=true." }), 409: ok("The email is taken.", obj({ type: str(), message: str() })) } }),
+      description: `
+Creates the user and a first project, and sets the \`rd_session\` cookie (30 days; \`Secure\` over https). On a self-hosted server only the first account (the owner) can sign up, unless the server runs with \`REVENUEDOT_ALLOW_SIGNUP=true\`.
+
+With \`invite_token\` (from an invite link), the account joins the inviting project instead of getting a new one, and sign-up works even where it is closed. The email must be the invited address; the account counts as verified. On RevenueDot Cloud, an account without an invite gets an email with a confirmation link (valid 24 hours).`,
+      requestBody: body(obj({ email: str(undefined, { format: "email" }), password: str(undefined, { minLength: 8, maxLength: 200 }), name: str(undefined, { maxLength: 100 }), project_name: str("Default: My project. Ignored with `invite_token`.", { maxLength: 100 }), invite_token: str("RevenueDot extension. The token from an invite link (`/invite?token=...`).", { maxLength: 200 }) }, ["email", "password"]), { email: "dev@example.com", password: "change-me-please", project_name: "My app" }),
+      responses: { 201: ok("Signed up and signed in. With an invite, `project_id` is the project joined.", obj({ ok: bool(), project_id: str("Only with `invite_token`.") }), { ok: true }), 400: ok("Invalid email or password, or an invite that is not valid (`invite_invalid`) or for another address (`invite_email_mismatch`).", obj({ type: str(), message: str() })), 403: ok("Sign-up is closed: the server has an owner already.", obj({ type: str(), message: str() }), { type: "signup_closed", message: "Sign-up is closed on this server: it has an owner account already. The owner can open it by setting REVENUEDOT_ALLOW_SIGNUP=true." }), 409: ok("The email is taken.", obj({ type: str(), message: str() })) } }),
   },
   "/auth/login": {
     post: op({ id: "login", tag: "Dashboard auth", summary: "Sign in", security: NONE, source: R.auth, extension: true,
@@ -361,7 +371,89 @@ export const extensionPaths = {
   "/auth/logout": { post: op({ id: "logout", tag: "Dashboard auth", summary: "Sign out", security: SESSION, source: R.auth, extension: true, responses: { 200: ok("Signed out.", obj({ ok: bool() }), { ok: true }) } }) },
   "/auth/me": {
     get: op({ id: "me", tag: "Dashboard auth", summary: "The signed-in user and their projects", security: SESSION, source: R.auth, extension: true,
-      responses: { 200: ok("The user.", obj({ user: obj({ id: str(), email: str(), name: nstr() }), account: obj({ edition: en(["cloud", "self-hosted"]), plan: str("The account plan (`free` on RevenueDot Cloud).") }), projects: arr({ type: "object" }) })), 401: ok("Not signed in.", obj({ type: str(), message: str() })) } }),
+      responses: { 200: ok("The user.", obj({ user: accountUser, account: obj({ edition: en(["cloud", "self-hosted"]), plan: str("The account plan (`free` on RevenueDot Cloud)."), email_verification_required: bool("True on RevenueDot Cloud until the user confirms their email. Until then they cannot invite people or create secret API keys. Always false on a self-hosted server.") }), projects: arr({ type: "object" }) }),
+        { user: { id: "usr_8k2m4q", email: "dev@example.com", name: "Dana", email_verified: true, alert_emails: true }, account: { edition: "cloud", plan: "free", email_verification_required: false }, projects: [] }), 401: authErr } }),
+    post: op({ id: "updateMe", tag: "Dashboard auth", summary: "Update account settings", security: SESSION, source: R.auth, extension: true,
+      description: "The display name and whether the user gets [alert emails](../docs/guides/alerts.md) for projects they administer. Send only the fields to change. A null or empty `name` clears it.",
+      requestBody: body(obj({ name: nstr(undefined, { maxLength: 100 }), alert_emails: bool("False stops alert emails for every project.") }), { alert_emails: false }),
+      responses: { 200: ok("The updated user.", obj({ user: accountUser }), { user: { id: "usr_8k2m4q", email: "dev@example.com", name: "Dana", email_verified: true, alert_emails: false } }), 400: ok("Invalid field.", errBody), 401: authErr } }),
+  },
+  "/auth/password/forgot": {
+    post: op({ id: "forgotPassword", tag: "Dashboard auth", summary: "Email a password reset link", security: NONE, source: R.auth, extension: true,
+      description: `
+Always answers 200 with the same body, whether or not an account uses the address, so the answer does not reveal who has an account. If one does, it gets a link to \`/reset-password\` that works once and expires after 1 hour.
+
+Limits: 5 requests per IP address per 15 minutes (then 429), and 3 emails per address per hour (further requests answer 200 but send nothing). See [I forgot my password](../docs/help/forgot-password.md).`,
+      requestBody: body(obj({ email: str(undefined, { format: "email", maxLength: 320 }) }, ["email"]), { email: "dev@example.com" }),
+      responses: { 200: ok("Accepted.", obj({ ok: bool(), message: str() }), { ok: true, message: "If an account uses this email, we sent it a link to reset the password. The link expires in 1 hour." }), 400: ok("Not a valid email address.", errBody), 429: ok("Too many requests from this IP address.", errBody, { type: "rate_limit_error", message: "Too many password reset requests. Try again in 15 minutes." }) } }),
+  },
+  "/auth/password/check": {
+    post: op({ id: "checkPasswordReset", tag: "Dashboard auth", summary: "Check a password reset link", security: NONE, source: R.auth, extension: true,
+      description: "Tells the reset page whether the link still works before the user types a new password. Does not use up the link.",
+      requestBody: body(obj({ token: str("The `token` from the reset link.", { maxLength: 200 }) }, ["token"])),
+      responses: { 200: ok("Whether the link works.", obj({ valid: bool(), email: str("The account's email, when valid."), reason: tokenReason, message: str("Why it does not work.") }), { valid: false, reason: "expired", message: "This link has expired. Ask for a new one." }), 400: ok("Missing token.", errBody) } }),
+  },
+  "/auth/password/reset": {
+    post: op({ id: "resetPassword", tag: "Dashboard auth", summary: "Set a new password from a reset link", security: NONE, source: R.auth, extension: true,
+      description: "Sets the password, signs the user out on every device, marks the email as confirmed (the link proved the inbox) and signs this browser in with a new `rd_session` cookie. Every other open reset link of the user stops working.",
+      requestBody: body(obj({ token: str(undefined, { maxLength: 200 }), password: str(undefined, { minLength: 8, maxLength: 200 }) }, ["token", "password"]), { token: "…", password: "a-new-long-password" }),
+      responses: { 200: ok("Password changed and signed in.", obj({ ok: bool() }), { ok: true }), 400: ok("The password is too short or too long, or the link is not valid (`token_invalid` with a `reason`).", obj({ type: str(), reason: tokenReason, message: str() }), { type: "token_invalid", reason: "used", message: "This link was already used. Ask for a new one if you still need it." }) } }),
+  },
+  "/auth/email/verify": {
+    post: op({ id: "verifyEmail", tag: "Dashboard auth", summary: "Confirm an email address", security: NONE, source: R.auth, extension: true,
+      description: "RevenueDot Cloud only: the link in the confirmation email sent at sign-up (valid 24 hours, works once). Self-hosted servers treat every account as confirmed.",
+      requestBody: body(obj({ token: str("The `token` from the confirmation link.", { maxLength: 200 }) }, ["token"])),
+      responses: { 200: ok("Confirmed.", obj({ ok: bool(), email: str() }), { ok: true, email: "dev@example.com" }), 400: ok("The link is not valid (`token_invalid` with a `reason`).", obj({ type: str(), reason: tokenReason, message: str() })) } }),
+  },
+  "/auth/email/verify/resend": {
+    post: op({ id: "resendVerification", tag: "Dashboard auth", summary: "Send a new confirmation email", security: SESSION, source: R.auth, extension: true,
+      description: "Up to 5 per user per hour. An account that is already confirmed gets `already_verified: true` and no email.",
+      responses: { 200: ok("Sent, or already confirmed.", obj({ ok: bool(), email: str(), already_verified: bool() }), { ok: true, email: "dev@example.com" }), 401: authErr,
+        429: ok("Too many emails this hour.", errBody, { type: "rate_limit_error", message: "Too many emails sent. Try again in an hour." }), 502: ok("The mail server did not accept the email.", errBody) } }),
+  },
+  "/auth/invites/{token}": {
+    get: op({ id: "getInvite", tag: "Dashboard auth", summary: "Look up an invite", security: NONE, source: R.auth, extension: true, parameters: [inviteToken],
+      description: "What the invite page shows: the project, the role, who sent it and whether the invited address has an account already (sign in and accept, or sign up with `invite_token`).",
+      responses: { 200: ok("The invite.", obj({ object: { type: "string", const: "invite" }, email: str(), role: en(["admin", "developer", "viewer"]), project: obj({ id: str(), name: str() }), invited_by: { type: ["object", "null"], properties: { name: nstr(), email: str() } }, expires_at: ms("When the link stops working."), account_exists: bool("Whether an account uses the invited address.") }),
+        { object: "invite", email: "sam@example.com", role: "developer", project: { id: "proj18pzzkao", name: "My app" }, invited_by: { name: "Dana", email: "dev@example.com" }, expires_at: 1791405714000, account_exists: false }),
+        404: ok("Not valid, expired, already accepted or revoked.", obj({ type: str(), reason: en(["invalid", "expired", "accepted", "revoked"]), message: str() }), { type: "invite_invalid", reason: "expired", message: "This invite has expired. Ask the person who invited you for a new one." }) } }),
+  },
+  "/auth/invites/{token}/accept": {
+    post: op({ id: "acceptInvite", tag: "Dashboard auth", summary: "Accept an invite", security: SESSION, source: R.auth, extension: true, parameters: [inviteToken],
+      description: "For a user who already has an account, signed in with the invited address. Adds them to the project with the invite's role; someone who is already a member keeps their role. Also marks their email as confirmed.",
+      responses: { 200: ok("Joined.", obj({ ok: bool(), project_id: str() }), { ok: true, project_id: "proj18pzzkao" }), 401: authErr,
+        403: ok("Signed in with another address.", errBody, { type: "invite_email_mismatch", message: "This invite is for sam@example.com, and you are signed in as dev@example.com. Sign in with the invited address." }), 404: ok("The invite is no longer valid.", errBody) } }),
+  },
+  [`${P}/invites`]: {
+    get: op({ id: "listInvites", tag: "Members and invites", summary: "List open invites", security: SESSION, source: R.members, extension: true, scopes: ["project_configuration:collaborators:read"], parameters: [project],
+      description: "Invites nobody has accepted or revoked, oldest first. Expired ones stay listed so an admin can resend them. Needs a dashboard session: secret API keys cannot manage members.",
+      responses: { 200: list(ref("Invite"), "Open invites.", { object: "list", items: [inviteExample], next_page: null, url: "/v2/projects/proj18pzzkao/invites" }), ...E(404) } }),
+    post: op({ id: "createInvite", tag: "Members and invites", summary: "Invite someone by email", security: SESSION, source: R.members, extension: true, parameters: [project],
+      description: `
+Admins only. Emails a link that lasts 7 days. Inviting an address that already has an open invite replaces it: the role changes, a new link goes out and the old one stops working. See [Invite your team](../docs/guides/team.md).
+
+On RevenueDot Cloud the admin needs a confirmed email address. A project can send 50 invites (including resends) per day; after that the answer is 429. \`email_sent\` is false when the mail server refused the email; the invite still exists and can be resent.`,
+      requestBody: body(obj({ email: str(undefined, { format: "email", maxLength: 320 }), role: en(["admin", "developer", "viewer"]) }, ["email", "role"]), { email: "sam@example.com", role: "developer" }),
+      responses: { 201: ok("The invite.", { allOf: [ref("Invite"), obj({ email_sent: bool("Whether the mail server accepted the email.") })] }, { ...inviteExample, email_sent: true }), ...v2Errors(400, 401, 403, 404, 409, 429) } }),
+  },
+  [`${P}/invites/{invite_id}/actions/resend`]: {
+    post: op({ id: "resendInvite", tag: "Members and invites", summary: "Resend an invite", security: SESSION, source: R.members, extension: true, parameters: [project, inviteId],
+      description: "Admins only. Sends a new link valid for 7 more days; the old link stops working. Works on expired invites. Counts toward the 50 invites per project per day.",
+      responses: { 200: ok("The invite.", { allOf: [ref("Invite"), obj({ email_sent: bool() })] }), ...v2Errors(401, 403, 404, 429) } }),
+  },
+  [`${P}/invites/{invite_id}`]: {
+    delete: op({ id: "revokeInvite", tag: "Members and invites", summary: "Revoke an invite", security: SESSION, source: R.members, extension: true, parameters: [project, inviteId],
+      description: "Admins only. The link stops working at once.",
+      responses: { 200: del("invite"), ...E(404) } }),
+  },
+  [`${P}/collaborators/{user_id}`]: {
+    post: op({ id: "updateCollaborator", tag: "Members and invites", summary: "Change a member's role", security: SESSION, source: R.members, extension: true, parameters: [project, pathParam("user_id", "The member's user id (the collaborator `id`).")],
+      description: "Admins only. A project always keeps at least one admin, so the last admin cannot be demoted (400). The response uses RevenueCat's role names: `viewer` comes back as `read_only`.",
+      requestBody: body(obj({ role: en(["admin", "developer", "viewer"]) }, ["role"]), { role: "viewer" }),
+      responses: { 200: ok("The member.", ref("Collaborator"), { object: "collaborator", id: "usr_3n7p1x", name: "Sam", email: "sam@example.com", role: "read_only", accepted_at: 1790800914012, has_mfa: false }), ...v2Errors(400, 401, 403, 404) } }),
+    delete: op({ id: "removeCollaborator", tag: "Members and invites", summary: "Remove a member, or leave the project", security: SESSION, source: R.members, extension: true, parameters: [project, pathParam("user_id", "The member's user id. Your own id leaves the project.")],
+      description: "Any member can remove themselves. Removing someone else takes an admin. The last admin cannot leave or be removed (422): make someone else an admin first, or delete the project.",
+      responses: { 200: del("collaborator"), ...E(404, 422) } }),
   },
   [`${P}/apps/{app_id}/store_settings`]: {
     get: op({ id: "getStoreSettings", tag: "Store setup", summary: "Store setup state of an app", security: SECRET, source: R.setup, extension: true, scopes: ["project_configuration:apps:read"], parameters: [project, param("AppId")],

@@ -12,7 +12,7 @@ export const V2_ERROR_MEANINGS = {
   resource_already_exists: "An object with this id or lookup key already exists (409). Fetch it instead of creating it.",
   resource_missing: "The object does not exist in this project (404). Another project's ids also answer 404, so ids cannot be probed.",
   idempotency_error: "Reserved for RevenueCat compatibility. RevenueDot does not send it today.",
-  rate_limit_error: "Reserved for RevenueCat compatibility. RevenueDot has no rate limit today.",
+  rate_limit_error: "Too many requests of one kind: project invites (50 per project per day). The error is `retryable`; try again later. The dashboard's password reset and email verification endpoints answer 429 with the same `type`.",
   authentication_error: "No API key, an unknown key, or no dashboard session (401).",
   authorization_error: "The key lacks a permission, a public app key was used, or the action needs a dashboard admin (403).",
   store_error: "The App Store or Google Play refused the action (422) or could not be reached (503, `retryable: true`).",
@@ -234,9 +234,17 @@ export const schemas = {
     created_at: ms("Creation time."), signing_secret: str("whsec_... Only in the answer that creates the webhook."),
   }, ["object", "id", "project_id", "name", "url", "environment", "event_types", "app_id", "created_at"]),
   Collaborator: obj({
-    object: { type: "string", const: "collaborator" }, id: str(), name: nstr(), email: str(), role: en(["admin", "read_only"]),
+    object: { type: "string", const: "collaborator" }, id: str(), name: nstr(), email: str(),
+    role: en(["admin", "developer", "read_only"], "RevenueCat's role names. `read_only` is the dashboard's Viewer role."),
     accepted_at: ms("When the user joined."), has_mfa: bool("Always false."),
   }, ["object", "id", "email", "role"]),
+  Invite: obj({
+    object: { type: "string", const: "invite" }, id: str("inv_..."), email: str("The invited address, lowercased."),
+    role: en(["admin", "developer", "viewer"], "The role the person gets when they accept."),
+    status: en(["pending", "expired", "accepted", "revoked"], "Lists only show `pending` and `expired`. An expired invite can be resent."),
+    invited_by: nstr("User id of the admin who last sent it."),
+    created_at: ms("When it was created."), last_sent_at: ms("When the last email went out."), expires_at: ms("When the link stops working: 7 days after it was last sent."),
+  }, ["object", "id", "email", "role", "status", "expires_at"]),
   OverviewMetrics: obj({
     object: { type: "string", const: "overview_metrics" }, currency: { type: "string", const: "USD" },
     metrics: arr(obj({
@@ -345,7 +353,7 @@ export const parameters = {
 };
 
 const v2err = (status, type, message, retryable = false) => ok(
-  { 400: "The request is invalid.", 401: "No API key, or an unknown one.", 403: "The key lacks a permission, or a public key was used.", 404: "Not found in this project (another project's ids also answer 404).", 409: "It already exists, or it conflicts with another object.", 422: "The request is valid but cannot be done in this state or for this store.", 500: "Server error. Retry later.", 503: "The store could not be reached. Retry later." }[status],
+  { 400: "The request is invalid.", 401: "No API key, or an unknown one.", 403: "The key lacks a permission, or a public key was used.", 404: "Not found in this project (another project's ids also answer 404).", 409: "It already exists, or it conflicts with another object.", 422: "The request is valid but cannot be done in this state or for this store.", 429: "Too many requests. Retry later.", 500: "Server error. Retry later.", 503: "The store could not be reached. Retry later." }[status],
   ref("V2Error"),
   { object: "error", type, message, ...(status === 400 ? { param: "app_id" } : {}), doc_url: `https://revenuedot.app/docs/api/errors#${type.replace(/_/g, "-")}`, retryable },
 );
@@ -358,6 +366,7 @@ export const responses = {
   V2Error404: v2err(404, "resource_missing", "Customer not found."),
   V2Error409: v2err(409, "resource_already_exists", "An entitlement with lookup_key pro already exists."),
   V2Error422: v2err(422, "unprocessable_entity_error", "The current offering cannot be archived. Make another offering current first."),
+  V2Error429: v2err(429, "rate_limit_error", "This project sent too many invites today. Try again tomorrow.", true),
   V2Error503: v2err(503, "store_error", "Google Play could not be reached.", true),
   V1Error400: v1err(400, 7103, "The receipt is not a valid Test Store purchase token.", "Bad request. For receipts, a 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction."),
   V1Error401: v1err(401, 7225, "Invalid API Key.", "Unknown API key."),

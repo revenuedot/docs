@@ -1,6 +1,6 @@
 ---
 title: Which guide do I need?
-description: Step-by-step guides for connecting the App Store and Google Play, receiving webhooks, response signing, testing, and running RevenueDot on your own servers.
+description: Step-by-step guides for connecting the App Store and Google Play, receiving webhooks, response signing, testing, inviting your team, alert emails, and running RevenueDot on your own servers.
 ---
 
 # Which guide do I need?
@@ -19,5 +19,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Upgrade my server | [Upgrades](upgrades.md) |
 | Back up and restore | [Backups](backups.md) |
 | Check everything before real customers arrive | [Going to production](going-to-production.md) |
+| Invite teammates to a project and set their roles | [Invite your team](team.md) |
+| Get an email when store notifications, webhooks or store credentials fail | [Alert emails](alerts.md) |
 
 Moving from RevenueCat? Start with [Migrate from RevenueCat](../migrate/README.md). Looking for a specific endpoint? See the [API reference](../../api/README.md).

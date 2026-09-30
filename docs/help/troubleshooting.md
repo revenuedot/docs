@@ -55,6 +55,7 @@ Details: [Why are webhooks not arriving?](webhooks-not-arriving.md)
 |---|---|---|
 | `/` shows a small JSON document | The dashboard lives at `/login` | Open `http://localhost:8787/login` |
 | You cannot sign in after a fresh start | The account is created by signing up or by the seed script | Sign up at `/signup`, or sign in as the email the seed script printed |
+| You forgot your password, and no reset email arrives | The server has no `REVENUEDOT_SMTP_URL`, so emails go to the log | Copy the link from `docker compose logs revenuedot`, or run `revenuedot admin reset-password <email>`. See [I forgot my password](forgot-password.md) |
 
 ## Self-hosting
 | Symptom | Cause | Fix |

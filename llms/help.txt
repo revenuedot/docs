@@ -19,6 +19,9 @@ Pick the question closest to yours below. Each article starts with the answer, t
 - [Known issues and gaps as of 2026-09-30](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md): what does not work yet, and the workaround for each.
 - [Troubleshooting by symptom](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/troubleshooting.md): one table from symptom to cause to fix.
 
+## Account
+- [What do I do if I forgot my RevenueDot password?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/forgot-password.md)
+
 ## Purchases and access
 - [Why is my entitlement not active?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/entitlement-not-active.md)
 - [Why does RevenueDot answer 4xx or 5xx to a receipt?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/receipt-errors-4xx-vs-5xx.md)
@@ -203,6 +206,7 @@ Details: [Why are webhooks not arriving?](https://raw.githubusercontent.com/reve
 |---|---|---|
 | `/` shows a small JSON document | The dashboard lives at `/login` | Open `http://localhost:8787/login` |
 | You cannot sign in after a fresh start | The account is created by signing up or by the seed script | Sign up at `/signup`, or sign in as the email the seed script printed |
+| You forgot your password, and no reset email arrives | The server has no `REVENUEDOT_SMTP_URL`, so emails go to the log | Copy the link from `docker compose logs revenuedot`, or run `revenuedot admin reset-password <email>`. See [I forgot my password](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/forgot-password.md) |
 
 ## Self-hosting
 | Symptom | Cause | Fix |
@@ -328,6 +332,32 @@ The customer info then shows `pro` with the `PROMOTIONAL` store until it ends. S
 - [Products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md)
 - [Offerings and packages](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/offerings-and-packages.md)
 - [Troubleshooting by symptom](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/troubleshooting.md)
+
+---
+
+# What do I do if I forgot my RevenueDot password?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/forgot-password.md
+Description: Click Forgot password? on the sign-in page and follow the emailed link within 1 hour. Self-hosted servers without email print the link to the server log, or an admin resets the password from the command line.
+
+Click **Forgot password?** on the sign-in page, enter your email address and open the link RevenueDot emails you. The link works **once** and expires after **1 hour**. Choose a new password (at least 8 characters) and you are signed in. Setting it **signs you out on every other device** and makes older reset links stop working.
+
+## What to expect
+- **The page always says the same thing:** "If an account uses this email, we sent it a link". It says this whether or not an account exists, so nobody can use the form to find out who has an account.
+- **The email comes from RevenueDot.** On RevenueDot Cloud the sender is `no-reply@mail.revenuedot.app`. Check your spam folder if it does not arrive within a few minutes.
+- **Limits:** 5 requests per network address per 15 minutes, then the page asks you to wait. At most 3 reset emails per address per hour; more requests show the same message but send nothing.
+- **An expired or used link** shows a message on the reset page. Ask for a new one.
+
+## On a self-hosted server
+A self-hosted server sends email only when its admin set `REVENUEDOT_SMTP_URL`. Without it:
+
+1. **The link is in the server log.** Request the reset, then run `docker compose logs revenuedot` and copy the link from the email printed there. See [Email](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#email).
+2. **Or reset the password from the command line**, straight against the database: `revenuedot admin reset-password <email>`. See [Reset a password without email](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#reset-a-password-without-email).
+
+## Related
+- [Invite your team](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/team.md)
+- [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md)
+- [Password reset endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#email-a-password-reset-link)
 
 ---
 

@@ -13,7 +13,8 @@ Work through this list before real customers depend on your server. Run a real s
 - [ ] `POSTGRES_PASSWORD` changed from the default before the first start.
 - [ ] Daily backups copied off the server, and one test restore done. See [Backups](backups.md).
 - [ ] One `revenuedot` container per database.
-- [ ] Sign-up closed (`REVENUEDOT_ALLOW_SIGNUP` unset) once your team has accounts.
+- [ ] Sign-up closed (`REVENUEDOT_ALLOW_SIGNUP` unset); add teammates with [invites](team.md) instead.
+- [ ] `REVENUEDOT_SMTP_URL`, `REVENUEDOT_MAIL_FROM` and `REVENUEDOT_PUBLIC_URL` set, and one password reset email received, so resets, invites and [alert emails](alerts.md) reach people. See [Email](self-hosting.md#email).
 - [ ] Uptime monitoring on `GET /v1/health`, and alerts on the container's restarts.
 - [ ] `REVENUEDOT_SIGNING_KEY` set and stored in a password manager, if you ship SDK builds that verify responses. See [Trusted Entitlements](trusted-entitlements.md).
 

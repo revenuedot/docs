@@ -2735,7 +2735,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `id` | string | yes |  |
 | `name` | string or null | no |  |
 | `email` | string | yes |  |
-| `role` | `admin`, `read_only` | yes |  |
+| `role` | `admin`, `developer`, `read_only` | yes | RevenueCat's role names. `read_only` is the dashboard's Viewer role. |
 | `accepted_at` | integer | no | When the user joined. Epoch milliseconds. |
 | `has_mfa` | boolean | no | Always false. |
 

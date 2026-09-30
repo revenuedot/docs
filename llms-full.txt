@@ -1736,7 +1736,7 @@ That chain is why the wrapper forks cannot be used before release: nothing in it
 # Which guide do I need?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/README.md
-Description: Step-by-step guides for connecting the App Store and Google Play, receiving webhooks, response signing, testing, and running RevenueDot on your own servers.
+Description: Step-by-step guides for connecting the App Store and Google Play, receiving webhooks, response signing, testing, inviting your team, alert emails, and running RevenueDot on your own servers.
 
 Each guide is one task, start to finish. Connect a store first, then receive webhooks; run the server yourself with the self-hosting guides.
 
@@ -1752,6 +1752,8 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Upgrade my server | [Upgrades](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/upgrades.md) |
 | Back up and restore | [Backups](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/backups.md) |
 | Check everything before real customers arrive | [Going to production](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/going-to-production.md) |
+| Invite teammates to a project and set their roles | [Invite your team](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/team.md) |
+| Get an email when store notifications, webhooks or store credentials fail | [Alert emails](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md) |
 
 Moving from RevenueCat? Start with [Migrate from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md). Looking for a specific endpoint? See the [API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/README.md).
 
@@ -2279,12 +2281,12 @@ docker compose up -d          # builds the image and starts RevenueDot and Postg
 curl http://localhost:8787/v1/health        # {"status":"ok"}
 ```
 
-Open `http://localhost:8787/login` and sign up. **The first account is the owner.** After that, sign-up is closed unless you set `REVENUEDOT_ALLOW_SIGNUP=true`. There is no invite flow yet, so open sign-up for a moment when a teammate needs an account. There is no published image yet; Compose builds it from the source.
+Open `http://localhost:8787/login` and sign up. **The first account is the owner.** After that, sign-up is closed to everyone except the addresses you [invite to a project](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/team.md), unless you set `REVENUEDOT_ALLOW_SIGNUP=true`. Set up [email](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#email) so password resets, invites and alerts reach people. There is no published image yet; Compose builds it from the source.
 
 ## What runs
 | Piece | What it does |
 |---|---|
-| `revenuedot` container (Node.js 22) | One process: SDK API (`/v1`), REST API (`/v2`), dashboard sign-in (`/auth`), OAuth for MCP clients (`/oauth`), store notifications (`/v1/notifications/...`) and the dashboard's web app. A background job runs every 30 seconds: it records expirations, runs the daily Google Play voided-purchase check and sends webhooks |
+| `revenuedot` container (Node.js 22) | One process: SDK API (`/v1`), REST API (`/v2`), dashboard sign-in (`/auth`), OAuth for MCP clients (`/oauth`), store notifications (`/v1/notifications/...`) and the dashboard's web app. A background job runs every 30 seconds: it records expirations, runs the daily Google Play voided-purchase check, re-checks store credentials, sends webhooks and sends [alert emails](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md) |
 | `db` container (Postgres 16) | Every customer, purchase, event and setting, in the `revenuedot-data` volume |
 
 Run **one** `revenuedot` container per database for now. The background job has no lock across processes, so two containers could send a webhook twice.
@@ -2296,7 +2298,8 @@ Edit `.env` next to `docker-compose.yml`. Store credentials (Apple keys, Google 
 |---|---|---|
 | `POSTGRES_PASSWORD` | `revenuedot` in Compose | Password of the bundled Postgres. Set it before the first start: it is written into the volume then, and changing it later also needs `ALTER USER` in Postgres |
 | `REVENUEDOT_PORT` | `8787` | Host port for everything |
-| `REVENUEDOT_ALLOW_SIGNUP` | `false` | `true` lets anyone who reaches the dashboard create an account |
+| `REVENUEDOT_ALLOW_SIGNUP` | `false` | `true` lets anyone who reaches the dashboard create an account. Invited addresses can always create one |
+| `REVENUEDOT_SMTP_URL`, `REVENUEDOT_MAIL_FROM`, `REVENUEDOT_MAIL_REPLY_TO`, `REVENUEDOT_PUBLIC_URL` | unset | Outgoing email. See [Email](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#email) |
 | `REVENUEDOT_SIGNING_KEY` | unset | Base64 Ed25519 seed. Turns on [response signing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md). Not passed through by the default `docker-compose.yml`; see below |
 
 Inside the container the server reads:
@@ -2308,6 +2311,7 @@ Inside the container the server reads:
 | `DASHBOARD_DIST` | the built dashboard in the image | Folder of the dashboard's built files. If it has no `index.html`, only the API is served |
 | `REVENUEDOT_ALLOW_SIGNUP` | unset (owner only) | See above |
 | `REVENUEDOT_SIGNING_KEY` | unset | See above |
+| `REVENUEDOT_SMTP_URL` and the other mail variables | unset | See [Email](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#email) |
 
 ### Set the signing key
 Generate a key once (`pnpm tsx scripts/signing-keygen.ts` in a checkout with `pnpm install` done), add it to `.env`, and pass it to the container with a `docker-compose.override.yml`, which Compose reads automatically:
@@ -2321,6 +2325,49 @@ services:
 ```
 
 Check it with `curl http://localhost:8787/.well-known/revenuedot-signing-key`. Stock RevenueCat SDKs still cannot verify these signatures; see [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md).
+
+## Email
+RevenueDot sends email for password resets, [team invites](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/team.md) and [alerts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md). A self-hosted server sends it through any SMTP provider (your own mail server, Amazon SES, Postmark, Resend, Mailgun, SendGrid and others). Add these to `.env`; the default `docker-compose.yml` passes them to the container:
+
+```bash
+REVENUEDOT_SMTP_URL=smtp://user:password@smtp.example.com:587
+REVENUEDOT_MAIL_FROM=RevenueDot <no-reply@example.com>
+REVENUEDOT_MAIL_REPLY_TO=team@example.com
+REVENUEDOT_PUBLIC_URL=https://revenuedot.example.com
+```
+
+| Variable | What it does |
+|---|---|
+| `REVENUEDOT_SMTP_URL` | The SMTP server. `smtp://` connects on port 587 and upgrades to TLS with STARTTLS when the server offers it. `smtps://` uses TLS from the start, on port 465. Write special characters in the user name or password URL-encoded: `@` is `%40`, `:` is `%3A`, `/` is `%2F` |
+| `REVENUEDOT_MAIL_FROM` | The sender, as `Name <address>` or a bare address. Use an address on a domain your SMTP provider may send for (SPF and DKIM set up), or the emails land in spam. Default: `RevenueDot <no-reply@localhost>`, which most providers reject |
+| `REVENUEDOT_MAIL_REPLY_TO` | Optional. Where replies go |
+| `REVENUEDOT_PUBLIC_URL` | The address people use to open the dashboard, for the links in emails. Unset: links use the address the request came in on (`X-Forwarded-Host` behind a proxy). Alert emails have no request, so they use the last address the dashboard was opened on since the server started, or `http://localhost:8787`. Set it for correct alert links |
+
+**Without `REVENUEDOT_SMTP_URL`, nothing is sent.** Every email, links included, is printed to the server log instead, so you can still copy a reset or invite link:
+
+```bash
+docker compose logs revenuedot
+```
+
+When the server starts, its log says which it does: `Email: SMTP (REVENUEDOT_SMTP_URL).` or `Email: not configured; emails are printed to this log.` A failed send is logged with the SMTP error and never blocks sign-up, invites or the background job.
+
+## Reset a password without email
+When someone cannot get a reset email, reset the password straight in the database with the `revenuedot` CLI. It needs `DATABASE_URL`, the server's Postgres:
+
+```bash
+DATABASE_URL=postgres://revenuedot:secret@localhost:5432/revenuedot npx revenuedot admin reset-password dev@example.com
+```
+
+With Docker Compose, run it inside the server container, which has `DATABASE_URL` set already:
+
+```bash
+docker compose exec revenuedot pnpm --filter revenuedot cli admin reset-password dev@example.com
+```
+
+- **Without `--password`**, the CLI generates a 20-character password and prints it once. Copy it then; it is not stored anywhere readable.
+- **`--password <new password>`** sets a password you choose (at least 8 characters).
+- **Every session of the user is signed out**, and open reset links stop working.
+- **`--database-url <url>`** can replace the `DATABASE_URL` variable.
 
 ## Put HTTPS in front
 The App Store and Google Pub/Sub send notifications only to public HTTPS URLs, and apps should never talk to your server over plain HTTP. Put a reverse proxy with TLS in front of port 8787, for example Caddy:
@@ -2356,6 +2403,7 @@ pnpm dev                                    # http://localhost:8787, restarts on
 
 ## Related
 - [Upgrades](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/upgrades.md) and [Backups](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/backups.md)
+- [Invite your team](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/team.md) and [Alert emails](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md)
 - [Going to production](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/going-to-production.md)
 - [Quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md)
 - [Self-host in 5 minutes](https://raw.githubusercontent.com/revenuedot/docs/main/blog/self-host-revenuedot-in-5-minutes.md)
@@ -2464,7 +2512,8 @@ Work through this list before real customers depend on your server. Run a real s
 - [ ] `POSTGRES_PASSWORD` changed from the default before the first start.
 - [ ] Daily backups copied off the server, and one test restore done. See [Backups](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/backups.md).
 - [ ] One `revenuedot` container per database.
-- [ ] Sign-up closed (`REVENUEDOT_ALLOW_SIGNUP` unset) once your team has accounts.
+- [ ] Sign-up closed (`REVENUEDOT_ALLOW_SIGNUP` unset); add teammates with [invites](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/team.md) instead.
+- [ ] `REVENUEDOT_SMTP_URL`, `REVENUEDOT_MAIL_FROM` and `REVENUEDOT_PUBLIC_URL` set, and one password reset email received, so resets, invites and [alert emails](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md) reach people. See [Email](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#email).
 - [ ] Uptime monitoring on `GET /v1/health`, and alerts on the container's restarts.
 - [ ] `REVENUEDOT_SIGNING_KEY` set and stored in a password manager, if you ship SDK builds that verify responses. See [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md).
 
@@ -2491,6 +2540,117 @@ Work through this list before real customers depend on your server. Run a real s
 - [Cutover checklist for a migration](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/cutover-checklist.md)
 - [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md)
 - [Troubleshooting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/troubleshooting.md)
+
+---
+
+# How do I invite my team to a RevenueDot project?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/team.md
+Description: Project admins invite people by email with the Admin, Developer or Viewer role. The link lasts 7 days. Admins change roles and remove members; a project always keeps one admin.
+
+Open **Project settings → Collaborators** and click **Invite**. Enter the person's email address, pick a role and send. They get an email with a link that works for 7 days. Only project admins can invite, change roles and remove people. Everyone in a project is a **member** with one role in that project; a person can have a different role in each project.
+
+## Roles
+The roles follow RevenueCat's collaborator roles ([Collaborators](https://www.revenuecat.com/docs/projects/collaborators)). RevenueDot has three of them today.
+
+| Role | Can do | Cannot do | Name in API v2 |
+|---|---|---|---|
+| **Admin** | Everything: apps, store credentials, products, entitlements, offerings, customers, webhooks, secret API keys, invites, members, deleting the project | Nothing is off limits | `admin` |
+| **Developer** | Read everything. Edit apps, store credentials, the catalog, customers, webhooks and project settings | Create or revoke secret API keys, invite people, change roles, remove other members, delete the project | `developer` |
+| **Viewer** | Read everything the dashboard shows | Change anything | `read_only` (RevenueCat's "View Only") |
+
+`GET /v2/projects/{project_id}/collaborators` answers with RevenueCat's role names, so the Viewer role comes back as `read_only`. Requests that set a role take `admin`, `developer` or `viewer`.
+
+## Invite someone
+1. Open **Project settings → Collaborators** and click **Invite**.
+2. Enter the email address and pick **Admin**, **Developer** or **Viewer**.
+3. Click **Send invite**. The invite shows under **Pending invites** until the person accepts it.
+
+- **The link lasts 7 days.** An expired invite stays in the list, so you can send it again.
+- **Resend** sends a new link that lasts another 7 days. The old link stops working.
+- **Revoke** makes the link stop working at once. You can invite the same address again later.
+- **Inviting an address that already has a pending invite** replaces it: the new role applies, and only the newest link works.
+- **Inviting someone who is already a member** fails with a message that they are already in the project.
+- **A project can send 50 invites a day**, resends included. After that, try again the next day.
+- **On RevenueDot Cloud, you need a confirmed email address to invite people.** A banner at the top of the dashboard offers a new confirmation email if you lost the first one. Self-hosted servers treat every account as confirmed.
+
+If the dashboard says the invite was saved but the email could not be sent, the mail server refused it. Fix the mail settings, then click **Resend**. On a self-hosted server without email, the invite link is printed to the server log; see [Email](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#email).
+
+## Accept an invite
+The link in the email opens the invite page. It shows the project, the role and who invited you.
+
+- **You already have an account:** sign in with the invited address and click **Accept invite**. If you are signed in with another address, sign out and sign in with the invited one. If you are already a member of the project, you keep your current role.
+- **You are new:** create an account on the invite page. The email address is fixed to the invited one, and it counts as confirmed, so you get no confirmation email. You join the project instead of getting an empty one.
+
+A self-hosted server closes sign-up after the first account (the owner). An invite still lets the invited address create an account. Nobody else can sign up unless the server runs with `REVENUEDOT_ALLOW_SIGNUP=true`.
+
+## Change a role, remove a member, or leave
+- **Change a role:** admins pick a new role in the member's row.
+- **Remove a member:** admins open the member's menu and click **Remove from project**. The person loses access at once.
+- **Leave a project:** any member can open their own menu and click **Leave project**.
+- **A project always keeps at least one admin.** The last admin cannot be demoted, removed or leave. Make someone else an admin first, or delete the project.
+
+## Do it with the API
+These are RevenueDot extensions. They need a dashboard session (the `rd_session` cookie from `POST /auth/login`); secret API keys cannot manage members. See [Members and invites](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#members-and-invites) for request and response details.
+
+| Task | Request |
+|---|---|
+| List members | `GET /v2/projects/{project_id}/collaborators` |
+| List pending and expired invites | `GET /v2/projects/{project_id}/invites` |
+| Invite by email | `POST /v2/projects/{project_id}/invites` with `{"email": "sam@example.com", "role": "developer"}` |
+| Resend an invite | `POST /v2/projects/{project_id}/invites/{invite_id}/actions/resend` |
+| Revoke an invite | `DELETE /v2/projects/{project_id}/invites/{invite_id}` |
+| Change a member's role | `POST /v2/projects/{project_id}/collaborators/{user_id}` with `{"role": "viewer"}` |
+| Remove a member, or leave (your own `user_id`) | `DELETE /v2/projects/{project_id}/collaborators/{user_id}` |
+| Look up an invite from its link | `GET /auth/invites/{token}` (no session) |
+| Accept as an existing user | `POST /auth/invites/{token}/accept` |
+| Sign up from an invite | `POST /auth/signup` with `invite_token` |
+
+## Related
+- [Alert emails](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md): what admins get told when something breaks
+- [Self-hosting: Email](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#email)
+- [Projects, apps and API keys](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md)
+
+---
+
+# Which alert emails does RevenueDot send?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md
+Description: Project admins get an email when store notifications fail, a webhook fails 5 times in a row, or Apple or Google rejects the store credentials. One email when it starts, at most one reminder a day, one when it is fixed.
+
+RevenueDot emails a project's admins when one of three things breaks: **store notifications are failing**, **a webhook keeps failing**, or **Apple or Google rejects the app's store credentials**. You get one email when the problem starts, at most one reminder a day while it lasts, and one email when it is fixed. Each email links to the app or webhook page that shows the details.
+
+## The three alerts
+| Alert | When it starts | When it ends |
+|---|---|---|
+| **Store notifications failing** | An App Store, Mac App Store or Google Play app's setup health says notifications are **failing**: the newest notification from the store could not be processed (for example a bad signature, another bundle ID or package name, or an invalid purchase token) | The next notification from the store is processed |
+| **Webhook failing** | The last 5 delivery attempts to one webhook all failed. Paused webhooks do not alert | A delivery succeeds, or you pause the webhook |
+| **Store credentials failing** | Apple answers 401 to the app's in-app purchase key, or Google answers 401 or 403 to the service account. This counts on any call: receipt checks, store notifications, the Google Play voided-purchases scan and the dashboard's **Check credentials** button | A check with the store succeeds |
+
+RevenueDot checks the store credentials of a failing app again every hour, and the credentials of every app once a day. So a fixed key clears the alert within an hour, and a key revoked in App Store Connect or Google Cloud raises one within a day even when no purchase comes in.
+
+Deleting the app or the webhook closes its alert without a "fixed" email.
+
+## Who gets them
+- **Every admin of the project** gets the emails. Developers and Viewers do not. See [roles](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/team.md#roles).
+- **Each admin can turn them off** in **Account settings** (`/account`, in the menu under your name): switch off **Email me about problems with my projects**. The setting covers every project you administer.
+- **With the API:** `POST /auth/me` with `{"alert_emails": false}` turns them off, and `true` turns them back on. `GET /auth/me` shows the current value in `user.alert_emails`. See [Update account settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-account-settings).
+
+## How often
+- **One email when the alert opens.**
+- **At most one reminder every 24 hours** while it stays open.
+- **One email when it resolves.**
+
+RevenueDot looks for problems about every minute on RevenueDot Cloud, and every 30 seconds on a self-hosted server.
+
+## On a self-hosted server
+Alert emails need mail settings. Without `REVENUEDOT_SMTP_URL`, each alert email is printed to the server log instead of sent (`docker compose logs revenuedot`). Set `REVENUEDOT_PUBLIC_URL` so the links in the email point at your dashboard. See [Email](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#email).
+
+## Related
+- [Why are store notifications not arriving?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/store-notifications-not-arriving.md)
+- [Why are webhooks not arriving?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/webhooks-not-arriving.md)
+- [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md) and [Connect Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md)
+- [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md)
 
 
 === Migrate from RevenueCat ===
@@ -3239,7 +3399,7 @@ One RevenueDot server answers every API below on one port. The reference is gene
 | SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 27 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
 | REST API v1 | `/v1/subscribers/...` | secret key | 10 | [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md) |
 | REST API v2 | `/v2/projects/...` | secret key or dashboard session | 73 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
-| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...` | secret key, session or none | 33 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
+| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...` | secret key, session or none | 47 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
 | Webhooks (sent by RevenueDot) | your URL | HMAC signature | 15 event types | [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md) |
 
 ## Quick example
@@ -3434,7 +3594,7 @@ Reserved for RevenueCat compatibility. RevenueDot does not send it today.
 
 ### rate_limit_error
 
-Reserved for RevenueCat compatibility. RevenueDot has no rate limit today.
+Too many requests of one kind: project invites (50 per project per day). The error is `retryable`; try again later. The dashboard's password reset and email verification endpoints answer 429 with the same `type`.
 
 ### authentication_error
 
@@ -8307,7 +8467,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `id` | string | yes |  |
 | `name` | string or null | no |  |
 | `email` | string | yes |  |
-| `role` | `admin`, `read_only` | yes |  |
+| `role` | `admin`, `developer`, `read_only` | yes | RevenueCat's role names. `read_only` is the dashboard's Viewer role. |
 | `accepted_at` | integer | no | When the user joined. Epoch milliseconds. |
 | `has_mfa` | boolean | no | Always false. |
 
@@ -8627,9 +8787,10 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (33)
+## Operations on this page (47)
 
-- **Dashboard auth**: [Whether sign-up is open](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-sign-up-is-open), [Create a dashboard account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-dashboard-account), [Sign in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-in), [Sign out](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out), [The signed-in user and their projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-signed-in-user-and-their-projects)
+- **Dashboard auth**: [Whether sign-up is open](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-sign-up-is-open), [Create a dashboard account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-dashboard-account), [Sign in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-in), [Sign out](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out), [The signed-in user and their projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-signed-in-user-and-their-projects), [Update account settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-account-settings), [Email a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#email-a-password-reset-link), [Check a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-a-password-reset-link), [Set a new password from a reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-a-new-password-from-a-reset-link), [Confirm an email address](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#confirm-an-email-address), [Send a new confirmation email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-new-confirmation-email), [Look up an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#look-up-an-invite), [Accept an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#accept-an-invite)
+- **Members and invites**: [List open invites](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-open-invites), [Invite someone by email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#invite-someone-by-email), [Resend an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#resend-an-invite), [Revoke an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#revoke-an-invite), [Change a member's role](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-a-members-role), [Remove a member, or leave the project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#remove-a-member-or-leave-the-project)
 - **Project settings**: [Get a project with its settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-project-with-its-settings), [Update a project's name and transfer behaviour](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-a-projects-name-and-transfer-behaviour), [Delete a project and everything in it](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-project-and-everything-in-it)
 - **Store setup**: [Store setup state of an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#store-setup-state-of-an-app), [Check store credentials with Apple or Google](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-store-credentials-with-apple-or-google), [Extend every active App Store subscriber of a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#status-of-a-mass-extension), [Setup health](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#setup-health)
 - **API keys**: [List secret keys](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-secret-keys), [Create a secret key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-secret-key), [Delete a secret key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-secret-key)
@@ -8642,7 +8803,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 
 ## Dashboard auth
 
-Sign-up and sign-in for the dashboard. The session cookie also authorizes REST API v2.
+Sign-up, sign-in, password reset, email confirmation, invites and account settings for the dashboard. The session cookie also authorizes REST API v2.
 
 ### Whether sign-up is open
 
@@ -8675,6 +8836,8 @@ Example 200 response:
 
 Creates the user and a first project, and sets the `rd_session` cookie (30 days; `Secure` over https). On a self-hosted server only the first account (the owner) can sign up, unless the server runs with `REVENUEDOT_ALLOW_SIGNUP=true`.
 
+With `invite_token` (from an invite link), the account joins the inviting project instead of getting a new one, and sign-up works even where it is closed. The email must be the invited address; the account counts as verified. On RevenueDot Cloud, an account without an invite gets an email with a confirmation link (valid 24 hours).
+
 **Request body** (`application/json`)
 
 | Field | Type | Required | Description |
@@ -8682,7 +8845,8 @@ Creates the user and a first project, and sets the `rd_session` cookie (30 days;
 | `email` | string | yes |  |
 | `password` | string | yes |  |
 | `name` | string | no |  |
-| `project_name` | string | no | Default: My project. |
+| `project_name` | string | no | Default: My project. Ignored with `invite_token`. |
+| `invite_token` | string | no | RevenueDot extension. The token from an invite link (`/invite?token=...`). |
 
 **Example request**
 
@@ -8693,8 +8857,8 @@ curl -s -X POST "$REVENUEDOT_URL/auth/signup" \
 
 **Responses**
 
-- **201**: Signed up and signed in.
-- **400**: Invalid email or password.
+- **201**: Signed up and signed in. With an invite, `project_id` is the project joined.
+- **400**: Invalid email or password, or an invite that is not valid (`invite_invalid`) or for another address (`invite_email_mismatch`).
 - **403**: Sign-up is closed: the server has an owner already.
 - **409**: The email is taken.
 
@@ -8773,6 +8937,560 @@ curl -s "$REVENUEDOT_URL/auth/me"
 
 - **200**: The user.
 - **401**: Not signed in.
+
+Example 200 response:
+
+```json
+{
+  "user": {
+    "id": "usr_8k2m4q",
+    "email": "dev@example.com",
+    "name": "Dana",
+    "email_verified": true,
+    "alert_emails": true
+  },
+  "account": {
+    "edition": "cloud",
+    "plan": "free",
+    "email_verification_required": false
+  },
+  "projects": []
+}
+```
+
+### Update account settings
+
+`POST /auth/me` · Auth: dashboard session · RevenueDot extension
+
+The display name and whether the user gets [alert emails](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md) for projects they administer. Send only the fields to change. A null or empty `name` clears it.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string or null | no |  |
+| `alert_emails` | boolean | no | False stops alert emails for every project. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/auth/me" \
+  -H "Content-Type: application/json" -d '{"alert_emails":false}'
+```
+
+**Responses**
+
+- **200**: The updated user.
+- **400**: Invalid field.
+- **401**: Not signed in.
+
+Example 200 response:
+
+```json
+{
+  "user": {
+    "id": "usr_8k2m4q",
+    "email": "dev@example.com",
+    "name": "Dana",
+    "email_verified": true,
+    "alert_emails": false
+  }
+}
+```
+
+### Email a password reset link
+
+`POST /auth/password/forgot` · Auth: none · RevenueDot extension
+
+Always answers 200 with the same body, whether or not an account uses the address, so the answer does not reveal who has an account. If one does, it gets a link to `/reset-password` that works once and expires after 1 hour.
+
+Limits: 5 requests per IP address per 15 minutes (then 429), and 3 emails per address per hour (further requests answer 200 but send nothing). See [I forgot my password](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/forgot-password.md).
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `email` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/auth/password/forgot" \
+  -H "Content-Type: application/json" -d '{"email":"dev@example.com"}'
+```
+
+**Responses**
+
+- **200**: Accepted.
+- **400**: Not a valid email address.
+- **429**: Too many requests from this IP address.
+
+Example 200 response:
+
+```json
+{
+  "ok": true,
+  "message": "If an account uses this email, we sent it a link to reset the password. The link expires in 1 hour."
+}
+```
+
+### Check a password reset link
+
+`POST /auth/password/check` · Auth: none · RevenueDot extension
+
+Tells the reset page whether the link still works before the user types a new password. Does not use up the link.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes | The `token` from the reset link. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/auth/password/check"
+```
+
+**Responses**
+
+- **200**: Whether the link works.
+- **400**: Missing token.
+
+Example 200 response:
+
+```json
+{
+  "valid": false,
+  "reason": "expired",
+  "message": "This link has expired. Ask for a new one."
+}
+```
+
+### Set a new password from a reset link
+
+`POST /auth/password/reset` · Auth: none · RevenueDot extension
+
+Sets the password, signs the user out on every device, marks the email as confirmed (the link proved the inbox) and signs this browser in with a new `rd_session` cookie. Every other open reset link of the user stops working.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+| `password` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/auth/password/reset" \
+  -H "Content-Type: application/json" -d '{"token":"…","password":"a-new-long-password"}'
+```
+
+**Responses**
+
+- **200**: Password changed and signed in.
+- **400**: The password is too short or too long, or the link is not valid (`token_invalid` with a `reason`).
+
+Example 200 response:
+
+```json
+{
+  "ok": true
+}
+```
+
+### Confirm an email address
+
+`POST /auth/email/verify` · Auth: none · RevenueDot extension
+
+RevenueDot Cloud only: the link in the confirmation email sent at sign-up (valid 24 hours, works once). Self-hosted servers treat every account as confirmed.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes | The `token` from the confirmation link. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/auth/email/verify"
+```
+
+**Responses**
+
+- **200**: Confirmed.
+- **400**: The link is not valid (`token_invalid` with a `reason`).
+
+Example 200 response:
+
+```json
+{
+  "ok": true,
+  "email": "dev@example.com"
+}
+```
+
+### Send a new confirmation email
+
+`POST /auth/email/verify/resend` · Auth: dashboard session · RevenueDot extension
+
+Up to 5 per user per hour. An account that is already confirmed gets `already_verified: true` and no email.
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/auth/email/verify/resend"
+```
+
+**Responses**
+
+- **200**: Sent, or already confirmed.
+- **401**: Not signed in.
+- **429**: Too many emails this hour.
+- **502**: The mail server did not accept the email.
+
+Example 200 response:
+
+```json
+{
+  "ok": true,
+  "email": "dev@example.com"
+}
+```
+
+### Look up an invite
+
+`GET /auth/invites/{token}` · Auth: none · RevenueDot extension
+
+What the invite page shows: the project, the role, who sent it and whether the invited address has an account already (sign in and accept, or sign up with `invite_token`).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes | The `token` from the invite link (`/invite?token=...`). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/auth/invites/$TOKEN"
+```
+
+**Responses**
+
+- **200**: The invite.
+- **404**: Not valid, expired, already accepted or revoked.
+
+Example 200 response:
+
+```json
+{
+  "object": "invite",
+  "email": "sam@example.com",
+  "role": "developer",
+  "project": {
+    "id": "proj18pzzkao",
+    "name": "My app"
+  },
+  "invited_by": {
+    "name": "Dana",
+    "email": "dev@example.com"
+  },
+  "expires_at": 1791405714000,
+  "account_exists": false
+}
+```
+
+### Accept an invite
+
+`POST /auth/invites/{token}/accept` · Auth: dashboard session · RevenueDot extension
+
+For a user who already has an account, signed in with the invited address. Adds them to the project with the invite's role; someone who is already a member keeps their role. Also marks their email as confirmed.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes | The `token` from the invite link (`/invite?token=...`). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/auth/invites/$TOKEN/accept"
+```
+
+**Responses**
+
+- **200**: Joined.
+- **401**: Not signed in.
+- **403**: Signed in with another address.
+- **404**: The invite is no longer valid.
+
+Example 200 response:
+
+```json
+{
+  "ok": true,
+  "project_id": "proj18pzzkao"
+}
+```
+
+## Members and invites
+
+Invite people to a project by email, change their role, remove them. Dashboard session only.
+
+### List open invites
+
+`GET /v2/projects/{project_id}/invites` · Auth: dashboard session · RevenueDot extension · Permissions: `project_configuration:collaborators:read`
+
+Invites nobody has accepted or revoked, oldest first. Expired ones stay listed so an admin can resend them. Needs a dashboard session: secret API keys cannot manage members.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/invites"
+```
+
+**Responses**
+
+- **200**: Open invites. Returns a list of [Invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#invite).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "items": [
+    {
+      "object": "invite",
+      "id": "inv_4f8k2m9q1x7z",
+      "email": "sam@example.com",
+      "role": "developer",
+      "status": "pending",
+      "invited_by": "usr_8k2m4q",
+      "created_at": 1790800914012,
+      "last_sent_at": 1790800914012,
+      "expires_at": 1791405714012
+    }
+  ],
+  "next_page": null,
+  "url": "/v2/projects/proj18pzzkao/invites"
+}
+```
+
+### Invite someone by email
+
+`POST /v2/projects/{project_id}/invites` · Auth: dashboard session · RevenueDot extension
+
+Admins only. Emails a link that lasts 7 days. Inviting an address that already has an open invite replaces it: the role changes, a new link goes out and the old one stops working. See [Invite your team](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/team.md).
+
+On RevenueDot Cloud the admin needs a confirmed email address. A project can send 50 invites (including resends) per day; after that the answer is 429. `email_sent` is false when the mail server refused the email; the invite still exists and can be resent.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `email` | string | yes |  |
+| `role` | `admin`, `developer`, `viewer` | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/invites" \
+  -H "Content-Type: application/json" -d '{"email":"sam@example.com","role":"developer"}'
+```
+
+**Responses**
+
+- **201**: The invite.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **429**: Too many requests. Retry later. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 201 response:
+
+```json
+{
+  "object": "invite",
+  "id": "inv_4f8k2m9q1x7z",
+  "email": "sam@example.com",
+  "role": "developer",
+  "status": "pending",
+  "invited_by": "usr_8k2m4q",
+  "created_at": 1790800914012,
+  "last_sent_at": 1790800914012,
+  "expires_at": 1791405714012,
+  "email_sent": true
+}
+```
+
+### Resend an invite
+
+`POST /v2/projects/{project_id}/invites/{invite_id}/actions/resend` · Auth: dashboard session · RevenueDot extension
+
+Admins only. Sends a new link valid for 7 more days; the old link stops working. Works on expired invites. Counts toward the 50 invites per project per day.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `invite_id` | string | yes | Invite id (inv_...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/invites/$INVITE_ID/actions/resend"
+```
+
+**Responses**
+
+- **200**: The invite.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **429**: Too many requests. Retry later. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Revoke an invite
+
+`DELETE /v2/projects/{project_id}/invites/{invite_id}` · Auth: dashboard session · RevenueDot extension
+
+Admins only. The link stops working at once.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `invite_id` | string | yes | Invite id (inv_...). |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/invites/$INVITE_ID"
+```
+
+**Responses**
+
+- **200**: Deleted. Returns [Deleted](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#deleted).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "invite",
+  "id": "…",
+  "deleted_at": 1790801342625
+}
+```
+
+### Change a member's role
+
+`POST /v2/projects/{project_id}/collaborators/{user_id}` · Auth: dashboard session · RevenueDot extension
+
+Admins only. A project always keeps at least one admin, so the last admin cannot be demoted (400). The response uses RevenueCat's role names: `viewer` comes back as `read_only`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `user_id` | string | yes | The member's user id (the collaborator `id`). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `role` | `admin`, `developer`, `viewer` | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/collaborators/$USER_ID" \
+  -H "Content-Type: application/json" -d '{"role":"viewer"}'
+```
+
+**Responses**
+
+- **200**: The member. Returns [Collaborator](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#collaborator).
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "collaborator",
+  "id": "usr_3n7p1x",
+  "name": "Sam",
+  "email": "sam@example.com",
+  "role": "read_only",
+  "accepted_at": 1790800914012,
+  "has_mfa": false
+}
+```
+
+### Remove a member, or leave the project
+
+`DELETE /v2/projects/{project_id}/collaborators/{user_id}` · Auth: dashboard session · RevenueDot extension
+
+Any member can remove themselves. Removing someone else takes an admin. The last admin cannot leave or be removed (422): make someone else an admin first, or delete the project.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `user_id` | string | yes | The member's user id. Your own id leaves the project. |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/collaborators/$USER_ID"
+```
+
+**Responses**
+
+- **200**: Deleted. Returns [Deleted](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#deleted).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "collaborator",
+  "id": "…",
+  "deleted_at": 1790801342625
+}
+```
 
 ## Project settings
 
@@ -9913,6 +10631,18 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `paddle.paddle_is_sandbox` | boolean | no |  |
 | `paddle.paddle_api_key` | null | no |  |
 
+### Collaborator
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"collaborator"` | yes |  |
+| `id` | string | yes |  |
+| `name` | string or null | no |  |
+| `email` | string | yes |  |
+| `role` | `admin`, `developer`, `read_only` | yes | RevenueCat's role names. `read_only` is the dashboard's Viewer role. |
+| `accepted_at` | integer | no | When the user joined. Epoch milliseconds. |
+| `has_mfa` | boolean | no | Always false. |
+
 ### CredentialsCheck
 
 | Field | Type | Required | Description |
@@ -10054,6 +10784,20 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `currency` | string | yes | ISO 4217 code. |
 | `country` | null | yes |  |
 | `amount_micros` | integer | yes | Price in micros: 9.99 is 9990000. |
+
+### Invite
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"invite"` | yes |  |
+| `id` | string | yes | inv_... |
+| `email` | string | yes | The invited address, lowercased. |
+| `role` | `admin`, `developer`, `viewer` | yes | The role the person gets when they accept. |
+| `status` | `pending`, `expired`, `accepted`, `revoked` | yes | Lists only show `pending` and `expired`. An expired invite can be resent. |
+| `invited_by` | string or null | no | User id of the admin who last sent it. |
+| `created_at` | integer | no | When it was created. Epoch milliseconds. |
+| `last_sent_at` | integer | no | When the last email went out. Epoch milliseconds. |
+| `expires_at` | integer | yes | When the link stops working: 7 days after it was last sent. Epoch milliseconds. |
 
 ### MassExtension
 
@@ -11535,6 +12279,9 @@ Pick the question closest to yours below. Each article starts with the answer, t
 - [Known issues and gaps as of 2026-09-30](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md): what does not work yet, and the workaround for each.
 - [Troubleshooting by symptom](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/troubleshooting.md): one table from symptom to cause to fix.
 
+## Account
+- [What do I do if I forgot my RevenueDot password?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/forgot-password.md)
+
 ## Purchases and access
 - [Why is my entitlement not active?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/entitlement-not-active.md)
 - [Why does RevenueDot answer 4xx or 5xx to a receipt?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/receipt-errors-4xx-vs-5xx.md)
@@ -11719,6 +12466,7 @@ Details: [Why are webhooks not arriving?](https://raw.githubusercontent.com/reve
 |---|---|---|
 | `/` shows a small JSON document | The dashboard lives at `/login` | Open `http://localhost:8787/login` |
 | You cannot sign in after a fresh start | The account is created by signing up or by the seed script | Sign up at `/signup`, or sign in as the email the seed script printed |
+| You forgot your password, and no reset email arrives | The server has no `REVENUEDOT_SMTP_URL`, so emails go to the log | Copy the link from `docker compose logs revenuedot`, or run `revenuedot admin reset-password <email>`. See [I forgot my password](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/forgot-password.md) |
 
 ## Self-hosting
 | Symptom | Cause | Fix |
@@ -11844,6 +12592,32 @@ The customer info then shows `pro` with the `PROMOTIONAL` store until it ends. S
 - [Products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md)
 - [Offerings and packages](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/offerings-and-packages.md)
 - [Troubleshooting by symptom](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/troubleshooting.md)
+
+---
+
+# What do I do if I forgot my RevenueDot password?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/forgot-password.md
+Description: Click Forgot password? on the sign-in page and follow the emailed link within 1 hour. Self-hosted servers without email print the link to the server log, or an admin resets the password from the command line.
+
+Click **Forgot password?** on the sign-in page, enter your email address and open the link RevenueDot emails you. The link works **once** and expires after **1 hour**. Choose a new password (at least 8 characters) and you are signed in. Setting it **signs you out on every other device** and makes older reset links stop working.
+
+## What to expect
+- **The page always says the same thing:** "If an account uses this email, we sent it a link". It says this whether or not an account exists, so nobody can use the form to find out who has an account.
+- **The email comes from RevenueDot.** On RevenueDot Cloud the sender is `no-reply@mail.revenuedot.app`. Check your spam folder if it does not arrive within a few minutes.
+- **Limits:** 5 requests per network address per 15 minutes, then the page asks you to wait. At most 3 reset emails per address per hour; more requests show the same message but send nothing.
+- **An expired or used link** shows a message on the reset page. Ask for a new one.
+
+## On a self-hosted server
+A self-hosted server sends email only when its admin set `REVENUEDOT_SMTP_URL`. Without it:
+
+1. **The link is in the server log.** Request the reset, then run `docker compose logs revenuedot` and copy the link from the email printed there. See [Email](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#email).
+2. **Or reset the password from the command line**, straight against the database: `revenuedot admin reset-password <email>`. See [Reset a password without email](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#reset-a-password-without-email).
+
+## Related
+- [Invite your team](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/team.md)
+- [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md)
+- [Password reset endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#email-a-password-reset-link)
 
 ---
 
