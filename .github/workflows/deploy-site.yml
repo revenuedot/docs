@@ -1,0 +1,38 @@
+# On every push to main, checks the docs and redeploys revenuedot.app, which renders this repo at /docs and /blog.
+# The site's code lives in revenuedot/revenuedot (apps/site); this checks it out next to the docs.
+name: Deploy site
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+concurrency: { group: deploy-production, cancel-in-progress: false }
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      DOCS_DIR: ${{ github.workspace }}/docs
+      CHECK_WORKSPACE: "0"
+    steps:
+      - uses: actions/checkout@v5
+        with: { path: docs }
+      - uses: actions/checkout@v5
+        with: { repository: revenuedot/revenuedot, path: revenuedot }
+      - uses: actions/setup-node@v5
+        with: { node-version: 24 }
+      - name: Docs checks (drift against the server code, pages, links)
+        working-directory: docs
+        run: npm ci --no-audit --no-fund && npm run all
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - run: pnpm install --frozen-lockfile
+        working-directory: revenuedot
+      - run: pnpm --filter site run deploy
+        working-directory: revenuedot
+      - name: Live check
+        run: |
+          for u in /docs /blog /llms.txt /docs/getting-started/quickstart; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "https://revenuedot.app$u"); echo "$u $code"; [ "$code" = 200 ]
+          done
