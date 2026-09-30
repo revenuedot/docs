@@ -16,7 +16,7 @@ In **proxy mode** you add a few lines: set the proxy URL before `configure`, tur
 | Android diagnostics, paywall and ad events | Still go to RevenueCat | Go to your server |
 | Web analytics events | Turn off, or they go to RevenueCat | Go to your server |
 | Flutter web | Does not work | Works |
-| Proxy URL | Required | Still required while `api.revenuedot.app` is not live, and always when you self-host |
+| Proxy URL | Required: `https://api.revenuedot.app` for RevenueDot Cloud, or your own server | Not needed for RevenueDot Cloud (the default host); required when you self-host |
 
 **Keys:** if you ran the [importer](importer.md), each app keeps its RevenueCat public key, so the `apiKey` lines below stay as they are. Otherwise use the keys RevenueDot shows for each app.
 

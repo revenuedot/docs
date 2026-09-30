@@ -67,16 +67,17 @@ A real answer from a local server, after a Test Store purchase, starts like this
 ## What does not work yet
 We would rather you hear this from us than find out in production.
 - **No real App Store or Google Play sandbox purchase has run end to end.** The store code is tested against mocked Apple and Google APIs only.
-- **The native iOS SDK cannot load Test Store products** from RevenueDot yet. purchases-js and React Native in Expo Go or on the web can.
 - **Paywalls, experiments, targeting, Customer Center and virtual currencies** are not built. The SDK hides them instead of crashing.
 - **Amazon, Stripe, Web Billing, Paddle and Roku** receipts are refused.
 - **With the stock SDK, response signatures read as FAILED**, because we cannot sign with RevenueCat's key. You turn the check off, or build our forks with your own key.
-- **There is no hosted service yet.** RevenueDot Cloud is planned. Today you run it yourself.
+- **The SDK forks, the importer CLI and the MCP npm package are not published yet.** Each runs from source; the hosted MCP server at `https://mcp.revenuedot.app/mcp` works.
 
 The full list, with a workaround for each item, is in [Known issues](../docs/help/known-issues.md).
 
 ## How to try it
-You need Docker, `curl` and `jq`. The quickstart takes about five minutes, and most of that is the first image build:
+The fastest way is RevenueDot Cloud: sign up at [app.revenuedot.app](https://app.revenuedot.app) (free plan) and point your SDK's proxy URL at `https://api.revenuedot.app`.
+
+To run it yourself you need Docker, `curl` and `jq`. The quickstart takes about five minutes, and most of that is the first image build:
 
 ```bash
 git clone https://github.com/revenuedot/examples.git
@@ -93,9 +94,9 @@ If you already use RevenueCat, read [Migrate from RevenueCat](../docs/migrate/RE
 ## What comes next
 Our next milestones, in order:
 1. Real App Store and Google Play sandbox purchases, end to end.
-2. The fix for Test Store products on native iOS.
-3. Published SDK forks and a published importer.
-4. RevenueDot Cloud, for teams that would rather not run a server.
+2. Published SDK forks, a published importer and a published MCP package.
+
+RevenueDot Cloud is already live at [app.revenuedot.app](https://app.revenuedot.app), and the native iOS and Android SDKs load and buy Test Store products.
 
 The build plan is public in the repository. RevenueDot is not affiliated with RevenueCat. "RevenueCat" is a trademark of RevenueCat, Inc., and we use it only to describe compatibility.
 

@@ -28,7 +28,7 @@ const INTRO = [
   "RevenueDot is an open-source (AGPL-3.0), self-hostable backend for in-app purchases and subscriptions that works with the RevenueCat SDK.",
   "It is a free alternative to RevenueCat: an app points the RevenueCat SDK's proxy URL at a RevenueDot server and keeps its purchase code, offerings and customers.",
   "It verifies App Store and Google Play purchases on the server, keeps each customer's entitlements current from store notifications, and sends webhooks in RevenueCat's payload format.",
-  "RevenueDot runs as one Docker image plus Postgres. The SDK forks are MIT and keep RevenueCat's class and method names. RevenueDot is not affiliated with RevenueCat, Inc.",
+  "RevenueDot runs as one Docker image plus Postgres, or hosted as RevenueDot Cloud (dashboard https://app.revenuedot.app, API https://api.revenuedot.app, free plan). The SDK forks are MIT and keep RevenueCat's class and method names. RevenueDot is not affiliated with RevenueCat, Inc.",
 ];
 
 const all = new Set(pages());
@@ -80,7 +80,7 @@ index.push("## Optional", "", `- [OpenAPI document](${RAW}/api/openapi.yaml): Op
   "- [Server repository](https://github.com/revenuedot/revenuedot): server, dashboard, importer (AGPL-3.0)",
   "- [Examples](https://github.com/revenuedot/examples): runnable apps, webhook backends and self-host recipes (MIT)",
   "- [SDK forks](https://github.com/revenuedot): MIT forks of all ten RevenueCat SDKs, for example [purchases-ios](https://github.com/revenuedot/purchases-ios)",
-  "- [MCP server](https://github.com/revenuedot/mcp) and [agent skills](https://github.com/revenuedot/agent-skills)", "");
+  "- [MCP server](https://github.com/revenuedot/mcp) (hosted at https://mcp.revenuedot.app/mcp) and [agent skills](https://github.com/revenuedot/agent-skills)", "");
 writeFileSync(join(ROOT, "llms.txt"), index.join("\n"));
 
 // Section shards and llms-full.txt.

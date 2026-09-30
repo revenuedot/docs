@@ -32,7 +32,7 @@ curl -s -X POST http://localhost:8787/v2/projects/$PROJECT_ID/test_purchases \
 
 The answer lists the events it produced, here `"event_types":["INITIAL_PURCHASE","CANCELLATION"]`, and your webhooks receive them. See [Test Store](../guides/test-store.md).
 
-The native iOS SDK cannot load Test Store products yet. Use purchases-js or React Native (Expo Go or web) for Test Store runs. See [Known issues](known-issues.md).
+Test Store runs work with the native SDKs too: the unmodified RevenueCat iOS SDK 5.92 on the iPhone simulator and Android SDK 10.24 on the Android emulator buy through the SDK's Test Store dialog against RevenueDot. purchases-js and React Native (Expo Go or web) work as well.
 
 ## App Store sandbox
 1. Connect the app: set its `bundle_id` and add the App Store in-app purchase key. See [Connect the App Store](../guides/app-store.md).

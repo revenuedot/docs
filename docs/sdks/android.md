@@ -55,7 +55,7 @@ git clone -b revenuedot/main-patches https://github.com/revenuedot/purchases-and
 cd purchases-android
 ./gradlew :purchases:publishToMavenLocal
 ```
-Then add `mavenLocal()` to your repositories and depend on `app.revenuedot.purchases:purchases:10.24.0-SNAPSHOT`. Keep setting `Purchases.proxyURL` while `api.revenuedot.app` is not live, and whenever you self-host.
+Then add `mavenLocal()` to your repositories and depend on `app.revenuedot.purchases:purchases:10.24.0-SNAPSHOT`. The fork's default host is RevenueDot Cloud, so a Cloud project needs no `Purchases.proxyURL`. When you self-host, keep setting it to your server.
 
 ## Trusted Entitlements
 - **Stock SDK:** it checks signatures with RevenueCat's key, so RevenueDot responses read as failed. The default, `INFORMATIONAL`, logs the failure and still grants access. Set `DISABLED`. **Never use `ENFORCED` with the stock SDK**: every request would fail.
@@ -107,7 +107,7 @@ More: [Test Store](../guides/test-store.md).
 The full order of steps is in [Migrate from RevenueCat](../migrate/README.md).
 
 ## Examples
-- **Coming soon:** a Jetpack Compose paywall app, `mobile/android-compose` in [revenuedot/examples](https://github.com/revenuedot/examples/tree/main/mobile/android-compose). It is not public yet.
+- [mobile/android-compose](https://github.com/revenuedot/examples/tree/main/mobile/android-compose): a Jetpack Compose paywall app. It is written but has not been compiled yet.
 
 ## Related
 - [All SDKs](README.md)

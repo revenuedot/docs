@@ -5,7 +5,7 @@ description: RevenueDot is an open-source, self-hostable backend for in-app purc
 
 # What is RevenueDot?
 
-RevenueDot is an open-source (AGPL-3.0) server for in-app purchases and subscriptions that works with the RevenueCat SDK. You run it yourself with Docker and Postgres. An app that already uses the RevenueCat SDK points the SDK at your RevenueDot server with one setting, the **proxy URL**, and keeps its purchase code.
+RevenueDot is an open-source (AGPL-3.0) server for in-app purchases and subscriptions that works with the RevenueCat SDK. You run it yourself with Docker and Postgres, or use **RevenueDot Cloud**: sign up at [app.revenuedot.app](https://app.revenuedot.app) and use `https://api.revenuedot.app`. An app that already uses the RevenueCat SDK points the SDK at RevenueDot with one setting, the **proxy URL**, and keeps its purchase code.
 
 ```swift
 // Point the SDK at your RevenueDot server; nothing else in the app changes.
@@ -26,10 +26,10 @@ Purchases.configure(with: Configuration.Builder(withAPIKey: "appl_...").with(ent
 | | RevenueDot |
 |---|---|
 | Source code | Open source: the server and dashboard are AGPL-3.0 ([repository](https://github.com/revenuedot/revenuedot)) |
-| Where it runs | Your own servers: one Docker image plus Postgres |
-| Price | Free to self-host. A hosted RevenueDot Cloud with a free plan is being prepared and is not open yet |
+| Where it runs | Your own servers (one Docker image plus Postgres), or RevenueDot Cloud at `https://api.revenuedot.app` |
+| Price | Free to self-host. RevenueDot Cloud is live with open sign-up, and every account is on the free plan |
 | App changes | Set the SDK's proxy URL and turn off its response-signature check, or install the RevenueDot fork of the SDK |
-| Data | Purchases, customers and receipts stay in your own Postgres |
+| Data | Self-hosted: purchases, customers and receipts stay in your own Postgres |
 
 RevenueDot is not affiliated with, endorsed by or sponsored by RevenueCat, Inc. "RevenueCat" is a trademark of RevenueCat, Inc. and is used here only to describe compatibility.
 
@@ -50,7 +50,7 @@ RevenueDot is not affiliated with, endorsed by or sponsored by RevenueCat, Inc. 
 4. Later changes, such as renewals and refunds, arrive as store notifications. RevenueDot updates the customer and sends webhooks.
 
 ## Where to go next
-- **Try it in 5 minutes:** [Quickstart](quickstart.md).
+- **Try it in 5 minutes:** [Quickstart](quickstart.md), or sign up for RevenueDot Cloud at [app.revenuedot.app](https://app.revenuedot.app).
 - **Choose how your app connects:** [proxy mode, fork packages or your existing keys](connect-your-app.md).
 - **Learn the model:** [Concepts](../concepts/README.md).
 - **Move a live app:** [Migrate from RevenueCat](../migrate/README.md).

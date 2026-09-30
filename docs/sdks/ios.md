@@ -57,7 +57,7 @@ pod 'RevenueDotPurchasesUI', '<version>'   # only if you use RevenueCatUI
 # CocoaPods, from the branch
 pod 'RevenueDotPurchases', :git => 'https://github.com/revenuedot/purchases-ios.git', :branch => 'revenuedot/main-patches'
 ```
-Keep setting `Purchases.proxyURL` to your server while `api.revenuedot.app` is not live, and whenever you self-host.
+The fork's default host is RevenueDot Cloud, so a Cloud project needs no `Purchases.proxyURL`. When you self-host, keep setting it to your server.
 
 ## Trusted Entitlements
 - **Stock SDK:** it checks signatures with RevenueCat's key, so RevenueDot responses read as failed. The default mode, `.informational`, logs the failure and still grants access. Set `.disabled` to stop the noise. **Never use `.enforced` with the stock SDK**: every request would fail.
@@ -109,7 +109,7 @@ More: [Test Store](../guides/test-store.md).
 The full order of steps is in [Migrate from RevenueCat](../migrate/README.md).
 
 ## Examples
-- **Coming soon:** a SwiftUI paywall app, `mobile/ios-swiftui` in [revenuedot/examples](https://github.com/revenuedot/examples/tree/main/mobile/ios-swiftui). It is not public yet.
+- [mobile/ios-swiftui](https://github.com/revenuedot/examples/tree/main/mobile/ios-swiftui): a SwiftUI paywall app. It builds for the iOS simulator; its README says exactly what was run.
 
 ## Related
 - [All SDKs](README.md)

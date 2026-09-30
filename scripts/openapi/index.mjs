@@ -67,6 +67,7 @@ export function buildDocument() {
       contact: { name: "RevenueDot", url: "https://github.com/revenuedot/revenuedot" },
     },
     servers: [
+      { url: "https://api.revenuedot.app", description: "RevenueDot Cloud" },
       { url: "http://localhost:8787", description: "A local RevenueDot (docker compose up)" },
       { url: "https://{host}", description: "Your self-hosted RevenueDot", variables: { host: { default: "revenuedot.example.com" } } },
     ],

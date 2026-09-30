@@ -30,7 +30,7 @@ The list below is complete as of **2026-09-30**. The biggest gap: **no real App 
     - Workaround: the RevenueDot Flutter fork fixes it; use it as a git dependency on [revenuedot/purchases-flutter](https://github.com/revenuedot/purchases-flutter).
 10. **The stock SDK reports signature verification FAILED.** RevenueDot cannot sign with RevenueCat's key.
     - Workaround: turn verification off, never use ENFORCED. See [signature verification](signature-verification-failed.md).
-11. **The SDK forks are not published to any registry.** npm, CocoaPods, Maven Central and OpenUPM releases need publishing credentials that are not set up yet. The forks' default host, `https://api.revenuedot.app`, is not live either.
+11. **The SDK forks are not published to any registry.** npm, CocoaPods, Maven Central and OpenUPM releases need publishing credentials that are not set up yet. The forks' default host, `https://api.revenuedot.app`, is RevenueDot Cloud and is live.
     - Workaround: use the stock RevenueCat SDK with a proxy URL, or build a fork from its `revenuedot/main-patches` branch.
 
 ## Webhooks and events
@@ -40,8 +40,8 @@ The list below is complete as of **2026-09-30**. The biggest gap: **no real App 
     - Workaround: count renewals in your backend from `RENEWAL` events.
 
 ## Migration
-14. **The importer CLI is not on npm yet.** `npx revenuedot import` does not work yet.
-    - Workaround: run it from source. See [The importer](../migrate/importer.md).
+14. **The importer CLI and the MCP package are not on npm yet.** `npx revenuedot import` and `npx @revenuedot/mcp` do not work yet. The hosted MCP server at `https://mcp.revenuedot.app/mcp` works.
+    - Workaround: run them from source. See [The importer](../migrate/importer.md) and [revenuedot/mcp](https://github.com/revenuedot/mcp).
 15. **Some RevenueCat data is not imported:** paywalls, targeting, experiments and virtual currency balances. Refunded subscriptions import as expired, because RevenueCat's API does not expose the refund. RevenueCat Billing renewals stay with RevenueCat.
     - Workaround: recreate paywalls in code, and keep RevenueCat running for RevenueCat Billing customers.
 16. **Google purchase tokens are not in RevenueCat's API.** Imported Google subscriptions wait with the key `needs_token_refresh:<order id>` until a token arrives.

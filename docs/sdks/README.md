@@ -30,7 +30,7 @@ All nine RevenueCat app SDKs work with RevenueDot today in **proxy mode**: you k
 
 ## What the forks change
 Each fork lives in `github.com/revenuedot/<repo>` on the branch `revenuedot/main-patches`, which is the upstream code plus one patch commit. The patches change only these things:
-- The default API host becomes `https://api.revenuedot.app`. That host is not live yet, so self-hosters still set the proxy URL.
+- The default API host becomes `https://api.revenuedot.app`, which is RevenueDot Cloud (live since 2026-09-30). Self-hosters still set the proxy URL.
 - The SDK trusts RevenueDot's response-signing key instead of RevenueCat's.
 - Registry names change (table above). Module and package names that your code imports stay the same, so `import RevenueCat` and `com.revenuecat.purchases.*` still work.
 - Android: diagnostics, paywall events and ad events follow the proxy URL.
@@ -42,6 +42,7 @@ Source: [`prd/sdk-forks/PRD.md`](https://github.com/revenuedot/revenuedot/blob/m
 
 ## What is tested today
 - The web SDK fork ran end to end against a real RevenueDot server: configure, customer info, offerings, a Test Store purchase, and the `pro` entitlement turning active.
+- The unmodified RevenueCat iOS SDK 5.92 on an iPhone simulator and Android SDK 10.24 on an Android emulator pass configure, customer info, offerings, a Test Store purchase and `logIn` against RevenueDot ([`scripts/e2e`](https://github.com/revenuedot/revenuedot/tree/main/scripts/e2e)).
 - Purchases through the real App Store and Google Play sandboxes have not run end to end yet. Store handling is tested against mocked Apple and Google APIs.
 - The [React Native Expo example](https://github.com/revenuedot/examples/tree/main/mobile/react-native-expo) and the [purchases-js Vite example](https://github.com/revenuedot/examples/tree/main/web/purchases-js-vite) run against RevenueDot with a Test Store key.
 

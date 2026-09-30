@@ -7,7 +7,7 @@ description: Start the server with Docker Compose, seed a Test Store app with on
 
 Start the server with Docker, seed it with a Test Store app, make a purchase with `curl`, then point an SDK at it. You need no App Store or Google Play account. Most of the 5 minutes is the first image build.
 
-You need Docker with Compose v2, plus `git`, `curl` and `jq`.
+You need Docker with Compose v2, plus `git`, `curl` and `jq`. To skip running a server, sign up for RevenueDot Cloud at [app.revenuedot.app](https://app.revenuedot.app) and use `https://api.revenuedot.app` wherever this page says `http://localhost:8787`.
 
 ## 1. Start RevenueDot
 ```bash

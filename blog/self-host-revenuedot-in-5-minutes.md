@@ -149,7 +149,7 @@ await Purchases.setProxyURL("http://localhost:8787");
 Purchases.configure({ apiKey: "test_..." });
 ```
 
-The quickest end-to-end check is the [purchases-js example](https://github.com/revenuedot/examples/tree/main/web/purchases-js-vite), which buys through the Test Store in a browser. The native iOS SDK cannot load Test Store products yet; see [Known issues](../docs/help/known-issues.md).
+The quickest end-to-end check is the [purchases-js example](https://github.com/revenuedot/examples/tree/main/web/purchases-js-vite), which buys through the Test Store in a browser. The unmodified iOS and Android SDKs also buy Test Store products on a simulator or emulator.
 
 ## Before you go to production
 Your laptop setup is not a production setup. Before real customers:

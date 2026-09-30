@@ -54,7 +54,7 @@ Every file that says `import Purchases from "react-native-purchases"` keeps work
 We thought hard about renaming the Swift module and the Kotlin packages too. It would have broken every app file and every guide written for the RevenueCat SDK, so we kept them as code-compatibility identifiers. Our products are named RevenueDot, and we never use RevenueCat's logo.
 
 ## What the patches change
-**Hosts.** Every RevenueCat host in shipped code points at `https://api.revenuedot.app`. That includes the main API, the fallback hosts, diagnostics, paywall and ad events, and purchases-js's API and events hosts. `setProxyURL` still overrides all of them, so self-hosters keep setting their own URL. The hosted API at that address is not live yet.
+**Hosts.** Every RevenueCat host in shipped code points at `https://api.revenuedot.app`. That includes the main API, the fallback hosts, diagnostics, paywall and ad events, and purchases-js's API and events hosts. `setProxyURL` still overrides all of them, so self-hosters keep setting their own URL. The hosted API at that address, RevenueDot Cloud, is live.
 
 **The signing key.** The iOS and Android forks trust RevenueDot's Ed25519 public key instead of RevenueCat's, so Trusted Entitlements verify against RevenueDot. A self-hosted server cannot sign with our key, so self-hosters either keep verification off or build the forks with their own key, one command in the pipeline:
 

@@ -32,7 +32,7 @@ Every platform's version of this line is in the [SDK guides](../sdks/README.md).
 - **It is newer.** RevenueCat has a longer track record as a hosted service.
 
 ## What does it cost?
-Self-hosting is free: you pay only for your server and database. RevenueCat's Pro plan is free up to $2,500 in monthly tracked revenue and then charges 1% of tracked revenue ([pricing](https://www.revenuecat.com/pricing)). A hosted RevenueDot Cloud is planned but not live yet.
+Self-hosting is free: you pay only for your server and database. RevenueCat's Pro plan is free up to $2,500 in monthly tracked revenue and then charges 1% of tracked revenue ([pricing](https://www.revenuecat.com/pricing)). RevenueDot Cloud is live at [app.revenuedot.app](https://app.revenuedot.app): sign-up is open and every account is on the free plan. Paid plans have not shipped.
 
 ## Which licenses apply?
 - The server and dashboard are AGPL-3.0.
@@ -94,10 +94,10 @@ They are not implemented. The SDK endpoints answer empty or 404 in the way that 
 `purchases-js` works with Test Store (`test_`) keys against RevenueDot. Web Billing (`rcb_`), Stripe and Paddle purchases do not work yet. With the stock SDK, turn off analytics events (`flags: { collectAnalyticsEvents: false }`), because the stock SDK sends them to RevenueCat. See the [web guide](../sdks/web.md).
 
 ## Can AI agents set it up?
-An MCP server and agent skills are scaffolded in [revenuedot/mcp](https://github.com/revenuedot/mcp) and [revenuedot/agent-skills](https://github.com/revenuedot/agent-skills). They are not usable yet.
+Yes. The hosted MCP server is live at `https://mcp.revenuedot.app/mcp`: your client signs in with OAuth, or sends a secret key. It has 17 tools for the catalog, customers, access grants, webhooks and import status ([revenuedot/mcp](https://github.com/revenuedot/mcp)). The `@revenuedot/mcp` npm package is not published yet, so run the local version from source. Agent skills for Claude Code, Codex and Cursor are in [revenuedot/agent-skills](https://github.com/revenuedot/agent-skills).
 
 ## Where do I report a bug?
-Open an issue on [GitHub](https://github.com/revenuedot/revenuedot/issues). Report security problems privately through the repository's Security tab.
+Open an issue on [GitHub](https://github.com/revenuedot/revenuedot/issues). Report security problems privately through the repository's Security tab, or email security@revenuedot.app.
 
 ## Related
 - [What is RevenueDot?](../getting-started/README.md)

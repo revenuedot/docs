@@ -83,7 +83,6 @@ Source: [`prd/migration/PRD.md`](https://github.com/revenuedot/revenuedot/blob/m
 **Tier 1 (the current build), not finished**
 - SDK fork packages are built but not published to any registry.
 - Real App Store and Google Play sandbox purchases have not run end to end; store handling is tested against mocked Apple and Google APIs.
-- RevenueDot Cloud (`api.revenuedot.app`) is not live.
 
 **Tier 2 (planned)**
 - The full REST API v2, the audit log and team roles.

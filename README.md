@@ -4,6 +4,8 @@
 
 > Every page says what works today and what is planned.
 
+The pages are published at [revenuedot.app/docs](https://revenuedot.app/docs) and [revenuedot.app/blog](https://revenuedot.app/blog), with [llms.txt](https://revenuedot.app/llms.txt) at the site root. Every push to `main` runs the checks below and redeploys the site ([`.github/workflows/deploy-site.yml`](.github/workflows/deploy-site.yml)).
+
 ## Start here
 - [What is RevenueDot?](docs/getting-started/README.md) and the [5-minute quickstart](docs/getting-started/quickstart.md)
 - [Connect your app](docs/getting-started/connect-your-app.md): proxy mode, fork packages, or your existing keys
@@ -28,7 +30,7 @@ scripts/             the generators and checks below
 ```
 
 ## Scripts
-Needs Node.js 20+ and, for the drift check, a checkout of [revenuedot/revenuedot](https://github.com/revenuedot/revenuedot) next to this repo (or `REVENUEDOT_SERVER_DIR`).
+Needs Node.js 20+ (CI uses 24) and, for the drift check, a checkout of [revenuedot/revenuedot](https://github.com/revenuedot/revenuedot) next to this repo (or `REVENUEDOT_SERVER_DIR`).
 
 ```bash
 npm install

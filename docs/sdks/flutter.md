@@ -94,7 +94,7 @@ More: [Test Store](../guides/test-store.md).
 The full order of steps is in [Migrate from RevenueCat](../migrate/README.md).
 
 ## Examples
-- **Coming soon:** a Flutter paywall app, `mobile/flutter` in [revenuedot/examples](https://github.com/revenuedot/examples/tree/main/mobile/flutter). It is not public yet and has not run on a device.
+- [mobile/flutter](https://github.com/revenuedot/examples/tree/main/mobile/flutter): a Flutter paywall app. It is written but has not been analyzed or run on a device yet.
 
 ## Related
 - [All SDKs](README.md)

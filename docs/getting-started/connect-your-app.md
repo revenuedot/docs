@@ -5,7 +5,7 @@ description: Three ways. Proxy mode sets one URL in the RevenueCat SDK you alrea
 
 # How do I connect my app to RevenueDot?
 
-Set the RevenueCat SDK's proxy URL to your RevenueDot server and turn its signature check off. That is **proxy mode**, and it works today with every SDK. Later you can swap in the **RevenueDot fork** of the SDK, which verifies RevenueDot's response signatures. When you migrate, the importer lets old app versions keep their **existing RevenueCat API keys**.
+Set the RevenueCat SDK's proxy URL to RevenueDot (`https://api.revenuedot.app` for RevenueDot Cloud, or your own server) and turn its signature check off. That is **proxy mode**, and it works today with every SDK. Later you can swap in the **RevenueDot fork** of the SDK, which verifies RevenueDot's response signatures. When you migrate, the importer lets old app versions keep their **existing RevenueCat API keys**.
 
 | Way | What you change in the app | What you get | Status (2026-09-30) |
 |---|---|---|---|
@@ -30,7 +30,7 @@ await Purchases.setProxyURL("https://revenuedot.example.com");
 Purchases.configure({ apiKey: Platform.OS === "ios" ? "appl_..." : "goog_..." });
 ```
 
-- **Set the proxy URL before `configure`.** The SDK reads it once.
+- **Set the proxy URL before `configure`.** The SDK reads it once. For RevenueDot Cloud it is `https://api.revenuedot.app`.
 - **Turn entitlement verification off.** The stock SDK checks responses against RevenueCat's signing key. RevenueDot cannot sign with that key, so iOS and Android would report every response as `FAILED` in their default informational mode. Access still works, but the logs fill with errors. See [Trusted Entitlements](../guides/trusted-entitlements.md).
 - **Use the keys RevenueDot gives each app** (`appl_`, `goog_`, `test_` ...), or keep your RevenueCat keys as described below.
 - **Known limits.** The stock Android SDK still sends diagnostics, paywall events and ad events to RevenueCat's hosts. The stock purchases-js sends analytics to RevenueCat unless you set `flags: { collectAnalyticsEvents: false }`. Flutter's web build ignores the proxy URL.
@@ -42,7 +42,7 @@ RevenueDot maintains MIT forks of all ten RevenueCat SDKs. They keep every name 
 
 - trusts RevenueDot's response-signing key, so entitlement verification reports `VERIFIED` against a server that signs;
 - sends diagnostics and events to the proxy URL too (Android, purchases-js), and makes the proxy URL work on Flutter web;
-- defaults to `https://api.revenuedot.app` (RevenueDot Cloud, not open yet), so self-hosters still set the proxy URL.
+- defaults to `https://api.revenuedot.app` (RevenueDot Cloud), so Cloud projects need no proxy URL and self-hosters still set theirs.
 
 ```jsonc
 // package.json (React Native): the alias keeps `import Purchases from "react-native-purchases"` working.

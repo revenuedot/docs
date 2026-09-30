@@ -26,7 +26,7 @@ const purchases = Purchases.configure({
 - There is no store history to sync on the web, so no `syncPurchases` step is needed after a migration.
 
 ## Use the RevenueDot fork
-The fork is [github.com/revenuedot/purchases-js](https://github.com/revenuedot/purchases-js). It sends **analytics events to `httpConfig.proxyURL`** too, and the checkout reads "Secure checkout by RevenueDot". Its default host is `https://api.revenuedot.app`, which is not live yet, so keep setting `proxyURL`.
+The fork is [github.com/revenuedot/purchases-js](https://github.com/revenuedot/purchases-js). It sends **analytics events to `httpConfig.proxyURL`** too, and the checkout reads "Secure checkout by RevenueDot". Its default host is `https://api.revenuedot.app`, RevenueDot Cloud, so a Cloud project needs no proxy URL with the fork. Self-hosters keep setting `proxyURL` to their own server.
 
 **It is not published yet (2026-09-30).** The planned install keeps your imports through an npm alias:
 ```json
