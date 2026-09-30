@@ -20,7 +20,7 @@ RevenueDot answers errors in the format each API's clients already parse: SDK en
 
 | Code | Name | HTTP status | Meaning |
 |---|---|---|---|
-| 7000 | BAD_REQUEST / INVALID_PLATFORM | 400 | The request is malformed, a secret-key receipt post has no X-Platform app, or the store action does not exist for this store. |
+| 7000 | BAD_REQUEST / INVALID_PLATFORM | 400 | The request is malformed, a secret-key receipt post has no X-Platform app, the store action does not exist for this store, or a web checkout was asked for (RevenueDot takes no web payments). |
 | 7101 | STORE_PROBLEM | 400 or 503 | The store refused the request (400), or the store or its credentials could not be used right now (503, retry later). |
 | 7102 | RECEIPT_ALREADY_IN_USE | 400 | The purchase belongs to another customer and the project's transfer behaviour is keep or transfer_if_no_active. |
 | 7103 | INVALID_RECEIPT | 400 | The receipt, signed transaction or purchase token is not valid, or it belongs to another bundle id or package name. |
@@ -28,11 +28,13 @@ RevenueDot answers errors in the format each API's clients already parse: SDK en
 | 7220 | INVALID_APP_USER_ID | 400 | The app user id is empty or longer than 100 characters. |
 | 7224 | INVALID_AUTH_TOKEN | 401 | A Google Pub/Sub push token is missing or invalid (store notifications only). |
 | 7225 | INVALID_API_KEY | 401 or 403 | The API key is unknown (401), or a REST v1 endpoint was called with a public key (403). |
-| 7226 | BAD_REQUEST_PARAMS | 400 | A store action got parameters it cannot use. |
-| 7234 | INVALID_APPLE_SUBSCRIPTION_KEY | 500 | A StoreKit 1 receipt arrived for an App Store app without an in-app purchase key, or the key is incomplete. Sent as 500 so the SDK retries once you add the key. |
+| 7226 | BAD_REQUEST_PARAMS | 400 | A store action got parameters it cannot use, or a required field (such as `aad_attribution_token` or `generate_offers`) is missing. |
+| 7234 | INVALID_APPLE_SUBSCRIPTION_KEY | 400 or 500 | A StoreKit 1 receipt arrived for an App Store app without an in-app purchase key, or the key is incomplete (500, so the SDK retries once you add the key). A promotional offer cannot be signed without the key (400; the SDK reports `invalidAppleSubscriptionKeyError` for that offer). |
 | 7259 | NOT_FOUND | 404 | The customer, entitlement, offering or subscription does not exist. |
 | 7263 | INVALID_SUBSCRIBER_ATTRIBUTES | 400 | Some attributes were not saved; `attribute_errors` lists them. |
-| 7662 | UNSUPPORTED_RECEIPT | 400 | Receipts for this app's store are not supported yet (Amazon, Stripe, Web Billing, Paddle, Roku). |
+| 7662 | UNSUPPORTED_RECEIPT | 400 | Receipts for this app's store are not supported yet (Amazon, Stripe, Web Billing, Paddle, Roku), including the Android SDK's Amazon receipt lookup. |
+| 7849 | INVALID_WEB_REDEMPTION_TOKEN | 400 | A web purchase redemption token is not valid. RevenueDot has no web purchases, so every token answers this; the SDKs return the `invalidToken` result. |
+| 7877 | INVALID_OPERATION_SESSION | 400 | A Web Billing checkout session does not exist. |
 
 ## REST API v2 error types
 

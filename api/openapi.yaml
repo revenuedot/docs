@@ -51,6 +51,9 @@ tags:
   - name: SDK support
     description: Endpoints the SDK calls for features RevenueDot answers minimally, so the SDK keeps working.
     x-page: sdk-endpoints
+  - name: Web Billing
+    description: Web checkout calls from the iOS SDK and purchases-js. RevenueDot takes no web payments, so a checkout answers an error the SDK shows as a failed purchase.
+    x-page: sdk-endpoints
   - name: Store notifications
     description: Where App Store Connect and Google Pub/Sub send server notifications.
     x-page: sdk-endpoints
@@ -173,6 +176,28 @@ paths:
         - Server
       summary: Health check
       description: Needs no API key. Use it for load balancer and uptime checks.
+      security: []
+      responses:
+        "200":
+          description: The server is up.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    const: ok
+              example:
+                status: ok
+      x-source: routes/sdk.ts
+  /v1/health/connectivity:
+    get:
+      operationId: getHealthConnectivity
+      tags:
+        - Server
+      summary: Connectivity probe
+      description: Needs no API key. The iOS SDK probes it only with its internal API failover setting, which is off by default.
       security: []
       responses:
         "200":
@@ -744,7 +769,7 @@ paths:
       tags:
         - Attributes
       summary: Set customer attributes
-      description: Saves attributes such as `$email`, `$displayName` or your own keys. A null value deletes the attribute. An invalid `$email` is refused with 7263; the other attributes are saved.
+      description: "Saves attributes such as `$email`, `$displayName` or your own keys. A null value deletes the attribute. An invalid `$email` is refused with 7263; the other attributes are saved. `collectDeviceIdentifiers()` sends `$ip` and `$deviceVersion` as `\"true\"`: RevenueDot stores the request's IP address and the device and OS from the SDK's headers instead."
       security:
         - publicApiKey: []
         - secretApiKey: []
@@ -833,45 +858,203 @@ paths:
               example:
                 pro_monthly: null
       x-source: routes/sdk.ts
+  /v1/offers:
+    post:
+      operationId: postOfferForSigning
+      tags:
+        - SDK support
+      summary: Sign a promotional offer (iOS)
+      description: |-
+        What `Purchases.promotionalOffer(forProductDiscount:product:)` calls. RevenueDot signs each offer with the App Store app's In-App Purchase key (`key_id`, `issuer_id` and `private_key` in the app's credentials) the way Apple verifies it: ECDSA P-256 with SHA-256 over the bundle id, key id, product id, offer id, app account token, nonce and timestamp, DER-encoded and base64 ([Apple's format](https://developer.apple.com/documentation/storekit/generating-a-signature-for-promotional-offers)).
+        The app account token matches what the SDK puts on the payment: with StoreKit 2 the lowercase app user id when it is a UUID and empty otherwise; with StoreKit 1 the app user id.
+        Without an In-App Purchase key the answer is 400 with code 7234, which the SDK reports as `invalidAppleSubscriptionKeyError` for that offer only.
+      security:
+        - publicApiKey: []
+        - secretApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                app_user_id:
+                  type: string
+                fetch_token:
+                  type: string
+                  description: The receipt or signed transaction; not needed for signing.
+                generate_offers:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      offer_id:
+                        type: string
+                        description: Promotional offer id from App Store Connect.
+                      product_id:
+                        type: string
+                    required:
+                      - offer_id
+                      - product_id
+              required:
+                - app_user_id
+                - generate_offers
+            example:
+              app_user_id: user_1
+              fetch_token: …
+              generate_offers:
+                - offer_id: winback_50
+                  product_id: pro_monthly
+      responses:
+        "200":
+          description: One signature per offer.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  offers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key_id:
+                          type: string
+                        offer_id:
+                          type: string
+                        product_id:
+                          type: string
+                        signature_data:
+                          type: object
+                          properties:
+                            nonce:
+                              type: string
+                              description: Lowercase UUID.
+                            signature:
+                              type: string
+                              description: Base64 DER ECDSA signature.
+                            timestamp:
+                              type: integer
+                              description: Epoch milliseconds.
+              example:
+                offers:
+                  - key_id: 2X9R4HXF34
+                    offer_id: winback_50
+                    product_id: pro_monthly
+                    signature_data:
+                      nonce: 0f3c2a8e-5d7b-4d7e-9a53-3b8f2c1e6d40
+                      signature: MEUCIQDD…
+                      timestamp: 1790800914034
+        "400":
+          description: No In-App Purchase key, or no offers.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+              example:
+                code: 7234
+                message: Promotional offers need the app's App Store In-App Purchase key. Add it in the app's settings.
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
   /v1/subscribers/{app_user_id}/attribution:
     post:
       operationId: postAttribution
       tags:
         - SDK support
-      summary: Attribution data (accepted, not stored)
+      summary: Attribution data (deprecated iOS call)
+      description: |-
+        What the deprecated `Purchases.addAttributionData` calls. The advertising identifiers in `data` (`rc_idfa`, `rc_idfv`, `rc_gps_adid`, `rc_ip_address`) become `$idfa`, `$idfv`, `$gpsAdId` and `$ip`.
+        For Apple Search Ads (`network` 0) with `iad-attribution` true, the iAd fields become `$mediaSource` ("Apple Search Ads"), `$campaign`, `$adGroup`, `$keyword`, `$creative` and the `$appleAds*` ids.
+        Attribution is write-once: a campaign attribute the customer already has is kept.
       security:
         - publicApiKey: []
         - secretApiKey: []
       parameters:
         - $ref: "#/components/parameters/AppUserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                network:
+                  type: integer
+                  description: "The SDK's AttributionNetwork: 0 Apple Search Ads."
+                data:
+                  type: object
+              required:
+                - network
+                - data
+            example:
+              network: 0
+              data:
+                rc_idfv: 4CEE1BEE-3C19-4591-9E34-1AD968D7B609
+                Version3.1:
+                  iad-attribution: "true"
+                  iad-campaign-name: Spring
+                  iad-keyword: scanner
       responses:
         "200":
-          description: Accepted.
+          description: Stored.
           content:
             application/json:
               schema:
                 type: object
               example: {}
+        "400":
+          $ref: "#/components/responses/V1Error400"
+        "401":
+          $ref: "#/components/responses/V1Error401"
       x-source: routes/sdk.ts
   /v1/subscribers/{app_user_id}/adservices_attribution:
     post:
       operationId: postAdServicesAttribution
       tags:
         - SDK support
-      summary: Apple AdServices token (accepted, not stored)
+      summary: Apple AdServices token
+      description: |-
+        What `enableAdServicesAttributionTokenCollection()` sends once per install (the same token can also arrive as `aad_attribution_token` on a receipt).
+        After answering, RevenueDot looks the token up with [Apple's attribution API](https://developer.apple.com/documentation/adservices/aaattribution/attributiontoken()), retrying a 404 or 5xx 3 times 5 seconds apart, and stores an attributed install as `$mediaSource` ("Apple Search Ads"), `$campaign`, `$adGroup`, `$keyword`, `$ad`, `$appleAdsCampaignId`, `$appleAdsAdGroupId`, `$appleAdsKeywordId`, `$appleAdsAdId`, `$appleAdsOrgId`, `$appleAdsCountryOrRegion`, `$claimType` and `$conversionType`. Apple returns ids, not names. They show on the customer page and in every webhook's `subscriber_attributes`.
       security:
         - publicApiKey: []
         - secretApiKey: []
       parameters:
         - $ref: "#/components/parameters/AppUserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                aad_attribution_token:
+                  type: string
+                  description: The token from AAAttribution.attributionToken().
+              required:
+                - aad_attribution_token
+            example:
+              aad_attribution_token: wD3Ma…
       responses:
         "200":
-          description: Accepted.
+          description: Accepted; the lookup runs after the answer.
           content:
             application/json:
               schema:
                 type: object
               example: {}
+        "400":
+          description: No token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+              example:
+                code: 7226
+                message: aad_attribution_token is required.
+        "401":
+          $ref: "#/components/responses/V1Error401"
       x-source: routes/sdk.ts
   /v1/subscribers/{app_user_id}/health_report_availability:
     get:
@@ -977,7 +1160,7 @@ paths:
       tags:
         - SDK support
       summary: Customer Center configuration (not built)
-      description: Always 404, so the SDK hides Customer Center. Customer Center is planned for Tier 2.
+      description: "Always 404 with code 7259: the SDK returns an error and the Customer Center screen shows its error state. Customer Center configuration is planned for Tier 2."
       security:
         - publicApiKey: []
       parameters:
@@ -1036,6 +1219,228 @@ paths:
                     type: object
               example:
                 virtual_currencies: {}
+      x-source: routes/sdk.ts
+  /v1/subscribers/redeem_purchase:
+    post:
+      operationId: redeemWebPurchase
+      tags:
+        - SDK support
+      summary: Redeem a web purchase (not available)
+      description: "What `Purchases.redeemWebPurchase()` calls with the `redemption_token` from a redemption deep link. RevenueDot takes no web payments, so no token is valid: 400 with code 7849, which the SDKs return as the `invalidToken` result."
+      security:
+        - publicApiKey: []
+      responses:
+        "400":
+          description: Invalid token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+              example:
+                code: 7849
+                message: "This redemption link is not valid: RevenueDot has no web purchases to redeem."
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+  /v1/external_purchase_tokens:
+    post:
+      operationId: postExternalPurchaseToken
+      tags:
+        - SDK support
+      summary: Register an Apple external purchase token (iOS)
+      description: Part of Apple's external purchase and link-out flows, before a web checkout. The token is acknowledged with an id, which is all the SDK reads; the web checkout that follows is not available (see `/rcbilling/v1/hosted-checkout`).
+      security:
+        - publicApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                app_user_id:
+                  type: string
+                purchase_type:
+                  type: string
+                  enum:
+                    - IN_APP
+                    - LINK_OUT
+                token:
+                  type: string
+                  description: Apple's external purchase token, when there is one.
+              required:
+                - app_user_id
+                - purchase_type
+      responses:
+        "200":
+          description: Registered.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  purchase_type:
+                    type: string
+                  is_sandbox:
+                    type: boolean
+                  token_source:
+                    type: string
+                    enum:
+                      - APPLE_SDK
+                      - RC_GENERATED
+              example:
+                id: ept3b1f0c9e2d8a4f6b9c7e5d3a1b2c4d6e
+                purchase_type: LINK_OUT
+                is_sandbox: true
+                token_source: APPLE_SDK
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+  /v1/subscribers/{app_user_id}/ads/reward_verifications/{client_transaction_id}:
+    get:
+      operationId: rewardVerification
+      tags:
+        - SDK support
+      summary: Rewarded ad verification (not available)
+      description: What `pollRewardVerification` polls. There is no server-side ad verification, so the answer is always the final `failed`, and the SDK stops after one request.
+      security:
+        - publicApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/AppUserId"
+        - name: client_transaction_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: From `generateRewardVerificationToken`.
+      responses:
+        "200":
+          description: Failed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - pending
+                      - verified
+                      - failed
+                  reward:
+                    type: "null"
+                  failure_reason:
+                    type: string
+                  message:
+                    type: string
+              example:
+                status: failed
+                reward: null
+                failure_reason: not_supported
+                message: Server-side reward verification is not available on RevenueDot.
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+  /v1/receipts/amazon/{store_user_id}/{receipt_id}:
+    get:
+      operationId: amazonReceipt
+      tags:
+        - SDK support
+      summary: Amazon receipt details (not supported)
+      description: "The Android SDK asks for it on Amazon subscription purchases. Amazon Appstore purchases are not supported: 400 with code 7662, the same answer as a receipt post for an Amazon app, which leaves the purchase unconsumed."
+      security:
+        - publicApiKey: []
+      parameters:
+        - name: store_user_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: receipt_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Not encoded by the SDK; may contain `/`.
+      responses:
+        "400":
+          description: Not supported.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+              example:
+                code: 7662
+                message: Amazon Appstore purchases are not supported yet.
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+  /v1/subscribers/{app_user_id}/workflows:
+    get:
+      operationId: paywallWorkflows
+      tags:
+        - SDK support
+      summary: Paywall workflows (web SDK)
+      description: What purchases-js `presentPaywall` asks first. There are no workflows, so the SDK uses the offering's own paywall.
+      security:
+        - publicApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/AppUserId"
+        - name: type
+          in: query
+          schema:
+            type: string
+          description: "`paywall`."
+      responses:
+        "200":
+          description: No workflows.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workflows:
+                    type: array
+                    items:
+                      type: object
+                  ui_config:
+                    type: object
+              example:
+                workflows: []
+                ui_config: {}
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+  /v1/subscribers/{app_user_id}/workflows/{workflow_id}:
+    get:
+      operationId: paywallWorkflow
+      tags:
+        - SDK support
+      summary: One paywall workflow (web SDK)
+      description: Never called, because the workflow list is empty.
+      security:
+        - publicApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/AppUserId"
+        - name: workflow_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "401":
+          $ref: "#/components/responses/V1Error401"
+        "404":
+          description: No such workflow.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+              example:
+                code: 7259
+                message: Workflow not found.
       x-source: routes/sdk.ts
   /v1/subscribers/{app_user_id}/restore/eligibility:
     post:
@@ -1199,6 +1604,257 @@ paths:
                         base_price: null
                         trial: null
                         intro_price: null
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+  /rcbilling/v1/subscribers/{app_user_id}/offering_products:
+    get:
+      operationId: webOfferingProducts
+      tags:
+        - Web Billing
+      summary: Web offering products
+      description: Defined in the iOS SDK with no caller. There are no web offerings.
+      security:
+        - publicApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/AppUserId"
+      responses:
+        "200":
+          description: No web offerings.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  offerings:
+                    type: object
+              example:
+                offerings: {}
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+  /rcbilling/v1/hosted-checkout:
+    post:
+      operationId: hostedCheckout
+      tags:
+        - Web Billing
+      summary: Start a hosted web checkout (not available)
+      description: "The iOS SDK's paywall web checkout. RevenueDot takes no payments: 400 with code 7000, and the SDK returns `failed` for the checkout without retrying."
+      security:
+        - publicApiKey: []
+      responses:
+        "400":
+          description: Not available.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+              example:
+                code: 7000
+                message: Web checkout is not available on RevenueDot.
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+  /rcbilling/v1/purchase:
+    post:
+      operationId: webBillingPurchase
+      tags:
+        - Web Billing
+      summary: Web Billing purchase (not available)
+      description: Defined in purchases-js with no caller. 400 with code 7000.
+      security:
+        - publicApiKey: []
+      responses:
+        "400":
+          description: Not available.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+              example:
+                code: 7000
+                message: Web checkout is not available on RevenueDot.
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+  /rcbilling/v1/checkout/prepare:
+    post:
+      operationId: checkoutPrepare
+      tags:
+        - Web Billing
+      summary: Prepare a Web Billing checkout (not available)
+      description: "purchases-js with an `rcb_` key. 400 with code 7000: the purchase fails with an error in the SDK's purchase screen."
+      security:
+        - publicApiKey: []
+      responses:
+        "400":
+          description: Not available.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+              example:
+                code: 7000
+                message: Web checkout is not available on RevenueDot.
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+  /rcbilling/v1/checkout/start:
+    post:
+      operationId: checkoutStart
+      tags:
+        - Web Billing
+      summary: Start a Web Billing checkout (not available)
+      security:
+        - publicApiKey: []
+      responses:
+        "400":
+          description: Not available.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+              example:
+                code: 7000
+                message: Web checkout is not available on RevenueDot.
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+  /rcbilling/v1/checkout/{operation_session_id}:
+    parameters:
+      - name: operation_session_id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: checkoutStatus
+      tags:
+        - Web Billing
+      summary: Web Billing checkout status
+      description: "No checkout session exists: 400 with code 7877."
+      security:
+        - publicApiKey: []
+      responses:
+        "400":
+          description: No such session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+              example:
+                code: 7877
+                message: There is no such checkout session.
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+    patch:
+      operationId: checkoutRefreshPricing
+      tags:
+        - Web Billing
+      summary: Refresh Web Billing checkout pricing
+      security:
+        - publicApiKey: []
+      responses:
+        "400":
+          description: No such session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+              example:
+                code: 7877
+                message: There is no such checkout session.
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+  /rcbilling/v1/checkout/{operation_session_id}/complete:
+    parameters:
+      - name: operation_session_id
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: checkoutComplete
+      tags:
+        - Web Billing
+      summary: Complete a Web Billing checkout
+      security:
+        - publicApiKey: []
+      responses:
+        "400":
+          description: No such session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+              example:
+                code: 7877
+                message: There is no such checkout session.
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+  /rcbilling/v1/branding:
+    get:
+      operationId: webBillingBranding
+      tags:
+        - Web Billing
+      summary: Web checkout branding
+      description: "purchases-js with an `rcb_` key loads it before a checkout: the app's name and the SDK's default look."
+      security:
+        - publicApiKey: []
+      responses:
+        "200":
+          description: Branding.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  app_name:
+                    type:
+                      - string
+                      - "null"
+                  app_icon:
+                    type:
+                      - string
+                      - "null"
+                  app_icon_webp:
+                    type:
+                      - string
+                      - "null"
+                  app_wordmark:
+                    type:
+                      - string
+                      - "null"
+                  app_wordmark_webp:
+                    type:
+                      - string
+                      - "null"
+                  appearance:
+                    type: "null"
+                  support_email:
+                    type:
+                      - string
+                      - "null"
+                  gateway_tax_collection_enabled:
+                    type: boolean
+                  brand_font_config:
+                    type: "null"
+              example:
+                id: appvnrm0a5h
+                app_name: Scanner Web
+                app_icon: null
+                app_icon_webp: null
+                app_wordmark: null
+                app_wordmark_webp: null
+                appearance: null
+                support_email: null
+                gateway_tax_collection_enabled: false
+                brand_font_config: null
         "401":
           $ref: "#/components/responses/V1Error401"
       x-source: routes/sdk.ts
@@ -12057,7 +12713,7 @@ components:
         - code: 7000
           name: BAD_REQUEST / INVALID_PLATFORM
           status: "400"
-          meaning: The request is malformed, a secret-key receipt post has no X-Platform app, or the store action does not exist for this store.
+          meaning: The request is malformed, a secret-key receipt post has no X-Platform app, the store action does not exist for this store, or a web checkout was asked for (RevenueDot takes no web payments).
         - code: 7101
           name: STORE_PROBLEM
           status: 400 or 503
@@ -12089,11 +12745,11 @@ components:
         - code: 7226
           name: BAD_REQUEST_PARAMS
           status: "400"
-          meaning: A store action got parameters it cannot use.
+          meaning: A store action got parameters it cannot use, or a required field (such as `aad_attribution_token` or `generate_offers`) is missing.
         - code: 7234
           name: INVALID_APPLE_SUBSCRIPTION_KEY
-          status: "500"
-          meaning: A StoreKit 1 receipt arrived for an App Store app without an in-app purchase key, or the key is incomplete. Sent as 500 so the SDK retries once you add the key.
+          status: 400 or 500
+          meaning: A StoreKit 1 receipt arrived for an App Store app without an in-app purchase key, or the key is incomplete (500, so the SDK retries once you add the key). A promotional offer cannot be signed without the key (400; the SDK reports `invalidAppleSubscriptionKeyError` for that offer).
         - code: 7259
           name: NOT_FOUND
           status: "404"
@@ -12105,7 +12761,15 @@ components:
         - code: 7662
           name: UNSUPPORTED_RECEIPT
           status: "400"
-          meaning: Receipts for this app's store are not supported yet (Amazon, Stripe, Web Billing, Paddle, Roku).
+          meaning: Receipts for this app's store are not supported yet (Amazon, Stripe, Web Billing, Paddle, Roku), including the Android SDK's Amazon receipt lookup.
+        - code: 7849
+          name: INVALID_WEB_REDEMPTION_TOKEN
+          status: "400"
+          meaning: A web purchase redemption token is not valid. RevenueDot has no web purchases, so every token answers this; the SDKs return the `invalidToken` result.
+        - code: 7877
+          name: INVALID_OPERATION_SESSION
+          status: "400"
+          meaning: A Web Billing checkout session does not exist.
     Price:
       type: object
       properties:

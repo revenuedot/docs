@@ -17,6 +17,7 @@ export const TAGS = [
   ["Identity", "sdk-endpoints", "`logIn` and aliases."],
   ["Attributes", "sdk-endpoints", "Customer attributes such as `$email`."],
   ["SDK support", "sdk-endpoints", "Endpoints the SDK calls for features RevenueDot answers minimally, so the SDK keeps working."],
+  ["Web Billing", "sdk-endpoints", "Web checkout calls from the iOS SDK and purchases-js. RevenueDot takes no web payments, so a checkout answers an error the SDK shows as a failed purchase."],
   ["Store notifications", "sdk-endpoints", "Where App Store Connect and Google Pub/Sub send server notifications."],
   ["Response signing", "sdk-endpoints", "Trusted Entitlements: the public key responses are signed with."],
   ["Customers (v1)", "rest-v1", "Secret-key customer operations."],

@@ -651,16 +651,24 @@ RevenueDot answers the RevenueCat SDKs, REST API v1 and v2, and webhook payloads
 **SDK features that answer empty today**
 | SDK feature | What RevenueDot answers | Effect in the app |
 |---|---|---|
-| Customer Center | `GET /v1/customercenter/{id}` answers 404; support tickets answer `{"sent": false}` | The SDK has no Customer Center configuration to show |
+| Customer Center | `GET /v1/customercenter/{id}` answers 404 with code 7259; support tickets answer `{"sent": false}` | The Customer Center screen shows its error state |
 | Virtual currencies | `{"virtual_currencies": {}}` | Balances are always empty |
 | Paywalls built in RevenueCat's editor | Offerings carry no paywall | Remote paywall designs do not appear |
 | Targeting and placements | Offerings carry no placements | Every user gets the current offering |
 | Remote config (`/v1/config/...`) | 204, no body | Nothing to apply |
 | Analytics and diagnostics (`/v1/events`, `/v1/diagnostics`) | Accepted, then dropped | No effect |
-| Attribution (`/v1/subscribers/{id}/attribution`, `adservices_attribution`) | Accepted, then dropped | No effect |
+| Web purchase redemption (`redeemWebPurchase`) | 400 with code 7849 | The SDK returns `invalidToken`: there are no web purchases to redeem |
+| Web checkout (iOS hosted checkout, purchases-js with `rcb_` keys) | 400 with code 7000; branding answers the app's name | The checkout fails with an error and is not retried |
+| Rewarded ad verification (`pollRewardVerification`) | `status: failed` | Polling stops after one request and returns failed |
+| Amazon receipt lookup (Android) | 400 with code 7662 | The Amazon purchase fails and stays unconsumed |
 | SDK health report | Always "passed" | No effect |
 
 Source: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/routes/sdk.ts).
+
+**Attribution and promotional offers work**
+- `setAttributes` and the reserved setters, `collectDeviceIdentifiers` (RevenueDot fills in `$ip` and `$deviceVersion`), the deprecated Apple Search Ads `addAttributionData` and `enableAdServicesAttributionTokenCollection` are stored as the reserved attributes, such as `$mediaSource`, `$campaign` and the `$appleAds*` ids. RevenueDot looks the AdServices token up with Apple's attribution API. Apple returns campaign ids, not names.
+- Promotional offers (`POST /v1/offers`) are signed with the App Store app's In-App Purchase key. Without the key the SDK gets code 7234 for that offer.
+- The full list of SDK calls and what each answers is in [`prd/sdk-api/PRD.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/sdk-api/PRD.md#endpoint-inventory).
 
 **Stores and receipts**
 - RevenueDot accepts purchases only for App Store, Mac App Store, Google Play and Test Store apps. Receipts for Amazon, Web Billing (`rcb_`), Stripe, Paddle and Roku apps answer HTTP 400 with code 7662.
@@ -726,7 +734,7 @@ Source: [`prd/migration/PRD.md`](https://github.com/revenuedot/revenuedot/blob/m
 - High-availability self-host (Helm, Terraform, clustering).
 - Web billing with hosted checkout, web-to-app funnels and redemption links.
 - Failed-payment recovery, refund defense and win-back flows.
-- Paddle, Roku and Galaxy stores; attribution; benchmarks.
+- Paddle, Roku and Galaxy stores; forwarding attribution to ad networks; benchmarks.
 
 Source: [`prd/SCOPE.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/SCOPE.md).
 

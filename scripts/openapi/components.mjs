@@ -31,7 +31,7 @@ export const V2_ERROR_TYPES = [
 
 /** SDK and REST v1 error codes (apps/server/src/errors.ts) with the HTTP status each is sent with. */
 export const V1_ERROR_CODES = [
-  { code: 7000, name: "BAD_REQUEST / INVALID_PLATFORM", status: "400", meaning: "The request is malformed, a secret-key receipt post has no X-Platform app, or the store action does not exist for this store." },
+  { code: 7000, name: "BAD_REQUEST / INVALID_PLATFORM", status: "400", meaning: "The request is malformed, a secret-key receipt post has no X-Platform app, the store action does not exist for this store, or a web checkout was asked for (RevenueDot takes no web payments)." },
   { code: 7101, name: "STORE_PROBLEM", status: "400 or 503", meaning: "The store refused the request (400), or the store or its credentials could not be used right now (503, retry later)." },
   { code: 7102, name: "RECEIPT_ALREADY_IN_USE", status: "400", meaning: "The purchase belongs to another customer and the project's transfer behaviour is keep or transfer_if_no_active." },
   { code: 7103, name: "INVALID_RECEIPT", status: "400", meaning: "The receipt, signed transaction or purchase token is not valid, or it belongs to another bundle id or package name." },
@@ -39,11 +39,13 @@ export const V1_ERROR_CODES = [
   { code: 7220, name: "INVALID_APP_USER_ID", status: "400", meaning: "The app user id is empty or longer than 100 characters." },
   { code: 7224, name: "INVALID_AUTH_TOKEN", status: "401", meaning: "A Google Pub/Sub push token is missing or invalid (store notifications only)." },
   { code: 7225, name: "INVALID_API_KEY", status: "401 or 403", meaning: "The API key is unknown (401), or a REST v1 endpoint was called with a public key (403)." },
-  { code: 7226, name: "BAD_REQUEST_PARAMS", status: "400", meaning: "A store action got parameters it cannot use." },
-  { code: 7234, name: "INVALID_APPLE_SUBSCRIPTION_KEY", status: "500", meaning: "A StoreKit 1 receipt arrived for an App Store app without an in-app purchase key, or the key is incomplete. Sent as 500 so the SDK retries once you add the key." },
+  { code: 7226, name: "BAD_REQUEST_PARAMS", status: "400", meaning: "A store action got parameters it cannot use, or a required field (such as `aad_attribution_token` or `generate_offers`) is missing." },
+  { code: 7234, name: "INVALID_APPLE_SUBSCRIPTION_KEY", status: "400 or 500", meaning: "A StoreKit 1 receipt arrived for an App Store app without an in-app purchase key, or the key is incomplete (500, so the SDK retries once you add the key). A promotional offer cannot be signed without the key (400; the SDK reports `invalidAppleSubscriptionKeyError` for that offer)." },
   { code: 7259, name: "NOT_FOUND", status: "404", meaning: "The customer, entitlement, offering or subscription does not exist." },
   { code: 7263, name: "INVALID_SUBSCRIBER_ATTRIBUTES", status: "400", meaning: "Some attributes were not saved; `attribute_errors` lists them." },
-  { code: 7662, name: "UNSUPPORTED_RECEIPT", status: "400", meaning: "Receipts for this app's store are not supported yet (Amazon, Stripe, Web Billing, Paddle, Roku)." },
+  { code: 7662, name: "UNSUPPORTED_RECEIPT", status: "400", meaning: "Receipts for this app's store are not supported yet (Amazon, Stripe, Web Billing, Paddle, Roku), including the Android SDK's Amazon receipt lookup." },
+  { code: 7849, name: "INVALID_WEB_REDEMPTION_TOKEN", status: "400", meaning: "A web purchase redemption token is not valid. RevenueDot has no web purchases, so every token answers this; the SDKs return the `invalidToken` result." },
+  { code: 7877, name: "INVALID_OPERATION_SESSION", status: "400", meaning: "A Web Billing checkout session does not exist." },
 ];
 
 const price = obj({ amount: num("Price in the purchase currency."), currency: str("ISO 4217 currency code.") }, ["amount", "currency"]);

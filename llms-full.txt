@@ -3299,16 +3299,24 @@ RevenueDot answers the RevenueCat SDKs, REST API v1 and v2, and webhook payloads
 **SDK features that answer empty today**
 | SDK feature | What RevenueDot answers | Effect in the app |
 |---|---|---|
-| Customer Center | `GET /v1/customercenter/{id}` answers 404; support tickets answer `{"sent": false}` | The SDK has no Customer Center configuration to show |
+| Customer Center | `GET /v1/customercenter/{id}` answers 404 with code 7259; support tickets answer `{"sent": false}` | The Customer Center screen shows its error state |
 | Virtual currencies | `{"virtual_currencies": {}}` | Balances are always empty |
 | Paywalls built in RevenueCat's editor | Offerings carry no paywall | Remote paywall designs do not appear |
 | Targeting and placements | Offerings carry no placements | Every user gets the current offering |
 | Remote config (`/v1/config/...`) | 204, no body | Nothing to apply |
 | Analytics and diagnostics (`/v1/events`, `/v1/diagnostics`) | Accepted, then dropped | No effect |
-| Attribution (`/v1/subscribers/{id}/attribution`, `adservices_attribution`) | Accepted, then dropped | No effect |
+| Web purchase redemption (`redeemWebPurchase`) | 400 with code 7849 | The SDK returns `invalidToken`: there are no web purchases to redeem |
+| Web checkout (iOS hosted checkout, purchases-js with `rcb_` keys) | 400 with code 7000; branding answers the app's name | The checkout fails with an error and is not retried |
+| Rewarded ad verification (`pollRewardVerification`) | `status: failed` | Polling stops after one request and returns failed |
+| Amazon receipt lookup (Android) | 400 with code 7662 | The Amazon purchase fails and stays unconsumed |
 | SDK health report | Always "passed" | No effect |
 
 Source: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/routes/sdk.ts).
+
+**Attribution and promotional offers work**
+- `setAttributes` and the reserved setters, `collectDeviceIdentifiers` (RevenueDot fills in `$ip` and `$deviceVersion`), the deprecated Apple Search Ads `addAttributionData` and `enableAdServicesAttributionTokenCollection` are stored as the reserved attributes, such as `$mediaSource`, `$campaign` and the `$appleAds*` ids. RevenueDot looks the AdServices token up with Apple's attribution API. Apple returns campaign ids, not names.
+- Promotional offers (`POST /v1/offers`) are signed with the App Store app's In-App Purchase key. Without the key the SDK gets code 7234 for that offer.
+- The full list of SDK calls and what each answers is in [`prd/sdk-api/PRD.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/sdk-api/PRD.md#endpoint-inventory).
 
 **Stores and receipts**
 - RevenueDot accepts purchases only for App Store, Mac App Store, Google Play and Test Store apps. Receipts for Amazon, Web Billing (`rcb_`), Stripe, Paddle and Roku apps answer HTTP 400 with code 7662.
@@ -3374,7 +3382,7 @@ Source: [`prd/migration/PRD.md`](https://github.com/revenuedot/revenuedot/blob/m
 - High-availability self-host (Helm, Terraform, clustering).
 - Web billing with hosted checkout, web-to-app funnels and redemption links.
 - Failed-payment recovery, refund defense and win-back flows.
-- Paddle, Roku and Galaxy stores; attribution; benchmarks.
+- Paddle, Roku and Galaxy stores; forwarding attribution to ad networks; benchmarks.
 
 Source: [`prd/SCOPE.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/SCOPE.md).
 
@@ -3396,7 +3404,7 @@ One RevenueDot server answers every API below on one port. The reference is gene
 
 | API | Paths | Auth | Operations | Reference |
 |---|---|---|---|---|
-| SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 27 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
+| SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 44 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
 | REST API v1 | `/v1/subscribers/...` | secret key | 10 | [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md) |
 | REST API v2 | `/v2/projects/...` | secret key or dashboard session | 73 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
 | RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...` | secret key, session or none | 47 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
@@ -3547,7 +3555,7 @@ RevenueDot answers errors in the format each API's clients already parse: SDK en
 
 | Code | Name | HTTP status | Meaning |
 |---|---|---|---|
-| 7000 | BAD_REQUEST / INVALID_PLATFORM | 400 | The request is malformed, a secret-key receipt post has no X-Platform app, or the store action does not exist for this store. |
+| 7000 | BAD_REQUEST / INVALID_PLATFORM | 400 | The request is malformed, a secret-key receipt post has no X-Platform app, the store action does not exist for this store, or a web checkout was asked for (RevenueDot takes no web payments). |
 | 7101 | STORE_PROBLEM | 400 or 503 | The store refused the request (400), or the store or its credentials could not be used right now (503, retry later). |
 | 7102 | RECEIPT_ALREADY_IN_USE | 400 | The purchase belongs to another customer and the project's transfer behaviour is keep or transfer_if_no_active. |
 | 7103 | INVALID_RECEIPT | 400 | The receipt, signed transaction or purchase token is not valid, or it belongs to another bundle id or package name. |
@@ -3555,11 +3563,13 @@ RevenueDot answers errors in the format each API's clients already parse: SDK en
 | 7220 | INVALID_APP_USER_ID | 400 | The app user id is empty or longer than 100 characters. |
 | 7224 | INVALID_AUTH_TOKEN | 401 | A Google Pub/Sub push token is missing or invalid (store notifications only). |
 | 7225 | INVALID_API_KEY | 401 or 403 | The API key is unknown (401), or a REST v1 endpoint was called with a public key (403). |
-| 7226 | BAD_REQUEST_PARAMS | 400 | A store action got parameters it cannot use. |
-| 7234 | INVALID_APPLE_SUBSCRIPTION_KEY | 500 | A StoreKit 1 receipt arrived for an App Store app without an in-app purchase key, or the key is incomplete. Sent as 500 so the SDK retries once you add the key. |
+| 7226 | BAD_REQUEST_PARAMS | 400 | A store action got parameters it cannot use, or a required field (such as `aad_attribution_token` or `generate_offers`) is missing. |
+| 7234 | INVALID_APPLE_SUBSCRIPTION_KEY | 400 or 500 | A StoreKit 1 receipt arrived for an App Store app without an in-app purchase key, or the key is incomplete (500, so the SDK retries once you add the key). A promotional offer cannot be signed without the key (400; the SDK reports `invalidAppleSubscriptionKeyError` for that offer). |
 | 7259 | NOT_FOUND | 404 | The customer, entitlement, offering or subscription does not exist. |
 | 7263 | INVALID_SUBSCRIBER_ATTRIBUTES | 400 | Some attributes were not saved; `attribute_errors` lists them. |
-| 7662 | UNSUPPORTED_RECEIPT | 400 | Receipts for this app's store are not supported yet (Amazon, Stripe, Web Billing, Paddle, Roku). |
+| 7662 | UNSUPPORTED_RECEIPT | 400 | Receipts for this app's store are not supported yet (Amazon, Stripe, Web Billing, Paddle, Roku), including the Android SDK's Amazon receipt lookup. |
+| 7849 | INVALID_WEB_REDEMPTION_TOKEN | 400 | A web purchase redemption token is not valid. RevenueDot has no web purchases, so every token answers this; the SDKs return the `invalidToken` result. |
+| 7877 | INVALID_OPERATION_SESSION | 400 | A Web Billing checkout session does not exist. |
 
 ## REST API v2 error types
 
@@ -3646,15 +3656,16 @@ Responses under `/v1` and `/rcbilling` are signed when the server has a signing 
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (27)
+## Operations on this page (44)
 
-- **Server**: [Server name and docs link](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#server-name-and-docs-link), [Health check](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#health-check)
+- **Server**: [Server name and docs link](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#server-name-and-docs-link), [Health check](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#health-check), [Connectivity probe](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#connectivity-probe)
 - **Customer info**: [Get customer info](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#get-customer-info)
 - **Receipts**: [Post a purchase or restore](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#post-a-purchase-or-restore)
 - **Offerings (SDK)**: [Get offerings](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#get-offerings), [Get offerings without a user](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#get-offerings-without-a-user), [Test Store product details](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#test-store-product-details)
 - **Identity**: [Log in (identify)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#log-in-identify), [Alias two app user ids](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#alias-two-app-user-ids)
 - **Attributes**: [Set customer attributes](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#set-customer-attributes)
-- **SDK support**: [Intro offer eligibility (StoreKit 1)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#intro-offer-eligibility-storekit-1), [Attribution data (accepted, not stored)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#attribution-data-accepted-not-stored), [Apple AdServices token (accepted, not stored)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#apple-adservices-token-accepted-not-stored), [SDK health report availability](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-health-report-availability), [SDK health report](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-health-report), [Product to entitlement mapping (offline entitlements)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#product-to-entitlement-mapping-offline-entitlements), [Customer Center configuration (not built)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-configuration-not-built), [Customer Center support ticket (not built)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-support-ticket-not-built), [Virtual currency balances (not built)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#virtual-currency-balances-not-built), [Restore eligibility (StoreKit 2)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#restore-eligibility-storekit-2), [Remote config (none yet)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#remote-config-none-yet), [Remote config (none yet)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#remote-config-none-yet), [SDK paywall and feature events (accepted, not stored)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-paywall-and-feature-events-accepted-not-stored), [SDK diagnostics (accepted, not stored)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-diagnostics-accepted-not-stored)
+- **SDK support**: [Intro offer eligibility (StoreKit 1)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#intro-offer-eligibility-storekit-1), [Sign a promotional offer (iOS)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sign-a-promotional-offer-ios), [Attribution data (deprecated iOS call)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#attribution-data-deprecated-ios-call), [Apple AdServices token](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#apple-adservices-token), [SDK health report availability](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-health-report-availability), [SDK health report](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-health-report), [Product to entitlement mapping (offline entitlements)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#product-to-entitlement-mapping-offline-entitlements), [Customer Center configuration (not built)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-configuration-not-built), [Customer Center support ticket (not built)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-support-ticket-not-built), [Virtual currency balances (not built)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#virtual-currency-balances-not-built), [Redeem a web purchase (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#redeem-a-web-purchase-not-available), [Register an Apple external purchase token (iOS)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#register-an-apple-external-purchase-token-ios), [Rewarded ad verification (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#rewarded-ad-verification-not-available), [Amazon receipt details (not supported)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#amazon-receipt-details-not-supported), [Paywall workflows (web SDK)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#paywall-workflows-web-sdk), [One paywall workflow (web SDK)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#one-paywall-workflow-web-sdk), [Restore eligibility (StoreKit 2)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#restore-eligibility-storekit-2), [Remote config (none yet)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#remote-config-none-yet), [Remote config (none yet)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#remote-config-none-yet), [SDK paywall and feature events (accepted, not stored)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-paywall-and-feature-events-accepted-not-stored), [SDK diagnostics (accepted, not stored)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-diagnostics-accepted-not-stored)
+- **Web Billing**: [Web offering products](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-offering-products), [Start a hosted web checkout (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#start-a-hosted-web-checkout-not-available), [Web Billing purchase (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-billing-purchase-not-available), [Prepare a Web Billing checkout (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#prepare-a-web-billing-checkout-not-available), [Start a Web Billing checkout (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#start-a-web-billing-checkout-not-available), [Web Billing checkout status](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-billing-checkout-status), [Refresh Web Billing checkout pricing](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#refresh-web-billing-checkout-pricing), [Complete a Web Billing checkout](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#complete-a-web-billing-checkout), [Web checkout branding](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-checkout-branding)
 - **Store notifications**: [App Store Server Notifications v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#app-store-server-notifications-v2), [Google Play real-time developer notifications (Pub/Sub push)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#google-play-real-time-developer-notifications-pubsub-push)
 - **Response signing**: [Public key for response signatures](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#public-key-for-response-signatures)
 
@@ -3697,6 +3708,30 @@ Needs no API key. Use it for load balancer and uptime checks.
 
 ```bash
 curl -s "$REVENUEDOT_URL/v1/health"
+```
+
+**Responses**
+
+- **200**: The server is up.
+
+Example 200 response:
+
+```json
+{
+  "status": "ok"
+}
+```
+
+### Connectivity probe
+
+`GET /v1/health/connectivity` · Auth: none
+
+Needs no API key. The iOS SDK probes it only with its internal API failover setting, which is off by default.
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/health/connectivity"
 ```
 
 **Responses**
@@ -4202,7 +4237,7 @@ Customer attributes such as `$email`.
 
 `POST /v1/subscribers/{app_user_id}/attributes` · Auth: public app key or secret key
 
-Saves attributes such as `$email`, `$displayName` or your own keys. A null value deletes the attribute. An invalid `$email` is refused with 7263; the other attributes are saved.
+Saves attributes such as `$email`, `$displayName` or your own keys. A null value deletes the attribute. An invalid `$email` is refused with 7263; the other attributes are saved. `collectDeviceIdentifiers()` sends `$ip` and `$deviceVersion` as `"true"`: RevenueDot stores the request's IP address and the device and OS from the SDK's headers instead.
 
 **Path parameters**
 
@@ -4275,9 +4310,63 @@ Example 200 response:
 }
 ```
 
-### Attribution data (accepted, not stored)
+### Sign a promotional offer (iOS)
+
+`POST /v1/offers` · Auth: public app key or secret key
+
+What `Purchases.promotionalOffer(forProductDiscount:product:)` calls. RevenueDot signs each offer with the App Store app's In-App Purchase key (`key_id`, `issuer_id` and `private_key` in the app's credentials) the way Apple verifies it: ECDSA P-256 with SHA-256 over the bundle id, key id, product id, offer id, app account token, nonce and timestamp, DER-encoded and base64 ([Apple's format](https://developer.apple.com/documentation/storekit/generating-a-signature-for-promotional-offers)).
+The app account token matches what the SDK puts on the payment: with StoreKit 2 the lowercase app user id when it is a UUID and empty otherwise; with StoreKit 1 the app user id.
+Without an In-App Purchase key the answer is 400 with code 7234, which the SDK reports as `invalidAppleSubscriptionKeyError` for that offer only.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `app_user_id` | string | yes |  |
+| `fetch_token` | string | no | The receipt or signed transaction; not needed for signing. |
+| `generate_offers` | array of object | yes |  |
+| `generate_offers[].offer_id` | string | yes | Promotional offer id from App Store Connect. |
+| `generate_offers[].product_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/offers" -H "Authorization: Bearer $PUBLIC_KEY" \
+  -H "Content-Type: application/json" -d '{"app_user_id":"user_1","fetch_token":"…","generate_offers":[{"offer_id":"winback_50","product_id":"pro_monthly"}]}'
+```
+
+**Responses**
+
+- **200**: One signature per offer.
+- **400**: No In-App Purchase key, or no offers. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "offers": [
+    {
+      "key_id": "2X9R4HXF34",
+      "offer_id": "winback_50",
+      "product_id": "pro_monthly",
+      "signature_data": {
+        "nonce": "0f3c2a8e-5d7b-4d7e-9a53-3b8f2c1e6d40",
+        "signature": "MEUCIQDD…",
+        "timestamp": 1790800914034
+      }
+    }
+  ]
+}
+```
+
+### Attribution data (deprecated iOS call)
 
 `POST /v1/subscribers/{app_user_id}/attribution` · Auth: public app key or secret key
+
+What the deprecated `Purchases.addAttributionData` calls. The advertising identifiers in `data` (`rc_idfa`, `rc_idfv`, `rc_gps_adid`, `rc_ip_address`) become `$idfa`, `$idfv`, `$gpsAdId` and `$ip`.
+For Apple Search Ads (`network` 0) with `iad-attribution` true, the iAd fields become `$mediaSource` ("Apple Search Ads"), `$campaign`, `$adGroup`, `$keyword`, `$creative` and the `$appleAds*` ids.
+Attribution is write-once: a campaign attribute the customer already has is kept.
 
 **Path parameters**
 
@@ -4285,15 +4374,25 @@ Example 200 response:
 |---|---|---|---|
 | `app_user_id` | string | yes | App user id, URL-encoded (anonymous ids look like `$RCAnonymousID:...`). |
 
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `network` | integer | yes | The SDK's AttributionNetwork: 0 Apple Search Ads. |
+| `data` | object | yes |  |
+
 **Example request**
 
 ```bash
-curl -s -X POST "$REVENUEDOT_URL/v1/subscribers/user_1/attribution" -H "Authorization: Bearer $PUBLIC_KEY"
+curl -s -X POST "$REVENUEDOT_URL/v1/subscribers/user_1/attribution" -H "Authorization: Bearer $PUBLIC_KEY" \
+  -H "Content-Type: application/json" -d '{"network":0,"data":{"rc_idfv":"4CEE1BEE-3C19-4591-9E34-1AD968D7B609","Version3.1":{"iad-attribution":"true","iad-campaign-name":"Spring","iad-keyword":"scanner"}}}'
 ```
 
 **Responses**
 
-- **200**: Accepted.
+- **200**: Stored.
+- **400**: Bad request. For receipts, a 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
 
 Example 200 response:
 
@@ -4301,9 +4400,12 @@ Example 200 response:
 {}
 ```
 
-### Apple AdServices token (accepted, not stored)
+### Apple AdServices token
 
 `POST /v1/subscribers/{app_user_id}/adservices_attribution` · Auth: public app key or secret key
+
+What `enableAdServicesAttributionTokenCollection()` sends once per install (the same token can also arrive as `aad_attribution_token` on a receipt).
+After answering, RevenueDot looks the token up with [Apple's attribution API](https://developer.apple.com/documentation/adservices/aaattribution/attributiontoken()), retrying a 404 or 5xx 3 times 5 seconds apart, and stores an attributed install as `$mediaSource` ("Apple Search Ads"), `$campaign`, `$adGroup`, `$keyword`, `$ad`, `$appleAdsCampaignId`, `$appleAdsAdGroupId`, `$appleAdsKeywordId`, `$appleAdsAdId`, `$appleAdsOrgId`, `$appleAdsCountryOrRegion`, `$claimType` and `$conversionType`. Apple returns ids, not names. They show on the customer page and in every webhook's `subscriber_attributes`.
 
 **Path parameters**
 
@@ -4311,15 +4413,24 @@ Example 200 response:
 |---|---|---|---|
 | `app_user_id` | string | yes | App user id, URL-encoded (anonymous ids look like `$RCAnonymousID:...`). |
 
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `aad_attribution_token` | string | yes | The token from AAAttribution.attributionToken(). |
+
 **Example request**
 
 ```bash
-curl -s -X POST "$REVENUEDOT_URL/v1/subscribers/user_1/adservices_attribution" -H "Authorization: Bearer $PUBLIC_KEY"
+curl -s -X POST "$REVENUEDOT_URL/v1/subscribers/user_1/adservices_attribution" -H "Authorization: Bearer $PUBLIC_KEY" \
+  -H "Content-Type: application/json" -d '{"aad_attribution_token":"wD3Ma…"}'
 ```
 
 **Responses**
 
-- **200**: Accepted.
+- **200**: Accepted; the lookup runs after the answer.
+- **400**: No token. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
 
 Example 200 response:
 
@@ -4421,7 +4532,7 @@ Example 200 response:
 
 `GET /v1/customercenter/{app_user_id}` · Auth: public app key
 
-Always 404, so the SDK hides Customer Center. Customer Center is planned for Tier 2.
+Always 404 with code 7259: the SDK returns an error and the Customer Center screen shows its error state. Customer Center configuration is planned for Tier 2.
 
 **Path parameters**
 
@@ -4488,6 +4599,180 @@ Example 200 response:
   "virtual_currencies": {}
 }
 ```
+
+### Redeem a web purchase (not available)
+
+`POST /v1/subscribers/redeem_purchase` · Auth: public app key
+
+What `Purchases.redeemWebPurchase()` calls with the `redemption_token` from a redemption deep link. RevenueDot takes no web payments, so no token is valid: 400 with code 7849, which the SDKs return as the `invalidToken` result.
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/subscribers/redeem_purchase" -H "Authorization: Bearer $PUBLIC_KEY"
+```
+
+**Responses**
+
+- **400**: Invalid token. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+### Register an Apple external purchase token (iOS)
+
+`POST /v1/external_purchase_tokens` · Auth: public app key
+
+Part of Apple's external purchase and link-out flows, before a web checkout. The token is acknowledged with an id, which is all the SDK reads; the web checkout that follows is not available (see `/rcbilling/v1/hosted-checkout`).
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `app_user_id` | string | yes |  |
+| `purchase_type` | `IN_APP`, `LINK_OUT` | yes |  |
+| `token` | string | no | Apple's external purchase token, when there is one. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/external_purchase_tokens" -H "Authorization: Bearer $PUBLIC_KEY"
+```
+
+**Responses**
+
+- **200**: Registered.
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "id": "ept3b1f0c9e2d8a4f6b9c7e5d3a1b2c4d6e",
+  "purchase_type": "LINK_OUT",
+  "is_sandbox": true,
+  "token_source": "APPLE_SDK"
+}
+```
+
+### Rewarded ad verification (not available)
+
+`GET /v1/subscribers/{app_user_id}/ads/reward_verifications/{client_transaction_id}` · Auth: public app key
+
+What `pollRewardVerification` polls. There is no server-side ad verification, so the answer is always the final `failed`, and the SDK stops after one request.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `app_user_id` | string | yes | App user id, URL-encoded (anonymous ids look like `$RCAnonymousID:...`). |
+| `client_transaction_id` | string | yes | From `generateRewardVerificationToken`. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/subscribers/user_1/ads/reward_verifications/$CLIENT_TRANSACTION_ID" -H "Authorization: Bearer $PUBLIC_KEY"
+```
+
+**Responses**
+
+- **200**: Failed.
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "status": "failed",
+  "reward": null,
+  "failure_reason": "not_supported",
+  "message": "Server-side reward verification is not available on RevenueDot."
+}
+```
+
+### Amazon receipt details (not supported)
+
+`GET /v1/receipts/amazon/{store_user_id}/{receipt_id}` · Auth: public app key
+
+The Android SDK asks for it on Amazon subscription purchases. Amazon Appstore purchases are not supported: 400 with code 7662, the same answer as a receipt post for an Amazon app, which leaves the purchase unconsumed.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `store_user_id` | string | yes |  |
+| `receipt_id` | string | yes | Not encoded by the SDK; may contain `/`. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/receipts/amazon/$STORE_USER_ID/$RECEIPT_ID" -H "Authorization: Bearer $PUBLIC_KEY"
+```
+
+**Responses**
+
+- **400**: Not supported. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+### Paywall workflows (web SDK)
+
+`GET /v1/subscribers/{app_user_id}/workflows` · Auth: public app key
+
+What purchases-js `presentPaywall` asks first. There are no workflows, so the SDK uses the offering's own paywall.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `app_user_id` | string | yes | App user id, URL-encoded (anonymous ids look like `$RCAnonymousID:...`). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `type` | string | no | `paywall`. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/subscribers/user_1/workflows" -H "Authorization: Bearer $PUBLIC_KEY"
+```
+
+**Responses**
+
+- **200**: No workflows.
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "workflows": [],
+  "ui_config": {}
+}
+```
+
+### One paywall workflow (web SDK)
+
+`GET /v1/subscribers/{app_user_id}/workflows/{workflow_id}` · Auth: public app key
+
+Never called, because the workflow list is empty.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `app_user_id` | string | yes | App user id, URL-encoded (anonymous ids look like `$RCAnonymousID:...`). |
+| `workflow_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/subscribers/user_1/workflows/$WORKFLOW_ID" -H "Authorization: Bearer $PUBLIC_KEY"
+```
+
+**Responses**
+
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **404**: No such workflow. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
 
 ### Restore eligibility (StoreKit 2)
 
@@ -4599,6 +4884,206 @@ Example 200 response:
 
 ```json
 {}
+```
+
+## Web Billing
+
+Web checkout calls from the iOS SDK and purchases-js. RevenueDot takes no web payments, so a checkout answers an error the SDK shows as a failed purchase.
+
+### Web offering products
+
+`GET /rcbilling/v1/subscribers/{app_user_id}/offering_products` · Auth: public app key
+
+Defined in the iOS SDK with no caller. There are no web offerings.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `app_user_id` | string | yes | App user id, URL-encoded (anonymous ids look like `$RCAnonymousID:...`). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/rcbilling/v1/subscribers/user_1/offering_products" -H "Authorization: Bearer $PUBLIC_KEY"
+```
+
+**Responses**
+
+- **200**: No web offerings.
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "offerings": {}
+}
+```
+
+### Start a hosted web checkout (not available)
+
+`POST /rcbilling/v1/hosted-checkout` · Auth: public app key
+
+The iOS SDK's paywall web checkout. RevenueDot takes no payments: 400 with code 7000, and the SDK returns `failed` for the checkout without retrying.
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/rcbilling/v1/hosted-checkout" -H "Authorization: Bearer $PUBLIC_KEY"
+```
+
+**Responses**
+
+- **400**: Not available. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+### Web Billing purchase (not available)
+
+`POST /rcbilling/v1/purchase` · Auth: public app key
+
+Defined in purchases-js with no caller. 400 with code 7000.
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/rcbilling/v1/purchase" -H "Authorization: Bearer $PUBLIC_KEY"
+```
+
+**Responses**
+
+- **400**: Not available. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+### Prepare a Web Billing checkout (not available)
+
+`POST /rcbilling/v1/checkout/prepare` · Auth: public app key
+
+purchases-js with an `rcb_` key. 400 with code 7000: the purchase fails with an error in the SDK's purchase screen.
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/rcbilling/v1/checkout/prepare" -H "Authorization: Bearer $PUBLIC_KEY"
+```
+
+**Responses**
+
+- **400**: Not available. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+### Start a Web Billing checkout (not available)
+
+`POST /rcbilling/v1/checkout/start` · Auth: public app key
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/rcbilling/v1/checkout/start" -H "Authorization: Bearer $PUBLIC_KEY"
+```
+
+**Responses**
+
+- **400**: Not available. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+### Web Billing checkout status
+
+`GET /rcbilling/v1/checkout/{operation_session_id}` · Auth: public app key
+
+No checkout session exists: 400 with code 7877.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `operation_session_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/rcbilling/v1/checkout/$OPERATION_SESSION_ID" -H "Authorization: Bearer $PUBLIC_KEY"
+```
+
+**Responses**
+
+- **400**: No such session. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+### Refresh Web Billing checkout pricing
+
+`PATCH /rcbilling/v1/checkout/{operation_session_id}` · Auth: public app key
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `operation_session_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X PATCH "$REVENUEDOT_URL/rcbilling/v1/checkout/$OPERATION_SESSION_ID" -H "Authorization: Bearer $PUBLIC_KEY"
+```
+
+**Responses**
+
+- **400**: No such session. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+### Complete a Web Billing checkout
+
+`POST /rcbilling/v1/checkout/{operation_session_id}/complete` · Auth: public app key
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `operation_session_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/rcbilling/v1/checkout/$OPERATION_SESSION_ID/complete" -H "Authorization: Bearer $PUBLIC_KEY"
+```
+
+**Responses**
+
+- **400**: No such session. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+### Web checkout branding
+
+`GET /rcbilling/v1/branding` · Auth: public app key
+
+purchases-js with an `rcb_` key loads it before a checkout: the app's name and the SDK's default look.
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/rcbilling/v1/branding" -H "Authorization: Bearer $PUBLIC_KEY"
+```
+
+**Responses**
+
+- **200**: Branding.
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "id": "appvnrm0a5h",
+  "app_name": "Scanner Web",
+  "app_icon": null,
+  "app_icon_webp": null,
+  "app_wordmark": null,
+  "app_wordmark_webp": null,
+  "appearance": null,
+  "support_email": null,
+  "gateway_tax_collection_enabled": false,
+  "brand_font_config": null
+}
 ```
 
 ## Store notifications

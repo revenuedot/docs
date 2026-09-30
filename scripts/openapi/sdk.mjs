@@ -36,6 +36,11 @@ export const sdkPaths = {
       description: "Needs no API key. Use it for load balancer and uptime checks.",
       responses: { 200: ok("The server is up.", obj({ status: { type: "string", const: "ok" } }), { status: "ok" }) } }),
   },
+  "/v1/health/connectivity": {
+    get: op({ id: "getHealthConnectivity", tag: "Server", summary: "Connectivity probe", security: NONE, source: SDK,
+      description: "Needs no API key. The iOS SDK probes it only with its internal API failover setting, which is off by default.",
+      responses: { 200: ok("The server is up.", obj({ status: { type: "string", const: "ok" } }), { status: "ok" }) } }),
+  },
   "/.well-known/revenuedot-signing-key": {
     get: op({ id: "getSigningKey", tag: "Response signing", summary: "Public key for response signatures", security: NONE, source: "app.ts",
       description: `
@@ -112,7 +117,7 @@ When \`new_app_user_id\` exists, an anonymous-only current customer is merged in
   },
   "/v1/subscribers/{app_user_id}/attributes": {
     post: op({ id: "postAttributes", tag: "Attributes", summary: "Set customer attributes", security: PUBLIC_OR_SECRET, source: SDK, parameters: [user],
-      description: "Saves attributes such as `$email`, `$displayName` or your own keys. A null value deletes the attribute. An invalid `$email` is refused with 7263; the other attributes are saved.",
+      description: "Saves attributes such as `$email`, `$displayName` or your own keys. A null value deletes the attribute. An invalid `$email` is refused with 7263; the other attributes are saved. `collectDeviceIdentifiers()` sends `$ip` and `$deviceVersion` as `\"true\"`: RevenueDot stores the request's IP address and the device and OS from the SDK's headers instead.",
       requestBody: body(obj({ attributes: { type: "object", additionalProperties: obj({ value: nstr(), updated_at_ms: int() }) } }, ["attributes"]), { attributes: { $email: { value: "ana@example.com", updated_at_ms: 1790800914000 } } }),
       responses: { 200: empty("Saved."), 400: ok("Some attributes were not saved.", ref("V1Error"), { code: 7263, message: "Some subscriber attributes keys were unable to be saved.", attribute_errors: [{ key_name: "$email", message: "Email address is not a valid email." }] }), ...v1Errors(401) } }),
   },
@@ -122,11 +127,40 @@ When \`new_app_user_id\` exists, an anonymous-only current customer is merged in
       requestBody: body(obj({ product_identifiers: arr(str()) })),
       responses: { 200: ok("Eligibility per product.", { type: "object", additionalProperties: { type: "null" } }, { pro_monthly: null }) } }),
   },
+  "/v1/offers": {
+    post: op({ id: "postOfferForSigning", tag: "SDK support", summary: "Sign a promotional offer (iOS)", security: PUBLIC_OR_SECRET, source: SDK,
+      description: `
+What \`Purchases.promotionalOffer(forProductDiscount:product:)\` calls. RevenueDot signs each offer with the App Store app's In-App Purchase key (\`key_id\`, \`issuer_id\` and \`private_key\` in the app's credentials) the way Apple verifies it: ECDSA P-256 with SHA-256 over the bundle id, key id, product id, offer id, app account token, nonce and timestamp, DER-encoded and base64 ([Apple's format](https://developer.apple.com/documentation/storekit/generating-a-signature-for-promotional-offers)).
+The app account token matches what the SDK puts on the payment: with StoreKit 2 the lowercase app user id when it is a UUID and empty otherwise; with StoreKit 1 the app user id.
+Without an In-App Purchase key the answer is 400 with code 7234, which the SDK reports as \`invalidAppleSubscriptionKeyError\` for that offer only.`,
+      requestBody: body(obj({
+        app_user_id: str(), fetch_token: str("The receipt or signed transaction; not needed for signing."),
+        generate_offers: arr(obj({ offer_id: str("Promotional offer id from App Store Connect."), product_id: str() }, ["offer_id", "product_id"])),
+      }, ["app_user_id", "generate_offers"]), { app_user_id: "user_1", fetch_token: "…", generate_offers: [{ offer_id: "winback_50", product_id: "pro_monthly" }] }),
+      responses: {
+        200: ok("One signature per offer.", obj({ offers: arr(obj({ key_id: str(), offer_id: str(), product_id: str(), signature_data: obj({ nonce: str("Lowercase UUID."), signature: str("Base64 DER ECDSA signature."), timestamp: int("Epoch milliseconds.") }) })) }),
+          { offers: [{ key_id: "2X9R4HXF34", offer_id: "winback_50", product_id: "pro_monthly", signature_data: { nonce: "0f3c2a8e-5d7b-4d7e-9a53-3b8f2c1e6d40", signature: "MEUCIQDD…", timestamp: 1790800914034 } }] }),
+        400: ok("No In-App Purchase key, or no offers.", ref("V1Error"), { code: 7234, message: "Promotional offers need the app's App Store In-App Purchase key. Add it in the app's settings." }),
+        ...v1Errors(401),
+      } }),
+  },
   "/v1/subscribers/{app_user_id}/attribution": {
-    post: op({ id: "postAttribution", tag: "SDK support", summary: "Attribution data (accepted, not stored)", security: PUBLIC_OR_SECRET, source: SDK, parameters: [user], responses: { 200: empty() } }),
+    post: op({ id: "postAttribution", tag: "SDK support", summary: "Attribution data (deprecated iOS call)", security: PUBLIC_OR_SECRET, source: SDK, parameters: [user],
+      description: `
+What the deprecated \`Purchases.addAttributionData\` calls. The advertising identifiers in \`data\` (\`rc_idfa\`, \`rc_idfv\`, \`rc_gps_adid\`, \`rc_ip_address\`) become \`$idfa\`, \`$idfv\`, \`$gpsAdId\` and \`$ip\`.
+For Apple Search Ads (\`network\` 0) with \`iad-attribution\` true, the iAd fields become \`$mediaSource\` ("Apple Search Ads"), \`$campaign\`, \`$adGroup\`, \`$keyword\`, \`$creative\` and the \`$appleAds*\` ids.
+Attribution is write-once: a campaign attribute the customer already has is kept.`,
+      requestBody: body(obj({ network: int("The SDK's AttributionNetwork: 0 Apple Search Ads."), data: { type: "object" } }, ["network", "data"]),
+        { network: 0, data: { rc_idfv: "4CEE1BEE-3C19-4591-9E34-1AD968D7B609", "Version3.1": { "iad-attribution": "true", "iad-campaign-name": "Spring", "iad-keyword": "scanner" } } }),
+      responses: { 200: empty("Stored."), ...v1Errors(400, 401) } }),
   },
   "/v1/subscribers/{app_user_id}/adservices_attribution": {
-    post: op({ id: "postAdServicesAttribution", tag: "SDK support", summary: "Apple AdServices token (accepted, not stored)", security: PUBLIC_OR_SECRET, source: SDK, parameters: [user], responses: { 200: empty() } }),
+    post: op({ id: "postAdServicesAttribution", tag: "SDK support", summary: "Apple AdServices token", security: PUBLIC_OR_SECRET, source: SDK, parameters: [user],
+      description: `
+What \`enableAdServicesAttributionTokenCollection()\` sends once per install (the same token can also arrive as \`aad_attribution_token\` on a receipt).
+After answering, RevenueDot looks the token up with [Apple's attribution API](https://developer.apple.com/documentation/adservices/aaattribution/attributiontoken()), retrying a 404 or 5xx 3 times 5 seconds apart, and stores an attributed install as \`$mediaSource\` ("Apple Search Ads"), \`$campaign\`, \`$adGroup\`, \`$keyword\`, \`$ad\`, \`$appleAdsCampaignId\`, \`$appleAdsAdGroupId\`, \`$appleAdsKeywordId\`, \`$appleAdsAdId\`, \`$appleAdsOrgId\`, \`$appleAdsCountryOrRegion\`, \`$claimType\` and \`$conversionType\`. Apple returns ids, not names. They show on the customer page and in every webhook's \`subscriber_attributes\`.`,
+      requestBody: body(obj({ aad_attribution_token: str("The token from AAAttribution.attributionToken().") }, ["aad_attribution_token"]), { aad_attribution_token: "wD3Ma…" }),
+      responses: { 200: empty("Accepted; the lookup runs after the answer."), 400: ok("No token.", ref("V1Error"), { code: 7226, message: "aad_attribution_token is required." }), ...v1Errors(401) } }),
   },
   "/v1/subscribers/{app_user_id}/health_report_availability": {
     get: op({ id: "healthReportAvailability", tag: "SDK support", summary: "SDK health report availability", security: NONE, source: SDK, parameters: [user],
@@ -144,7 +178,7 @@ When \`new_app_user_id\` exists, an anonymous-only current customer is merged in
   },
   "/v1/customercenter/{app_user_id}": {
     get: op({ id: "customerCenter", tag: "SDK support", summary: "Customer Center configuration (not built)", security: PUBLIC, source: SDK, parameters: [user],
-      description: "Always 404, so the SDK hides Customer Center. Customer Center is planned for Tier 2.", responses: { 404: ok("Not configured.", ref("V1Error"), { code: 7259, message: "Customer Center is not configured." }) } }),
+      description: "Always 404 with code 7259: the SDK returns an error and the Customer Center screen shows its error state. Customer Center configuration is planned for Tier 2.", responses: { 404: ok("Not configured.", ref("V1Error"), { code: 7259, message: "Customer Center is not configured." }) } }),
   },
   "/v1/customercenter/support/create-ticket": {
     post: op({ id: "customerCenterTicket", tag: "SDK support", summary: "Customer Center support ticket (not built)", security: PUBLIC, source: SDK,
@@ -153,6 +187,41 @@ When \`new_app_user_id\` exists, an anonymous-only current customer is merged in
   "/v1/subscribers/{app_user_id}/virtual_currencies": {
     get: op({ id: "virtualCurrencies", tag: "SDK support", summary: "Virtual currency balances (not built)", security: PUBLIC, source: SDK, parameters: [user],
       responses: { 200: ok("Empty balances.", obj({ virtual_currencies: { type: "object" } }), { virtual_currencies: {} }) } }),
+  },
+  "/v1/subscribers/redeem_purchase": {
+    post: op({ id: "redeemWebPurchase", tag: "SDK support", summary: "Redeem a web purchase (not available)", security: PUBLIC, source: SDK,
+      description: "What `Purchases.redeemWebPurchase()` calls with the `redemption_token` from a redemption deep link. RevenueDot takes no web payments, so no token is valid: 400 with code 7849, which the SDKs return as the `invalidToken` result.",
+      responses: { 400: ok("Invalid token.", ref("V1Error"), { code: 7849, message: "This redemption link is not valid: RevenueDot has no web purchases to redeem." }), ...v1Errors(401) } }),
+  },
+  "/v1/external_purchase_tokens": {
+    post: op({ id: "postExternalPurchaseToken", tag: "SDK support", summary: "Register an Apple external purchase token (iOS)", security: PUBLIC, source: SDK,
+      description: "Part of Apple's external purchase and link-out flows, before a web checkout. The token is acknowledged with an id, which is all the SDK reads; the web checkout that follows is not available (see `/rcbilling/v1/hosted-checkout`).",
+      requestBody: body(obj({ app_user_id: str(), purchase_type: en(["IN_APP", "LINK_OUT"]), token: str("Apple's external purchase token, when there is one.") }, ["app_user_id", "purchase_type"])),
+      responses: { 200: ok("Registered.", obj({ id: str(), purchase_type: str(), is_sandbox: bool(), token_source: en(["APPLE_SDK", "RC_GENERATED"]) }), { id: "ept3b1f0c9e2d8a4f6b9c7e5d3a1b2c4d6e", purchase_type: "LINK_OUT", is_sandbox: true, token_source: "APPLE_SDK" }), ...v1Errors(401) } }),
+  },
+  "/v1/subscribers/{app_user_id}/ads/reward_verifications/{client_transaction_id}": {
+    get: op({ id: "rewardVerification", tag: "SDK support", summary: "Rewarded ad verification (not available)", security: PUBLIC, source: SDK,
+      parameters: [user, { name: "client_transaction_id", in: "path", required: true, schema: str(), description: "From `generateRewardVerificationToken`." }],
+      description: "What `pollRewardVerification` polls. There is no server-side ad verification, so the answer is always the final `failed`, and the SDK stops after one request.",
+      responses: { 200: ok("Failed.", obj({ status: en(["pending", "verified", "failed"]), reward: { type: "null" }, failure_reason: str(), message: str() }), { status: "failed", reward: null, failure_reason: "not_supported", message: "Server-side reward verification is not available on RevenueDot." }), ...v1Errors(401) } }),
+  },
+  "/v1/receipts/amazon/{store_user_id}/{receipt_id}": {
+    get: op({ id: "amazonReceipt", tag: "SDK support", summary: "Amazon receipt details (not supported)", security: PUBLIC, source: SDK,
+      parameters: [{ name: "store_user_id", in: "path", required: true, schema: str() }, { name: "receipt_id", in: "path", required: true, schema: str(), description: "Not encoded by the SDK; may contain `/`." }],
+      description: "The Android SDK asks for it on Amazon subscription purchases. Amazon Appstore purchases are not supported: 400 with code 7662, the same answer as a receipt post for an Amazon app, which leaves the purchase unconsumed.",
+      responses: { 400: ok("Not supported.", ref("V1Error"), { code: 7662, message: "Amazon Appstore purchases are not supported yet." }), ...v1Errors(401) } }),
+  },
+  "/v1/subscribers/{app_user_id}/workflows": {
+    get: op({ id: "paywallWorkflows", tag: "SDK support", summary: "Paywall workflows (web SDK)", security: PUBLIC, source: SDK,
+      parameters: [user, { name: "type", in: "query", schema: str(), description: "`paywall`." }],
+      description: "What purchases-js `presentPaywall` asks first. There are no workflows, so the SDK uses the offering's own paywall.",
+      responses: { 200: ok("No workflows.", obj({ workflows: arr({ type: "object" }), ui_config: { type: "object" } }), { workflows: [], ui_config: {} }), ...v1Errors(401) } }),
+  },
+  "/v1/subscribers/{app_user_id}/workflows/{workflow_id}": {
+    get: op({ id: "paywallWorkflow", tag: "SDK support", summary: "One paywall workflow (web SDK)", security: PUBLIC, source: SDK,
+      parameters: [user, { name: "workflow_id", in: "path", required: true, schema: str() }],
+      description: "Never called, because the workflow list is empty.",
+      responses: { 404: ok("No such workflow.", ref("V1Error"), { code: 7259, message: "Workflow not found." }), ...v1Errors(401) } }),
   },
   "/v1/subscribers/{app_user_id}/restore/eligibility": {
     post: op({ id: "restoreEligibility", tag: "SDK support", summary: "Restore eligibility (StoreKit 2)", security: PUBLIC, source: SDK, parameters: [user],
@@ -175,6 +244,50 @@ When \`new_app_user_id\` exists, an anonymous-only current customer is merged in
       parameters: [user, { name: "id", in: "query", schema: arr(str()), style: "form", explode: true, description: "Product ids; repeat the parameter. None lists every product of the app." }],
       description: "Product details the SDK needs for Test Store (and web) products, in the web billing products shape. Prices are 0 until the catalog stores Test Store prices.",
       responses: { 200: ok("Product details.", obj({ product_details: arr({ type: "object" }) }), { product_details: [{ identifier: "pro_monthly", product_type: "subscription", title: "Pro monthly", description: null, current_price: { amount: 0, amount_micros: 0, currency: "USD" }, normal_period_duration: "P1M", default_purchase_option_id: "base", default_subscription_option_id: "base", purchase_options: { base: { id: "base", price_id: "base", base: { period_duration: "P1M", cycle_count: 1, price: { amount: 0, amount_micros: 0, currency: "USD" } }, base_price: null, trial: null, intro_price: null } }, subscription_options: { base: { id: "base", price_id: "base", base: { period_duration: "P1M", cycle_count: 1, price: { amount: 0, amount_micros: 0, currency: "USD" } }, base_price: null, trial: null, intro_price: null } } }] }), ...v1Errors(401) } }),
+  },
+
+  "/rcbilling/v1/subscribers/{app_user_id}/offering_products": {
+    get: op({ id: "webOfferingProducts", tag: "Web Billing", summary: "Web offering products", security: PUBLIC, source: SDK, parameters: [user],
+      description: "Defined in the iOS SDK with no caller. There are no web offerings.",
+      responses: { 200: ok("No web offerings.", obj({ offerings: { type: "object" } }), { offerings: {} }), ...v1Errors(401) } }),
+  },
+  "/rcbilling/v1/hosted-checkout": {
+    post: op({ id: "hostedCheckout", tag: "Web Billing", summary: "Start a hosted web checkout (not available)", security: PUBLIC, source: SDK,
+      description: "The iOS SDK's paywall web checkout. RevenueDot takes no payments: 400 with code 7000, and the SDK returns `failed` for the checkout without retrying.",
+      responses: { 400: ok("Not available.", ref("V1Error"), { code: 7000, message: "Web checkout is not available on RevenueDot." }), ...v1Errors(401) } }),
+  },
+  "/rcbilling/v1/purchase": {
+    post: op({ id: "webBillingPurchase", tag: "Web Billing", summary: "Web Billing purchase (not available)", security: PUBLIC, source: SDK,
+      description: "Defined in purchases-js with no caller. 400 with code 7000.",
+      responses: { 400: ok("Not available.", ref("V1Error"), { code: 7000, message: "Web checkout is not available on RevenueDot." }), ...v1Errors(401) } }),
+  },
+  "/rcbilling/v1/checkout/prepare": {
+    post: op({ id: "checkoutPrepare", tag: "Web Billing", summary: "Prepare a Web Billing checkout (not available)", security: PUBLIC, source: SDK,
+      description: "purchases-js with an `rcb_` key. 400 with code 7000: the purchase fails with an error in the SDK's purchase screen.",
+      responses: { 400: ok("Not available.", ref("V1Error"), { code: 7000, message: "Web checkout is not available on RevenueDot." }), ...v1Errors(401) } }),
+  },
+  "/rcbilling/v1/checkout/start": {
+    post: op({ id: "checkoutStart", tag: "Web Billing", summary: "Start a Web Billing checkout (not available)", security: PUBLIC, source: SDK,
+      responses: { 400: ok("Not available.", ref("V1Error"), { code: 7000, message: "Web checkout is not available on RevenueDot." }), ...v1Errors(401) } }),
+  },
+  "/rcbilling/v1/checkout/{operation_session_id}": {
+    parameters: [{ name: "operation_session_id", in: "path", required: true, schema: str() }],
+    get: op({ id: "checkoutStatus", tag: "Web Billing", summary: "Web Billing checkout status", security: PUBLIC, source: SDK,
+      description: "No checkout session exists: 400 with code 7877.",
+      responses: { 400: ok("No such session.", ref("V1Error"), { code: 7877, message: "There is no such checkout session." }), ...v1Errors(401) } }),
+    patch: op({ id: "checkoutRefreshPricing", tag: "Web Billing", summary: "Refresh Web Billing checkout pricing", security: PUBLIC, source: SDK,
+      responses: { 400: ok("No such session.", ref("V1Error"), { code: 7877, message: "There is no such checkout session." }), ...v1Errors(401) } }),
+  },
+  "/rcbilling/v1/checkout/{operation_session_id}/complete": {
+    parameters: [{ name: "operation_session_id", in: "path", required: true, schema: str() }],
+    post: op({ id: "checkoutComplete", tag: "Web Billing", summary: "Complete a Web Billing checkout", security: PUBLIC, source: SDK,
+      responses: { 400: ok("No such session.", ref("V1Error"), { code: 7877, message: "There is no such checkout session." }), ...v1Errors(401) } }),
+  },
+  "/rcbilling/v1/branding": {
+    get: op({ id: "webBillingBranding", tag: "Web Billing", summary: "Web checkout branding", security: PUBLIC, source: SDK,
+      description: "purchases-js with an `rcb_` key loads it before a checkout: the app's name and the SDK's default look.",
+      responses: { 200: ok("Branding.", obj({ id: str(), app_name: nstr(), app_icon: nstr(), app_icon_webp: nstr(), app_wordmark: nstr(), app_wordmark_webp: nstr(), appearance: { type: "null" }, support_email: nstr(), gateway_tax_collection_enabled: bool(), brand_font_config: { type: "null" } }),
+        { id: "appvnrm0a5h", app_name: "Scanner Web", app_icon: null, app_icon_webp: null, app_wordmark: null, app_wordmark_webp: null, appearance: null, support_email: null, gateway_tax_collection_enabled: false, brand_font_config: null }), ...v1Errors(401) } }),
   },
 
   // ---- Store notifications -------------------------------------------------------------------------------------------
