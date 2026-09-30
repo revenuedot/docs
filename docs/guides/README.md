@@ -1,0 +1,23 @@
+---
+title: Which guide do I need?
+description: Step-by-step guides for connecting the App Store and Google Play, receiving webhooks, response signing, testing, and running RevenueDot on your own servers.
+---
+
+# Which guide do I need?
+
+Each guide is one task, start to finish. Connect a store first, then receive webhooks; run the server yourself with the self-hosting guides.
+
+| I want to | Guide |
+|---|---|
+| Accept App Store purchases and get Apple's notifications | [Connect the App Store](app-store.md) |
+| Accept Google Play purchases and get real-time notifications | [Connect Google Play](google-play.md) |
+| Receive purchase events in my backend and verify them | [Webhooks](webhooks.md) |
+| Have the SDK verify that responses come from my server | [Trusted Entitlements](trusted-entitlements.md) |
+| Test purchases without any store account | [Test Store](test-store.md) |
+| Test with App Store sandbox, Xcode or Google Play testers | [Sandbox testing](sandbox-testing.md) |
+| Run RevenueDot on my own servers | [Self-hosting](self-hosting.md) |
+| Upgrade my server | [Upgrades](upgrades.md) |
+| Back up and restore | [Backups](backups.md) |
+| Check everything before real customers arrive | [Going to production](going-to-production.md) |
+
+Moving from RevenueCat? Start with [Migrate from RevenueCat](../migrate/README.md). Looking for a specific endpoint? See the [API reference](../../api/README.md).
