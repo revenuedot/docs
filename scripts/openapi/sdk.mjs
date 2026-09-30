@@ -1,0 +1,272 @@
+// RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
+// This file: the SDK endpoints, store notification endpoints, response signing key and REST API v1 in the OpenAPI document.
+// Docs: https://revenuedot.app/docs/api/sdk-endpoints   Migrate from RevenueCat: https://revenuedot.app/docs/migrate
+import { NONE, PUBLIC, PUBLIC_OR_SECRET, SECRET_ONLY, body, bool, en, int, json, obj, ok, op, param, ref, str, v1Errors, arr, nstr } from "./common.mjs";
+
+const SDK = "routes/sdk.ts";
+const V1 = "routes/rest-v1.ts";
+const user = param("AppUserId");
+const customerInfoExample = {
+  request_date: "2026-09-30T20:41:54Z", request_date_ms: 1790800914034,
+  subscriber: {
+    entitlements: { pro: { expires_date: "2026-10-30T20:41:54Z", grace_period_expires_date: null, product_identifier: "pro_monthly", purchase_date: "2026-09-30T20:41:54Z" } },
+    first_seen: "2026-09-30T20:41:54Z", last_seen: "2026-09-30T20:41:54Z", management_url: null, non_subscriptions: {},
+    original_app_user_id: "user_1", original_application_version: null, original_purchase_date: "2026-09-30T20:41:54Z", other_purchases: {},
+    subscriptions: {
+      pro_monthly: {
+        auto_resume_date: null, billing_issues_detected_at: null, display_name: null, expires_date: "2026-10-30T20:41:54Z", grace_period_expires_date: null,
+        is_sandbox: true, management_url: null, original_purchase_date: "2026-09-30T20:41:54Z", ownership_type: "PURCHASED", period_type: "normal",
+        purchase_date: "2026-09-30T20:41:54Z", refunded_at: null, store: "test_store", store_transaction_id: "test_1790800914000_quickstart",
+        unsubscribe_detected_at: null, price: { amount: 9.99, currency: "USD" },
+      },
+    },
+  },
+};
+const ci = (description = "Customer info.") => ok(description, ref("CustomerInfo"), customerInfoExample);
+const empty = (d = "Accepted.") => ok(d, { type: "object" }, {});
+
+export const sdkPaths = {
+  "/": {
+    get: op({ id: "getServerInfo", tag: "Server", summary: "Server name and docs link", security: NONE, source: "app.ts",
+      description: "Answers a small JSON document. The Docker health check calls it.",
+      responses: { 200: ok("Server info.", obj({ name: str(), docs: str() }), { name: "RevenueDot", docs: "https://revenuedot.app/docs" }) } }),
+  },
+  "/v1/health": {
+    get: op({ id: "getHealth", tag: "Server", summary: "Health check", security: NONE, source: SDK,
+      description: "Needs no API key. Use it for load balancer and uptime checks.",
+      responses: { 200: ok("The server is up.", obj({ status: { type: "string", const: "ok" } }), { status: "ok" }) } }),
+  },
+  "/.well-known/revenuedot-signing-key": {
+    get: op({ id: "getSigningKey", tag: "Response signing", summary: "Public key for response signatures", security: NONE, source: "app.ts",
+      description: `
+The Ed25519 root public key this server signs SDK responses with (Trusted Entitlements). Pin this key in SDK builds that verify responses.
+The server signs only when \`REVENUEDOT_SIGNING_KEY\` is set; otherwise this answers 404. See [Trusted Entitlements](../docs/guides/trusted-entitlements.md).`,
+      responses: {
+        200: ok("The key.", obj({ algorithm: { type: "string", const: "Ed25519" }, public_key: str("Base64 of the raw 32-byte public key."), encoding: { type: "string", const: "base64" }, header: { type: "string", const: "X-Signature" }, docs: str() }),
+          { algorithm: "Ed25519", public_key: "ZzwPxGlon0E8ErpDh9QAH0Jh6+E6D6qufvTSetXZY9Y=", encoding: "base64", header: "X-Signature", docs: "https://revenuedot.app/docs" }),
+        404: ok("Signing is off.", ref("V1Error"), { code: 7259, message: "Response signing is not configured on this server. Set REVENUEDOT_SIGNING_KEY." }),
+      } }),
+  },
+
+  // ---- Customers ---------------------------------------------------------------------------------------------------
+  "/v1/subscribers/{app_user_id}": {
+    get: op({ id: "getCustomerInfo", tag: "Customer info", summary: "Get customer info", security: PUBLIC_OR_SECRET, source: SDK, parameters: [user, param("XNonce")],
+      description: `
+What \`Purchases.getCustomerInfo()\` calls. Creates the customer when the app user id is new (answer 201). With a secret key the answer also has \`subscriber_attributes\`.
+Entitlements are listed even after they expire; an entitlement is active while \`expires_date\` is null or in the future.`,
+      responses: { 200: ci(), 201: ci("Customer info of a customer created by this call."), ...v1Errors(400, 401) } }),
+    delete: op({ id: "deleteSubscriber", tag: "Customers (v1)", summary: "Delete a customer", security: SECRET_ONLY, source: V1, parameters: [user],
+      description: "Deletes the customer with its aliases, attributes, purchases and events. Cannot be undone.",
+      responses: { 200: ok("Deleted.", obj({ app_user_id: str() }), { app_user_id: "user_1" }), ...v1Errors(401, 403, 404) } }),
+  },
+  "/v1/receipts": {
+    post: op({ id: "postReceipt", tag: "Receipts", summary: "Post a purchase or restore", security: PUBLIC_OR_SECRET, source: SDK, parameters: [param("XPlatform"), param("XNonce"), { name: "X-Is-Sandbox", in: "header", schema: str(), description: "`true` when the SDK knows the purchase is sandbox (used for StoreKit 1 receipts without an environment)." }],
+      description: `
+Every purchase, restore and \`syncPurchases()\` ends here. RevenueDot verifies the purchase with the store, saves it, records events and answers the updated customer info.
+
+- **App Store:** \`fetch_token\` is a StoreKit 2 signed transaction (JWS), a StoreKit 1 app receipt (base64) or an Xcode StoreKit test receipt. With the app's in-app purchase key, Apple's App Store Server API supplies the full history and renewal state.
+- **Google Play:** \`fetch_token\` is the purchase token. RevenueDot checks it with the Play Developer API and acknowledges it.
+- **Test Store:** \`fetch_token\` is \`test_<purchase time in ms>_<id>\`. Any such token is accepted.
+
+**4xx or 5xx matters.** A 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. RevenueDot answers 5xx for its own and the store's temporary failures so the SDK keeps the purchase and retries.
+With a secret key, send \`X-Platform\` so RevenueDot knows which app the receipt belongs to.`,
+      requestBody: body(obj({
+        app_user_id: str("The customer posting the receipt."),
+        fetch_token: str("Receipt, signed transaction, purchase token or Test Store token."),
+        app_transaction: str("StoreKit 2 app transaction JWS (accepted; not required)."),
+        transaction_id: str("Store transaction id."),
+        product_id: str("Product being bought."), product_ids: arr(str()),
+        platform_product_ids: arr(obj({ product_id: str(), base_plan_id: str(), offer_id: str() })),
+        price: { type: "number" }, currency: str(), store_country: str(), normal_duration: str("ISO 8601 period of the product."),
+        is_restore: bool(), store_user_id: str(), presented_offering_identifier: str("Offering the purchase was made from; it appears in webhooks."),
+        attributes: { type: "object", description: "Customer attributes to save with the purchase." },
+      }, ["app_user_id"]), { app_user_id: "user_1", fetch_token: "test_1790800914000_quickstart", product_id: "pro_monthly", price: 9.99, currency: "USD", presented_offering_identifier: "default" }),
+      responses: {
+        200: ok("Updated customer info, plus `purchased_products`.", ref("ReceiptResponse"), { ...customerInfoExample, purchased_products: { pro_monthly: { should_consume: false } } }),
+        ...v1Errors(400, 401, 500, 503),
+      } }),
+  },
+  "/v1/subscribers/{app_user_id}/offerings": {
+    get: op({ id: "getOfferings", tag: "Offerings (SDK)", summary: "Get offerings", security: PUBLIC_OR_SECRET, source: SDK, parameters: [user],
+      description: "What `Purchases.getOfferings()` calls. Lists active offerings with the packages whose product belongs to the calling app. `current_offering_id` is the customer's override when one is set.",
+      responses: { 200: ok("Offerings.", ref("Offerings"), { current_offering_id: "default", offerings: [{ description: "Standard plans", identifier: "default", metadata: null, packages: [{ identifier: "$rc_monthly", platform_product_identifier: "pro_monthly" }, { identifier: "$rc_annual", platform_product_identifier: "pro_annual" }, { identifier: "$rc_lifetime", platform_product_identifier: "pro_lifetime" }] }] }), ...v1Errors(401) } }),
+  },
+  "/v1/offerings": {
+    get: op({ id: "getOfferingsWithoutUser", tag: "Offerings (SDK)", summary: "Get offerings without a user", security: PUBLIC_OR_SECRET, source: SDK,
+      description: "Same answer as the per-user call, without a customer override.",
+      responses: { 200: ok("Offerings.", ref("Offerings")), ...v1Errors(401) } }),
+  },
+  "/v1/subscribers/identify": {
+    post: op({ id: "identify", tag: "Identity", summary: "Log in (identify)", security: PUBLIC_OR_SECRET, source: SDK,
+      description: `
+What \`Purchases.logIn()\` calls. When \`new_app_user_id\` is new and the current id is anonymous with no other ids, the anonymous customer takes the new id (201).
+When \`new_app_user_id\` exists, an anonymous-only current customer is merged into it (200). See [Customers and app user IDs](../docs/concepts/customers-and-app-user-ids.md).`,
+      requestBody: body(obj({ app_user_id: str("The current app user id."), new_app_user_id: str("Your user id.") }, ["app_user_id", "new_app_user_id"]), { app_user_id: "$RCAnonymousID:abc123", new_app_user_id: "user_2" }),
+      responses: { 200: ci("The user existed."), 201: ci("The user is new."), ...v1Errors(400, 401) } }),
+  },
+  "/v1/subscribers/{app_user_id}/alias": {
+    post: op({ id: "alias", tag: "Identity", summary: "Alias two app user ids", security: PUBLIC_OR_SECRET, source: SDK, parameters: [user],
+      description: "Links `new_app_user_id` to the customer with the same merge rules as log in. The Android SDK uses it for Block Store recovery.",
+      requestBody: body(obj({ new_app_user_id: str() }, ["new_app_user_id"])),
+      responses: { 200: empty(), ...v1Errors(400, 401) } }),
+  },
+  "/v1/subscribers/{app_user_id}/attributes": {
+    post: op({ id: "postAttributes", tag: "Attributes", summary: "Set customer attributes", security: PUBLIC_OR_SECRET, source: SDK, parameters: [user],
+      description: "Saves attributes such as `$email`, `$displayName` or your own keys. A null value deletes the attribute. An invalid `$email` is refused with 7263; the other attributes are saved.",
+      requestBody: body(obj({ attributes: { type: "object", additionalProperties: obj({ value: nstr(), updated_at_ms: int() }) } }, ["attributes"]), { attributes: { $email: { value: "ana@example.com", updated_at_ms: 1790800914000 } } }),
+      responses: { 200: empty("Saved."), 400: ok("Some attributes were not saved.", ref("V1Error"), { code: 7263, message: "Some subscriber attributes keys were unable to be saved.", attribute_errors: [{ key_name: "$email", message: "Email address is not a valid email." }] }), ...v1Errors(401) } }),
+  },
+  "/v1/subscribers/{app_user_id}/intro_eligibility": {
+    post: op({ id: "introEligibility", tag: "SDK support", summary: "Intro offer eligibility (StoreKit 1)", security: PUBLIC_OR_SECRET, source: SDK, parameters: [user],
+      description: "Answers `null` (unknown) for every product, so the SDK decides eligibility on the device.",
+      requestBody: body(obj({ product_identifiers: arr(str()) })),
+      responses: { 200: ok("Eligibility per product.", { type: "object", additionalProperties: { type: "null" } }, { pro_monthly: null }) } }),
+  },
+  "/v1/subscribers/{app_user_id}/attribution": {
+    post: op({ id: "postAttribution", tag: "SDK support", summary: "Attribution data (accepted, not stored)", security: PUBLIC_OR_SECRET, source: SDK, parameters: [user], responses: { 200: empty() } }),
+  },
+  "/v1/subscribers/{app_user_id}/adservices_attribution": {
+    post: op({ id: "postAdServicesAttribution", tag: "SDK support", summary: "Apple AdServices token (accepted, not stored)", security: PUBLIC_OR_SECRET, source: SDK, parameters: [user], responses: { 200: empty() } }),
+  },
+  "/v1/subscribers/{app_user_id}/health_report_availability": {
+    get: op({ id: "healthReportAvailability", tag: "SDK support", summary: "SDK health report availability", security: NONE, source: SDK, parameters: [user],
+      responses: { 200: ok("No report logs.", obj({ report_logs: bool() }), { report_logs: false }) } }),
+  },
+  "/v1/subscribers/{app_user_id}/health_report": {
+    get: op({ id: "healthReport", tag: "SDK support", summary: "SDK health report", security: PUBLIC, source: SDK, parameters: [user],
+      responses: { 200: ok("Always passed.", obj({ status: str(), project_id: nstr(), app_id: nstr(), checks: arr({ type: "object" }) }), { status: "passed", project_id: "proj18pzzkao", app_id: "appvnrm0a5h", checks: [] }) } }),
+  },
+  "/v1/product_entitlement_mapping": {
+    get: op({ id: "productEntitlementMapping", tag: "SDK support", summary: "Product to entitlement mapping (offline entitlements)", security: PUBLIC_OR_SECRET, source: SDK,
+      description: "Lets the SDK grant entitlements while the server cannot be reached.",
+      responses: { 200: ok("The mapping.", obj({ product_entitlement_mapping: { type: "object", additionalProperties: obj({ product_identifier: str(), base_plan_id: str(), entitlements: arr(str()) }) } }),
+        { product_entitlement_mapping: { pro_monthly: { product_identifier: "pro_monthly", entitlements: ["pro"] } } }) } }),
+  },
+  "/v1/customercenter/{app_user_id}": {
+    get: op({ id: "customerCenter", tag: "SDK support", summary: "Customer Center configuration (not built)", security: PUBLIC, source: SDK, parameters: [user],
+      description: "Always 404, so the SDK hides Customer Center. Customer Center is planned for Tier 2.", responses: { 404: ok("Not configured.", ref("V1Error"), { code: 7259, message: "Customer Center is not configured." }) } }),
+  },
+  "/v1/customercenter/support/create-ticket": {
+    post: op({ id: "customerCenterTicket", tag: "SDK support", summary: "Customer Center support ticket (not built)", security: PUBLIC, source: SDK,
+      responses: { 200: ok("Not sent.", obj({ sent: bool() }), { sent: false }) } }),
+  },
+  "/v1/subscribers/{app_user_id}/virtual_currencies": {
+    get: op({ id: "virtualCurrencies", tag: "SDK support", summary: "Virtual currency balances (not built)", security: PUBLIC, source: SDK, parameters: [user],
+      responses: { 200: ok("Empty balances.", obj({ virtual_currencies: { type: "object" } }), { virtual_currencies: {} }) } }),
+  },
+  "/v1/subscribers/{app_user_id}/restore/eligibility": {
+    post: op({ id: "restoreEligibility", tag: "SDK support", summary: "Restore eligibility (StoreKit 2)", security: PUBLIC, source: SDK, parameters: [user],
+      responses: { 200: ok("Always allowed.", obj({ is_purchase_allowed_by_restore_behavior: bool() }), { is_purchase_allowed_by_restore_behavior: true }) } }),
+  },
+  "/v1/config/{domain}": {
+    parameters: [{ name: "domain", in: "path", required: true, schema: str(), description: "Config domain the SDK asks for (for example `app`)." }],
+    get: op({ id: "getRemoteConfig", tag: "SDK support", summary: "Remote config (none yet)", security: PUBLIC, source: SDK, description: "Answers 204 (no config). `getOfferings` waits on this call.", responses: { 204: { description: "No config." } } }),
+    post: op({ id: "postRemoteConfig", tag: "SDK support", summary: "Remote config (none yet)", security: PUBLIC, source: SDK, responses: { 204: { description: "No config." } } }),
+  },
+  "/v1/events": {
+    post: op({ id: "postEvents", tag: "SDK support", summary: "SDK paywall and feature events (accepted, not stored)", security: PUBLIC, source: SDK,
+      description: "Accepted so the SDK does not resend them forever.", responses: { 200: empty() } }),
+  },
+  "/v1/diagnostics": {
+    post: op({ id: "postDiagnostics", tag: "SDK support", summary: "SDK diagnostics (accepted, not stored)", security: PUBLIC, source: SDK, responses: { 200: empty() } }),
+  },
+  "/rcbilling/v1/subscribers/{app_user_id}/products": {
+    get: op({ id: "testStoreProducts", tag: "Offerings (SDK)", summary: "Test Store product details", security: PUBLIC, source: SDK,
+      parameters: [user, { name: "id", in: "query", schema: arr(str()), style: "form", explode: true, description: "Product ids; repeat the parameter. None lists every product of the app." }],
+      description: "Product details the SDK needs for Test Store (and web) products, in the web billing products shape. Prices are 0 until the catalog stores Test Store prices.",
+      responses: { 200: ok("Product details.", obj({ product_details: arr({ type: "object" }) }), { product_details: [{ identifier: "pro_monthly", product_type: "subscription", title: "Pro monthly", description: null, current_price: { amount: 0, amount_micros: 0, currency: "USD" }, normal_period_duration: "P1M", default_purchase_option_id: "base", default_subscription_option_id: "base", purchase_options: { base: { id: "base", price_id: "base", base: { period_duration: "P1M", cycle_count: 1, price: { amount: 0, amount_micros: 0, currency: "USD" } }, base_price: null, trial: null, intro_price: null } }, subscription_options: { base: { id: "base", price_id: "base", base: { period_duration: "P1M", cycle_count: 1, price: { amount: 0, amount_micros: 0, currency: "USD" } }, base_price: null, trial: null, intro_price: null } } }] }), ...v1Errors(401) } }),
+  },
+
+  // ---- Store notifications -------------------------------------------------------------------------------------------
+  "/v1/notifications/apple/{app_id}": {
+    post: op({ id: "appleNotification", tag: "Store notifications", summary: "App Store Server Notifications v2", security: NONE, source: "stores/apple/notifications.ts", parameters: [param("AppId")],
+      description: `
+Set this URL (shown on the app's page in the dashboard) as the Production and Sandbox Server URL in App Store Connect, with version 2 notifications.
+RevenueDot verifies Apple's signature and the bundle id, stores the raw body, copies it to \`notification_forward_url\` when set, and applies it.
+
+- **200:** handled, including notifications about purchases this server has not seen (stored; applied only with \`track_new_purchases\`).
+- **400:** the payload cannot be verified or belongs to another app. App Store Connect shows it as failed.
+- **404:** no App Store app with this id.
+- **500:** RevenueDot failed; Apple retries.`,
+      requestBody: body(obj({ signedPayload: str("Apple's signed JWS.") }, ["signedPayload"])),
+      responses: { 200: ok("Handled.", obj({ ok: bool() }), { ok: true }), 400: ok("Unverifiable.", obj({ error: str() }), { error: "The signed payload is not valid: bad signature." }), 404: ok("Unknown app.", obj({ error: str() })), 500: ok("Failed; Apple retries.", obj({ error: str() })) } }),
+  },
+  "/v1/notifications/google/{app_id}": {
+    post: op({ id: "googleNotification", tag: "Store notifications", summary: "Google Play real-time developer notifications (Pub/Sub push)", security: [{}, { googlePubSubOidc: [] }], source: "stores/google/notifications.ts", parameters: [param("AppId")],
+      description: `
+Set this URL as the endpoint of a Pub/Sub **push** subscription on the topic Google Play publishes to.
+When the app's \`pubsub_audience\` credential is set, the push must carry a Google-signed OIDC token for that audience (and for \`pubsub_service_account\` when set).
+Each message is stored once (by message id), forwarded when \`notification_forward_url\` is set, and applied by reading the purchase from the Play Developer API.
+
+- **200:** handled, a duplicate, ignored (another package, not a developer notification) or an invalid token that can never succeed.
+- **400:** not a Pub/Sub push body. **401:** bad push token. **404:** no Google Play app with this id.
+- **500 or 503:** a temporary failure; Pub/Sub redelivers.`,
+      requestBody: body(obj({ message: obj({ data: str("Base64 JSON developer notification."), messageId: str(), publishTime: str() }), subscription: str() }, ["message"])),
+      responses: {
+        200: ok("Handled.", obj({ status: en(["processed", "ignored", "duplicate", "invalid_token"]) }), { status: "processed" }),
+        400: ok("Not a push body.", ref("V1Error")), 401: ok("Bad push token.", ref("V1Error"), { code: 7224, message: "The Pub/Sub push token is missing or invalid." }),
+        404: ok("Unknown app.", ref("V1Error")), 500: ok("Temporary failure; Pub/Sub retries.", ref("V1Error")), 503: ok("Google's signing keys could not be loaded.", ref("V1Error")),
+      } }),
+  },
+
+  // ---- REST API v1 (secret key) --------------------------------------------------------------------------------------
+  "/v1/subscribers/{app_user_id}/entitlements/{entitlement_identifier}/promotional": {
+    post: op({ id: "grantPromotional", tag: "Promotional entitlements (v1)", summary: "Grant promotional access", security: SECRET_ONLY, source: V1,
+      parameters: [user, { name: "entitlement_identifier", in: "path", required: true, schema: str(), description: "Entitlement lookup key, for example `pro`." }],
+      description: "Gives the customer the entitlement until `end_time_ms`, or for a `duration`. Creates the customer when needed. A grant whose end is within 2 hours of an existing promotional grant for the same entitlement is a duplicate and changes nothing.",
+      requestBody: body(obj({
+        end_time_ms: int("When access ends, epoch milliseconds. Preferred."),
+        duration: en(["daily", "three_day", "weekly", "two_week", "monthly", "two_month", "three_month", "six_month", "yearly", "lifetime"], "Deprecated alternative to end_time_ms."),
+        start_time_ms: int("Start for `duration`. Default now."),
+      }), { duration: "weekly" }),
+      responses: { 200: ci("Customer info with the grant (store `promotional`)."), ...v1Errors(400, 401, 403, 404) } }),
+  },
+  "/v1/subscribers/{app_user_id}/entitlements/{entitlement_identifier}/revoke_promotionals": {
+    post: op({ id: "revokePromotionals", tag: "Promotional entitlements (v1)", summary: "Revoke promotional access", security: SECRET_ONLY, source: V1,
+      parameters: [user, { name: "entitlement_identifier", in: "path", required: true, schema: str() }],
+      description: "Ends every active promotional grant of this entitlement now.",
+      responses: { 200: ci(), ...v1Errors(401, 403, 404) } }),
+  },
+  "/v1/subscribers/{app_user_id}/offerings/{offering_identifier}/override": {
+    post: op({ id: "overrideOffering", tag: "Offering overrides (v1)", summary: "Show a customer another offering", security: SECRET_ONLY, source: V1,
+      parameters: [user, { name: "offering_identifier", in: "path", required: true, schema: str(), description: "Offering id (ofrng...) or lookup key." }],
+      description: "The customer's `current_offering_id` becomes this offering.",
+      responses: { 200: ci(), ...v1Errors(401, 403, 404) } }),
+  },
+  "/v1/subscribers/{app_user_id}/offerings/override": {
+    delete: op({ id: "removeOfferingOverride", tag: "Offering overrides (v1)", summary: "Remove a customer's offering override", security: SECRET_ONLY, source: V1, parameters: [user],
+      responses: { 200: ci(), ...v1Errors(401, 403, 404) } }),
+  },
+  "/v1/subscribers/{app_user_id}/subscriptions/{product_identifier}/revoke": {
+    post: op({ id: "revokeGoogleSubscription", tag: "Store actions (v1)", summary: "Refund and revoke a Google Play subscription", security: SECRET_ONLY, source: V1,
+      parameters: [user, { name: "product_identifier", in: "path", required: true, schema: str(), description: "Store product id of the subscription." }],
+      description: "Google Play only: refunds the latest payment and ends access now. Other stores answer 400 with code 7000.",
+      responses: { 200: ci(), ...v1Errors(400, 401, 403, 404, 503) } }),
+  },
+  "/v1/subscribers/{app_user_id}/subscriptions/{product_identifier}/defer": {
+    post: op({ id: "deferGoogleSubscription", tag: "Store actions (v1)", summary: "Defer a Google Play renewal", security: SECRET_ONLY, source: V1,
+      parameters: [user, { name: "product_identifier", in: "path", required: true, schema: str() }],
+      description: "Google Play only: moves the next renewal date. Send `expiry_time_ms` or `extend_by_days`. Use extend for App Store subscriptions.",
+      requestBody: body(obj({ expiry_time_ms: int("New expiry, epoch milliseconds; later than the current one."), extend_by_days: int("Days to add, 1 to 365.") }), { extend_by_days: 7 }),
+      responses: { 200: ci(), ...v1Errors(400, 401, 403, 404, 503) } }),
+  },
+  "/v1/subscribers/{app_user_id}/transactions/{store_transaction_identifier}/refund": {
+    post: op({ id: "refundGoogleTransaction", tag: "Store actions (v1)", summary: "Refund a Google Play order", security: SECRET_ONLY, source: V1,
+      parameters: [user, { name: "store_transaction_identifier", in: "path", required: true, schema: str(), description: "Google order id." }],
+      description: "Google Play only: refunds and revokes the order.",
+      responses: { 200: ci(), ...v1Errors(400, 401, 403, 404, 503) } }),
+  },
+  "/v1/subscribers/{app_user_id}/subscriptions/{store_transaction_identifier}/cancel": {
+    post: op({ id: "cancelGoogleSubscription", tag: "Store actions (v1)", summary: "Cancel a Google Play subscription", security: SECRET_ONLY, source: V1,
+      parameters: [user, { name: "store_transaction_identifier", in: "path", required: true, schema: str(), description: "Store transaction id of the subscription." }],
+      description: "Google Play only: turns auto-renew off; access continues to the end of the period.",
+      responses: { 200: ci(), ...v1Errors(400, 401, 403, 404, 503) } }),
+  },
+  "/v1/subscribers/{app_user_id}/subscriptions/{store_transaction_identifier}/extend": {
+    post: op({ id: "extendAppleSubscription", tag: "Store actions (v1)", summary: "Extend an App Store subscription", security: SECRET_ONLY, source: V1,
+      parameters: [user, { name: "store_transaction_identifier", in: "path", required: true, schema: str() }],
+      description: "App Store only (needs the app's in-app purchase key): Apple extends the renewal date. Use defer for Google Play.",
+      requestBody: body(obj({ extend_by_days: int("1 to 90."), extend_reason_code: int("Apple's reason code: 0 undeclared, 1 customer satisfaction, 2 other, 3 service issue or outage.") }), { extend_by_days: 7, extend_reason_code: 1 }),
+      responses: { 200: ci(), ...v1Errors(400, 401, 403, 404, 503) } }),
+  },
+};
