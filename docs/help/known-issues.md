@@ -1,11 +1,11 @@
 ---
 title: What are the known issues and gaps in RevenueDot?
-description: "Known issues as of 2026-09-30: what does not work yet in the pre-alpha, and the workaround for each."
+description: "Known issues as of 2026-09-30: what does not work yet, and the workaround for each."
 ---
 
 # What are the known issues and gaps in RevenueDot?
 
-RevenueDot is pre-alpha. The list below is complete as of **2026-09-30**. The biggest gap: **no real App Store or Google Play sandbox purchase has run end to end yet**. Store support is tested against mocked Apple and Google APIs only. Each item has a workaround where one exists.
+The list below is complete as of **2026-09-30**. The biggest gap: **no real App Store or Google Play sandbox purchase has run end to end yet**. Store support is tested against mocked Apple and Google APIs only. Each item has a workaround where one exists.
 
 ## Stores and purchases
 1. **Real store purchases are untested end to end.** The App Store and Google Play code passes tests against mocked Apple and Google APIs.

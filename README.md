@@ -2,7 +2,7 @@
 
 **Open documentation for [RevenueDot](https://revenuedot.app), the open-source, self-hostable backend for in-app purchases that works with the RevenueCat SDK.** Everything here is public Markdown: getting started, concepts, SDK guides, store setup, webhooks, self-hosting, migration from RevenueCat, the API reference, a help center and a blog.
 
-> Status: pre-alpha (2026-09-30). Every page says what works today and what is planned.
+> Every page says what works today and what is planned.
 
 ## Start here
 - [What is RevenueDot?](docs/getting-started/README.md) and the [5-minute quickstart](docs/getting-started/quickstart.md)

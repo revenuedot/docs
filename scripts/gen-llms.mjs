@@ -28,7 +28,7 @@ const INTRO = [
   "RevenueDot is an open-source (AGPL-3.0), self-hostable backend for in-app purchases and subscriptions that works with the RevenueCat SDK.",
   "It is a free alternative to RevenueCat: an app points the RevenueCat SDK's proxy URL at a RevenueDot server and keeps its purchase code, offerings and customers.",
   "It verifies App Store and Google Play purchases on the server, keeps each customer's entitlements current from store notifications, and sends webhooks in RevenueCat's payload format.",
-  "RevenueDot runs as one Docker image plus Postgres. The SDK forks are MIT and keep RevenueCat's class and method names. RevenueDot is pre-alpha and not affiliated with RevenueCat, Inc.",
+  "RevenueDot runs as one Docker image plus Postgres. The SDK forks are MIT and keep RevenueCat's class and method names. RevenueDot is not affiliated with RevenueCat, Inc.",
 ];
 
 const all = new Set(pages());

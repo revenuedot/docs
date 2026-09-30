@@ -9,7 +9,7 @@ author: RevenueDot team
 
 You can run RevenueDot on your laptop, make a purchase and receive the webhook in about five minutes, most of which is the first image build. You need Docker with Compose v2, `curl`, `jq` and Node.js 18 or newer for the webhook receiver. You do not need an App Store or Google Play account: the built-in Test Store stands in for them.
 
-Everything below uses the public [examples repository](https://github.com/revenuedot/examples). RevenueDot is pre-alpha, so treat this as a test setup, not production.
+Everything below uses the public [examples repository](https://github.com/revenuedot/examples). For production, follow the [going-to-production checklist](../docs/guides/going-to-production.md) afterwards.
 
 ## 1. Start the server and Postgres
 ```bash

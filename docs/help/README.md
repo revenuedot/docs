@@ -5,7 +5,7 @@ description: The RevenueDot help center, grouped by topic. Each article answers 
 
 # Where do I find answers to common RevenueDot problems?
 
-Pick the question closest to yours below. Each article starts with the answer, then lists causes and fixes. RevenueDot is pre-alpha, so also check [Known issues](known-issues.md) before you dig in.
+Pick the question closest to yours below. Each article starts with the answer, then lists causes and fixes. Also check [Known issues](known-issues.md) before you dig in.
 
 ## Getting started
 - [Frequently asked questions](faq.md): what RevenueDot is, what it costs, which stores and SDKs work today.

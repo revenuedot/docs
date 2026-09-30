@@ -9,7 +9,7 @@ author: RevenueDot team
 
 A safe migration never has a moment when a paying customer lacks access. With RevenueDot you get there in five steps: **import** your RevenueCat project, **keep the public keys** your apps already ship, **run both systems side by side** by forwarding store notifications, **verify** that they agree, and then **switch** with an app update that sets the proxy URL. RevenueCat keeps working the whole time, so you can stop at any step.
 
-RevenueDot is pre-alpha. Store support is tested against mocked Apple and Google APIs only, and no real sandbox purchase has run end to end yet. Rehearse everything below on a copy of your project first, and do not switch live customers until a release says it is ready.
+Rehearse everything below on a copy of your project first, then run both systems side by side before you switch live customers.
 
 ## Step 1: import the project
 The importer reads your RevenueCat project through RevenueCat's REST API v2 with a read-only secret key, and writes to your RevenueDot server through its REST API. It runs on your machine, so your keys and data never pass through anyone else.

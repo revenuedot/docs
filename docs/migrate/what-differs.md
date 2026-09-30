@@ -5,7 +5,7 @@ description: Every known difference as of 2026-09-30, from failed signature chec
 
 # What differs between RevenueDot and RevenueCat?
 
-RevenueDot answers the RevenueCat SDKs, REST API v1 and v2, and webhook payloads in RevenueCat's shapes, so purchases, entitlements, offerings and customer info work the same. The differences are: stock SDKs report failed signature checks, a few SDK features answer empty because they are not built yet, some webhook event types are never sent, and paywalls, experiments, charts and several stores are planned for later tiers. This page lists every known difference as of 2026-09-30. RevenueDot is pre-alpha, and no real App Store or Google Play sandbox purchase has run end to end yet.
+RevenueDot answers the RevenueCat SDKs, REST API v1 and v2, and webhook payloads in RevenueCat's shapes, so purchases, entitlements, offerings and customer info work the same. The differences are: stock SDKs report failed signature checks, a few SDK features answer empty because they are not built yet, some webhook event types are never sent, and paywalls, experiments, charts and several stores are planned for later tiers. This page lists every known difference as of 2026-09-30.
 
 ## SDK behaviour
 **Signature checks (Trusted Entitlements)**

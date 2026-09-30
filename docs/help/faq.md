@@ -1,11 +1,11 @@
 ---
 title: What do people most often ask about RevenueDot?
-description: Short answers about what RevenueDot is, what it costs, its licenses, the stores and SDKs it supports, and what works in the pre-alpha today.
+description: Short answers about what RevenueDot is, what it costs, its licenses, the stores and SDKs it supports, and what works today.
 ---
 
 # What do people most often ask about RevenueDot?
 
-RevenueDot is an open-source (AGPL-3.0), self-hostable backend for in-app purchases and subscriptions that works with the RevenueCat SDK. It is pre-alpha: the core API runs and is tested, but it is not ready for production apps yet. The answers below say what exists on 2026-09-30.
+RevenueDot is an open-source (AGPL-3.0), self-hostable backend for in-app purchases and subscriptions that works with the RevenueCat SDK. The answers below say what exists on 2026-09-30.
 
 ## Is RevenueDot an open-source RevenueCat alternative?
 Yes. RevenueDot implements the API that the RevenueCat SDKs call, so an app keeps its purchase code and points the SDK at a RevenueDot server with one setting, the proxy URL. The server code is on [GitHub](https://github.com/revenuedot/revenuedot). RevenueDot is not affiliated with RevenueCat.
@@ -29,7 +29,7 @@ Every platform's version of this line is in the [SDK guides](../sdks/README.md).
 - **You can run it yourself.** Your purchase data lives in your own Postgres.
 - **The server is open source** under AGPL-3.0, so you can read the code that decides who gets access.
 - **It does far less today.** Paywalls, experiments, targeting, charts beyond the overview, Customer Center, virtual currencies and most integrations are not built. RevenueCat has all of these ([features](https://www.revenuecat.com/pricing)).
-- **It is pre-alpha.** RevenueCat is a mature hosted service.
+- **It is newer.** RevenueCat has a longer track record as a hosted service.
 
 ## What does it cost?
 Self-hosting is free: you pay only for your server and database. RevenueCat's Pro plan is free up to $2,500 in monthly tracked revenue and then charges 1% of tracked revenue ([pricing](https://www.revenuecat.com/pricing)). A hosted RevenueDot Cloud is planned but not live yet.

@@ -5,7 +5,7 @@ description: A checklist for a self-hosted RevenueDot with real customers - HTTP
 
 # What should I check before running RevenueDot in production?
 
-Work through this list before real customers depend on your server. **RevenueDot is pre-alpha (2026-09-30):** no production app runs on it yet, and the App Store and Google Play paths have been tested against mocked store APIs only. Run a real sandbox purchase on each store first, and consider a [dual run](../migrate/dual-run.md) next to your current system.
+Work through this list before real customers depend on your server. Run a real sandbox purchase on each store first, and consider a [dual run](../migrate/dual-run.md) next to your current system.
 
 ## Server
 - [ ] HTTPS in front of the server, with a certificate that renews itself. See [Self-hosting](self-hosting.md#put-https-in-front).

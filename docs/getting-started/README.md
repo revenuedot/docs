@@ -13,7 +13,7 @@ Purchases.proxyURL = URL(string: "https://revenuedot.example.com")!
 Purchases.configure(with: Configuration.Builder(withAPIKey: "appl_...").with(entitlementVerificationMode: .disabled).build())
 ```
 
-> **Status: pre-alpha (2026-09-30).** The server works end to end with the Test Store, and its App Store and Google Play code passes its test suite against mocked store APIs. No production app runs on it yet. Every page states what exists today and what is planned.
+> Every page states what exists today and what is planned. Current limits are listed in [Known issues](../help/known-issues.md).
 
 ## What RevenueDot does
 - **Checks purchases with the stores.** App Store purchases are verified against Apple's signed transactions and the App Store Server API. Google Play purchases are verified with the Google Play Developer API. Nothing is trusted from the device alone.

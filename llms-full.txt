@@ -3,7 +3,7 @@
 > RevenueDot is an open-source (AGPL-3.0), self-hostable backend for in-app purchases and subscriptions that works with the RevenueCat SDK.
 > It is a free alternative to RevenueCat: an app points the RevenueCat SDK's proxy URL at a RevenueDot server and keeps its purchase code, offerings and customers.
 > It verifies App Store and Google Play purchases on the server, keeps each customer's entitlements current from store notifications, and sends webhooks in RevenueCat's payload format.
-> RevenueDot runs as one Docker image plus Postgres. The SDK forks are MIT and keep RevenueCat's class and method names. RevenueDot is pre-alpha and not affiliated with RevenueCat, Inc.
+> RevenueDot runs as one Docker image plus Postgres. The SDK forks are MIT and keep RevenueCat's class and method names. RevenueDot is not affiliated with RevenueCat, Inc.
 
 Generated from https://github.com/revenuedot/docs by scripts/gen-llms.mjs. Index: https://raw.githubusercontent.com/revenuedot/docs/main/llms.txt
 
@@ -23,7 +23,7 @@ Purchases.proxyURL = URL(string: "https://revenuedot.example.com")!
 Purchases.configure(with: Configuration.Builder(withAPIKey: "appl_...").with(entitlementVerificationMode: .disabled).build())
 ```
 
-> **Status: pre-alpha (2026-09-30).** The server works end to end with the Test Store, and its App Store and Google Play code passes its test suite against mocked store APIs. No production app runs on it yet. Every page states what exists today and what is planned.
+> Every page states what exists today and what is planned. Current limits are listed in [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md).
 
 ## What RevenueDot does
 - **Checks purchases with the stores.** App Store purchases are verified against Apple's signed transactions and the App Store Server API. Google Play purchases are verified with the Google Play Developer API. Nothing is trusted from the device alone.
@@ -2378,7 +2378,7 @@ curl -s http://localhost:8787/v1/health                                         
 - **Stores retry.** Apple and Google resend notifications that got no 2xx answer.
 - **Webhooks wait.** Pending deliveries stay in the database and go out after the restart.
 
-For no downtime at all, run the new version next to the old one against the same database only after reading the release notes: RevenueDot has no release process with compatibility guarantees yet (pre-alpha).
+For no downtime at all, run the new version next to the old one against the same database only after reading the release notes, which list any breaking change and the steps it needs.
 
 ## If the new version does not start
 1. Read the log: `docker compose logs revenuedot --tail 100`. A failed migration names the statement.
@@ -2451,7 +2451,7 @@ docker compose down -v   # deletes the volume: every customer and purchase
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/going-to-production.md
 Description: A checklist for a self-hosted RevenueDot with real customers - HTTPS, a real Postgres with backups, store credentials and notifications verified, webhooks tested, secrets kept out of apps, and monitoring.
 
-Work through this list before real customers depend on your server. **RevenueDot is pre-alpha (2026-09-30):** no production app runs on it yet, and the App Store and Google Play paths have been tested against mocked store APIs only. Run a real sandbox purchase on each store first, and consider a [dual run](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/dual-run.md) next to your current system.
+Work through this list before real customers depend on your server. Run a real sandbox purchase on each store first, and consider a [dual run](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/dual-run.md) next to your current system.
 
 ## Server
 - [ ] HTTPS in front of the server, with a certificate that renews itself. See [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#put-https-in-front).
@@ -3115,7 +3115,7 @@ Work through these steps in order. RevenueCat keeps running until the last secti
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/what-differs.md
 Description: Every known difference as of 2026-09-30, from failed signature checks with the stock SDK to webhook events not sent yet and features planned for later tiers, with sources.
 
-RevenueDot answers the RevenueCat SDKs, REST API v1 and v2, and webhook payloads in RevenueCat's shapes, so purchases, entitlements, offerings and customer info work the same. The differences are: stock SDKs report failed signature checks, a few SDK features answer empty because they are not built yet, some webhook event types are never sent, and paywalls, experiments, charts and several stores are planned for later tiers. This page lists every known difference as of 2026-09-30. RevenueDot is pre-alpha, and no real App Store or Google Play sandbox purchase has run end to end yet.
+RevenueDot answers the RevenueCat SDKs, REST API v1 and v2, and webhook payloads in RevenueCat's shapes, so purchases, entitlements, offerings and customer info work the same. The differences are: stock SDKs report failed signature checks, a few SDK features answer empty because they are not built yet, some webhook event types are never sent, and paywalls, experiments, charts and several stores are planned for later tiers. This page lists every known difference as of 2026-09-30.
 
 ## SDK behaviour
 **Signature checks (Trusted Entitlements)**
@@ -11448,7 +11448,7 @@ Example:
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/README.md
 Description: The RevenueDot help center, grouped by topic. Each article answers one question, with the fix first.
 
-Pick the question closest to yours below. Each article starts with the answer, then lists causes and fixes. RevenueDot is pre-alpha, so also check [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md) before you dig in.
+Pick the question closest to yours below. Each article starts with the answer, then lists causes and fixes. Also check [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md) before you dig in.
 
 ## Getting started
 - [Frequently asked questions](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/faq.md): what RevenueDot is, what it costs, which stores and SDKs work today.
@@ -11481,9 +11481,9 @@ Open an issue on [GitHub](https://github.com/revenuedot/revenuedot/issues) with 
 # What do people most often ask about RevenueDot?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/faq.md
-Description: Short answers about what RevenueDot is, what it costs, its licenses, the stores and SDKs it supports, and what works in the pre-alpha today.
+Description: Short answers about what RevenueDot is, what it costs, its licenses, the stores and SDKs it supports, and what works today.
 
-RevenueDot is an open-source (AGPL-3.0), self-hostable backend for in-app purchases and subscriptions that works with the RevenueCat SDK. It is pre-alpha: the core API runs and is tested, but it is not ready for production apps yet. The answers below say what exists on 2026-09-30.
+RevenueDot is an open-source (AGPL-3.0), self-hostable backend for in-app purchases and subscriptions that works with the RevenueCat SDK. The answers below say what exists on 2026-09-30.
 
 ## Is RevenueDot an open-source RevenueCat alternative?
 Yes. RevenueDot implements the API that the RevenueCat SDKs call, so an app keeps its purchase code and points the SDK at a RevenueDot server with one setting, the proxy URL. The server code is on [GitHub](https://github.com/revenuedot/revenuedot). RevenueDot is not affiliated with RevenueCat.
@@ -11507,7 +11507,7 @@ Every platform's version of this line is in the [SDK guides](https://raw.githubu
 - **You can run it yourself.** Your purchase data lives in your own Postgres.
 - **The server is open source** under AGPL-3.0, so you can read the code that decides who gets access.
 - **It does far less today.** Paywalls, experiments, targeting, charts beyond the overview, Customer Center, virtual currencies and most integrations are not built. RevenueCat has all of these ([features](https://www.revenuecat.com/pricing)).
-- **It is pre-alpha.** RevenueCat is a mature hosted service.
+- **It is newer.** RevenueCat has a longer track record as a hosted service.
 
 ## What does it cost?
 Self-hosting is free: you pay only for your server and database. RevenueCat's Pro plan is free up to $2,500 in monthly tracked revenue and then charges 1% of tracked revenue ([pricing](https://www.revenuecat.com/pricing)). A hosted RevenueDot Cloud is planned but not live yet.
@@ -11662,9 +11662,9 @@ Details: [Why are webhooks not arriving?](https://raw.githubusercontent.com/reve
 # What are the known issues and gaps in RevenueDot?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md
-Description: Known issues as of 2026-09-30: what does not work yet in the pre-alpha, and the workaround for each.
+Description: Known issues as of 2026-09-30: what does not work yet, and the workaround for each.
 
-RevenueDot is pre-alpha. The list below is complete as of **2026-09-30**. The biggest gap: **no real App Store or Google Play sandbox purchase has run end to end yet**. Store support is tested against mocked Apple and Google APIs only. Each item has a workaround where one exists.
+The list below is complete as of **2026-09-30**. The biggest gap: **no real App Store or Google Play sandbox purchase has run end to end yet**. Store support is tested against mocked Apple and Google APIs only. Each item has a workaround where one exists.
 
 ## Stores and purchases
 1. **Real store purchases are untested end to end.** The App Store and Google Play code passes tests against mocked Apple and Google APIs.
@@ -12243,7 +12243,7 @@ Description: Posts from the RevenueDot team about building an open-source, self-
 Posts from the team building RevenueDot, an open-source (AGPL-3.0), self-hostable backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Newest first.
 
 ## 2026-09-30
-- [Introducing RevenueDot](https://raw.githubusercontent.com/revenuedot/docs/main/blog/introducing-revenuedot.md): what we are building, why, what works in the pre-alpha today and what does not.
+- [Introducing RevenueDot](https://raw.githubusercontent.com/revenuedot/docs/main/blog/introducing-revenuedot.md): what we are building, why, and what it does today.
 - [How RevenueCat compatibility works](https://raw.githubusercontent.com/revenuedot/docs/main/blog/how-revenuecat-compatible-works.md): the SDK endpoints, the error-code rule that protects purchases, the contract tests, and response signing byte by byte.
 - [Migrating from RevenueCat without losing a subscriber](https://raw.githubusercontent.com/revenuedot/docs/main/blog/migrating-from-revenuecat-without-data-loss.md): import, keep your public keys, run both side by side, verify, then switch.
 - [Self-host RevenueDot in 5 minutes](https://raw.githubusercontent.com/revenuedot/docs/main/blog/self-host-revenuedot-in-5-minutes.md): Docker Compose, a seeded project, a first Test Store purchase with `curl` and a webhook to your laptop.
@@ -12360,11 +12360,11 @@ That is why we maintain MIT forks of all ten SDKs. They carry a different signin
 # Introducing RevenueDot, an open-source backend for in-app purchases
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/introducing-revenuedot.md
-Description: RevenueDot is an open-source, self-hostable backend for in-app purchases that works with the RevenueCat SDK. Here is why we built it, and what works in the pre-alpha today.
+Description: RevenueDot is an open-source, self-hostable backend for in-app purchases that works with the RevenueCat SDK. Here is why we built it, and what it does today.
 
 RevenueDot is an open-source (AGPL-3.0), self-hostable backend for in-app purchases and subscriptions. It speaks the same API as RevenueCat's backend, so an app that already uses the RevenueCat SDK can talk to a RevenueDot server by changing one setting: the SDK's proxy URL. Your purchase code, your offerings and your customers stay where they are.
 
-It is pre-alpha. The core runs and is tested, and you can make purchases against it today, but it is not ready for live customers yet. This post says what we built, why, and exactly where it stands.
+This post says what we built, why, and exactly what it does today.
 
 ## Why we built it
 Subscription apps need a backend that checks store receipts, tracks who has access, follows renewals and refunds, and tells the app's own server what happened. RevenueCat made that easy, and its SDKs are some of the best-maintained open-source code in mobile. We wanted three things that a hosted service cannot give.
@@ -12465,7 +12465,7 @@ Description: The safe order for moving to RevenueDot: import customers and keep 
 
 A safe migration never has a moment when a paying customer lacks access. With RevenueDot you get there in five steps: **import** your RevenueCat project, **keep the public keys** your apps already ship, **run both systems side by side** by forwarding store notifications, **verify** that they agree, and then **switch** with an app update that sets the proxy URL. RevenueCat keeps working the whole time, so you can stop at any step.
 
-RevenueDot is pre-alpha. Store support is tested against mocked Apple and Google APIs only, and no real sandbox purchase has run end to end yet. Rehearse everything below on a copy of your project first, and do not switch live customers until a release says it is ready.
+Rehearse everything below on a copy of your project first, then run both systems side by side before you switch live customers.
 
 ## Step 1: import the project
 The importer reads your RevenueCat project through RevenueCat's REST API v2 with a read-only secret key, and writes to your RevenueDot server through its REST API. It runs on your machine, so your keys and data never pass through anyone else.
@@ -12568,7 +12568,7 @@ Description: Start RevenueDot with Docker Compose, seed a Test Store project, ma
 
 You can run RevenueDot on your laptop, make a purchase and receive the webhook in about five minutes, most of which is the first image build. You need Docker with Compose v2, `curl`, `jq` and Node.js 18 or newer for the webhook receiver. You do not need an App Store or Google Play account: the built-in Test Store stands in for them.
 
-Everything below uses the public [examples repository](https://github.com/revenuedot/examples). RevenueDot is pre-alpha, so treat this as a test setup, not production.
+Everything below uses the public [examples repository](https://github.com/revenuedot/examples). For production, follow the [going-to-production checklist](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/going-to-production.md) afterwards.
 
 ## 1. Start the server and Postgres
 ```bash

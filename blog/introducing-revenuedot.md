@@ -1,6 +1,6 @@
 ---
 title: Introducing RevenueDot, an open-source backend for in-app purchases
-description: RevenueDot is an open-source, self-hostable backend for in-app purchases that works with the RevenueCat SDK. Here is why we built it, and what works in the pre-alpha today.
+description: RevenueDot is an open-source, self-hostable backend for in-app purchases that works with the RevenueCat SDK. Here is why we built it, and what it does today.
 date: 2026-09-30
 author: RevenueDot team
 ---
@@ -9,7 +9,7 @@ author: RevenueDot team
 
 RevenueDot is an open-source (AGPL-3.0), self-hostable backend for in-app purchases and subscriptions. It speaks the same API as RevenueCat's backend, so an app that already uses the RevenueCat SDK can talk to a RevenueDot server by changing one setting: the SDK's proxy URL. Your purchase code, your offerings and your customers stay where they are.
 
-It is pre-alpha. The core runs and is tested, and you can make purchases against it today, but it is not ready for live customers yet. This post says what we built, why, and exactly where it stands.
+This post says what we built, why, and exactly what it does today.
 
 ## Why we built it
 Subscription apps need a backend that checks store receipts, tracks who has access, follows renewals and refunds, and tells the app's own server what happened. RevenueCat made that easy, and its SDKs are some of the best-maintained open-source code in mobile. We wanted three things that a hosted service cannot give.
