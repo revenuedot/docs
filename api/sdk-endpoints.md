@@ -13,7 +13,7 @@ Responses under `/v1` and `/rcbilling` are signed when the server has a signing 
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (45)
+## Operations on this page (47)
 
 - **Server**: [Server name and docs link](#server-name-and-docs-link), [Health check](#health-check), [Connectivity probe](#connectivity-probe)
 - **Customer info**: [Get customer info](#get-customer-info)
@@ -21,9 +21,9 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Offerings (SDK)**: [Get offerings](#get-offerings), [Get offerings without a user](#get-offerings-without-a-user), [Test Store product details](#test-store-product-details)
 - **Identity**: [Log in (identify)](#log-in-identify), [Alias two app user ids](#alias-two-app-user-ids)
 - **Attributes**: [Set customer attributes](#set-customer-attributes)
-- **SDK support**: [Intro offer eligibility (StoreKit 1)](#intro-offer-eligibility-storekit-1), [Sign a promotional offer (iOS)](#sign-a-promotional-offer-ios), [Attribution data (deprecated iOS call)](#attribution-data-deprecated-ios-call), [Apple AdServices token](#apple-adservices-token), [SDK health report availability](#sdk-health-report-availability), [SDK health report](#sdk-health-report), [Product to entitlement mapping (offline entitlements)](#product-to-entitlement-mapping-offline-entitlements), [Customer Center configuration](#customer-center-configuration), [Customer Center support ticket (not built)](#customer-center-support-ticket-not-built), [Virtual currency balances](#virtual-currency-balances), [Redeem a web purchase (not available)](#redeem-a-web-purchase-not-available), [Register an Apple external purchase token (iOS)](#register-an-apple-external-purchase-token-ios), [Rewarded ad verification (not available)](#rewarded-ad-verification-not-available), [Amazon receipt details (not supported)](#amazon-receipt-details-not-supported), [Paywall workflows (web SDK)](#paywall-workflows-web-sdk), [One paywall workflow (web SDK)](#one-paywall-workflow-web-sdk), [Restore eligibility (StoreKit 2)](#restore-eligibility-storekit-2), [Remote config fallback (none)](#remote-config-fallback-none), [Remote config: paywalls and UI settings](#remote-config-paywalls-and-ui-settings), [Download a remote-config blob](#download-a-remote-config-blob), [SDK paywall, Customer Center and ad events](#sdk-paywall-customer-center-and-ad-events), [SDK diagnostics (accepted, not stored)](#sdk-diagnostics-accepted-not-stored)
+- **SDK support**: [Intro offer eligibility (StoreKit 1)](#intro-offer-eligibility-storekit-1), [Sign a promotional offer (iOS)](#sign-a-promotional-offer-ios), [Attribution data (deprecated iOS call)](#attribution-data-deprecated-ios-call), [Apple AdServices token](#apple-adservices-token), [SDK health report availability](#sdk-health-report-availability), [SDK health report](#sdk-health-report), [Product to entitlement mapping (offline entitlements)](#product-to-entitlement-mapping-offline-entitlements), [Customer Center configuration](#customer-center-configuration), [Customer Center support ticket (not built)](#customer-center-support-ticket-not-built), [Virtual currency balances](#virtual-currency-balances), [Redeem a web purchase (not available)](#redeem-a-web-purchase-not-available), [Register an Apple external purchase token (iOS)](#register-an-apple-external-purchase-token-ios), [Rewarded ad verification (not available)](#rewarded-ad-verification-not-available), [Amazon receipt details](#amazon-receipt-details), [Paywall workflows (web SDK)](#paywall-workflows-web-sdk), [One paywall workflow (web SDK)](#one-paywall-workflow-web-sdk), [Restore eligibility (StoreKit 2)](#restore-eligibility-storekit-2), [Remote config fallback (none)](#remote-config-fallback-none), [Remote config: paywalls and UI settings](#remote-config-paywalls-and-ui-settings), [Download a remote-config blob](#download-a-remote-config-blob), [SDK paywall, Customer Center and ad events](#sdk-paywall-customer-center-and-ad-events), [SDK diagnostics (accepted, not stored)](#sdk-diagnostics-accepted-not-stored)
 - **Web Billing**: [Web offering products](#web-offering-products), [Start a hosted web checkout (not available)](#start-a-hosted-web-checkout-not-available), [Web Billing purchase (not available)](#web-billing-purchase-not-available), [Prepare a Web Billing checkout (not available)](#prepare-a-web-billing-checkout-not-available), [Start a Web Billing checkout (not available)](#start-a-web-billing-checkout-not-available), [Web Billing checkout status](#web-billing-checkout-status), [Refresh Web Billing checkout pricing](#refresh-web-billing-checkout-pricing), [Complete a Web Billing checkout](#complete-a-web-billing-checkout), [Web checkout branding](#web-checkout-branding)
-- **Store notifications**: [App Store Server Notifications v2](#app-store-server-notifications-v2), [Google Play real-time developer notifications (Pub/Sub push)](#google-play-real-time-developer-notifications-pubsub-push)
+- **Store notifications**: [App Store Server Notifications v2](#app-store-server-notifications-v2), [Google Play real-time developer notifications (Pub/Sub push)](#google-play-real-time-developer-notifications-pubsub-push), [Amazon Appstore Real-time Notifications (SNS)](#amazon-appstore-real-time-notifications-sns), [Stripe webhooks](#stripe-webhooks)
 - **Response signing**: [Public key for response signatures](#public-key-for-response-signatures)
 
 ## Server
@@ -201,6 +201,8 @@ Every purchase, restore and `syncPurchases()` ends here. RevenueDot verifies the
 
 - **App Store:** `fetch_token` is a StoreKit 2 signed transaction (JWS), a StoreKit 1 app receipt (base64) or an Xcode StoreKit test receipt. With the app's in-app purchase key, Apple's App Store Server API supplies the full history and renewal state.
 - **Google Play:** `fetch_token` is the purchase token. RevenueDot checks it with the Play Developer API and acknowledges it.
+- **Amazon Appstore:** `fetch_token` is the receipt id and `store_user_id` the Amazon user id (`X-Platform: amazon`). RevenueDot checks both with Amazon's Receipt Verification Service.
+- **Stripe:** from your backend, with `X-Platform: stripe` and the Stripe app's public key (`strp_`): `fetch_token` is a subscription id (`sub_…`) or a Checkout Session id (`cs_…`). RevenueDot reads it from Stripe with the app's restricted key. An unpaid first invoice or an open session answers 503, so post it again later.
 - **Test Store:** `fetch_token` is `test_<purchase time in ms>_<id>`. Any such token is accepted.
 
 **4xx or 5xx matters.** A 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. RevenueDot answers 5xx for its own and the store's temporary failures so the SDK keeps the purchase and retries.
@@ -1073,17 +1075,20 @@ Example 200 response:
 }
 ```
 
-### Amazon receipt details (not supported)
+### Amazon receipt details
 
 `GET /v1/receipts/amazon/{store_user_id}/{receipt_id}` · Auth: public app key
 
-The Android SDK asks for it on Amazon subscription purchases. Amazon Appstore purchases are not supported: 400 with code 7662, the same answer as a receipt post for an Amazon app, which leaves the purchase unconsumed.
+The Android SDK built for Amazon asks for it on subscription purchases and reads `termSku`, which it then posts as the product id. RevenueDot asks Amazon's Receipt Verification Service with the app's shared key and answers Amazon's receipt unchanged.
+
+- **400 · 7103:** Amazon does not know the receipt or the user. **400 · 7662:** the key is not an Amazon app's.
+- **500 · 7101:** no shared key is saved, or Amazon rejected it. **503 · 7101:** Amazon is unavailable; the SDK keeps the purchase unconsumed and retries. See [Amazon Appstore setup](../docs/guides/amazon-appstore.md).
 
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `store_user_id` | string | yes |  |
+| `store_user_id` | string | yes | The Amazon user id. |
 | `receipt_id` | string | yes | Not encoded by the SDK; may contain `/`. |
 
 **Example request**
@@ -1094,8 +1099,33 @@ curl -s "$REVENUEDOT_URL/v1/receipts/amazon/$STORE_USER_ID/$RECEIPT_ID" -H "Auth
 
 **Responses**
 
-- **400**: Not supported. Returns [V1Error](#v1error).
+- **200**: Amazon's receipt.
+- **400**: Bad request. For receipts, a 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. Returns [V1Error](#v1error).
 - **401**: Unknown API key. Returns [V1Error](#v1error).
+- **500**: Server error. The SDK keeps the purchase and retries. Returns [V1Error](#v1error).
+- **503**: The store could not be reached. Retry later. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "autoRenewing": true,
+  "betaProduct": false,
+  "cancelDate": null,
+  "cancelReason": null,
+  "countryCode": "US",
+  "freeTrialEndDate": null,
+  "gracePeriodEndDate": null,
+  "productId": "pro.subscription",
+  "productType": "SUBSCRIPTION",
+  "purchaseDate": 1790800914000,
+  "receiptId": "q1YqVrJSSs7P1UvMTazKz9PLTCwoTswtyEktM8jLz0kpLQ1JTSlFMsjILCoQ:3:11",
+  "renewalDate": 1793392914000,
+  "term": "1 Month",
+  "termSku": "pro.monthly",
+  "testTransaction": false
+}
+```
 
 ### Paywall workflows (web SDK)
 
@@ -1599,6 +1629,111 @@ curl -s -X POST "$REVENUEDOT_URL/v1/notifications/google/$APP_ID"
 - **404**: Unknown app. Returns [V1Error](#v1error).
 - **500**: Temporary failure; Pub/Sub retries. Returns [V1Error](#v1error).
 - **503**: Google's signing keys could not be loaded. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "status": "processed"
+}
+```
+
+### Amazon Appstore Real-time Notifications (SNS)
+
+`POST /v1/notifications/amazon/{app_id}` · Auth: none
+
+Add this URL as an endpoint under App Services → Real-time Notifications in the Amazon Appstore Console. Amazon delivers through Amazon SNS.
+Every message must carry a valid SNS signature (SignatureVersion 1 or 2, certificate from an `sns.<region>.amazonaws.com` URL). The subscription confirmation is accepted by fetching its `SubscribeURL`, which is what makes Amazon show "Verified". Each message is stored once (by SNS message id), forwarded when `notification_forward_url` is set, and applied by reading the receipt from Amazon's Receipt Verification Service.
+
+- **200:** handled, confirmed, a duplicate, ignored (another package) or a receipt that can never be checked.
+- **400:** not an SNS message, a bad signature, or a topic other than the app's `sns_topic_arn`. **404:** no Amazon app with this id.
+- **500 or 503:** a temporary failure; SNS retries. See [Amazon Appstore setup](../docs/guides/amazon-appstore.md).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `app_id` | string | yes | App id (app...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `Type` | `Notification`, `SubscriptionConfirmation`, `UnsubscribeConfirmation` | yes |  |
+| `MessageId` | string | yes |  |
+| `TopicArn` | string | no |  |
+| `Message` | string | no | For notifications: Amazon's JSON (appPackageName, notificationType, appUserId, receiptId, relatedReceipts, timestamp, betaProductTransaction). |
+| `SubscribeURL` | string | no | Subscription confirmations only. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/notifications/amazon/$APP_ID"
+```
+
+**Responses**
+
+- **200**: Handled.
+- **400**: Not accepted. Returns [V1Error](#v1error).
+- **404**: Unknown app. Returns [V1Error](#v1error).
+- **500**: Temporary failure; SNS retries. Returns [V1Error](#v1error).
+- **503**: The SNS certificate or confirmation failed; SNS retries. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "status": "processed"
+}
+```
+
+### Stripe webhooks
+
+`POST /v1/notifications/stripe/{app_id}` · Auth: none
+
+Add this URL as a webhook endpoint in your Stripe account with the events `customer.subscription.created`, `.updated`, `.deleted`, `.paused`, `.resumed`, `invoice.paid`, `invoice.payment_failed`, `invoice.updated`, `charge.refunded` and `checkout.session.completed`, and save its signing secret on the app.
+Each event is stored once (by event id), forwarded when `notification_forward_url` is set, and applied by reading the subscription from Stripe, so event order does not matter. Other event types are accepted and ignored.
+
+- **200:** handled, a duplicate, ignored, an unknown purchase (applied only with `track_new_purchases`) or an object Stripe no longer has.
+- **400:** no signing secret saved, a missing or wrong `Stripe-Signature`, or not a Stripe event. **404:** no Stripe app with this id.
+- **500:** a temporary failure; Stripe retries for three days. See [Stripe setup](../docs/guides/stripe.md).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `app_id` | string | yes | App id (app...). |
+
+**Headers**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `Stripe-Signature` | string | yes | `t=<unix seconds>,v1=<hex HMAC-SHA256 of "<t>.<body>">`, checked with the app's `stripe_webhook_secret` within 5 minutes. |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `id` | string | yes | evt_… |
+| `object` | `"event"` | no |  |
+| `type` | string | yes |  |
+| `created` | integer | no |  |
+| `livemode` | boolean | no |  |
+| `data` | object | yes |  |
+| `data.object` | object | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/notifications/stripe/$APP_ID"
+```
+
+**Responses**
+
+- **200**: Handled.
+- **400**: Not accepted. Returns [V1Error](#v1error).
+- **404**: Unknown app. Returns [V1Error](#v1error).
+- **500**: Temporary failure; Stripe retries. Returns [V1Error](#v1error).
 
 Example 200 response:
 

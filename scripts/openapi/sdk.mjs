@@ -71,6 +71,8 @@ Every purchase, restore and \`syncPurchases()\` ends here. RevenueDot verifies t
 
 - **App Store:** \`fetch_token\` is a StoreKit 2 signed transaction (JWS), a StoreKit 1 app receipt (base64) or an Xcode StoreKit test receipt. With the app's in-app purchase key, Apple's App Store Server API supplies the full history and renewal state.
 - **Google Play:** \`fetch_token\` is the purchase token. RevenueDot checks it with the Play Developer API and acknowledges it.
+- **Amazon Appstore:** \`fetch_token\` is the receipt id and \`store_user_id\` the Amazon user id (\`X-Platform: amazon\`). RevenueDot checks both with Amazon's Receipt Verification Service.
+- **Stripe:** from your backend, with \`X-Platform: stripe\` and the Stripe app's public key (\`strp_\`): \`fetch_token\` is a subscription id (\`sub_…\`) or a Checkout Session id (\`cs_…\`). RevenueDot reads it from Stripe with the app's restricted key. An unpaid first invoice or an open session answers 503, so post it again later.
 - **Test Store:** \`fetch_token\` is \`test_<purchase time in ms>_<id>\`. Any such token is accepted.
 
 **4xx or 5xx matters.** A 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. RevenueDot answers 5xx for its own and the store's temporary failures so the SDK keeps the purchase and retries.
@@ -208,10 +210,18 @@ After answering, RevenueDot looks the token up with [Apple's attribution API](ht
       responses: { 200: ok("Failed.", obj({ status: en(["pending", "verified", "failed"]), reward: { type: "null" }, failure_reason: str(), message: str() }), { status: "failed", reward: null, failure_reason: "not_supported", message: "Server-side reward verification is not available on RevenueDot." }), ...v1Errors(401) } }),
   },
   "/v1/receipts/amazon/{store_user_id}/{receipt_id}": {
-    get: op({ id: "amazonReceipt", tag: "SDK support", summary: "Amazon receipt details (not supported)", security: PUBLIC, source: SDK,
-      parameters: [{ name: "store_user_id", in: "path", required: true, schema: str() }, { name: "receipt_id", in: "path", required: true, schema: str(), description: "Not encoded by the SDK; may contain `/`." }],
-      description: "The Android SDK asks for it on Amazon subscription purchases. Amazon Appstore purchases are not supported: 400 with code 7662, the same answer as a receipt post for an Amazon app, which leaves the purchase unconsumed.",
-      responses: { 400: ok("Not supported.", ref("V1Error"), { code: 7662, message: "Amazon Appstore purchases are not supported yet." }), ...v1Errors(401) } }),
+    get: op({ id: "amazonReceipt", tag: "SDK support", summary: "Amazon receipt details", security: PUBLIC, source: SDK,
+      parameters: [{ name: "store_user_id", in: "path", required: true, schema: str(), description: "The Amazon user id." }, { name: "receipt_id", in: "path", required: true, schema: str(), description: "Not encoded by the SDK; may contain \`/\`." }],
+      description: `
+The Android SDK built for Amazon asks for it on subscription purchases and reads \`termSku\`, which it then posts as the product id. RevenueDot asks Amazon's Receipt Verification Service with the app's shared key and answers Amazon's receipt unchanged.
+
+- **400 · 7103:** Amazon does not know the receipt or the user. **400 · 7662:** the key is not an Amazon app's.
+- **500 · 7101:** no shared key is saved, or Amazon rejected it. **503 · 7101:** Amazon is unavailable; the SDK keeps the purchase unconsumed and retries. See [Amazon Appstore setup](../docs/guides/amazon-appstore.md).`,
+      responses: {
+        200: ok("Amazon's receipt.", { type: "object", description: "Amazon RVS receipt: receiptId, productId, productType, termSku, term, purchaseDate, renewalDate, cancelDate, autoRenewing, freeTrialEndDate, gracePeriodEndDate, testTransaction, betaProduct and more." },
+          { autoRenewing: true, betaProduct: false, cancelDate: null, cancelReason: null, countryCode: "US", freeTrialEndDate: null, gracePeriodEndDate: null, productId: "pro.subscription", productType: "SUBSCRIPTION", purchaseDate: 1790800914000, receiptId: "q1YqVrJSSs7P1UvMTazKz9PLTCwoTswtyEktM8jLz0kpLQ1JTSlFMsjILCoQ:3:11", renewalDate: 1793392914000, term: "1 Month", termSku: "pro.monthly", testTransaction: false }),
+        ...v1Errors(400, 401, 500, 503),
+      } }),
   },
   "/v1/subscribers/{app_user_id}/workflows": {
     get: op({ id: "paywallWorkflows", tag: "SDK support", summary: "Paywall workflows (web SDK)", security: PUBLIC, source: SDK,
@@ -334,6 +344,39 @@ Each message is stored once (by message id), forwarded when \`notification_forwa
         200: ok("Handled.", obj({ status: en(["processed", "ignored", "duplicate", "invalid_token"]) }), { status: "processed" }),
         400: ok("Not a push body.", ref("V1Error")), 401: ok("Bad push token.", ref("V1Error"), { code: 7224, message: "The Pub/Sub push token is missing or invalid." }),
         404: ok("Unknown app.", ref("V1Error")), 500: ok("Temporary failure; Pub/Sub retries.", ref("V1Error")), 503: ok("Google's signing keys could not be loaded.", ref("V1Error")),
+      } }),
+  },
+
+  "/v1/notifications/amazon/{app_id}": {
+    post: op({ id: "amazonNotification", tag: "Store notifications", summary: "Amazon Appstore Real-time Notifications (SNS)", security: NONE, source: "stores/amazon/notifications.ts", parameters: [param("AppId")],
+      description: `
+Add this URL as an endpoint under App Services → Real-time Notifications in the Amazon Appstore Console. Amazon delivers through Amazon SNS.
+Every message must carry a valid SNS signature (SignatureVersion 1 or 2, certificate from an \`sns.<region>.amazonaws.com\` URL). The subscription confirmation is accepted by fetching its \`SubscribeURL\`, which is what makes Amazon show "Verified". Each message is stored once (by SNS message id), forwarded when \`notification_forward_url\` is set, and applied by reading the receipt from Amazon's Receipt Verification Service.
+
+- **200:** handled, confirmed, a duplicate, ignored (another package) or a receipt that can never be checked.
+- **400:** not an SNS message, a bad signature, or a topic other than the app's \`sns_topic_arn\`. **404:** no Amazon app with this id.
+- **500 or 503:** a temporary failure; SNS retries. See [Amazon Appstore setup](../docs/guides/amazon-appstore.md).`,
+      requestBody: body(obj({ Type: en(["Notification", "SubscriptionConfirmation", "UnsubscribeConfirmation"]), MessageId: str(), TopicArn: str(), Message: str("For notifications: Amazon's JSON (appPackageName, notificationType, appUserId, receiptId, relatedReceipts, timestamp, betaProductTransaction)."), SubscribeURL: str("Subscription confirmations only.") }, ["Type", "MessageId"], { description: "An SNS message as SNS posts it, with its Timestamp, SignatureVersion, Signature and SigningCertURL (checked, not listed here)." })),
+      responses: {
+        200: ok("Handled.", obj({ status: en(["processed", "confirmed", "unknown_purchase", "ignored", "duplicate", "invalid_receipt"]) }), { status: "processed" }),
+        400: ok("Not accepted.", ref("V1Error"), { code: 7000, message: "The SNS signature does not match the message" }), 404: ok("Unknown app.", ref("V1Error")),
+        500: ok("Temporary failure; SNS retries.", ref("V1Error")), 503: ok("The SNS certificate or confirmation failed; SNS retries.", ref("V1Error")),
+      } }),
+  },
+  "/v1/notifications/stripe/{app_id}": {
+    post: op({ id: "stripeNotification", tag: "Store notifications", summary: "Stripe webhooks", security: NONE, source: "stores/stripe/notifications.ts", parameters: [param("AppId"), { name: "Stripe-Signature", in: "header", required: true, schema: str(), description: "\`t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<body>\">\`, checked with the app's \`stripe_webhook_secret\` within 5 minutes." }],
+      description: `
+Add this URL as a webhook endpoint in your Stripe account with the events \`customer.subscription.created\`, \`.updated\`, \`.deleted\`, \`.paused\`, \`.resumed\`, \`invoice.paid\`, \`invoice.payment_failed\`, \`invoice.updated\`, \`charge.refunded\` and \`checkout.session.completed\`, and save its signing secret on the app.
+Each event is stored once (by event id), forwarded when \`notification_forward_url\` is set, and applied by reading the subscription from Stripe, so event order does not matter. Other event types are accepted and ignored.
+
+- **200:** handled, a duplicate, ignored, an unknown purchase (applied only with \`track_new_purchases\`) or an object Stripe no longer has.
+- **400:** no signing secret saved, a missing or wrong \`Stripe-Signature\`, or not a Stripe event. **404:** no Stripe app with this id.
+- **500:** a temporary failure; Stripe retries for three days. See [Stripe setup](../docs/guides/stripe.md).`,
+      requestBody: body(obj({ id: str("evt_…"), object: { type: "string", const: "event" }, type: str(), created: int(), livemode: bool(), data: obj({ object: { type: "object" } }) }, ["id", "type", "data"])),
+      responses: {
+        200: ok("Handled.", obj({ status: en(["processed", "unknown_purchase", "ignored", "duplicate", "invalid"]) }), { status: "processed" }),
+        400: ok("Not accepted.", ref("V1Error"), { code: 7000, message: "No signature in Stripe-Signature matches the payload. Check the webhook signing secret." }), 404: ok("Unknown app.", ref("V1Error")),
+        500: ok("Temporary failure; Stripe retries.", ref("V1Error")),
       } }),
   },
 
