@@ -50,10 +50,11 @@ export const v2Paths = {
   },
   [P]: {
     get: op({ id: "getProject", tag: "Project settings", summary: "Get a project with its settings", security: SECRET, source: R.setup, extension: true, scopes: ["project_configuration:projects:read"], parameters: [project],
-      responses: { 200: ok("The project.", ref("ProjectSettings"), { object: "project", id: "proj18pzzkao", name: "My app", created_at: 1790800900675, icon_url: null, icon_url_large: null, transfer_behavior: "transfer", sandbox_transfer_behavior: null }), ...E(404) } }),
-    post: op({ id: "updateProject", tag: "Project settings", summary: "Update a project's name and transfer behaviour", security: SECRET, source: R.setup, extension: true, scopes: ["project_configuration:projects:read_write"], parameters: [project],
-      description: "See [who owns a restored purchase](../docs/concepts/customers-and-app-user-ids.md#who-owns-a-restored-purchase).",
-      requestBody: body(obj({ name: str(undefined, { maxLength: 100 }), transfer_behavior: en(["transfer", "transfer_if_no_active", "keep", "share"]), sandbox_transfer_behavior: { type: ["string", "null"], enum: ["transfer", "transfer_if_no_active", "keep", "share", null] } }), { transfer_behavior: "transfer_if_no_active" }),
+      responses: { 200: ok("The project.", ref("ProjectSettings"), { object: "project", id: "proj18pzzkao", name: "My app", created_at: 1790800900675, icon_url: null, icon_url_large: null, transfer_behavior: "transfer", sandbox_transfer_behavior: null, sandbox_testing_access: "anybody", sandbox_testers: [], owner: { id: "usr_8f2kq0x1m3zv7a2b", email: "founder@example.com", name: "Ana" } }), ...E(404) } }),
+    post: op({ id: "updateProject", tag: "Project settings", summary: "Update a project's name, transfer behaviour and sandbox testing access", security: SECRET, source: R.setup, extension: true, scopes: ["project_configuration:projects:read_write"], parameters: [project],
+      description: "See [who owns a restored purchase](../docs/concepts/customers-and-app-user-ids.md#who-owns-a-restored-purchase) and [sandbox testing access](../docs/guides/project-settings.md#sandbox-testing-access). Duplicate and blank `sandbox_testers` are dropped.",
+      requestBody: body(obj({ name: str(undefined, { maxLength: 100 }), transfer_behavior: en(["transfer", "transfer_if_no_active", "keep", "share"]), sandbox_transfer_behavior: { type: ["string", "null"], enum: ["transfer", "transfer_if_no_active", "keep", "share", null] },
+        sandbox_testing_access: en(["anybody", "allowlist", "nobody"]), sandbox_testers: arr(str(undefined, { maxLength: 100 }), { maxItems: 500 }) }), { sandbox_testing_access: "allowlist", sandbox_testers: ["qa_tester_1", "qa_tester_2"] }),
       responses: { 200: ok("The project.", ref("ProjectSettings")), ...v2Errors(400, 401, 403, 404) } }),
     delete: op({ id: "deleteProject", tag: "Project settings", summary: "Delete a project and everything in it", security: SESSION, source: R.setup, extension: true, scopes: ["project_configuration:projects:read_write"], parameters: [project],
       description: "Only a project admin signed in to the dashboard can do this. Apps, catalog, customers, purchases, events and webhooks are deleted. Cannot be undone.",
@@ -337,6 +338,7 @@ With \`invite_token\` (from an invite link), the account joins the inviting proj
   },
   "/auth/login": {
     post: op({ id: "login", tag: "Dashboard auth", summary: "Sign in", security: NONE, source: R.auth, extension: true,
+      description: "The dashboard's sign-in. A request with an `Authorization` header is an app's Auth sign-in instead: see `POST /v1/auth/login`, which takes the same body at this path for the RevenueCat SDKs' token login.",
       requestBody: body(obj({ email: str(), password: str() }, ["email", "password"])),
       responses: { 200: ok("Signed in; `rd_session` is set.", obj({ ok: bool() }), { ok: true }), 400: ok("Missing fields.", obj({ type: str(), message: str() })), 401: ok("Wrong email or password.", obj({ type: str(), message: str() }), { type: "authentication_error", message: "Email or password is incorrect." }) } }),
   },

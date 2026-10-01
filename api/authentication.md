@@ -21,7 +21,7 @@ Send every key as a bearer token: `Authorization: Bearer <key>`. Which key depen
 - **`publicApiKey`**: A public app key (`appl_`, `mac_`, `goog_`, `test_`, `amzn_`, `strp_`, `rcb_`, `pdl_`, `roku_`). Safe to ship in an app. The SDK sends it on every request.
 - **`secretApiKey`**: A project secret key (`sk_...`). Server side only. Its `permissions` limit what it can do.
 - **`dashboardSession`**: The dashboard session cookie from `POST /auth/login`. It authorizes `/v2` for every project the user belongs to.
-- **`subscriberToken`**: A subscriber access token (`rdat_...`) from `POST /v2/projects/{project_id}/apps/{app_id}/authenticate`. It speaks for one app user id of one app for one hour. An expired token, or a path or body naming another app user id, answers 401 with code 7224.
+- **`subscriberToken`**: A subscriber access token: `rdat_...` from `POST /v2/projects/{project_id}/apps/{app_id}/authenticate`, or the JWT `access_token` of an Auth sign-in (`POST /v1/auth/login`). It speaks for one app user id of one app for one hour. An expired or revoked token, or a path or body naming another app user id, answers 401 with code 7224.
 - **`googlePubSubOidc`**: Google-signed OIDC token of a Pub/Sub push subscription. Checked only when the app's `pubsub_audience` credential is set.
 
 ## Where keys come from

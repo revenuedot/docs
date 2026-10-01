@@ -16,10 +16,10 @@ One RevenueDot server answers every API below on one port. The reference is gene
 
 | API | Paths | Auth | Operations | Reference |
 |---|---|---|---|---|
-| SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 62 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
+| SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 70 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
 | REST API v1 | `/v1/subscribers/...` | secret key | 10 | [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md) |
-| REST API v2 | `/v2/projects/...` | secret key or dashboard session | 160 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
-| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 149 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
+| REST API v2 | `/v2/projects/...` | secret key or dashboard session | 161 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
+| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 175 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
 | Webhooks (sent by RevenueDot) | your URL | HMAC signature | 22 event types | [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md) |
 
 ## Quick example
@@ -95,7 +95,7 @@ Send every key as a bearer token: `Authorization: Bearer <key>`. Which key depen
 - **`publicApiKey`**: A public app key (`appl_`, `mac_`, `goog_`, `test_`, `amzn_`, `strp_`, `rcb_`, `pdl_`, `roku_`). Safe to ship in an app. The SDK sends it on every request.
 - **`secretApiKey`**: A project secret key (`sk_...`). Server side only. Its `permissions` limit what it can do.
 - **`dashboardSession`**: The dashboard session cookie from `POST /auth/login`. It authorizes `/v2` for every project the user belongs to.
-- **`subscriberToken`**: A subscriber access token (`rdat_...`) from `POST /v2/projects/{project_id}/apps/{app_id}/authenticate`. It speaks for one app user id of one app for one hour. An expired token, or a path or body naming another app user id, answers 401 with code 7224.
+- **`subscriberToken`**: A subscriber access token: `rdat_...` from `POST /v2/projects/{project_id}/apps/{app_id}/authenticate`, or the JWT `access_token` of an Auth sign-in (`POST /v1/auth/login`). It speaks for one app user id of one app for one hour. An expired or revoked token, or a path or body naming another app user id, answers 401 with code 7224.
 - **`googlePubSubOidc`**: Google-signed OIDC token of a Pub/Sub push subscription. Checked only when the app's `pubsub_audience` credential is set.
 
 ## Where keys come from
@@ -282,17 +282,18 @@ Responses under `/v1` and `/rcbilling` are signed when the server has a signing 
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (62)
+## Operations on this page (70)
 
 - **Server**: [Server name and docs link](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#server-name-and-docs-link), [Health check](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#health-check), [Connectivity probe](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#connectivity-probe)
 - **Customer info**: [Get customer info](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#get-customer-info)
 - **Receipts**: [Post a purchase or restore](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#post-a-purchase-or-restore)
 - **Offerings (SDK)**: [Get offerings](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#get-offerings), [Get offerings without a user](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#get-offerings-without-a-user), [Test Store product details](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#test-store-product-details)
 - **Identity**: [Log in (identify)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#log-in-identify), [Alias two app user ids](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#alias-two-app-user-ids)
-- **Attributes**: [Set customer attributes](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#set-customer-attributes)
+- **Attributes**: [Read customer attributes](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#read-customer-attributes), [Set customer attributes](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#set-customer-attributes)
 - **SDK support**: [Intro offer eligibility (StoreKit 1)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#intro-offer-eligibility-storekit-1), [Sign a promotional offer (iOS)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sign-a-promotional-offer-ios), [Attribution data (deprecated iOS call)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#attribution-data-deprecated-ios-call), [Apple AdServices token](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#apple-adservices-token), [SDK health report availability](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-health-report-availability), [SDK health report](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-health-report), [Product to entitlement mapping (offline entitlements)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#product-to-entitlement-mapping-offline-entitlements), [Customer Center configuration](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-configuration), [Customer Center support ticket](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-support-ticket), [Virtual currency balances](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#virtual-currency-balances), [Redeem a web purchase](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#redeem-a-web-purchase), [Register an Apple external purchase token (iOS)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#register-an-apple-external-purchase-token-ios), [Rewarded ad verification status](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#rewarded-ad-verification-status), [Amazon receipt details](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#amazon-receipt-details), [Paywall workflows (web SDK)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#paywall-workflows-web-sdk), [One paywall workflow (web SDK)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#one-paywall-workflow-web-sdk), [Restore eligibility (StoreKit 2)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#restore-eligibility-storekit-2), [Remote config fallback (none)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#remote-config-fallback-none), [Remote config: paywalls and UI settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#remote-config-paywalls-and-ui-settings), [Download a remote-config blob](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#download-a-remote-config-blob), [SDK paywall, Customer Center and ad events](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-paywall-customer-center-and-ad-events), [SDK diagnostics (accepted, not stored)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-diagnostics-accepted-not-stored)
 - **Web Billing**: [Web offering products](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-offering-products), [Start a hosted web checkout](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#start-a-hosted-web-checkout), [Web Billing purchase (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-billing-purchase-not-available), [Prepare a Web Billing checkout (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#prepare-a-web-billing-checkout-not-available), [Start a Web Billing checkout (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#start-a-web-billing-checkout-not-available), [Web Billing checkout status](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-billing-checkout-status), [Refresh Web Billing checkout pricing](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#refresh-web-billing-checkout-pricing), [Complete a Web Billing checkout](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#complete-a-web-billing-checkout), [Web checkout branding](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-checkout-branding)
-- **Subscriber tokens**: [Get customer info (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#get-customer-info-subscriber-token), [Get offerings (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#get-offerings-subscriber-token), [Intro offer eligibility (StoreKit 1) (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#intro-offer-eligibility-storekit-1-subscriber-token), [Attribution data (deprecated iOS call) (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#attribution-data-deprecated-ios-call-subscriber-token), [Set customer attributes (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#set-customer-attributes-subscriber-token), [Apple AdServices token (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#apple-adservices-token-subscriber-token), [SDK health report (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-health-report-subscriber-token), [Customer Center configuration (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-configuration-subscriber-token), [Customer Center support ticket (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-support-ticket-subscriber-token), [Virtual currency balances (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#virtual-currency-balances-subscriber-token), [Restore eligibility (StoreKit 2) (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#restore-eligibility-storekit-2-subscriber-token), [Rewarded ad verification status (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#rewarded-ad-verification-status-subscriber-token), [Web offering products (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-offering-products-subscriber-token), [Test Store product details (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#test-store-product-details-subscriber-token), [Spend in-app currency as the subscriber](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#spend-in-app-currency-as-the-subscriber)
+- **Subscriber tokens**: [Get customer info (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#get-customer-info-subscriber-token), [Get offerings (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#get-offerings-subscriber-token), [Intro offer eligibility (StoreKit 1) (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#intro-offer-eligibility-storekit-1-subscriber-token), [Attribution data (deprecated iOS call) (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#attribution-data-deprecated-ios-call-subscriber-token), [Read customer attributes (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#read-customer-attributes-subscriber-token), [Set customer attributes (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#set-customer-attributes-subscriber-token), [Apple AdServices token (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#apple-adservices-token-subscriber-token), [SDK health report (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-health-report-subscriber-token), [Customer Center configuration (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-configuration-subscriber-token), [Customer Center support ticket (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-support-ticket-subscriber-token), [Virtual currency balances (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#virtual-currency-balances-subscriber-token), [Restore eligibility (StoreKit 2) (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#restore-eligibility-storekit-2-subscriber-token), [Rewarded ad verification status (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#rewarded-ad-verification-status-subscriber-token), [Web offering products (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-offering-products-subscriber-token), [Test Store product details (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#test-store-product-details-subscriber-token), [Spend in-app currency as the subscriber](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#spend-in-app-currency-as-the-subscriber)
+- **Auth sign-in**: [Sign in with an identity provider's ID token](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sign-in-with-an-identity-providers-id-token), [Refresh the access token](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#refresh-the-access-token), [Sign out](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sign-out), [Refresh the access token](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#refresh-the-access-token), [Sign out](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sign-out), [Public key of RevenueDot's ID and access tokens](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#public-key-of-revenuedots-id-and-access-tokens)
 - **Store notifications**: [App Store Server Notifications v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#app-store-server-notifications-v2), [Google Play real-time developer notifications (Pub/Sub push)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#google-play-real-time-developer-notifications-pubsub-push), [Amazon Appstore Real-time Notifications (SNS)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#amazon-appstore-real-time-notifications-sns), [Stripe webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#stripe-webhooks)
 - **Response signing**: [Public key for response signatures](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#public-key-for-response-signatures)
 
@@ -861,6 +862,46 @@ Example 200 response:
 ## Attributes
 
 Customer attributes such as `$email`.
+
+### Read customer attributes
+
+`GET /v1/subscribers/{app_user_id}/attributes` · Auth: secret key · RevenueDot extension
+
+The attributes the SDK or your server set, with when each was set. Needs a subscriber access token for this app user id (the app reads its own attributes after an [Auth](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/auth.md) sign-in) or a secret key. An app's public key alone answers 401 with code 7224: attributes can hold an email address or a phone number. An unknown app user id answers an empty object.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `app_user_id` | string | yes | App user id, URL-encoded (anonymous ids look like `$RCAnonymousID:...`). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/subscribers/user_1/attributes" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The attributes.
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "subscriber_attributes": {
+    "$displayName": {
+      "value": "Ana",
+      "updated_at_ms": 1790800914000
+    },
+    "plan_goal": {
+      "value": "sleep",
+      "updated_at_ms": 1790800914000
+    }
+  }
+}
+```
 
 ### Set customer attributes
 
@@ -2110,6 +2151,40 @@ Example 200 response:
 {}
 ```
 
+### Read customer attributes (subscriber token)
+
+`GET /v1/customer/attributes` · Auth: none · RevenueDot extension
+
+The subscriber-token form of `GET /v1/subscribers/{app_user_id}/attributes`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/customer/attributes"
+```
+
+**Responses**
+
+- **200**: The attributes.
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "subscriber_attributes": {
+    "$displayName": {
+      "value": "Ana",
+      "updated_at_ms": 1790800914000
+    },
+    "plan_goal": {
+      "value": "sleep",
+      "updated_at_ms": 1790800914000
+    }
+  }
+}
+```
+
 ### Set customer attributes (subscriber token)
 
 `POST /v1/customer/attributes` · Auth: none
@@ -2516,6 +2591,218 @@ Example 200 response:
       "description": null
     }
   }
+}
+```
+
+## Auth sign-in
+
+Sign app users in with a Firebase or OpenID Connect ID token and get a subscriber access token for the `/v1/customer/*` paths, in the wire format of the RevenueCat SDKs' token login. See [Auth](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/auth.md).
+
+### Sign in with an identity provider's ID token
+
+`POST /v1/auth/login` · Auth: public app key · RevenueDot extension
+
+For apps without their own backend ([Auth](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/auth.md)): the app sends the ID token its identity provider gave it, with its public SDK key. RevenueDot verifies the token with the provider's published keys, maps it to an app user id (the first sign-in creates the link; later ones reuse it), merges an anonymous `link_to_id` like `logIn`, and returns tokens. The RevenueCat SDKs' token login sends the same body to `POST /auth/login`. CORS is open, for web apps.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `method` | `firebase`, `oidc`, `google`, `apple`, `facebook`, `anonymous` | yes | `firebase` uses the project's Firebase provider; the others its OpenID Connect providers (the token's `iss` picks one). `anonymous` needs `allow_anonymous`. |
+| `scope` | string | no | The SDK sends `openid offline_access`. |
+| `id_token` | string | no | The provider's ID token. Not for `anonymous`. |
+| `link_to_id` | string | no | The app user id the app used before signing in. An anonymous id (`$RCAnonymousID:…`) merges into the signed-in user like `logIn`; any other id is ignored. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/auth/login" -H "Authorization: Bearer $PUBLIC_KEY" \
+  -H "Content-Type: application/json" -d '{"method":"firebase","scope":"openid offline_access","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6…","link_to_id":"$RCAnonymousID:9f3c1a0e2b7d4c5a8e6f1b2d3c4a5e6f"}'
+```
+
+**Responses**
+
+- **200**: Signed in.
+- **400**: Malformed body (7226). Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **401**: The SDK key is unknown (7225) or the ID token fails verification (7224). Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **403**: Auth is off, or no enabled provider answers this method (7224). Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **503**: The provider's keys could not be loaded, or the server has no key to sign tokens with. Retry. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "access_token": "eyJhbGciOiJFZERTQSIsInR5cCI6ImF0K2p3dCIsImtpZCI6IjNmMmMxYTlkMGU4YjRjNzEifQ.eyJpc3MiOiJodHRwczovL2FwaS5yZXZlbnVlZG90LmFwcCIsInN1YiI6IlhrMmY5UXBMMGFaIiwicmMuYXBwX3VzZXJfaWQiOiJYazJmOVFwTDBhWiIsImFtciI6WyJmaXJlYmFzZSJdfQ.…",
+  "refresh_token": "rdrf_9b0c…",
+  "id_token": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.…",
+  "scope": "openid offline_access",
+  "expires_in": 3600,
+  "token_type": "Bearer"
+}
+```
+
+### Refresh the access token
+
+`POST /v1/auth/token` · Auth: public app key · RevenueDot extension
+
+The refresh token is replaced: the old one stops working, and using it again answers 401 with 7224.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `grant_type` | `refresh_token` | yes |  |
+| `refresh_token` | string | yes |  |
+| `scope` | string | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/auth/token" -H "Authorization: Bearer $PUBLIC_KEY" \
+  -H "Content-Type: application/json" -d '{"grant_type":"refresh_token","refresh_token":"rdrf_9b0c…"}'
+```
+
+**Responses**
+
+- **200**: New tokens.
+- **400**: Bad request. For receipts, a 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "access_token": "eyJhbGciOiJFZERTQSIsInR5cCI6ImF0K2p3dCIsImtpZCI6IjNmMmMxYTlkMGU4YjRjNzEifQ.eyJpc3MiOiJodHRwczovL2FwaS5yZXZlbnVlZG90LmFwcCIsInN1YiI6IlhrMmY5UXBMMGFaIiwicmMuYXBwX3VzZXJfaWQiOiJYazJmOVFwTDBhWiIsImFtciI6WyJmaXJlYmFzZSJdfQ.…",
+  "refresh_token": "rdrf_9b0c…",
+  "id_token": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.…",
+  "scope": "openid offline_access",
+  "expires_in": 3600,
+  "token_type": "Bearer"
+}
+```
+
+### Sign out
+
+`POST /v1/auth/revoke` · Auth: public app key · RevenueDot extension
+
+A refresh token ends its session and every access token it issued; an access token (`token_type_hint: access_token`) stops working alone. An unknown token is not an error (RFC 7009).
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+| `token_type_hint` | `refresh_token`, `access_token` | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/auth/revoke" -H "Authorization: Bearer $PUBLIC_KEY" \
+  -H "Content-Type: application/json" -d '{"token":"rdrf_9b0c…","token_type_hint":"refresh_token"}'
+```
+
+**Responses**
+
+- **200**: Done.
+- **400**: Bad request. For receipts, a 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+### Refresh the access token
+
+`POST /auth/token` · Auth: public app key · RevenueDot extension
+
+The refresh token is replaced: the old one stops working, and using it again answers 401 with 7224.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `grant_type` | `refresh_token` | yes |  |
+| `refresh_token` | string | yes |  |
+| `scope` | string | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/auth/token" -H "Authorization: Bearer $PUBLIC_KEY" \
+  -H "Content-Type: application/json" -d '{"grant_type":"refresh_token","refresh_token":"rdrf_9b0c…"}'
+```
+
+**Responses**
+
+- **200**: New tokens.
+- **400**: Bad request. For receipts, a 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "access_token": "eyJhbGciOiJFZERTQSIsInR5cCI6ImF0K2p3dCIsImtpZCI6IjNmMmMxYTlkMGU4YjRjNzEifQ.eyJpc3MiOiJodHRwczovL2FwaS5yZXZlbnVlZG90LmFwcCIsInN1YiI6IlhrMmY5UXBMMGFaIiwicmMuYXBwX3VzZXJfaWQiOiJYazJmOVFwTDBhWiIsImFtciI6WyJmaXJlYmFzZSJdfQ.…",
+  "refresh_token": "rdrf_9b0c…",
+  "id_token": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.…",
+  "scope": "openid offline_access",
+  "expires_in": 3600,
+  "token_type": "Bearer"
+}
+```
+
+### Sign out
+
+`POST /auth/revoke` · Auth: public app key · RevenueDot extension
+
+A refresh token ends its session and every access token it issued; an access token (`token_type_hint: access_token`) stops working alone. An unknown token is not an error (RFC 7009).
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+| `token_type_hint` | `refresh_token`, `access_token` | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/auth/revoke" -H "Authorization: Bearer $PUBLIC_KEY" \
+  -H "Content-Type: application/json" -d '{"token":"rdrf_9b0c…","token_type_hint":"refresh_token"}'
+```
+
+**Responses**
+
+- **200**: Done.
+- **400**: Bad request. For receipts, a 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+### Public key of RevenueDot's ID and access tokens
+
+`GET /.well-known/jwks.json` · Auth: none · RevenueDot extension
+
+One Ed25519 key (`OKP`), derived from the server's signing key. Backends verify an Auth `id_token` with it (match `kid`, check `iss` and `aud`). Empty `keys` when the server has no signing or encryption key.
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/.well-known/jwks.json"
+```
+
+**Responses**
+
+- **200**: The key set.
+
+Example 200 response:
+
+```json
+{
+  "keys": [
+    {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "gXdn2hmqR_TbdtQwK02laE0YgFz0Rtf918LICLrgZhg",
+      "kid": "3f2c1a9d0e8b4c71",
+      "alg": "EdDSA",
+      "use": "sig"
+    }
+  ]
 }
 ```
 
@@ -3768,7 +4055,7 @@ RevenueDot-only endpoints are on [Extensions](https://raw.githubusercontent.com/
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (160)
+## Operations on this page (161)
 
 - **Projects**: [List projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-projects), [Create a project](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-project)
 - **Apps**: [List apps](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-apps), [Create an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-app), [Get an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-app), [Update an app and its store credentials](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-app-and-its-store-credentials), [Delete an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-app), [Get an app's public SDK key](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-apps-public-sdk-key), [Get a StoreKit configuration file](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-storekit-configuration-file), [Issue a subscriber access token](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#issue-a-subscriber-access-token)
@@ -3785,7 +4072,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Audit log**: [List audit log entries](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-audit-log-entries)
 - **Targeting**: [List audiences](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-audiences), [Create an audience](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-audience), [Preview who matches](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#preview-who-matches), [Known values for attribution and custom-attribute fields](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#known-values-for-attribution-and-custom-attribute-fields), [Get an audience](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-audience), [Update an audience](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-audience), [Delete an unused audience](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-unused-audience), [List targeting rules in order](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-targeting-rules-in-order), [Create a targeting rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-targeting-rule), [Set the evaluation order](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#set-the-evaluation-order), [Get a targeting rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-targeting-rule), [Update a targeting rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-targeting-rule), [Delete a targeting rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-targeting-rule)
 - **Experiments**: [List experiments](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-experiments), [Create an offering experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-offering-experiment), [Get an experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-experiment), [Update an experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-experiment), [Delete an experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-experiment), [Start or resume](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#start-or-resume), [Pause: enrolled customers keep their variant, nobody new joins](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#pause-enrolled-customers-keep-their-variant-nobody-new-joins), [Stop for good](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#stop-for-good), [Results per variant](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#results-per-variant)
-- **Paywalls**: [List paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-paywalls), [Create a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-paywall), [Get a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-paywall), [Update a paywall's draft](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-paywalls-draft), [Delete a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-paywall), [Publish a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#publish-a-paywall), [Unpublish a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#unpublish-a-paywall), [Attach an offering to a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#attach-an-offering-to-a-paywall), [Detach the offering from a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#detach-the-offering-from-a-paywall), [Duplicate a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#duplicate-a-paywall), [List saved snapshots](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-saved-snapshots), [Save a named snapshot](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#save-a-named-snapshot), [Restore a snapshot into the draft](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#restore-a-snapshot-into-the-draft), [Get a snapshot](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-snapshot), [Get the template form of a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-the-template-form-of-a-paywall), [Store the template form of a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#store-the-template-form-of-a-paywall), [List the template gallery](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-the-template-gallery), [Validate paywall components](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#validate-paywall-components), [Whether the AI generator is available](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#whether-the-ai-generator-is-available), [Generate a paywall with AI](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#generate-a-paywall-with-ai), [List images](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-images), [Upload an image](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#upload-an-image), [List fonts](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-fonts), [Upload a font](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#upload-a-font), [Download a paywall image or font](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#download-a-paywall-image-or-font), [Download a built-in paywall icon](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#download-a-built-in-paywall-icon)
+- **Paywalls**: [List paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-paywalls), [Create a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-paywall), [Get a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-paywall), [Update a paywall's draft](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-paywalls-draft), [Delete a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-paywall), [Publish a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#publish-a-paywall), [Unpublish a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#unpublish-a-paywall), [Attach an offering to a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#attach-an-offering-to-a-paywall), [Detach the offering from a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#detach-the-offering-from-a-paywall), [Duplicate a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#duplicate-a-paywall), [List saved snapshots](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-saved-snapshots), [Save a named snapshot](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#save-a-named-snapshot), [Restore a snapshot into the draft](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#restore-a-snapshot-into-the-draft), [Get a snapshot](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-snapshot), [Get the template form of a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-the-template-form-of-a-paywall), [Store the template form of a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#store-the-template-form-of-a-paywall), [List the template gallery](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-the-template-gallery), [Validate paywall components](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#validate-paywall-components), [Whether the AI generator is available](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#whether-the-ai-generator-is-available), [Generate a paywall with AI](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#generate-a-paywall-with-ai), [List images](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-images), [Upload an image](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#upload-an-image), [List fonts](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-fonts), [Upload a font](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#upload-a-font), [Download a paywall image or font](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#download-a-paywall-image-or-font), [Download a built-in paywall icon](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#download-a-built-in-paywall-icon), [Delete an uploaded font](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-uploaded-font)
 - **Webhook integrations**: [List webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-webhooks), [Create a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-webhook), [Get a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-webhook), [Update a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-webhook), [Delete a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-webhook)
 - **Discounts**: [List discounts](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-discounts), [Create a discount](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-discount), [Get a discount](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-discount), [Update a discount](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-discount), [Delete a discount](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-discount), [Enable a discount](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#enable-a-discount), [Disable a discount](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#disable-a-discount), [List a discount's codes](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-discounts-codes), [Create discount codes](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-discount-codes), [Delete a discount code](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-discount-code)
 - **Invoices**: [List a customer's invoices](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-invoices), [Download an invoice](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#download-an-invoice)
@@ -9023,6 +9310,32 @@ curl -s "$REVENUEDOT_URL/assets/icons/$FILE"
 - **200**: The image.
 - **404**: No such icon.
 
+### Delete an uploaded font
+
+`DELETE /v2/projects/{project_id}/fonts/{font_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
+
+Paywalls that still name the font show the system font in the SDKs.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `font_id` | string | yes | Starts with fnt. |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/fonts/$FONT_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deleted.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
 ## Webhook integrations
 
 Where events are sent.
@@ -10269,11 +10582,15 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (149)
+## Operations on this page (175)
 
 - **Dashboard auth**: [Whether sign-up is open](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-sign-up-is-open), [Create a dashboard account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-dashboard-account), [Sign in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-in), [Sign out](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out), [The signed-in user and their projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-signed-in-user-and-their-projects), [Update account settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-account-settings), [Email a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#email-a-password-reset-link), [Check a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-a-password-reset-link), [Set a new password from a reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-a-new-password-from-a-reset-link), [Confirm an email address](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#confirm-an-email-address), [Send a new confirmation email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-new-confirmation-email), [Look up an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#look-up-an-invite), [Accept an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#accept-an-invite)
 - **Members and invites**: [List open invites](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-open-invites), [Invite someone by email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#invite-someone-by-email), [Resend an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#resend-an-invite), [Revoke an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#revoke-an-invite), [Change a member's role](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-a-members-role), [Remove a member, or leave the project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#remove-a-member-or-leave-the-project)
-- **Project settings**: [Get a project with its settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-project-with-its-settings), [Update a project's name and transfer behaviour](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-a-projects-name-and-transfer-behaviour), [Delete a project and everything in it](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-project-and-everything-in-it), [Get the Customer Center configuration of the project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-the-customer-center-configuration-of-the-project), [Set the Customer Center configuration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-the-customer-center-configuration)
+- **Project settings**: [Get a project with its settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-project-with-its-settings), [Update a project's name, transfer behaviour and sandbox testing access](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-a-projects-name-transfer-behaviour-and-sandbox-testing-access), [Delete a project and everything in it](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-project-and-everything-in-it), [Get the Customer Center configuration of the project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-the-customer-center-configuration-of-the-project), [Set the Customer Center configuration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-the-customer-center-configuration), [Transfer project ownership to an admin](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#transfer-project-ownership-to-an-admin)
+- **Brand**: [Colour and gradient presets](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#colour-and-gradient-presets), [Replace colour or gradient presets](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#replace-colour-or-gradient-presets)
+- **Blocked customers**: [List blocked app user ids](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-blocked-app-user-ids), [Block an app user id](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#block-an-app-user-id), [Is this app user id blocked?](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#is-this-app-user-id-blocked), [Unblock an app user id](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unblock-an-app-user-id)
+- **Verified Metrics**: [Verified Metrics page settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#verified-metrics-page-settings), [Save Verified Metrics page settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#save-verified-metrics-page-settings), [Whether a slug is free](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-a-slug-is-free), [Publish the page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#publish-the-page), [Unpublish the page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unpublish-the-page), [The public Verified Metrics page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-public-verified-metrics-page), [The page's numbers as JSON](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-pages-numbers-as-json), [The page's 1200×630 link preview](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-pages-1200630-link-preview)
+- **Auth**: [Auth on or off](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#auth-on-or-off), [Turn Auth or anonymous sign-in on or off](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#turn-auth-or-anonymous-sign-in-on-or-off), [List identity providers](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-identity-providers), [Add a Firebase or OpenID Connect provider](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#add-a-firebase-or-openid-connect-provider), [Get an identity provider](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-an-identity-provider), [Update or turn off an identity provider](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-or-turn-off-an-identity-provider), [Delete an identity provider](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-an-identity-provider), [Check an ID token without signing in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-an-id-token-without-signing-in), [List signed-in identities](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-signed-in-identities), [Read a signed-in user's balances and entitlements by identity](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#read-a-signed-in-users-balances-and-entitlements-by-identity), [Unlink an identity and sign it out](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unlink-an-identity-and-sign-it-out)
 - **Store setup**: [Store setup state of an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#store-setup-state-of-an-app), [Check store credentials with Apple, Google, Amazon or Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-store-credentials-with-apple-google-amazon-or-stripe), [Extend every active App Store subscriber of a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#status-of-a-mass-extension), [Setup health](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#setup-health)
 - **API keys**: [List secret keys](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-secret-keys), [Create a secret key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-secret-key), [Delete a secret key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-secret-key)
 - **Webhook deliveries**: [Send a TEST event to one webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-each-webhook-is-enabled), [Delivery log of a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delivery-log-of-a-webhook), [Retry a delivery now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#retry-a-delivery-now)
@@ -10367,6 +10684,8 @@ Example 201 response:
 ### Sign in
 
 `POST /auth/login` · Auth: none · RevenueDot extension
+
+The dashboard's sign-in. A request with an `Authorization` header is an app's Auth sign-in instead: see `POST /v1/auth/login`, which takes the same body at this path for the RevenueCat SDKs' token login.
 
 **Request body** (`application/json`)
 
@@ -10988,7 +11307,7 @@ Example 200 response:
 
 ## Project settings
 
-Project name, transfer behaviour and deletion.
+Project name, transfer behaviour, sandbox testing access, ownership and deletion. See [Project settings](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/project-settings.md).
 
 ### Get a project with its settings
 
@@ -11024,15 +11343,22 @@ Example 200 response:
   "icon_url": null,
   "icon_url_large": null,
   "transfer_behavior": "transfer",
-  "sandbox_transfer_behavior": null
+  "sandbox_transfer_behavior": null,
+  "sandbox_testing_access": "anybody",
+  "sandbox_testers": [],
+  "owner": {
+    "id": "usr_8f2kq0x1m3zv7a2b",
+    "email": "founder@example.com",
+    "name": "Ana"
+  }
 }
 ```
 
-### Update a project's name and transfer behaviour
+### Update a project's name, transfer behaviour and sandbox testing access
 
 `POST /v2/projects/{project_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
 
-See [who owns a restored purchase](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/customers-and-app-user-ids.md#who-owns-a-restored-purchase).
+See [who owns a restored purchase](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/customers-and-app-user-ids.md#who-owns-a-restored-purchase) and [sandbox testing access](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/project-settings.md#sandbox-testing-access). Duplicate and blank `sandbox_testers` are dropped.
 
 **Path parameters**
 
@@ -11047,12 +11373,14 @@ See [who owns a restored purchase](https://raw.githubusercontent.com/revenuedot/
 | `name` | string | no |  |
 | `transfer_behavior` | `transfer`, `transfer_if_no_active`, `keep`, `share` | no |  |
 | `sandbox_transfer_behavior` | `transfer`, `transfer_if_no_active`, `keep`, `share`, null | no |  |
+| `sandbox_testing_access` | `anybody`, `allowlist`, `nobody` | no |  |
+| `sandbox_testers` | array of string | no |  |
 
 **Example request**
 
 ```bash
 curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID" -H "Authorization: Bearer $SECRET_KEY" \
-  -H "Content-Type: application/json" -d '{"transfer_behavior":"transfer_if_no_active"}'
+  -H "Content-Type: application/json" -d '{"sandbox_testing_access":"allowlist","sandbox_testers":["qa_tester_1","qa_tester_2"]}'
 ```
 
 **Responses**
@@ -11152,6 +11480,1350 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_center_config"
 
 - **200**: The merged configuration.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Transfer project ownership to an admin
+
+`POST /v2/projects/{project_id}/actions/transfer_ownership` · Auth: dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Only the owner (any admin when the owner has left the project) signed in to the dashboard. The new owner must already be a collaborator with the Admin role (422 otherwise). The previous owner stays an admin. Both get an email; `email_sent` is false when either could not be sent. Recorded in the audit log as `project_transfer_ownership`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `user_id` | string | yes | The new owner's user id, from the collaborators list. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/actions/transfer_ownership" \
+  -H "Content-Type: application/json" -d '{"user_id":"usr_8f2kq0x1m3zv7a2b"}'
+```
+
+**Responses**
+
+- **200**: The project with its new owner.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+## Brand
+
+Colour and gradient presets for the paywall editor and the SDKs' named colours.
+
+### Colour and gradient presets
+
+`GET /v2/projects/{project_id}/brand` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/brand" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The presets.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "brand",
+  "color_presets": [
+    {
+      "key": "ink",
+      "name": "Ink",
+      "light": "#0a0a0aff",
+      "dark": "#fafafaff"
+    },
+    {
+      "key": "gold",
+      "name": "Brand gold",
+      "light": "#f7b500ff",
+      "dark": null
+    }
+  ],
+  "gradient_presets": [
+    {
+      "key": "sunrise",
+      "name": "Sunrise",
+      "type": "linear",
+      "degrees": 135,
+      "points": [
+        {
+          "color": "#f7b500ff",
+          "percent": 0
+        },
+        {
+          "color": "#c2410cff",
+          "percent": 100
+        }
+      ],
+      "dark_points": null
+    }
+  ]
+}
+```
+
+### Replace colour or gradient presets
+
+`POST /v2/projects/{project_id}/brand` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Send a whole list to replace it; a list you leave out is kept. The paywall editor shows the presets in its colour pickers, and the SDKs receive every preset as a named colour in the offerings' `ui_config.app.colors` (a paywall colour `{"type": "alias", "value": "<key>"}` uses it). A deleted preset that a paywall names this way draws nothing in the SDK, so presets picked in the editor are copied as values.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `color_presets` | array of object | no |  |
+| `color_presets[].key` | string | yes | a-z, 0-9 and _; the name in `ui_config.app.colors`. Unique across colour and gradient presets. |
+| `color_presets[].name` | string | yes |  |
+| `color_presets[].light` | string | yes | `#RRGGBB` or `#RRGGBBAA`; answers are lower case with alpha. |
+| `color_presets[].dark` | string or null | no | Null: the light colour in dark mode too. |
+| `gradient_presets` | array of object | no |  |
+| `gradient_presets[].key` | string | yes | Unique across colour and gradient presets. |
+| `gradient_presets[].name` | string | yes |  |
+| `gradient_presets[].type` | `linear`, `radial` | yes |  |
+| `gradient_presets[].degrees` | integer | no | Linear only, 0 to 360. Default 180. |
+| `gradient_presets[].points` | array of object | yes |  |
+| `gradient_presets[].points[].color` | string | yes | `#RRGGBB` or `#RRGGBBAA`; answers are lower case with alpha. |
+| `gradient_presets[].points[].percent` | integer | yes | 0 to 100. |
+| `gradient_presets[].dark_points` | array of object | no | Null: the light stops in dark mode too. |
+| `gradient_presets[].dark_points[].color` | string | yes | `#RRGGBB` or `#RRGGBBAA`; answers are lower case with alpha. |
+| `gradient_presets[].dark_points[].percent` | integer | yes | 0 to 100. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/brand" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"color_presets":[{"key":"ink","name":"Ink","light":"#0A0A0A","dark":"#FAFAFA"}]}'
+```
+
+**Responses**
+
+- **200**: The presets.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "brand",
+  "color_presets": [
+    {
+      "key": "ink",
+      "name": "Ink",
+      "light": "#0a0a0aff",
+      "dark": "#fafafaff"
+    },
+    {
+      "key": "gold",
+      "name": "Brand gold",
+      "light": "#f7b500ff",
+      "dark": null
+    }
+  ],
+  "gradient_presets": [
+    {
+      "key": "sunrise",
+      "name": "Sunrise",
+      "type": "linear",
+      "degrees": 135,
+      "points": [
+        {
+          "color": "#f7b500ff",
+          "percent": 0
+        },
+        {
+          "color": "#c2410cff",
+          "percent": 100
+        }
+      ],
+      "dark_points": null
+    }
+  ]
+}
+```
+
+## Blocked customers
+
+App user ids that lose access to paid features on every platform.
+
+### List blocked app user ids
+
+`GET /v2/projects/{project_id}/blocked_customers` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read`
+
+Newest first.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `search` | string | no | Part of an app user id. |
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/blocked_customers" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Blocked app user ids.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "items": [
+    {
+      "object": "blocked_customer",
+      "id": "user_4471",
+      "app_user_id": "user_4471",
+      "note": "Chargeback abuse",
+      "blocked_at": 1790894800000,
+      "blocked_by": {
+        "type": "user",
+        "id": "usr_8f2kq0x1m3zv7a2b",
+        "email": "support@example.com"
+      },
+      "customer_exists": true
+    }
+  ],
+  "next_page": null,
+  "url": "/v2/projects/proj1a2b3c4d/blocked_customers"
+}
+```
+
+### Block an app user id
+
+`POST /v2/projects/{project_id}/blocked_customers` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read_write`
+
+The customer with this app user id (any of its aliases) loses access to paid features on every platform: customer info has no entitlements, API v2 `active_entitlements` is empty, targeting sees none, and purchases credit no in-app currency. Purchases are still recorded and webhooks are still sent, with their usual `entitlement_ids`; if you grant access from webhooks, check this list. The id need not exist yet. 201 when blocked now, 200 when it already was.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `app_user_id` | string | yes |  |
+| `note` | string or null | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/blocked_customers" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"app_user_id":"user_4471","note":"Chargeback abuse"}'
+```
+
+**Responses**
+
+- **200**: Already blocked.
+- **201**: Blocked.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "blocked_customer",
+  "id": "user_4471",
+  "app_user_id": "user_4471",
+  "note": "Chargeback abuse",
+  "blocked_at": 1790894800000,
+  "blocked_by": {
+    "type": "user",
+    "id": "usr_8f2kq0x1m3zv7a2b",
+    "email": "support@example.com"
+  },
+  "customer_exists": true
+}
+```
+
+### Is this app user id blocked?
+
+`GET /v2/projects/{project_id}/blocked_customers/{app_user_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_user_id` | string | yes | URL-encoded. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/blocked_customers/user_1" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Blocked.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "blocked_customer",
+  "id": "user_4471",
+  "app_user_id": "user_4471",
+  "note": "Chargeback abuse",
+  "blocked_at": 1790894800000,
+  "blocked_by": {
+    "type": "user",
+    "id": "usr_8f2kq0x1m3zv7a2b",
+    "email": "support@example.com"
+  },
+  "customer_exists": true
+}
+```
+
+### Unblock an app user id
+
+`DELETE /v2/projects/{project_id}/blocked_customers/{app_user_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read_write`
+
+Access comes back at once.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_user_id` | string | yes | URL-encoded. |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/blocked_customers/user_1" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Unblocked.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+## Verified Metrics
+
+A public page with a project's aggregate production numbers, its settings, image and JSON.
+
+### Verified Metrics page settings
+
+`GET /v2/projects/{project_id}/verified_metrics` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+A project that never saved the page gets a draft: a free slug from the project name, all six metrics shown.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/verified_metrics" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The settings.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "verified_metrics",
+  "status": "published",
+  "slug": "scanner",
+  "display_name": "Scanner",
+  "chart_type": "number_sparkline",
+  "metrics": [
+    {
+      "id": "mrr",
+      "visible": true
+    },
+    {
+      "id": "revenue",
+      "visible": true
+    },
+    {
+      "id": "active_subscriptions",
+      "visible": true
+    },
+    {
+      "id": "active_trials",
+      "visible": true
+    },
+    {
+      "id": "new_customers",
+      "visible": false
+    },
+    {
+      "id": "active_users",
+      "visible": false
+    }
+  ],
+  "show_icon": false,
+  "icon_asset_id": null,
+  "show_store_links": true,
+  "app_store_url": "https://apps.apple.com/app/id1234567890",
+  "play_store_url": null,
+  "url": "https://api.revenuedot.app/verified/scanner",
+  "published_at": 1790894800000,
+  "updated_at": 1790894800000
+}
+```
+
+### Save Verified Metrics page settings
+
+`POST /v2/projects/{project_id}/verified_metrics` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+A published page shows the change within 15 minutes (the cached copies are dropped on Cloud at once). 409 when another project uses the slug.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `slug` | string | no | 3 to 40 characters: a-z, 0-9 and single dashes, not at either end. Unique on the server; a few words such as `admin` are reserved. |
+| `display_name` | string | no |  |
+| `chart_type` | `number_sparkline` | no | Number & sparklines, the only type. |
+| `metrics` | array of object | no | The 6 overview metrics in display order, each once. |
+| `metrics[].id` | `mrr`, `revenue`, `active_subscriptions`, `active_trials`, `new_customers`, `active_users` | yes |  |
+| `metrics[].visible` | boolean | yes |  |
+| `show_icon` | boolean | no |  |
+| `icon_asset_id` | string or null | no | An image uploaded with `POST /v2/projects/{project_id}/media_assets`. |
+| `show_store_links` | boolean | no |  |
+| `app_store_url` | string or null | no | https on apps.apple.com. |
+| `play_store_url` | string or null | no | https on play.google.com. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/verified_metrics" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"display_name":"Scanner Pro","show_store_links":true,"app_store_url":"https://apps.apple.com/app/id1234567890"}'
+```
+
+**Responses**
+
+- **200**: The settings.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "verified_metrics",
+  "status": "published",
+  "slug": "scanner",
+  "display_name": "Scanner",
+  "chart_type": "number_sparkline",
+  "metrics": [
+    {
+      "id": "mrr",
+      "visible": true
+    },
+    {
+      "id": "revenue",
+      "visible": true
+    },
+    {
+      "id": "active_subscriptions",
+      "visible": true
+    },
+    {
+      "id": "active_trials",
+      "visible": true
+    },
+    {
+      "id": "new_customers",
+      "visible": false
+    },
+    {
+      "id": "active_users",
+      "visible": false
+    }
+  ],
+  "show_icon": false,
+  "icon_asset_id": null,
+  "show_store_links": true,
+  "app_store_url": "https://apps.apple.com/app/id1234567890",
+  "play_store_url": null,
+  "url": "https://api.revenuedot.app/verified/scanner",
+  "published_at": 1790894800000,
+  "updated_at": 1790894800000
+}
+```
+
+### Whether a slug is free
+
+`GET /v2/projects/{project_id}/verified_metrics/slug_availability` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `slug` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/verified_metrics/slug_availability" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The answer.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "slug_availability",
+  "slug": "scanner",
+  "available": true,
+  "reason": null
+}
+```
+
+### Publish the page
+
+`POST /v2/projects/{project_id}/verified_metrics/actions/publish` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Takes the same fields as the update, saves them and publishes. The page then answers at `/verified/{slug}`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `slug` | string | no | 3 to 40 characters: a-z, 0-9 and single dashes, not at either end. Unique on the server; a few words such as `admin` are reserved. |
+| `display_name` | string | no |  |
+| `chart_type` | `number_sparkline` | no | Number & sparklines, the only type. |
+| `metrics` | array of object | no | The 6 overview metrics in display order, each once. |
+| `metrics[].id` | `mrr`, `revenue`, `active_subscriptions`, `active_trials`, `new_customers`, `active_users` | yes |  |
+| `metrics[].visible` | boolean | yes |  |
+| `show_icon` | boolean | no |  |
+| `icon_asset_id` | string or null | no | An image uploaded with `POST /v2/projects/{project_id}/media_assets`. |
+| `show_store_links` | boolean | no |  |
+| `app_store_url` | string or null | no | https on apps.apple.com. |
+| `play_store_url` | string or null | no | https on play.google.com. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/verified_metrics/actions/publish" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"slug":"scanner"}'
+```
+
+**Responses**
+
+- **200**: The settings, published.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "verified_metrics",
+  "status": "published",
+  "slug": "scanner",
+  "display_name": "Scanner",
+  "chart_type": "number_sparkline",
+  "metrics": [
+    {
+      "id": "mrr",
+      "visible": true
+    },
+    {
+      "id": "revenue",
+      "visible": true
+    },
+    {
+      "id": "active_subscriptions",
+      "visible": true
+    },
+    {
+      "id": "active_trials",
+      "visible": true
+    },
+    {
+      "id": "new_customers",
+      "visible": false
+    },
+    {
+      "id": "active_users",
+      "visible": false
+    }
+  ],
+  "show_icon": false,
+  "icon_asset_id": null,
+  "show_store_links": true,
+  "app_store_url": "https://apps.apple.com/app/id1234567890",
+  "play_store_url": null,
+  "url": "https://api.revenuedot.app/verified/scanner",
+  "published_at": 1790894800000,
+  "updated_at": 1790894800000
+}
+```
+
+### Unpublish the page
+
+`POST /v2/projects/{project_id}/verified_metrics/actions/unpublish` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+The page answers 404 at once; the status becomes `inactive`. 422 when it is not published.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/verified_metrics/actions/unpublish" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The settings.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "verified_metrics",
+  "status": "inactive",
+  "slug": "scanner",
+  "display_name": "Scanner",
+  "chart_type": "number_sparkline",
+  "metrics": [
+    {
+      "id": "mrr",
+      "visible": true
+    },
+    {
+      "id": "revenue",
+      "visible": true
+    },
+    {
+      "id": "active_subscriptions",
+      "visible": true
+    },
+    {
+      "id": "active_trials",
+      "visible": true
+    },
+    {
+      "id": "new_customers",
+      "visible": false
+    },
+    {
+      "id": "active_users",
+      "visible": false
+    }
+  ],
+  "show_icon": false,
+  "icon_asset_id": null,
+  "show_store_links": true,
+  "app_store_url": "https://apps.apple.com/app/id1234567890",
+  "play_store_url": null,
+  "url": "https://api.revenuedot.app/verified/scanner",
+  "published_at": 1790894800000,
+  "updated_at": 1790894800000
+}
+```
+
+### The public Verified Metrics page
+
+`GET /verified/{slug}` · Auth: none · RevenueDot extension
+
+HTML with no scripts: the display name, the visible metrics with 28-day sparklines, optional icon and store links, and link-preview tags pointing at `og.png`. Only aggregate production numbers: no customers, no sandbox data, no project id. `Cache-Control: public, max-age=300, s-maxage=900`, an ETag (304 on `If-None-Match`), and on Cloud a copy in the edge cache. 404 with `no-store` when the slug is unknown or not published.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `slug` | string | yes | The page's slug. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/verified/$SLUG"
+```
+
+**Responses**
+
+- **200**: The page.
+- **404**: Not published.
+
+### The page's numbers as JSON
+
+`GET /verified/{slug}/metrics.json` · Auth: none · RevenueDot extension
+
+Same caching as the page. `computed_at` is when the numbers were computed.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `slug` | string | yes | The page's slug. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/verified/$SLUG/metrics.json"
+```
+
+**Responses**
+
+- **200**: The numbers.
+- **404**: Not published.
+
+Example 200 response:
+
+```json
+{
+  "object": "verified_metrics_page",
+  "url": "https://api.revenuedot.app/verified/scanner",
+  "slug": "scanner",
+  "display_name": "Scanner",
+  "chart_type": "number_sparkline",
+  "computed_at": 1790894800000,
+  "icon_url": null,
+  "store_links": {
+    "app_store": "https://apps.apple.com/app/id1234567890",
+    "play_store": null
+  },
+  "metrics": [
+    {
+      "id": "mrr",
+      "name": "MRR",
+      "unit": "$",
+      "caption": "Monthly recurring revenue",
+      "value": 93.4,
+      "sparkline": [
+        88.1,
+        90.2,
+        93.4
+      ]
+    }
+  ]
+}
+```
+
+### The page's 1200×630 link preview
+
+`GET /verified/{slug}/og.png` · Auth: none · RevenueDot extension
+
+A PNG drawn on the server: the display name and up to three visible metrics with sparklines.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `slug` | string | yes | The page's slug. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/verified/$SLUG/og.png"
+```
+
+**Responses**
+
+- **200**: The image.
+- **404**: Not published.
+
+## Auth
+
+Identity providers for Auth (Firebase, OpenID Connect), the project switch, a token tester, and signed-in identities with their balances for your backend. See [Auth](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/auth.md).
+
+### Auth on or off
+
+`GET /v2/projects/{project_id}/auth/settings` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/auth/settings" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The settings.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "auth_settings",
+  "enabled": true,
+  "allow_anonymous": false
+}
+```
+
+### Turn Auth or anonymous sign-in on or off
+
+`POST /v2/projects/{project_id}/auth/settings` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `enabled` | boolean | no |  |
+| `allow_anonymous` | boolean | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/auth/settings" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"enabled":true}'
+```
+
+**Responses**
+
+- **200**: The settings.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### List identity providers
+
+`GET /v2/projects/{project_id}/auth/providers` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/auth/providers" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Providers.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "items": [
+    {
+      "object": "auth_provider",
+      "id": "idp_4f1c9a2b7e3d",
+      "kind": "firebase",
+      "name": "Firebase (scanner-1a2b3)",
+      "issuer": "https://securetoken.google.com/scanner-1a2b3",
+      "audiences": [
+        "scanner-1a2b3"
+      ],
+      "firebase_project_id": "scanner-1a2b3",
+      "jwks_url": "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com",
+      "jwks_source": "firebase",
+      "app_user_id_claim": "sub",
+      "app_user_id_prefix": "",
+      "enabled": true,
+      "created_at": 1790894800000,
+      "updated_at": 1790894800000
+    }
+  ],
+  "next_page": null,
+  "url": "/v2/projects/proj1a2b3c4d/auth/providers"
+}
+```
+
+### Add a Firebase or OpenID Connect provider
+
+`POST /v2/projects/{project_id}/auth/providers` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Up to 10 per project. Google, Apple, Auth0, Clerk, Supabase and Cognito are OpenID Connect providers: Google's issuer is `https://accounts.google.com`, Apple's `https://appleid.apple.com`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `kind` | `firebase`, `oidc` | yes |  |
+| `name` | string | no |  |
+| `firebase_project_id` | string | no | Firebase only. Tokens must have `iss` https://securetoken.google.com/<id> and `aud` <id>. |
+| `issuer` | string | no | OpenID Connect only: exactly the tokens' `iss`. |
+| `audiences` | array of string | no | OpenID Connect only: client ids a token's `aud` must name one of. |
+| `jwks_url` | string or null | no | OpenID Connect only. Null: `jwks_uri` from `<issuer>/.well-known/openid-configuration`. On Cloud it must be a public https URL. |
+| `app_user_id_claim` | string | no | The claim that becomes the app user id. Default `sub`. |
+| `app_user_id_prefix` | string | no | Put in front of the claim, such as `firebase:`. Default empty. |
+| `enabled` | boolean | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/auth/providers" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"kind":"oidc","issuer":"https://scanner.eu.auth0.com/","audiences":["sBk2x9Lq0aZ"],"app_user_id_prefix":"auth0:"}'
+```
+
+**Responses**
+
+- **201**: The provider.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 201 response:
+
+```json
+{
+  "object": "auth_provider",
+  "id": "idp_4f1c9a2b7e3d",
+  "kind": "firebase",
+  "name": "Firebase (scanner-1a2b3)",
+  "issuer": "https://securetoken.google.com/scanner-1a2b3",
+  "audiences": [
+    "scanner-1a2b3"
+  ],
+  "firebase_project_id": "scanner-1a2b3",
+  "jwks_url": "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com",
+  "jwks_source": "firebase",
+  "app_user_id_claim": "sub",
+  "app_user_id_prefix": "",
+  "enabled": true,
+  "created_at": 1790894800000,
+  "updated_at": 1790894800000
+}
+```
+
+### Get an identity provider
+
+`GET /v2/projects/{project_id}/auth/providers/{provider_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `provider_id` | string | yes | Starts with idp. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/auth/providers/$PROVIDER_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The provider.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "auth_provider",
+  "id": "idp_4f1c9a2b7e3d",
+  "kind": "firebase",
+  "name": "Firebase (scanner-1a2b3)",
+  "issuer": "https://securetoken.google.com/scanner-1a2b3",
+  "audiences": [
+    "scanner-1a2b3"
+  ],
+  "firebase_project_id": "scanner-1a2b3",
+  "jwks_url": "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com",
+  "jwks_source": "firebase",
+  "app_user_id_claim": "sub",
+  "app_user_id_prefix": "",
+  "enabled": true,
+  "created_at": 1790894800000,
+  "updated_at": 1790894800000
+}
+```
+
+### Update or turn off an identity provider
+
+`POST /v2/projects/{project_id}/auth/providers/{provider_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Send only what changes. People who already signed in keep their app user id when the mapping changes.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `provider_id` | string | yes | Starts with idp. |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | no |  |
+| `firebase_project_id` | string | no | Firebase only. Tokens must have `iss` https://securetoken.google.com/<id> and `aud` <id>. |
+| `issuer` | string | no | OpenID Connect only: exactly the tokens' `iss`. |
+| `audiences` | array of string | no | OpenID Connect only: client ids a token's `aud` must name one of. |
+| `jwks_url` | string or null | no | OpenID Connect only. Null: `jwks_uri` from `<issuer>/.well-known/openid-configuration`. On Cloud it must be a public https URL. |
+| `app_user_id_claim` | string | no | The claim that becomes the app user id. Default `sub`. |
+| `app_user_id_prefix` | string | no | Put in front of the claim, such as `firebase:`. Default empty. |
+| `enabled` | boolean | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/auth/providers/$PROVIDER_ID" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"enabled":false}'
+```
+
+**Responses**
+
+- **200**: The provider.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Delete an identity provider
+
+`DELETE /v2/projects/{project_id}/auth/providers/{provider_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Ends every session it signed in and removes its identity links. App user ids, purchases and balances stay.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `provider_id` | string | yes | Starts with idp. |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/auth/providers/$PROVIDER_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deleted.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Check an ID token without signing in
+
+`POST /v2/projects/{project_id}/auth/providers/{provider_id}/actions/test` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+Runs every check of a sign-in and reports the app user id it would sign in as. Nothing is stored. A token that fails answers 200 with `valid: false` and the reason.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `provider_id` | string | yes | Starts with idp. |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `id_token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/auth/providers/$PROVIDER_ID/actions/test" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6…"}'
+```
+
+**Responses**
+
+- **200**: The result.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "auth_token_test",
+  "valid": true,
+  "subject": "Xk2f9QpL0aZ",
+  "app_user_id": "Xk2f9QpL0aZ",
+  "linked": false,
+  "claims": {
+    "iss": "https://securetoken.google.com/scanner-1a2b3",
+    "aud": "scanner-1a2b3",
+    "sub": "Xk2f9QpL0aZ",
+    "exp": 1790898400
+  },
+  "error": null
+}
+```
+
+### List signed-in identities
+
+`GET /v2/projects/{project_id}/auth/identities` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read`
+
+Most recent sign-in first.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `provider_id` | string | no |  |
+| `subject` | string | no |  |
+| `app_user_id` | string | no |  |
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/auth/identities" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Identities.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "items": [
+    {
+      "object": "auth_identity",
+      "provider_id": "idp_4f1c9a2b7e3d",
+      "subject": "Xk2f9QpL0aZ",
+      "app_user_id": "Xk2f9QpL0aZ",
+      "logins": 12,
+      "last_login_at": 1790894800000,
+      "created_at": 1790800000000
+    }
+  ],
+  "next_page": null,
+  "url": "/v2/projects/proj1a2b3c4d/auth/identities"
+}
+```
+
+### Read a signed-in user's balances and entitlements by identity
+
+`GET /v2/projects/{project_id}/auth/identities/{provider_id}/{subject}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read`
+
+For your backend: look up a user by the provider's user id (a Firebase uid, an Auth0 `sub`) and read their in-app currency balances and active entitlements, without knowing the app user id.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `provider_id` | string | yes | Starts with idp. |
+| `subject` | string | yes | The provider's user id (`sub`), URL-encoded. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/auth/identities/$PROVIDER_ID/$SUBJECT" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The identity.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "auth_identity",
+  "provider_id": "idp_4f1c9a2b7e3d",
+  "subject": "Xk2f9QpL0aZ",
+  "app_user_id": "Xk2f9QpL0aZ",
+  "logins": 12,
+  "last_login_at": 1790894800000,
+  "created_at": 1790800000000,
+  "customer_id": "Xk2f9QpL0aZ",
+  "active_entitlements": [
+    {
+      "lookup_key": "pro",
+      "expires_at": 1793486800000
+    }
+  ],
+  "virtual_currencies": {
+    "GEMS": {
+      "balance": 40,
+      "name": "Gems",
+      "code": "GEMS"
+    }
+  }
+}
+```
+
+### Unlink an identity and sign it out
+
+`DELETE /v2/projects/{project_id}/auth/identities/{provider_id}/{subject}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read_write`
+
+Ends its sessions at once. The next sign-in maps the identity again with the provider's current mapping.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `provider_id` | string | yes | Starts with idp. |
+| `subject` | string | yes | URL-encoded. |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/auth/identities/$PROVIDER_ID/$SUBJECT" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Unlinked.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
@@ -17468,6 +19140,12 @@ One screen of a funnel. Every step has `id` (1-40 lower-case letters, digits, `-
 | `icon_url_large` | string or null | no | Always null. |
 | `transfer_behavior` | `transfer`, `transfer_if_no_active`, `keep`, `share` | yes | What happens when a purchase already owned by another customer is restored. Default transfer. |
 | `sandbox_transfer_behavior` | `transfer`, `transfer_if_no_active`, `keep`, `share`, null | yes | Override for sandbox purchases; null uses transfer_behavior. |
+| `sandbox_testing_access` | `anybody`, `allowlist`, `nobody` | no | Who unlocks entitlements and in-app currency with sandbox purchases (Test Store purchases included). `allowlist`: only customers with an app user id in `sandbox_testers`. Others' sandbox purchases are recorded and sent to webhooks but unlock nothing. Default anybody. |
+| `sandbox_testers` | array of string | no | App user ids allowed to test when `sandbox_testing_access` is `allowlist`. Up to 500. |
+| `owner` | object or null | no | The project's owner, the only one who can transfer ownership. Null when no owner is recorded. |
+| `owner.id` | string | no | User id. |
+| `owner.email` | string | no |  |
+| `owner.name` | string or null | no |  |
 
 ### PublicApiKey
 

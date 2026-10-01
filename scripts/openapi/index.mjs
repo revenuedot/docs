@@ -14,6 +14,7 @@ import { v2RestPaths } from "./v2-rest.mjs";
 import { lifecyclePaths } from "./lifecycle.mjs";
 import { webPaths, webSchemas } from "./web.mjs";
 import { adsPaths } from "./ads.mjs";
+import { settingsPathsAll } from "./settings.mjs";
 
 /**
  * Tags in reading order. `x-page` is the generated Markdown page (api/<page>.md) the tag's operations go to.
@@ -28,6 +29,7 @@ export const TAGS = [
   ["SDK support", "sdk-endpoints", "Endpoints the SDK calls for features RevenueDot answers minimally, so the SDK keeps working."],
   ["Web Billing", "sdk-endpoints", "Web checkout calls from the iOS SDK and purchases-js. The iOS SDK's paywall web checkout opens a Stripe Checkout on your own Stripe account ([web billing](../docs/guides/web-billing.md)). The purchases-js checkout for RevenueCat Billing (`rcb_` keys, Stripe Elements inside the SDK) is not available and answers an error the SDK shows as a failed purchase."],
   ["Subscriber tokens", "sdk-endpoints", "The SDK endpoints for one customer, authorized by a subscriber access token from `POST /v2/projects/{project_id}/apps/{app_id}/authenticate` instead of the app key. The RevenueCat SDKs call these paths in their internal token mode."],
+  ["Auth sign-in", "sdk-endpoints", "Sign app users in with a Firebase or OpenID Connect ID token and get a subscriber access token for the `/v1/customer/*` paths, in the wire format of the RevenueCat SDKs' token login. See [Auth](../docs/guides/auth.md)."],
   ["Store notifications", "sdk-endpoints", "Where App Store Connect and Google Pub/Sub send server notifications."],
   ["Response signing", "sdk-endpoints", "Trusted Entitlements: the public key responses are signed with."],
   ["Customers (v1)", "rest-v1", "Secret-key customer operations."],
@@ -56,7 +58,11 @@ export const TAGS = [
   ["Collaborators", "rest-v2", "Dashboard users of the project."],
   ["Dashboard auth", "extensions", "Sign-up, sign-in, password reset, email confirmation, invites and account settings for the dashboard. The session cookie also authorizes REST API v2."],
   ["Members and invites", "extensions", "Invite people to a project by email, change their role, remove them. Dashboard session only."],
-  ["Project settings", "extensions", "Project name, transfer behaviour and deletion."],
+  ["Project settings", "extensions", "Project name, transfer behaviour, sandbox testing access, ownership and deletion. See [Project settings](../docs/guides/project-settings.md)."],
+  ["Brand", "extensions", "Colour and gradient presets for the paywall editor and the SDKs' named colours."],
+  ["Blocked customers", "extensions", "App user ids that lose access to paid features on every platform."],
+  ["Verified Metrics", "extensions", "A public page with a project's aggregate production numbers, its settings, image and JSON."],
+  ["Auth", "extensions", "Identity providers for Auth (Firebase, OpenID Connect), the project switch, a token tester, and signed-in identities with their balances for your backend. See [Auth](../docs/guides/auth.md)."],
   ["Store setup", "extensions", "Notification URLs, credential checks, setup health and App Store mass extensions."],
   ["API keys", "extensions", "Secret keys for the REST API."],
   ["Webhook deliveries", "extensions", "Delivery log, manual retry and test events."],
@@ -104,7 +110,7 @@ export function buildDocument() {
       { url: "https://{host}", description: "Your self-hosted RevenueDot", variables: { host: { default: "revenuedot.example.com" } } },
     ],
     tags: tags(),
-    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...adsPaths, ...lifecyclePaths, ...webPaths, ...extensionPaths },
+    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...adsPaths, ...lifecyclePaths, ...webPaths, ...settingsPathsAll, ...extensionPaths },
     webhooks,
     components: { schemas: { ...schemas, ...webSchemas }, parameters, responses, securitySchemes },
     security: [{ secretApiKey: [] }],
