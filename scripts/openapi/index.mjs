@@ -4,6 +4,7 @@
 import { parameters, responses, schemas, securitySchemes } from "./components.mjs";
 import { sdkPaths } from "./sdk.mjs";
 import { extensionPaths, v2Paths } from "./v2.mjs";
+import { v2MorePaths } from "./v2-more.mjs";
 import { webhooks } from "./webhooks.mjs";
 
 /**
@@ -33,7 +34,9 @@ export const TAGS = [
   ["Customers", "rest-v2", "Customers, their attributes, entitlements, subscriptions, purchases and events."],
   ["Subscriptions", "rest-v2", "Subscriptions across customers, and store actions on them."],
   ["Purchases", "rest-v2", "One-time purchases across customers."],
-  ["Metrics", "rest-v2", "The dashboard overview numbers."],
+  ["Metrics", "rest-v2", "The dashboard overview numbers and revenue totals."],
+  ["In-app currencies", "rest-v2", "Currencies your app sells or rewards, their product grants and each customer's balance."],
+  ["Audit log", "rest-v2", "Who changed what in a project."],
   ["Webhook integrations", "rest-v2", "Where events are sent."],
   ["Collaborators", "rest-v2", "Dashboard users of the project."],
   ["Dashboard auth", "extensions", "Sign-up, sign-in, password reset, email confirmation, invites and account settings for the dashboard. The session cookie also authorizes REST API v2."],
@@ -74,7 +77,7 @@ export function buildDocument() {
       { url: "https://{host}", description: "Your self-hosted RevenueDot", variables: { host: { default: "revenuedot.example.com" } } },
     ],
     tags: tags(),
-    paths: { ...sdkPaths, ...v2Paths, ...extensionPaths },
+    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...extensionPaths },
     webhooks,
     components: { schemas, parameters, responses, securitySchemes },
     security: [{ secretApiKey: [] }],

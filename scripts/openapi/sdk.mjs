@@ -177,16 +177,18 @@ After answering, RevenueDot looks the token up with [Apple's attribution API](ht
         { product_entitlement_mapping: { pro_monthly: { product_identifier: "pro_monthly", entitlements: ["pro"] } } }) } }),
   },
   "/v1/customercenter/{app_user_id}": {
-    get: op({ id: "customerCenter", tag: "SDK support", summary: "Customer Center configuration (not built)", security: PUBLIC, source: SDK, parameters: [user],
-      description: "Always 404 with code 7259: the SDK returns an error and the Customer Center screen shows its error state. Customer Center configuration is planned for Tier 2.", responses: { 404: ok("Not configured.", ref("V1Error"), { code: 7259, message: "Customer Center is not configured." }) } }),
+    get: op({ id: "customerCenter", tag: "SDK support", summary: "Customer Center configuration", security: PUBLIC, source: SDK, parameters: [user],
+      description: "The project's Customer Center configuration: appearance, the management and no-active screens with their help paths, localized strings and the support email. A built-in default merged with what the project stored through `POST /v2/projects/{project_id}/customer_center_config`.",
+      responses: { 200: ok("The configuration.", obj({ customer_center: { type: "object", additionalProperties: true } }, ["customer_center"]), { customer_center: { screens: { MANAGEMENT: { type: "MANAGEMENT", title: "Manage subscription", paths: [] } }, support: { email: "support@example.com" } } }) } }),
   },
   "/v1/customercenter/support/create-ticket": {
     post: op({ id: "customerCenterTicket", tag: "SDK support", summary: "Customer Center support ticket (not built)", security: PUBLIC, source: SDK,
       responses: { 200: ok("Not sent.", obj({ sent: bool() }), { sent: false }) } }),
   },
   "/v1/subscribers/{app_user_id}/virtual_currencies": {
-    get: op({ id: "virtualCurrencies", tag: "SDK support", summary: "Virtual currency balances (not built)", security: PUBLIC, source: SDK, parameters: [user],
-      responses: { 200: ok("Empty balances.", obj({ virtual_currencies: { type: "object" } }), { virtual_currencies: {} }) } }),
+    get: op({ id: "virtualCurrencies", tag: "SDK support", summary: "Virtual currency balances", security: PUBLIC, source: SDK, parameters: [user],
+      description: "The customer's in-app currency balances by code. A customer the server has not seen has none.",
+      responses: { 200: ok("Balances.", obj({ virtual_currencies: { type: "object", additionalProperties: obj({ balance: int(), name: str(), code: str(), description: nstr() }, ["balance", "name", "code"]) } }, ["virtual_currencies"]), { virtual_currencies: { GLD: { balance: 700, name: "Gold", code: "GLD", description: null } } }) } }),
   },
   "/v1/subscribers/redeem_purchase": {
     post: op({ id: "redeemWebPurchase", tag: "SDK support", summary: "Redeem a web purchase (not available)", security: PUBLIC, source: SDK,

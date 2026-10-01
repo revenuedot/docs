@@ -13,18 +13,20 @@ RevenueDot-only endpoints are on [Extensions](extensions.md).
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (73)
+## Operations on this page (89)
 
 - **Projects**: [List projects](#list-projects), [Create a project](#create-a-project)
-- **Apps**: [List apps](#list-apps), [Create an app](#create-an-app), [Get an app](#get-an-app), [Update an app and its store credentials](#update-an-app-and-its-store-credentials), [Delete an app](#delete-an-app), [Get an app's public SDK key](#get-an-apps-public-sdk-key)
+- **Apps**: [List apps](#list-apps), [Create an app](#create-an-app), [Get an app](#get-an-app), [Update an app and its store credentials](#update-an-app-and-its-store-credentials), [Delete an app](#delete-an-app), [Get an app's public SDK key](#get-an-apps-public-sdk-key), [Get a StoreKit configuration file](#get-a-storekit-configuration-file)
 - **Products**: [List products](#list-products), [Create a product](#create-a-product), [Get a product](#get-a-product), [Update a product](#update-a-product), [Delete a product](#delete-a-product), [Archive a product](#archive-a-product), [Unarchive a product](#unarchive-a-product)
 - **Entitlements**: [List entitlements](#list-entitlements), [Create an entitlement](#create-an-entitlement), [Get an entitlement](#get-an-entitlement), [Rename an entitlement](#rename-an-entitlement), [Delete an entitlement](#delete-an-entitlement), [Archive an entitlement](#archive-an-entitlement), [Unarchive an entitlement](#unarchive-an-entitlement), [List an entitlement's products](#list-an-entitlements-products), [Attach products to an entitlement](#attach-products-to-an-entitlement), [Detach products from an entitlement](#detach-products-from-an-entitlement)
 - **Offerings**: [List offerings](#list-offerings), [Create an offering](#create-an-offering), [Get an offering](#get-an-offering), [Update an offering or make it current](#update-an-offering-or-make-it-current), [Delete an offering](#delete-an-offering), [Archive an offering](#archive-an-offering), [Unarchive an offering](#unarchive-an-offering)
 - **Packages**: [List an offering's packages](#list-an-offerings-packages), [Create a package](#create-a-package), [Get a package](#get-a-package), [Update a package](#update-a-package), [Delete a package](#delete-a-package), [List a package's products](#list-a-packages-products), [Attach products to a package](#attach-products-to-a-package), [Detach products from a package](#detach-products-from-a-package)
-- **Customers**: [List or search customers](#list-or-search-customers), [Create a customer](#create-a-customer), [Get a customer](#get-a-customer), [Delete a customer](#delete-a-customer), [List a customer's app user ids](#list-a-customers-app-user-ids), [List a customer's attributes](#list-a-customers-attributes), [Set a customer's attributes](#set-a-customers-attributes), [List a customer's active entitlements](#list-a-customers-active-entitlements), [List a customer's subscriptions](#list-a-customers-subscriptions), [List a customer's one-time purchases](#list-a-customers-one-time-purchases), [List a customer's events](#list-a-customers-events), [Grant an entitlement](#grant-an-entitlement), [Revoke a granted entitlement](#revoke-a-granted-entitlement), [Assign an offering to a customer](#assign-an-offering-to-a-customer)
-- **Subscriptions**: [Find subscriptions by store id](#find-subscriptions-by-store-id), [Get a subscription](#get-a-subscription), [List the entitlements a subscription unlocks](#list-the-entitlements-a-subscription-unlocks), [List a subscription's payments](#list-a-subscriptions-payments), [Cancel a subscription (Google Play)](#cancel-a-subscription-google-play), [Refund and revoke a subscription (Google Play)](#refund-and-revoke-a-subscription-google-play), [Extend a subscription](#extend-a-subscription), [Refund one payment of a subscription (Google Play)](#refund-one-payment-of-a-subscription-google-play)
+- **Customers**: [List or search customers](#list-or-search-customers), [Create a customer](#create-a-customer), [Get a customer](#get-a-customer), [Delete a customer](#delete-a-customer), [List a customer's app user ids](#list-a-customers-app-user-ids), [List a customer's attributes](#list-a-customers-attributes), [Set a customer's attributes](#set-a-customers-attributes), [List a customer's active entitlements](#list-a-customers-active-entitlements), [List a customer's subscriptions](#list-a-customers-subscriptions), [List a customer's one-time purchases](#list-a-customers-one-time-purchases), [List a customer's events](#list-a-customers-events), [Grant an entitlement](#grant-an-entitlement), [Revoke a granted entitlement](#revoke-a-granted-entitlement), [Assign an offering to a customer](#assign-an-offering-to-a-customer), [Transfer a customer's purchases to another customer](#transfer-a-customers-purchases-to-another-customer), [Get the Customer Center configuration](#get-the-customer-center-configuration)
+- **Subscriptions**: [Find subscriptions by store id](#find-subscriptions-by-store-id), [Get a subscription](#get-a-subscription), [List the entitlements a subscription unlocks](#list-the-entitlements-a-subscription-unlocks), [List a subscription's payments](#list-a-subscriptions-payments), [Cancel a subscription (Google Play)](#cancel-a-subscription-google-play), [Refund and revoke a subscription (Google Play)](#refund-and-revoke-a-subscription-google-play), [Extend a subscription](#extend-a-subscription), [Refund one payment of a subscription (Google Play)](#refund-one-payment-of-a-subscription-google-play), [Get where the customer manages a subscription](#get-where-the-customer-manages-a-subscription)
 - **Purchases**: [Find one-time purchases by store id](#find-one-time-purchases-by-store-id), [Get a one-time purchase](#get-a-one-time-purchase), [List the entitlements a purchase unlocks](#list-the-entitlements-a-purchase-unlocks), [Refund a one-time purchase (Google Play)](#refund-a-one-time-purchase-google-play)
-- **Metrics**: [Overview metrics](#overview-metrics)
+- **Metrics**: [Overview metrics](#overview-metrics), [Revenue over a date range](#revenue-over-a-date-range)
+- **In-app currencies**: [List in-app currencies](#list-in-app-currencies), [Create an in-app currency](#create-an-in-app-currency), [Get an in-app currency](#get-an-in-app-currency), [Update an in-app currency](#update-an-in-app-currency), [Delete an in-app currency](#delete-an-in-app-currency), [Archive an in-app currency](#archive-an-in-app-currency), [Unarchive an in-app currency](#unarchive-an-in-app-currency), [List a customer's balances](#list-a-customers-balances), [Credit or spend in-app currency](#credit-or-spend-in-app-currency), [Change a balance without a ledger entry](#change-a-balance-without-a-ledger-entry)
+- **Audit log**: [List audit log entries](#list-audit-log-entries)
 - **Webhook integrations**: [List webhooks](#list-webhooks), [Create a webhook](#create-a-webhook), [Get a webhook](#get-a-webhook), [Update a webhook](#update-a-webhook), [Delete a webhook](#delete-a-webhook)
 - **Collaborators**: [List collaborators](#list-collaborators)
 
@@ -326,6 +328,33 @@ Example 200 response:
   "url": "/v2/projects/proj18pzzkao/apps/appvnrm0a5h/public_api_keys"
 }
 ```
+
+### Get a StoreKit configuration file
+
+`GET /v2/projects/{project_id}/apps/{app_id}/store_kit_config` · Auth: secret key or dashboard session · Permissions: `project_configuration:apps:read`
+
+A `.storekit` file for the products of an App Store app, to test purchases locally in Xcode. Prices come from the Test Store price when set, else 0.99.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes | App id (app...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/store_kit_config" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The file contents.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
 ## Products
 
@@ -2007,6 +2036,74 @@ Example 200 response:
 {}
 ```
 
+### Transfer a customer's purchases to another customer
+
+`POST /v2/projects/{project_id}/customers/{customer_id}/actions/transfer` · Auth: secret key or dashboard session · Permissions: `customer_information:customers:read_write`, `customer_information:subscriptions:read_write`, `customer_information:purchases:read_write`
+
+Moves subscriptions, one-time purchases and their transactions, optionally only those of the listed apps, and records a `TRANSFER` event. The target customer is created if it does not exist.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `customer_id` | string | yes | Any app user id of the customer. |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `target_customer_id` | string | yes |  |
+| `app_ids` | array of string | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/actions/transfer" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"target_customer_id":"user_2"}'
+```
+
+**Responses**
+
+- **200**: Both customers after the transfer.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### Get the Customer Center configuration
+
+`GET /v2/projects/{project_id}/customers/{customer_id}/customer_center` · Auth: secret key or dashboard session · Permissions: `customer_information:customers:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `customer_id` | string | yes | Any app user id of the customer. |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `platform` | `ios`, `android`, `macos`, `web`, `amazon` | no |  |
+| `locale` | string | no |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/customer_center" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The configuration.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
 ## Subscriptions
 
 Subscriptions across customers, and store actions on them.
@@ -2302,6 +2399,41 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/subscriptions/$SUBSCRIP
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
 - **503**: The store could not be reached. Retry later. Returns [V2Error](#v2error).
 
+### Get where the customer manages a subscription
+
+`GET /v2/projects/{project_id}/subscriptions/{subscription_id}/authenticated_management_url` · Auth: secret key or dashboard session · Permissions: `customer_information:subscriptions:read`
+
+The App Store subscriptions page or the Google Play page for the subscription. Null for stores without one.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `subscription_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/subscriptions/$SUBSCRIPTION_ID/authenticated_management_url" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The URL.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "authenticated_management_url",
+  "management_url": "https://apps.apple.com/account/subscriptions"
+}
+```
+
 ## Purchases
 
 One-time purchases across customers.
@@ -2421,7 +2553,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/purchases/$PURCHASE_ID/
 
 ## Metrics
 
-The dashboard overview numbers.
+The dashboard overview numbers and revenue totals.
 
 ### Overview metrics
 
@@ -2455,6 +2587,681 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/metrics/overview" -H "Authoriza
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Revenue over a date range
+
+`GET /v2/projects/{project_id}/metrics/revenue` · Auth: secret key or dashboard session · Permissions: `charts_metrics:overview:read`
+
+Production revenue from the transaction ledger, in USD at the purchase-date rate.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `start_date` | string | yes |  |
+| `end_date` | string | yes | Inclusive. |
+| `currency` | string | no | Only USD for now. |
+| `revenue_type` | `revenue`, `revenue_net_of_taxes`, `proceeds` | no | Proceeds subtract the estimated store commission. We hold no tax data, so net of taxes equals revenue. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/metrics/revenue" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The total.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "revenue_metric",
+  "start_date": "2026-09-01",
+  "end_date": "2026-09-30",
+  "currency": "USD",
+  "value": 12345.67,
+  "revenue_type": "revenue"
+}
+```
+
+## In-app currencies
+
+Currencies your app sells or rewards, their product grants and each customer's balance.
+
+### List in-app currencies
+
+`GET /v2/projects/{project_id}/virtual_currencies` · Auth: secret key or dashboard session · Permissions: `project_configuration:virtual_currencies:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/virtual_currencies" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: A page of currencies.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "items": [
+    {
+      "object": "virtual_currency",
+      "project_id": "proj18pzzkao",
+      "code": "GLD",
+      "name": "Gold",
+      "description": null,
+      "state": "active",
+      "created_at": 1790800901115,
+      "product_grants": [
+        {
+          "object": "virtual_currency.product_grant",
+          "product_ids": [
+            "prod6n3k1a8w2z"
+          ],
+          "amount": 100,
+          "trial_amount": 0,
+          "expire_at_cycle_end": false
+        }
+      ]
+    }
+  ],
+  "next_page": null,
+  "url": "/v2/projects/{project_id}/virtual_currencies"
+}
+```
+
+### Create an in-app currency
+
+`POST /v2/projects/{project_id}/virtual_currencies` · Auth: secret key or dashboard session · Permissions: `project_configuration:virtual_currencies:read_write`
+
+A product grant credits the balance each time a purchase, renewal or trial start of one of its products is recorded, once per store transaction.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `code` | string | yes | Letters, digits and underscores, up to 10. |
+| `name` | string | yes |  |
+| `description` | string or null | no |  |
+| `product_grants` | array of object | no |  |
+| `product_grants[].product_ids` | array of string | yes |  |
+| `product_grants[].amount` | integer | yes | Credited per purchase or renewal. |
+| `product_grants[].trial_amount` | integer or null | no | Credited when a free trial starts. Default 0. |
+| `product_grants[].expire_at_cycle_end` | boolean or null | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/virtual_currencies" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"code":"GLD","name":"Gold","product_grants":[{"product_ids":["prod6n3k1a8w2z"],"amount":100}]}'
+```
+
+**Responses**
+
+- **201**: The currency.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
+
+Example 201 response:
+
+```json
+{
+  "object": "virtual_currency",
+  "project_id": "proj18pzzkao",
+  "code": "GLD",
+  "name": "Gold",
+  "description": null,
+  "state": "active",
+  "created_at": 1790800901115,
+  "product_grants": [
+    {
+      "object": "virtual_currency.product_grant",
+      "product_ids": [
+        "prod6n3k1a8w2z"
+      ],
+      "amount": 100,
+      "trial_amount": 0,
+      "expire_at_cycle_end": false
+    }
+  ]
+}
+```
+
+### Get an in-app currency
+
+`GET /v2/projects/{project_id}/virtual_currencies/{virtual_currency_code}` · Auth: secret key or dashboard session · Permissions: `project_configuration:virtual_currencies:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `virtual_currency_code` | string | yes | The currency code, such as GLD. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/virtual_currencies/$VIRTUAL_CURRENCY_CODE" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The currency.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "virtual_currency",
+  "project_id": "proj18pzzkao",
+  "code": "GLD",
+  "name": "Gold",
+  "description": null,
+  "state": "active",
+  "created_at": 1790800901115,
+  "product_grants": [
+    {
+      "object": "virtual_currency.product_grant",
+      "product_ids": [
+        "prod6n3k1a8w2z"
+      ],
+      "amount": 100,
+      "trial_amount": 0,
+      "expire_at_cycle_end": false
+    }
+  ]
+}
+```
+
+### Update an in-app currency
+
+`POST /v2/projects/{project_id}/virtual_currencies/{virtual_currency_code}` · Auth: secret key or dashboard session · Permissions: `project_configuration:virtual_currencies:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `virtual_currency_code` | string | yes | The currency code, such as GLD. |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | no |  |
+| `description` | string or null | no |  |
+| `product_grants` | array of object | no |  |
+| `product_grants[].product_ids` | array of string | yes |  |
+| `product_grants[].amount` | integer | yes | Credited per purchase or renewal. |
+| `product_grants[].trial_amount` | integer or null | no | Credited when a free trial starts. Default 0. |
+| `product_grants[].expire_at_cycle_end` | boolean or null | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/virtual_currencies/$VIRTUAL_CURRENCY_CODE" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"name":"Gold coins"}'
+```
+
+**Responses**
+
+- **200**: The currency.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "virtual_currency",
+  "project_id": "proj18pzzkao",
+  "code": "GLD",
+  "name": "Gold",
+  "description": null,
+  "state": "active",
+  "created_at": 1790800901115,
+  "product_grants": [
+    {
+      "object": "virtual_currency.product_grant",
+      "product_ids": [
+        "prod6n3k1a8w2z"
+      ],
+      "amount": 100,
+      "trial_amount": 0,
+      "expire_at_cycle_end": false
+    }
+  ]
+}
+```
+
+### Delete an in-app currency
+
+`DELETE /v2/projects/{project_id}/virtual_currencies/{virtual_currency_code}` · Auth: secret key or dashboard session · Permissions: `project_configuration:virtual_currencies:read_write`
+
+Also deletes every customer's balance of it and its ledger.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `virtual_currency_code` | string | yes | The currency code, such as GLD. |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/virtual_currencies/$VIRTUAL_CURRENCY_CODE" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deleted. Returns [Deleted](#deleted).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "virtual_currency",
+  "id": "GLD",
+  "deleted_at": 1790801342625
+}
+```
+
+### Archive an in-app currency
+
+`POST /v2/projects/{project_id}/virtual_currencies/{virtual_currency_code}/actions/archive` · Auth: secret key or dashboard session · Permissions: `project_configuration:virtual_currencies:read_write`
+
+An archived currency stops granting; customers keep a non-zero balance.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `virtual_currency_code` | string | yes | The currency code, such as GLD. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/virtual_currencies/$VIRTUAL_CURRENCY_CODE/actions/archive" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The currency.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "virtual_currency",
+  "project_id": "proj18pzzkao",
+  "code": "GLD",
+  "name": "Gold",
+  "description": null,
+  "state": "active",
+  "created_at": 1790800901115,
+  "product_grants": [
+    {
+      "object": "virtual_currency.product_grant",
+      "product_ids": [
+        "prod6n3k1a8w2z"
+      ],
+      "amount": 100,
+      "trial_amount": 0,
+      "expire_at_cycle_end": false
+    }
+  ]
+}
+```
+
+### Unarchive an in-app currency
+
+`POST /v2/projects/{project_id}/virtual_currencies/{virtual_currency_code}/actions/unarchive` · Auth: secret key or dashboard session · Permissions: `project_configuration:virtual_currencies:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `virtual_currency_code` | string | yes | The currency code, such as GLD. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/virtual_currencies/$VIRTUAL_CURRENCY_CODE/actions/unarchive" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The currency.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "virtual_currency",
+  "project_id": "proj18pzzkao",
+  "code": "GLD",
+  "name": "Gold",
+  "description": null,
+  "state": "active",
+  "created_at": 1790800901115,
+  "product_grants": [
+    {
+      "object": "virtual_currency.product_grant",
+      "product_ids": [
+        "prod6n3k1a8w2z"
+      ],
+      "amount": 100,
+      "trial_amount": 0,
+      "expire_at_cycle_end": false
+    }
+  ]
+}
+```
+
+### List a customer's balances
+
+`GET /v2/projects/{project_id}/customers/{customer_id}/virtual_currencies` · Auth: secret key or dashboard session · Permissions: `customer_information:purchases:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `customer_id` | string | yes | Any app user id of the customer. |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `include_empty_balances` | boolean | no | Also list currencies with a zero balance. |
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/virtual_currencies" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Balances.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "items": [
+    {
+      "object": "virtual_currency_balance",
+      "currency_code": "GLD",
+      "balance": 100,
+      "name": "Gold"
+    }
+  ],
+  "next_page": null,
+  "url": "/v2/projects/proj18pzzkao/customers/user_1/virtual_currencies"
+}
+```
+
+### Credit or spend in-app currency
+
+`POST /v2/projects/{project_id}/customers/{customer_id}/virtual_currencies/transactions` · Auth: secret key or dashboard session · Permissions: `customer_information:purchases:read_write`
+
+Adds a ledger entry per currency. Send an `Idempotency-Key` so a retry does not apply twice. Nothing is applied if any balance would go below zero.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `customer_id` | string | yes | Any app user id of the customer. |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `include_empty_balances` | boolean | no | Also list currencies with a zero balance. |
+
+**Headers**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `Idempotency-Key` | string | no | Repeating a request with the same key changes nothing the second time. |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `adjustments` | object | yes | Signed change per currency code. A balance cannot go below zero. |
+| `reference` | string or null | no | Your own note, kept in the ledger. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/virtual_currencies/transactions" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"adjustments":{"GLD":-20},"reference":"level 3 unlock"}'
+```
+
+**Responses**
+
+- **200**: The balances after the change.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "items": [
+    {
+      "object": "virtual_currency_balance",
+      "currency_code": "GLD",
+      "balance": 100,
+      "name": "Gold"
+    }
+  ],
+  "next_page": null,
+  "url": "/v2/projects/proj18pzzkao/customers/user_1/virtual_currencies"
+}
+```
+
+### Change a balance without a ledger entry
+
+`POST /v2/projects/{project_id}/customers/{customer_id}/virtual_currencies/update_balance` · Auth: secret key or dashboard session · Permissions: `customer_information:purchases:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `customer_id` | string | yes | Any app user id of the customer. |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `include_empty_balances` | boolean | no | Also list currencies with a zero balance. |
+
+**Headers**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `Idempotency-Key` | string | no | Repeating a request with the same key changes nothing the second time. |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `adjustments` | object | yes | Signed change per currency code. A balance cannot go below zero. |
+| `reference` | string or null | no | Your own note, kept in the ledger. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/virtual_currencies/update_balance" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"adjustments":{"GLD":-20},"reference":"level 3 unlock"}'
+```
+
+**Responses**
+
+- **200**: The balances after the change.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "items": [
+    {
+      "object": "virtual_currency_balance",
+      "currency_code": "GLD",
+      "balance": 100,
+      "name": "Gold"
+    }
+  ],
+  "next_page": null,
+  "url": "/v2/projects/proj18pzzkao/customers/user_1/virtual_currencies"
+}
+```
+
+## Audit log
+
+Who changed what in a project.
+
+### List audit log entries
+
+`GET /v2/projects/{project_id}/audit_logs` · Auth: secret key or dashboard session · Permissions: `project_configuration:audit_logs:read`
+
+Who changed what, newest first. Every successful write through API v2 is recorded with the actor (a user, a secret key, or an OAuth client). Reads and request bodies are never recorded.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+| `start_date` | string | no |  |
+| `end_date` | string | no | Inclusive. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/audit_logs" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: A page of entries.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "items": [
+    {
+      "object": "audit_log",
+      "id": "log1ab2c3d4e5",
+      "project_id": "proj18pzzkao",
+      "action_type": "entitlement_created",
+      "target_type": "entitlement",
+      "target_identifier": "entl1v0bp6r0qs",
+      "actor_type": "api_key",
+      "actor_identifier": "key_08ec817fce",
+      "occurred_at": 1790801342634,
+      "additional_data": {
+        "method": "POST",
+        "status": 201
+      }
+    }
+  ],
+  "next_page": null,
+  "url": "/v2/projects/{project_id}/audit_logs"
+}
+```
 
 ## Webhook integrations
 

@@ -100,7 +100,13 @@ tags:
     description: One-time purchases across customers.
     x-page: rest-v2
   - name: Metrics
-    description: The dashboard overview numbers.
+    description: The dashboard overview numbers and revenue totals.
+    x-page: rest-v2
+  - name: In-app currencies
+    description: Currencies your app sells or rewards, their product grants and each customer's balance.
+    x-page: rest-v2
+  - name: Audit log
+    description: Who changed what in a project.
     x-page: rest-v2
   - name: Webhook integrations
     description: Where events are sent.
@@ -1159,22 +1165,34 @@ paths:
       operationId: customerCenter
       tags:
         - SDK support
-      summary: Customer Center configuration (not built)
-      description: "Always 404 with code 7259: the SDK returns an error and the Customer Center screen shows its error state. Customer Center configuration is planned for Tier 2."
+      summary: Customer Center configuration
+      description: "The project's Customer Center configuration: appearance, the management and no-active screens with their help paths, localized strings and the support email. A built-in default merged with what the project stored through `POST /v2/projects/{project_id}/customer_center_config`."
       security:
         - publicApiKey: []
       parameters:
         - $ref: "#/components/parameters/AppUserId"
       responses:
-        "404":
-          description: Not configured.
+        "200":
+          description: The configuration.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/V1Error"
+                type: object
+                properties:
+                  customer_center:
+                    type: object
+                    additionalProperties: true
+                required:
+                  - customer_center
               example:
-                code: 7259
-                message: Customer Center is not configured.
+                customer_center:
+                  screens:
+                    MANAGEMENT:
+                      type: MANAGEMENT
+                      title: Manage subscription
+                      paths: []
+                  support:
+                    email: support@example.com
       x-source: routes/sdk.ts
   /v1/customercenter/support/create-ticket:
     post:
@@ -1202,14 +1220,15 @@ paths:
       operationId: virtualCurrencies
       tags:
         - SDK support
-      summary: Virtual currency balances (not built)
+      summary: Virtual currency balances
+      description: The customer's in-app currency balances by code. A customer the server has not seen has none.
       security:
         - publicApiKey: []
       parameters:
         - $ref: "#/components/parameters/AppUserId"
       responses:
         "200":
-          description: Empty balances.
+          description: Balances.
           content:
             application/json:
               schema:
@@ -1217,8 +1236,32 @@ paths:
                 properties:
                   virtual_currencies:
                     type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        balance:
+                          type: integer
+                        name:
+                          type: string
+                        code:
+                          type: string
+                        description:
+                          type:
+                            - string
+                            - "null"
+                      required:
+                        - balance
+                        - name
+                        - code
+                required:
+                  - virtual_currencies
               example:
-                virtual_currencies: {}
+                virtual_currencies:
+                  GLD:
+                    balance: 700
+                    name: Gold
+                    code: GLD
+                    description: null
       x-source: routes/sdk.ts
   /v1/subscribers/redeem_purchase:
     post:
@@ -6760,6 +6803,1572 @@ paths:
       x-source: routes/v2/integrations.ts
       x-scopes:
         - project_configuration:integrations:read_write
+  /v2/projects/{project_id}/virtual_currencies:
+    get:
+      operationId: listVirtualCurrencies
+      tags:
+        - In-app currencies
+      summary: List in-app currencies
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/StartingAfter"
+      responses:
+        "200":
+          description: A page of currencies.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - virtual_currency
+                        project_id:
+                          type: string
+                        code:
+                          type: string
+                        name:
+                          type: string
+                        description:
+                          type:
+                            - string
+                            - "null"
+                        state:
+                          type: string
+                          enum:
+                            - active
+                            - inactive
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: When it was created. Epoch milliseconds.
+                        product_grants:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              object:
+                                type: string
+                                enum:
+                                  - virtual_currency.product_grant
+                              product_ids:
+                                type: array
+                                items:
+                                  type: string
+                              amount:
+                                type: integer
+                              trial_amount:
+                                type: integer
+                              expire_at_cycle_end:
+                                type: boolean
+                            required:
+                              - object
+                              - product_ids
+                              - amount
+                      required:
+                        - object
+                        - project_id
+                        - code
+                        - name
+                        - state
+                        - created_at
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+              example:
+                object: list
+                items:
+                  - object: virtual_currency
+                    project_id: proj18pzzkao
+                    code: GLD
+                    name: Gold
+                    description: null
+                    state: active
+                    created_at: 1790800901115
+                    product_grants:
+                      - object: virtual_currency.product_grant
+                        product_ids:
+                          - prod6n3k1a8w2z
+                        amount: 100
+                        trial_amount: 0
+                        expire_at_cycle_end: false
+                next_page: null
+                url: /v2/projects/{project_id}/virtual_currencies
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/virtual-currencies.ts
+      x-scopes:
+        - project_configuration:virtual_currencies:read
+    post:
+      operationId: createVirtualCurrency
+      tags:
+        - In-app currencies
+      summary: Create an in-app currency
+      description: A product grant credits the balance each time a purchase, renewal or trial start of one of its products is recorded, once per store transaction.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: Letters, digits and underscores, up to 10.
+                  minLength: 1
+                  maxLength: 10
+                  pattern: ^[a-zA-Z0-9_]+$
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 50
+                description:
+                  type:
+                    - string
+                    - "null"
+                product_grants:
+                  type:
+                    - array
+                    - "null"
+                  items:
+                    type: object
+                    properties:
+                      product_ids:
+                        type: array
+                        items:
+                          type: string
+                        minItems: 1
+                      amount:
+                        type: integer
+                        description: Credited per purchase or renewal.
+                        minimum: 1
+                      trial_amount:
+                        type:
+                          - integer
+                          - "null"
+                        minimum: 0
+                        description: Credited when a free trial starts. Default 0.
+                      expire_at_cycle_end:
+                        type:
+                          - boolean
+                          - "null"
+                    required:
+                      - product_ids
+                      - amount
+              required:
+                - code
+                - name
+            example:
+              code: GLD
+              name: Gold
+              product_grants:
+                - product_ids:
+                    - prod6n3k1a8w2z
+                  amount: 100
+      responses:
+        "201":
+          description: The currency.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - virtual_currency
+                  project_id:
+                    type: string
+                  code:
+                    type: string
+                  name:
+                    type: string
+                  description:
+                    type:
+                      - string
+                      - "null"
+                  state:
+                    type: string
+                    enum:
+                      - active
+                      - inactive
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: When it was created. Epoch milliseconds.
+                  product_grants:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - virtual_currency.product_grant
+                        product_ids:
+                          type: array
+                          items:
+                            type: string
+                        amount:
+                          type: integer
+                        trial_amount:
+                          type: integer
+                        expire_at_cycle_end:
+                          type: boolean
+                      required:
+                        - object
+                        - product_ids
+                        - amount
+                required:
+                  - object
+                  - project_id
+                  - code
+                  - name
+                  - state
+                  - created_at
+              example:
+                object: virtual_currency
+                project_id: proj18pzzkao
+                code: GLD
+                name: Gold
+                description: null
+                state: active
+                created_at: 1790800901115
+                product_grants:
+                  - object: virtual_currency.product_grant
+                    product_ids:
+                      - prod6n3k1a8w2z
+                    amount: 100
+                    trial_amount: 0
+                    expire_at_cycle_end: false
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "409":
+          $ref: "#/components/responses/V2Error409"
+      x-source: routes/v2/virtual-currencies.ts
+      x-scopes:
+        - project_configuration:virtual_currencies:read_write
+  /v2/projects/{project_id}/virtual_currencies/{virtual_currency_code}:
+    get:
+      operationId: getVirtualCurrency
+      tags:
+        - In-app currencies
+      summary: Get an in-app currency
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: virtual_currency_code
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The currency code, such as GLD.
+      responses:
+        "200":
+          description: The currency.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - virtual_currency
+                  project_id:
+                    type: string
+                  code:
+                    type: string
+                  name:
+                    type: string
+                  description:
+                    type:
+                      - string
+                      - "null"
+                  state:
+                    type: string
+                    enum:
+                      - active
+                      - inactive
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: When it was created. Epoch milliseconds.
+                  product_grants:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - virtual_currency.product_grant
+                        product_ids:
+                          type: array
+                          items:
+                            type: string
+                        amount:
+                          type: integer
+                        trial_amount:
+                          type: integer
+                        expire_at_cycle_end:
+                          type: boolean
+                      required:
+                        - object
+                        - product_ids
+                        - amount
+                required:
+                  - object
+                  - project_id
+                  - code
+                  - name
+                  - state
+                  - created_at
+              example:
+                object: virtual_currency
+                project_id: proj18pzzkao
+                code: GLD
+                name: Gold
+                description: null
+                state: active
+                created_at: 1790800901115
+                product_grants:
+                  - object: virtual_currency.product_grant
+                    product_ids:
+                      - prod6n3k1a8w2z
+                    amount: 100
+                    trial_amount: 0
+                    expire_at_cycle_end: false
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/virtual-currencies.ts
+      x-scopes:
+        - project_configuration:virtual_currencies:read
+    post:
+      operationId: updateVirtualCurrency
+      tags:
+        - In-app currencies
+      summary: Update an in-app currency
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: virtual_currency_code
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The currency code, such as GLD.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 50
+                description:
+                  type:
+                    - string
+                    - "null"
+                product_grants:
+                  type:
+                    - array
+                    - "null"
+                  items:
+                    type: object
+                    properties:
+                      product_ids:
+                        type: array
+                        items:
+                          type: string
+                        minItems: 1
+                      amount:
+                        type: integer
+                        description: Credited per purchase or renewal.
+                        minimum: 1
+                      trial_amount:
+                        type:
+                          - integer
+                          - "null"
+                        minimum: 0
+                        description: Credited when a free trial starts. Default 0.
+                      expire_at_cycle_end:
+                        type:
+                          - boolean
+                          - "null"
+                    required:
+                      - product_ids
+                      - amount
+            example:
+              name: Gold coins
+      responses:
+        "200":
+          description: The currency.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - virtual_currency
+                  project_id:
+                    type: string
+                  code:
+                    type: string
+                  name:
+                    type: string
+                  description:
+                    type:
+                      - string
+                      - "null"
+                  state:
+                    type: string
+                    enum:
+                      - active
+                      - inactive
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: When it was created. Epoch milliseconds.
+                  product_grants:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - virtual_currency.product_grant
+                        product_ids:
+                          type: array
+                          items:
+                            type: string
+                        amount:
+                          type: integer
+                        trial_amount:
+                          type: integer
+                        expire_at_cycle_end:
+                          type: boolean
+                      required:
+                        - object
+                        - product_ids
+                        - amount
+                required:
+                  - object
+                  - project_id
+                  - code
+                  - name
+                  - state
+                  - created_at
+              example:
+                object: virtual_currency
+                project_id: proj18pzzkao
+                code: GLD
+                name: Gold
+                description: null
+                state: active
+                created_at: 1790800901115
+                product_grants:
+                  - object: virtual_currency.product_grant
+                    product_ids:
+                      - prod6n3k1a8w2z
+                    amount: 100
+                    trial_amount: 0
+                    expire_at_cycle_end: false
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/virtual-currencies.ts
+      x-scopes:
+        - project_configuration:virtual_currencies:read_write
+    delete:
+      operationId: deleteVirtualCurrency
+      tags:
+        - In-app currencies
+      summary: Delete an in-app currency
+      description: Also deletes every customer's balance of it and its ledger.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: virtual_currency_code
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The currency code, such as GLD.
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deleted"
+              example:
+                object: virtual_currency
+                id: GLD
+                deleted_at: 1790801342625
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/virtual-currencies.ts
+      x-scopes:
+        - project_configuration:virtual_currencies:read_write
+  /v2/projects/{project_id}/virtual_currencies/{virtual_currency_code}/actions/archive:
+    post:
+      operationId: archiveVirtualCurrency
+      tags:
+        - In-app currencies
+      summary: Archive an in-app currency
+      description: An archived currency stops granting; customers keep a non-zero balance.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: virtual_currency_code
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The currency code, such as GLD.
+      responses:
+        "200":
+          description: The currency.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - virtual_currency
+                  project_id:
+                    type: string
+                  code:
+                    type: string
+                  name:
+                    type: string
+                  description:
+                    type:
+                      - string
+                      - "null"
+                  state:
+                    type: string
+                    enum:
+                      - active
+                      - inactive
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: When it was created. Epoch milliseconds.
+                  product_grants:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - virtual_currency.product_grant
+                        product_ids:
+                          type: array
+                          items:
+                            type: string
+                        amount:
+                          type: integer
+                        trial_amount:
+                          type: integer
+                        expire_at_cycle_end:
+                          type: boolean
+                      required:
+                        - object
+                        - product_ids
+                        - amount
+                required:
+                  - object
+                  - project_id
+                  - code
+                  - name
+                  - state
+                  - created_at
+              example:
+                object: virtual_currency
+                project_id: proj18pzzkao
+                code: GLD
+                name: Gold
+                description: null
+                state: active
+                created_at: 1790800901115
+                product_grants:
+                  - object: virtual_currency.product_grant
+                    product_ids:
+                      - prod6n3k1a8w2z
+                    amount: 100
+                    trial_amount: 0
+                    expire_at_cycle_end: false
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/virtual-currencies.ts
+      x-scopes:
+        - project_configuration:virtual_currencies:read_write
+  /v2/projects/{project_id}/virtual_currencies/{virtual_currency_code}/actions/unarchive:
+    post:
+      operationId: unarchiveVirtualCurrency
+      tags:
+        - In-app currencies
+      summary: Unarchive an in-app currency
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: virtual_currency_code
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The currency code, such as GLD.
+      responses:
+        "200":
+          description: The currency.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - virtual_currency
+                  project_id:
+                    type: string
+                  code:
+                    type: string
+                  name:
+                    type: string
+                  description:
+                    type:
+                      - string
+                      - "null"
+                  state:
+                    type: string
+                    enum:
+                      - active
+                      - inactive
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: When it was created. Epoch milliseconds.
+                  product_grants:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - virtual_currency.product_grant
+                        product_ids:
+                          type: array
+                          items:
+                            type: string
+                        amount:
+                          type: integer
+                        trial_amount:
+                          type: integer
+                        expire_at_cycle_end:
+                          type: boolean
+                      required:
+                        - object
+                        - product_ids
+                        - amount
+                required:
+                  - object
+                  - project_id
+                  - code
+                  - name
+                  - state
+                  - created_at
+              example:
+                object: virtual_currency
+                project_id: proj18pzzkao
+                code: GLD
+                name: Gold
+                description: null
+                state: active
+                created_at: 1790800901115
+                product_grants:
+                  - object: virtual_currency.product_grant
+                    product_ids:
+                      - prod6n3k1a8w2z
+                    amount: 100
+                    trial_amount: 0
+                    expire_at_cycle_end: false
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/virtual-currencies.ts
+      x-scopes:
+        - project_configuration:virtual_currencies:read_write
+  /v2/projects/{project_id}/customers/{customer_id}/virtual_currencies:
+    get:
+      operationId: listCustomerVirtualCurrencies
+      tags:
+        - In-app currencies
+      summary: List a customer's balances
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/CustomerId"
+        - name: include_empty_balances
+          in: query
+          schema:
+            type: boolean
+          description: Also list currencies with a zero balance.
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/StartingAfter"
+      responses:
+        "200":
+          description: Balances.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - virtual_currency_balance
+                        currency_code:
+                          type: string
+                        balance:
+                          type: integer
+                        name:
+                          type: string
+                        description:
+                          type: string
+                      required:
+                        - object
+                        - currency_code
+                        - balance
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+              example:
+                object: list
+                items:
+                  - object: virtual_currency_balance
+                    currency_code: GLD
+                    balance: 100
+                    name: Gold
+                next_page: null
+                url: /v2/projects/proj18pzzkao/customers/user_1/virtual_currencies
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/virtual-currencies.ts
+      x-scopes:
+        - customer_information:purchases:read
+  /v2/projects/{project_id}/customers/{customer_id}/virtual_currencies/transactions:
+    post:
+      operationId: createVirtualCurrencyTransaction
+      tags:
+        - In-app currencies
+      summary: Credit or spend in-app currency
+      description: Adds a ledger entry per currency. Send an `Idempotency-Key` so a retry does not apply twice. Nothing is applied if any balance would go below zero.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/CustomerId"
+        - name: include_empty_balances
+          in: query
+          schema:
+            type: boolean
+          description: Also list currencies with a zero balance.
+        - name: Idempotency-Key
+          in: header
+          schema:
+            type: string
+          description: Repeating a request with the same key changes nothing the second time.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                adjustments:
+                  type: object
+                  additionalProperties:
+                    type: integer
+                  description: Signed change per currency code. A balance cannot go below zero.
+                reference:
+                  type:
+                    - string
+                    - "null"
+                  description: Your own note, kept in the ledger.
+              required:
+                - adjustments
+            example:
+              adjustments:
+                GLD: -20
+              reference: level 3 unlock
+      responses:
+        "200":
+          description: The balances after the change.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - virtual_currency_balance
+                        currency_code:
+                          type: string
+                        balance:
+                          type: integer
+                        name:
+                          type: string
+                        description:
+                          type: string
+                      required:
+                        - object
+                        - currency_code
+                        - balance
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+              example:
+                object: list
+                items:
+                  - object: virtual_currency_balance
+                    currency_code: GLD
+                    balance: 100
+                    name: Gold
+                next_page: null
+                url: /v2/projects/proj18pzzkao/customers/user_1/virtual_currencies
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/virtual-currencies.ts
+      x-scopes:
+        - customer_information:purchases:read_write
+  /v2/projects/{project_id}/customers/{customer_id}/virtual_currencies/update_balance:
+    post:
+      operationId: updateVirtualCurrencyBalance
+      tags:
+        - In-app currencies
+      summary: Change a balance without a ledger entry
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/CustomerId"
+        - name: include_empty_balances
+          in: query
+          schema:
+            type: boolean
+          description: Also list currencies with a zero balance.
+        - name: Idempotency-Key
+          in: header
+          schema:
+            type: string
+          description: Repeating a request with the same key changes nothing the second time.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                adjustments:
+                  type: object
+                  additionalProperties:
+                    type: integer
+                  description: Signed change per currency code. A balance cannot go below zero.
+                reference:
+                  type:
+                    - string
+                    - "null"
+                  description: Your own note, kept in the ledger.
+              required:
+                - adjustments
+            example:
+              adjustments:
+                GLD: -20
+              reference: level 3 unlock
+      responses:
+        "200":
+          description: The balances after the change.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - virtual_currency_balance
+                        currency_code:
+                          type: string
+                        balance:
+                          type: integer
+                        name:
+                          type: string
+                        description:
+                          type: string
+                      required:
+                        - object
+                        - currency_code
+                        - balance
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+              example:
+                object: list
+                items:
+                  - object: virtual_currency_balance
+                    currency_code: GLD
+                    balance: 100
+                    name: Gold
+                next_page: null
+                url: /v2/projects/proj18pzzkao/customers/user_1/virtual_currencies
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/virtual-currencies.ts
+      x-scopes:
+        - customer_information:purchases:read_write
+  /v2/projects/{project_id}/customers/{customer_id}/actions/transfer:
+    post:
+      operationId: transferCustomerData
+      tags:
+        - Customers
+      summary: Transfer a customer's purchases to another customer
+      description: Moves subscriptions, one-time purchases and their transactions, optionally only those of the listed apps, and records a `TRANSFER` event. The target customer is created if it does not exist.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/CustomerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                target_customer_id:
+                  type: string
+                app_ids:
+                  type:
+                    - array
+                    - "null"
+                  items:
+                    type: string
+              required:
+                - target_customer_id
+            example:
+              target_customer_id: user_2
+      responses:
+        "200":
+          description: Both customers after the transfer.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  source_customer:
+                    $ref: "#/components/schemas/Customer"
+                  target_customer:
+                    $ref: "#/components/schemas/Customer"
+                required:
+                  - source_customer
+                  - target_customer
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/customer-extras.ts
+      x-scopes:
+        - customer_information:customers:read_write
+        - customer_information:subscriptions:read_write
+        - customer_information:purchases:read_write
+  /v2/projects/{project_id}/customers/{customer_id}/customer_center:
+    get:
+      operationId: getCustomerCenterConfig
+      tags:
+        - Customers
+      summary: Get the Customer Center configuration
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/CustomerId"
+        - name: platform
+          in: query
+          schema:
+            type: string
+            enum:
+              - ios
+              - android
+              - macos
+              - web
+              - amazon
+        - name: locale
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The configuration.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - customer_center_config
+                  customer_center:
+                    type: object
+                    additionalProperties: true
+                required:
+                  - object
+                  - customer_center
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/customer-extras.ts
+      x-scopes:
+        - customer_information:customers:read
+  /v2/projects/{project_id}/customer_center_config:
+    post:
+      operationId: setCustomerCenterConfig
+      tags:
+        - Project settings
+      summary: Set the Customer Center configuration
+      description: Stores overrides that are merged, key by key, over the built-in default. Send `null` to go back to the default.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                customer_center:
+                  type:
+                    - object
+                    - "null"
+                  additionalProperties: true
+              required:
+                - customer_center
+            example:
+              customer_center:
+                support:
+                  email: help@example.com
+      responses:
+        "200":
+          description: The merged configuration.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - customer_center_config
+                  customer_center:
+                    type: object
+                    additionalProperties: true
+                required:
+                  - object
+                  - customer_center
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/customer-extras.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/apps/{app_id}/store_kit_config:
+    get:
+      operationId: getStoreKitConfig
+      tags:
+        - Apps
+      summary: Get a StoreKit configuration file
+      description: A `.storekit` file for the products of an App Store app, to test purchases locally in Xcode. Prices come from the Test Store price when set, else 0.99.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/AppId"
+      responses:
+        "200":
+          description: The file contents.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - store_kit_config_file
+                  contents:
+                    type: object
+                    additionalProperties: true
+                required:
+                  - object
+                  - contents
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/customer-extras.ts
+      x-scopes:
+        - project_configuration:apps:read
+  /v2/projects/{project_id}/subscriptions/{subscription_id}/authenticated_management_url:
+    get:
+      operationId: getSubscriptionManagementUrl
+      tags:
+        - Subscriptions
+      summary: Get where the customer manages a subscription
+      description: The App Store subscriptions page or the Google Play page for the subscription. Null for stores without one.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: subscription_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The URL.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - authenticated_management_url
+                  management_url:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - object
+                  - management_url
+              example:
+                object: authenticated_management_url
+                management_url: https://apps.apple.com/account/subscriptions
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/customer-extras.ts
+      x-scopes:
+        - customer_information:subscriptions:read
+  /v2/projects/{project_id}/metrics/revenue:
+    get:
+      operationId: getRevenueMetric
+      tags:
+        - Metrics
+      summary: Revenue over a date range
+      description: Production revenue from the transaction ledger, in USD at the purchase-date rate.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Inclusive.
+        - name: currency
+          in: query
+          schema:
+            type: string
+          description: Only USD for now.
+        - name: revenue_type
+          in: query
+          schema:
+            type: string
+            enum:
+              - revenue
+              - revenue_net_of_taxes
+              - proceeds
+          description: Proceeds subtract the estimated store commission. We hold no tax data, so net of taxes equals revenue.
+      responses:
+        "200":
+          description: The total.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - revenue_metric
+                  start_date:
+                    type: string
+                  end_date:
+                    type: string
+                  currency:
+                    type: string
+                  value:
+                    type: number
+                  revenue_type:
+                    type: string
+                    enum:
+                      - revenue
+                      - revenue_net_of_taxes
+                      - proceeds
+                required:
+                  - object
+                  - start_date
+                  - end_date
+                  - currency
+                  - value
+                  - revenue_type
+              example:
+                object: revenue_metric
+                start_date: 2026-09-01
+                end_date: 2026-09-30
+                currency: USD
+                value: 12345.67
+                revenue_type: revenue
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/metrics.ts
+      x-scopes:
+        - charts_metrics:overview:read
+  /v2/projects/{project_id}/audit_logs:
+    get:
+      operationId: listAuditLogs
+      tags:
+        - Audit log
+      summary: List audit log entries
+      description: Who changed what, newest first. Every successful write through API v2 is recorded with the actor (a user, a secret key, or an OAuth client). Reads and request bodies are never recorded.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/StartingAfter"
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Inclusive.
+      responses:
+        "200":
+          description: A page of entries.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - audit_log
+                        id:
+                          type: string
+                        project_id:
+                          type: string
+                        action_type:
+                          type: string
+                        target_type:
+                          type: string
+                        target_identifier:
+                          type: string
+                        actor_type:
+                          type: string
+                          enum:
+                            - user
+                            - system
+                            - api_key
+                            - oauth_client
+                            - service_account
+                        actor_identifier:
+                          type: string
+                        occurred_at:
+                          type: integer
+                          format: int64
+                          description: When it happened. Epoch milliseconds.
+                        additional_data:
+                          type: object
+                          additionalProperties: true
+                      required:
+                        - object
+                        - id
+                        - project_id
+                        - action_type
+                        - target_type
+                        - target_identifier
+                        - actor_type
+                        - actor_identifier
+                        - occurred_at
+                        - additional_data
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+              example:
+                object: list
+                items:
+                  - object: audit_log
+                    id: log1ab2c3d4e5
+                    project_id: proj18pzzkao
+                    action_type: entitlement_created
+                    target_type: entitlement
+                    target_identifier: entl1v0bp6r0qs
+                    actor_type: api_key
+                    actor_identifier: key_08ec817fce
+                    occurred_at: 1790801342634
+                    additional_data:
+                      method: POST
+                      status: 201
+                next_page: null
+                url: /v2/projects/{project_id}/audit_logs
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/audit.ts
+      x-scopes:
+        - project_configuration:audit_logs:read
   /auth/config:
     get:
       operationId: authConfig

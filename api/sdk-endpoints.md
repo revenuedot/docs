@@ -21,7 +21,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Offerings (SDK)**: [Get offerings](#get-offerings), [Get offerings without a user](#get-offerings-without-a-user), [Test Store product details](#test-store-product-details)
 - **Identity**: [Log in (identify)](#log-in-identify), [Alias two app user ids](#alias-two-app-user-ids)
 - **Attributes**: [Set customer attributes](#set-customer-attributes)
-- **SDK support**: [Intro offer eligibility (StoreKit 1)](#intro-offer-eligibility-storekit-1), [Sign a promotional offer (iOS)](#sign-a-promotional-offer-ios), [Attribution data (deprecated iOS call)](#attribution-data-deprecated-ios-call), [Apple AdServices token](#apple-adservices-token), [SDK health report availability](#sdk-health-report-availability), [SDK health report](#sdk-health-report), [Product to entitlement mapping (offline entitlements)](#product-to-entitlement-mapping-offline-entitlements), [Customer Center configuration (not built)](#customer-center-configuration-not-built), [Customer Center support ticket (not built)](#customer-center-support-ticket-not-built), [Virtual currency balances (not built)](#virtual-currency-balances-not-built), [Redeem a web purchase (not available)](#redeem-a-web-purchase-not-available), [Register an Apple external purchase token (iOS)](#register-an-apple-external-purchase-token-ios), [Rewarded ad verification (not available)](#rewarded-ad-verification-not-available), [Amazon receipt details (not supported)](#amazon-receipt-details-not-supported), [Paywall workflows (web SDK)](#paywall-workflows-web-sdk), [One paywall workflow (web SDK)](#one-paywall-workflow-web-sdk), [Restore eligibility (StoreKit 2)](#restore-eligibility-storekit-2), [Remote config (none yet)](#remote-config-none-yet), [Remote config (none yet)](#remote-config-none-yet), [SDK paywall and feature events (accepted, not stored)](#sdk-paywall-and-feature-events-accepted-not-stored), [SDK diagnostics (accepted, not stored)](#sdk-diagnostics-accepted-not-stored)
+- **SDK support**: [Intro offer eligibility (StoreKit 1)](#intro-offer-eligibility-storekit-1), [Sign a promotional offer (iOS)](#sign-a-promotional-offer-ios), [Attribution data (deprecated iOS call)](#attribution-data-deprecated-ios-call), [Apple AdServices token](#apple-adservices-token), [SDK health report availability](#sdk-health-report-availability), [SDK health report](#sdk-health-report), [Product to entitlement mapping (offline entitlements)](#product-to-entitlement-mapping-offline-entitlements), [Customer Center configuration](#customer-center-configuration), [Customer Center support ticket (not built)](#customer-center-support-ticket-not-built), [Virtual currency balances](#virtual-currency-balances), [Redeem a web purchase (not available)](#redeem-a-web-purchase-not-available), [Register an Apple external purchase token (iOS)](#register-an-apple-external-purchase-token-ios), [Rewarded ad verification (not available)](#rewarded-ad-verification-not-available), [Amazon receipt details (not supported)](#amazon-receipt-details-not-supported), [Paywall workflows (web SDK)](#paywall-workflows-web-sdk), [One paywall workflow (web SDK)](#one-paywall-workflow-web-sdk), [Restore eligibility (StoreKit 2)](#restore-eligibility-storekit-2), [Remote config (none yet)](#remote-config-none-yet), [Remote config (none yet)](#remote-config-none-yet), [SDK paywall and feature events (accepted, not stored)](#sdk-paywall-and-feature-events-accepted-not-stored), [SDK diagnostics (accepted, not stored)](#sdk-diagnostics-accepted-not-stored)
 - **Web Billing**: [Web offering products](#web-offering-products), [Start a hosted web checkout (not available)](#start-a-hosted-web-checkout-not-available), [Web Billing purchase (not available)](#web-billing-purchase-not-available), [Prepare a Web Billing checkout (not available)](#prepare-a-web-billing-checkout-not-available), [Start a Web Billing checkout (not available)](#start-a-web-billing-checkout-not-available), [Web Billing checkout status](#web-billing-checkout-status), [Refresh Web Billing checkout pricing](#refresh-web-billing-checkout-pricing), [Complete a Web Billing checkout](#complete-a-web-billing-checkout), [Web checkout branding](#web-checkout-branding)
 - **Store notifications**: [App Store Server Notifications v2](#app-store-server-notifications-v2), [Google Play real-time developer notifications (Pub/Sub push)](#google-play-real-time-developer-notifications-pubsub-push)
 - **Response signing**: [Public key for response signatures](#public-key-for-response-signatures)
@@ -885,11 +885,11 @@ Example 200 response:
 }
 ```
 
-### Customer Center configuration (not built)
+### Customer Center configuration
 
 `GET /v1/customercenter/{app_user_id}` · Auth: public app key
 
-Always 404 with code 7259: the SDK returns an error and the Customer Center screen shows its error state. Customer Center configuration is planned for Tier 2.
+The project's Customer Center configuration: appearance, the management and no-active screens with their help paths, localized strings and the support email. A built-in default merged with what the project stored through `POST /v2/projects/{project_id}/customer_center_config`.
 
 **Path parameters**
 
@@ -905,7 +905,26 @@ curl -s "$REVENUEDOT_URL/v1/customercenter/user_1" -H "Authorization: Bearer $PU
 
 **Responses**
 
-- **404**: Not configured. Returns [V1Error](#v1error).
+- **200**: The configuration.
+
+Example 200 response:
+
+```json
+{
+  "customer_center": {
+    "screens": {
+      "MANAGEMENT": {
+        "type": "MANAGEMENT",
+        "title": "Manage subscription",
+        "paths": []
+      }
+    },
+    "support": {
+      "email": "support@example.com"
+    }
+  }
+}
+```
 
 ### Customer Center support ticket (not built)
 
@@ -929,9 +948,11 @@ Example 200 response:
 }
 ```
 
-### Virtual currency balances (not built)
+### Virtual currency balances
 
 `GET /v1/subscribers/{app_user_id}/virtual_currencies` · Auth: public app key
+
+The customer's in-app currency balances by code. A customer the server has not seen has none.
 
 **Path parameters**
 
@@ -947,13 +968,20 @@ curl -s "$REVENUEDOT_URL/v1/subscribers/user_1/virtual_currencies" -H "Authoriza
 
 **Responses**
 
-- **200**: Empty balances.
+- **200**: Balances.
 
 Example 200 response:
 
 ```json
 {
-  "virtual_currencies": {}
+  "virtual_currencies": {
+    "GLD": {
+      "balance": 700,
+      "name": "Gold",
+      "code": "GLD",
+      "description": null
+    }
+  }
 }
 ```
 

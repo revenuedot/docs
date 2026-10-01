@@ -46,6 +46,7 @@ Permissions the operations use:
 - `project_configuration:api_keys:read_write`
 - `project_configuration:apps:read`
 - `project_configuration:apps:read_write`
+- `project_configuration:audit_logs:read`
 - `project_configuration:collaborators:read`
 - `project_configuration:entitlements:read`
 - `project_configuration:entitlements:read_write`
@@ -59,6 +60,8 @@ Permissions the operations use:
 - `project_configuration:products:read_write`
 - `project_configuration:projects:read`
 - `project_configuration:projects:read_write`
+- `project_configuration:virtual_currencies:read`
+- `project_configuration:virtual_currencies:read_write`
 
 Each operation's section on the reference pages lists the permissions it needs. A missing permission answers 403 `authorization_error` and names it.
 
