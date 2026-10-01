@@ -201,6 +201,12 @@ tags:
   - name: Hosted pages
     description: The public pages RevenueDot serves for purchase links, funnels and redemption links, and the three calls those pages make. No API key. They live under `/pay` on the API host, at the root of `REVENUEDOT_PAY_URL` when it is a host of its own, and at the root of a verified custom domain.
     x-page: extensions
+  - name: RevenueDot AI
+    description: "The in-app assistant: conversations, streaming answers, attachments (screenshots and .storekit files), @ mentions, what the assistant may do in the project, and the first-sale card. See [RevenueDot AI](../docs/guides/revenuedot-ai.md)."
+    x-page: extensions
+  - name: Share cards
+    description: Public pages and images RevenueDot makes for sharing, such as the first-sale card. No API key; the token in the URL is the only key.
+    x-page: extensions
   - name: OAuth for MCP clients
     description: OAuth 2.1 with PKCE so MCP clients can connect to one project without copying a key.
     x-page: extensions
@@ -30318,6 +30324,1456 @@ paths:
         "429":
           description: Too many events from this address.
       x-source: routes/pay.ts
+  /v2/projects/{project_id}/ai:
+    get:
+      operationId: getAiStatus
+      tags:
+        - RevenueDot AI
+      summary: What RevenueDot AI can do here
+      description: The model, the runtime, the project's AI setting, the caller's role and what follows from them, and today's usage against the caps.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: Status.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - ai_status
+                  configured:
+                    type: boolean
+                    description: A model is configured on this server.
+                  available:
+                    type: boolean
+                    description: The model is configured and the project allows the assistant.
+                  provider:
+                    type:
+                      - string
+                      - "null"
+                    description: Workers AI, Anthropic or OpenAI.
+                  model:
+                    type:
+                      - string
+                      - "null"
+                    description: The model id, e.g. @cf/moonshotai/kimi-k2.6, claude-opus-5-5, gpt-6-astra.
+                  runtime:
+                    type: string
+                    enum:
+                      - durable_object
+                      - sse
+                    description: "`durable_object` on RevenueDot Cloud (one Cloudflare Agents Durable Object per conversation, WebSocket); `sse` on self-host (Postgres, Server-Sent Events)."
+                  access:
+                    type: string
+                    enum:
+                      - read_write
+                      - read_only
+                      - disabled
+                  role:
+                    type: string
+                    description: The caller's role (admin, developer, viewer) or `api_key`.
+                  can_read:
+                    type: boolean
+                  can_write:
+                    type: boolean
+                    description: Write tools are offered (they still ask for approval).
+                  reason:
+                    type:
+                      - string
+                      - "null"
+                    description: Why the assistant cannot read or write, in words the dashboard shows.
+                  greeting_name:
+                    type:
+                      - string
+                      - "null"
+                    description: The first name the empty page greets.
+                  tools:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        title:
+                          type: string
+                        write:
+                          type: boolean
+                    description: The tools this person would be offered.
+                  usage:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      user:
+                        type: object
+                        properties:
+                          turns:
+                            type: integer
+                          tokens:
+                            type: integer
+                      project:
+                        type: object
+                        properties:
+                          turns:
+                            type: integer
+                          tokens:
+                            type: integer
+                      server:
+                        type: object
+                        properties:
+                          turns:
+                            type: integer
+                          tokens:
+                            type: integer
+                    description: Today's turns and tokens (UTC). Null for API keys.
+                  caps:
+                    type: object
+                    properties:
+                      userPerMinute:
+                        type: integer
+                      userTurnsPerDay:
+                        type: integer
+                      userTokensPerDay:
+                        type: integer
+                      projectTurnsPerDay:
+                        type: integer
+                      projectTokensPerDay:
+                        type: integer
+                      serverTurnsPerDay:
+                        type: integer
+                      serverTokensPerDay:
+                        type: integer
+                required:
+                  - object
+                  - configured
+                  - available
+                  - runtime
+                  - access
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/assistant.ts
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ai/settings:
+    post:
+      operationId: updateAiSettings
+      tags:
+        - RevenueDot AI
+      summary: Set what RevenueDot AI may do in the project
+      description: "`read_write`: reads, and writes after the user approves each one in the chat. `read_only`: no write tools. `disabled`: no assistant. Dashboard users must be admins."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                access:
+                  type: string
+                  enum:
+                    - read_write
+                    - read_only
+                    - disabled
+              required:
+                - access
+            example:
+              access: read_only
+      responses:
+        "200":
+          description: Saved.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - ai_settings
+                  access:
+                    type: string
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/assistant.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ai/conversations:
+    get:
+      operationId: listAiConversations
+      tags:
+        - RevenueDot AI
+      summary: List your conversations, newest first
+      security:
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: q
+          in: query
+          schema:
+            type: string
+            description: Words in the title.
+      responses:
+        "200":
+          description: Conversations.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - ai_conversation
+                        id:
+                          type: string
+                        title:
+                          type: string
+                          description: The first question, or the name given with rename.
+                        runtime:
+                          type: string
+                          enum:
+                            - durable_object
+                            - postgres
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: Created. Epoch milliseconds.
+                        updated_at:
+                          type: integer
+                          format: int64
+                          description: Last activity. Epoch milliseconds.
+                      required:
+                        - object
+                        - id
+                        - title
+                        - runtime
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/assistant.ts
+      x-revenuedot-extension: true
+    post:
+      operationId: createAiConversation
+      tags:
+        - RevenueDot AI
+      summary: Start a conversation
+      security:
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type:
+                    - string
+                    - "null"
+                  description: Optional; the first question becomes the title otherwise.
+            example: {}
+      responses:
+        "201":
+          description: The conversation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - ai_conversation
+                  id:
+                    type: string
+                  title:
+                    type: string
+                    description: The first question, or the name given with rename.
+                  runtime:
+                    type: string
+                    enum:
+                      - durable_object
+                      - postgres
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  updated_at:
+                    type: integer
+                    format: int64
+                    description: Last activity. Epoch milliseconds.
+                required:
+                  - object
+                  - id
+                  - title
+                  - runtime
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "503":
+          $ref: "#/components/responses/V2Error503"
+      x-source: routes/v2/assistant.ts
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ai/conversations/{conversation_id}:
+    get:
+      operationId: getAiConversation
+      tags:
+        - RevenueDot AI
+      summary: Get a conversation with its messages
+      security:
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: A conversation id (aic...).
+      responses:
+        "200":
+          description: The conversation.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - type: object
+                    properties:
+                      object:
+                        type: string
+                        enum:
+                          - ai_conversation
+                      id:
+                        type: string
+                      title:
+                        type: string
+                        description: The first question, or the name given with rename.
+                      runtime:
+                        type: string
+                        enum:
+                          - durable_object
+                          - postgres
+                      created_at:
+                        type: integer
+                        format: int64
+                        description: Created. Epoch milliseconds.
+                      updated_at:
+                        type: integer
+                        format: int64
+                        description: Last activity. Epoch milliseconds.
+                    required:
+                      - object
+                      - id
+                      - title
+                      - runtime
+                  - type: object
+                    properties:
+                      messages:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            role:
+                              type: string
+                              enum:
+                                - user
+                                - assistant
+                            parts:
+                              type: array
+                              items:
+                                type: object
+                                description: "AI SDK UI message parts: `text`, `file`, `tool-<name>` (with `state`, `input`, `output`, `approval`), `step-start`."
+                            metadata:
+                              type: object
+                              properties:
+                                mentions:
+                                  type: array
+                                  items:
+                                    type: object
+                                    properties:
+                                      type:
+                                        type: string
+                                        enum:
+                                          - customer
+                                          - offering
+                                          - chart
+                                      id:
+                                        type: string
+                                      label:
+                                        type: string
+                                    required:
+                                      - type
+                                      - id
+                          required:
+                            - id
+                            - role
+                            - parts
+                        description: The transcript (self-host runtime; empty for Durable Object conversations, whose messages live in the object).
+                      streaming:
+                        type: boolean
+                        description: An answer is being written now; GET …/stream resumes it.
+                      last_stream:
+                        type:
+                          - object
+                          - "null"
+                        properties:
+                          status:
+                            type: string
+                            enum:
+                              - done
+                              - error
+                              - stopped
+                              - interrupted
+                          error:
+                            type:
+                              - string
+                              - "null"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/assistant.ts
+      x-revenuedot-extension: true
+    post:
+      operationId: renameAiConversation
+      tags:
+        - RevenueDot AI
+      summary: Rename a conversation
+      security:
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: A conversation id (aic...).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+              required:
+                - title
+            example:
+              title: September churn
+      responses:
+        "200":
+          description: The conversation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - ai_conversation
+                  id:
+                    type: string
+                  title:
+                    type: string
+                    description: The first question, or the name given with rename.
+                  runtime:
+                    type: string
+                    enum:
+                      - durable_object
+                      - postgres
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  updated_at:
+                    type: integer
+                    format: int64
+                    description: Last activity. Epoch milliseconds.
+                required:
+                  - object
+                  - id
+                  - title
+                  - runtime
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/assistant.ts
+      x-revenuedot-extension: true
+    delete:
+      operationId: deleteAiConversation
+      tags:
+        - RevenueDot AI
+      summary: Delete a conversation
+      description: Deletes the conversation and its messages (on Cloud, its Durable Object). Changes the assistant made stay, and stay in the audit log.
+      security:
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: A conversation id (aic...).
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - ai_conversation
+                  id:
+                    type: string
+                  deleted:
+                    type: boolean
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/assistant.ts
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ai/conversations/{conversation_id}/chat:
+    post:
+      operationId: chatAiConversation
+      tags:
+        - RevenueDot AI
+      summary: Send a message and stream the answer (self-host)
+      description: |-
+        Self-host runtime. Send a user message, or the last assistant message back with approval decisions on its `tool-<name>` parts (`approval: { id, approved }`): only the decisions are taken, everything else comes from the stored transcript.
+
+        `trigger: regenerate-message` drops the last answer and asks again. Write tools always stop at `tool-approval-request` until the user approves, and each approval runs its write once: sending it again, or from two tabs at once, does not repeat the change. A refused turn (caps, AI setting) answers a stream with one `error` chunk.
+
+        Writes with the session cookie must come from the dashboard's own origin; a request a browser marks `Sec-Fetch-Site: cross-site` or `same-site` is refused with 403.
+
+        On RevenueDot Cloud conversations run in Durable Objects instead: connect a WebSocket to `/agents/assistant-agent/{conversation_id}` (Cloudflare Agents `useAgentChat`).
+      security:
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: A conversation id (aic...).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                trigger:
+                  type: string
+                  enum:
+                    - submit-message
+                    - regenerate-message
+                messageId:
+                  type: string
+                message:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    role:
+                      type: string
+                      enum:
+                        - user
+                        - assistant
+                    parts:
+                      type: array
+                      items:
+                        type: object
+                        description: "AI SDK UI message parts: `text`, `file`, `tool-<name>` (with `state`, `input`, `output`, `approval`), `step-start`."
+                    metadata:
+                      type: object
+                      properties:
+                        mentions:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              type:
+                                type: string
+                                enum:
+                                  - customer
+                                  - offering
+                                  - chart
+                              id:
+                                type: string
+                              label:
+                                type: string
+                            required:
+                              - type
+                              - id
+                  required:
+                    - id
+                    - role
+                    - parts
+            example:
+              trigger: submit-message
+              message:
+                id: u1
+                role: user
+                parts:
+                  - type: text
+                    text: How is revenue doing this month?
+                metadata:
+                  mentions:
+                    - type: chart
+                      id: mrr
+                      label: MRR
+      responses:
+        "200":
+          description: The answer, streamed.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: "AI SDK UI message stream: `data: <chunk JSON>` lines (start, text-delta, tool-input-available, tool-approval-request, tool-output-available, error, finish ...), ending with `data: [DONE]`."
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "423":
+          description: An answer is still being written in this conversation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V2Error"
+        "503":
+          $ref: "#/components/responses/V2Error503"
+      x-source: routes/v2/assistant.ts
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ai/conversations/{conversation_id}/stream:
+    get:
+      operationId: resumeAiConversation
+      tags:
+        - RevenueDot AI
+      summary: Resume the answer being written
+      description: Replays the answer's chunks stored so far, then follows it to the end. A stream with no new chunk for 60 seconds is marked interrupted.
+      security:
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: A conversation id (aic...).
+      responses:
+        "200":
+          description: The answer from its first chunk.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: "AI SDK UI message stream: `data: <chunk JSON>` lines (start, text-delta, tool-input-available, tool-approval-request, tool-output-available, error, finish ...), ending with `data: [DONE]`."
+        "204":
+          description: Nothing is being written.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/assistant.ts
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ai/conversations/{conversation_id}/stop:
+    post:
+      operationId: stopAiConversation
+      tags:
+        - RevenueDot AI
+      summary: Stop the answer being written
+      security:
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: A conversation id (aic...).
+      responses:
+        "200":
+          description: Stopped.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - ai_conversation
+                  id:
+                    type: string
+                  stopped:
+                    type: boolean
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/assistant.ts
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ai/files:
+    post:
+      operationId: uploadAiFile
+      tags:
+        - RevenueDot AI
+      summary: Attach an image or a .storekit file
+      description: The raw file is the body. PNG, JPEG, WebP or GIF up to 5 MB (`Content-Type` names the type and the bytes must be that type), or a .storekit file up to 1 MB (at most 500 products are read). 60 uploads an hour per person. Reference it in a message as a `file` part with the returned `url`; at most 4 files per message.
+      security:
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: name
+          in: query
+          schema:
+            type: string
+            description: File name; a name ending in .storekit is read as a StoreKit configuration.
+      requestBody:
+        required: true
+        content:
+          image/png:
+            schema:
+              type: string
+              format: binary
+          image/jpeg:
+            schema:
+              type: string
+              format: binary
+          image/webp:
+            schema:
+              type: string
+              format: binary
+          image/gif:
+            schema:
+              type: string
+              format: binary
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "201":
+          description: The file.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - ai_file
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  media_type:
+                    type: string
+                  size:
+                    type: integer
+                  url:
+                    type: string
+                    description: Where the file is read back (a project member's session).
+                  storekit:
+                    type: object
+                    properties:
+                      formatVersion:
+                        type:
+                          - integer
+                          - "null"
+                      storefront:
+                        type:
+                          - string
+                          - "null"
+                      locale:
+                        type:
+                          - string
+                          - "null"
+                      products:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            productId:
+                              type: string
+                            referenceName:
+                              type: string
+                            type:
+                              type: string
+                              enum:
+                                - consumable
+                                - non_consumable
+                                - subscription
+                                - non_renewing_subscription
+                            price:
+                              type:
+                                - number
+                                - "null"
+                            duration:
+                              type:
+                                - string
+                                - "null"
+                              description: ISO 8601 period of an auto-renewing subscription.
+                            group:
+                              type:
+                                - string
+                                - "null"
+                            groupLevel:
+                              type:
+                                - integer
+                                - "null"
+                            familyShareable:
+                              type: boolean
+                            displayName:
+                              type:
+                                - string
+                                - "null"
+                            description:
+                              type:
+                                - string
+                                - "null"
+                            locales:
+                              type: array
+                              items:
+                                type: string
+                            introOffer:
+                              type:
+                                - object
+                                - "null"
+                              properties:
+                                mode:
+                                  type: string
+                                  enum:
+                                    - free_trial
+                                    - pay_as_you_go
+                                    - pay_up_front
+                                period:
+                                  type:
+                                    - string
+                                    - "null"
+                                periods:
+                                  type: integer
+                                price:
+                                  type:
+                                    - number
+                                    - "null"
+                            promotionalOffers:
+                              type: integer
+                            offerCodes:
+                              type: integer
+                      groups:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type:
+                                - string
+                                - "null"
+                            name:
+                              type: string
+                            products:
+                              type: array
+                              items:
+                                type: string
+                      warnings:
+                        type: array
+                        items:
+                          type: string
+                    description: "Present for a .storekit file: what it holds."
+                required:
+                  - object
+                  - id
+                  - url
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "429":
+          $ref: "#/components/responses/V2Error429"
+        "503":
+          $ref: "#/components/responses/V2Error503"
+      x-source: routes/v2/assistant.ts
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ai/files/{file_id}:
+    get:
+      operationId: getAiFile
+      tags:
+        - RevenueDot AI
+      summary: Read an attachment back
+      description: Any member of the project (and the assistant, for an attached .storekit file). Secret API keys get 403.
+      security:
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: file_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: A file id (aif...).
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum:
+              - text
+              - storekit
+            description: "`text`: the file as text; `storekit`: the parsed StoreKit configuration. Leave out for the bytes."
+      responses:
+        "200":
+          description: The image bytes, or JSON for `format`.
+          content:
+            image/png: {}
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  text:
+                    type: string
+                  storekit:
+                    type: object
+                    properties:
+                      formatVersion:
+                        type:
+                          - integer
+                          - "null"
+                      storefront:
+                        type:
+                          - string
+                          - "null"
+                      locale:
+                        type:
+                          - string
+                          - "null"
+                      products:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            productId:
+                              type: string
+                            referenceName:
+                              type: string
+                            type:
+                              type: string
+                              enum:
+                                - consumable
+                                - non_consumable
+                                - subscription
+                                - non_renewing_subscription
+                            price:
+                              type:
+                                - number
+                                - "null"
+                            duration:
+                              type:
+                                - string
+                                - "null"
+                              description: ISO 8601 period of an auto-renewing subscription.
+                            group:
+                              type:
+                                - string
+                                - "null"
+                            groupLevel:
+                              type:
+                                - integer
+                                - "null"
+                            familyShareable:
+                              type: boolean
+                            displayName:
+                              type:
+                                - string
+                                - "null"
+                            description:
+                              type:
+                                - string
+                                - "null"
+                            locales:
+                              type: array
+                              items:
+                                type: string
+                            introOffer:
+                              type:
+                                - object
+                                - "null"
+                              properties:
+                                mode:
+                                  type: string
+                                  enum:
+                                    - free_trial
+                                    - pay_as_you_go
+                                    - pay_up_front
+                                period:
+                                  type:
+                                    - string
+                                    - "null"
+                                periods:
+                                  type: integer
+                                price:
+                                  type:
+                                    - number
+                                    - "null"
+                            promotionalOffers:
+                              type: integer
+                            offerCodes:
+                              type: integer
+                      groups:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type:
+                                - string
+                                - "null"
+                            name:
+                              type: string
+                            products:
+                              type: array
+                              items:
+                                type: string
+                      warnings:
+                        type: array
+                        items:
+                          type: string
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/assistant.ts
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ai/storekit:
+    post:
+      operationId: parseStoreKit
+      tags:
+        - RevenueDot AI
+      summary: Read a .storekit file
+      description: Parses a StoreKit configuration file (Xcode's JSON, format versions 1 to 4) and returns its products without saving anything.
+      security:
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: The .storekit file's JSON.
+      responses:
+        "200":
+          description: What the file holds.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - type: object
+                    properties:
+                      object:
+                        type: string
+                        enum:
+                          - storekit_config
+                  - type: object
+                    properties:
+                      formatVersion:
+                        type:
+                          - integer
+                          - "null"
+                      storefront:
+                        type:
+                          - string
+                          - "null"
+                      locale:
+                        type:
+                          - string
+                          - "null"
+                      products:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            productId:
+                              type: string
+                            referenceName:
+                              type: string
+                            type:
+                              type: string
+                              enum:
+                                - consumable
+                                - non_consumable
+                                - subscription
+                                - non_renewing_subscription
+                            price:
+                              type:
+                                - number
+                                - "null"
+                            duration:
+                              type:
+                                - string
+                                - "null"
+                              description: ISO 8601 period of an auto-renewing subscription.
+                            group:
+                              type:
+                                - string
+                                - "null"
+                            groupLevel:
+                              type:
+                                - integer
+                                - "null"
+                            familyShareable:
+                              type: boolean
+                            displayName:
+                              type:
+                                - string
+                                - "null"
+                            description:
+                              type:
+                                - string
+                                - "null"
+                            locales:
+                              type: array
+                              items:
+                                type: string
+                            introOffer:
+                              type:
+                                - object
+                                - "null"
+                              properties:
+                                mode:
+                                  type: string
+                                  enum:
+                                    - free_trial
+                                    - pay_as_you_go
+                                    - pay_up_front
+                                period:
+                                  type:
+                                    - string
+                                    - "null"
+                                periods:
+                                  type: integer
+                                price:
+                                  type:
+                                    - number
+                                    - "null"
+                            promotionalOffers:
+                              type: integer
+                            offerCodes:
+                              type: integer
+                      groups:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type:
+                                - string
+                                - "null"
+                            name:
+                              type: string
+                            products:
+                              type: array
+                              items:
+                                type: string
+                      warnings:
+                        type: array
+                        items:
+                          type: string
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/assistant.ts
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ai/mentions:
+    get:
+      operationId: listAiMentions
+      tags:
+        - RevenueDot AI
+      summary: Suggestions for @ mentions
+      description: Up to five customers (app user ids starting with `q`), offerings and charts, each limited to what the caller's role can read.
+      security:
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: q
+          in: query
+          schema:
+            type: string
+            description: "What was typed after @: the start of an app user id, an offering, or a chart name."
+      responses:
+        "200":
+          description: Suggestions.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          enum:
+                            - customer
+                            - offering
+                            - chart
+                        id:
+                          type: string
+                        label:
+                          type: string
+                        detail:
+                          type: string
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/assistant.ts
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ai/first_sale:
+    get:
+      operationId: getFirstSaleCard
+      tags:
+        - RevenueDot AI
+      summary: The project's first-sale card
+      description: Made when the project's first paid production purchase arrives (within 14 days of it; older projects get none). The card holds no personal data.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: "The card, or `card: null`."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - first_sale
+                  card:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      id:
+                        type: string
+                        description: The share token.
+                      project_name:
+                        type: string
+                      product:
+                        type: string
+                      store:
+                        type: string
+                      country:
+                        type:
+                          - string
+                          - "null"
+                      amount:
+                        type:
+                          - number
+                          - "null"
+                      currency:
+                        type:
+                          - string
+                          - "null"
+                      revenue_usd:
+                        type: number
+                      purchased_at:
+                        type: integer
+                        format: int64
+                        description: The first paid production purchase. Epoch milliseconds.
+                      share_url:
+                        type: string
+                        description: Public page with Open Graph tags.
+                      image_url:
+                        type: string
+                        description: The 1200×630 SVG card.
+                      dismissed:
+                        type: boolean
+                        description: Hidden on the Overview.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/assistant.ts
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ai/first_sale/dismiss:
+    post:
+      operationId: dismissFirstSaleCard
+      tags:
+        - RevenueDot AI
+      summary: Hide the first-sale card on the Overview
+      description: Hides it for everyone in the project, so admins and developers only.
+      security:
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: Hidden.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - first_sale
+                  dismissed:
+                    type: boolean
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/assistant.ts
+      x-revenuedot-extension: true
+  /share/first-sale/{token}:
+    get:
+      operationId: shareFirstSale
+      tags:
+        - Share cards
+      summary: Public first-sale page or image
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+            description: The card's token; add `.svg` for the 1200×630 image.
+      responses:
+        "200":
+          description: An HTML page with Open Graph tags, or the SVG card.
+          content:
+            text/html:
+              schema:
+                type: string
+            image/svg+xml:
+              schema:
+                type: string
+        "404":
+          description: Unknown card.
+      x-source: routes/share.ts
+      x-revenuedot-extension: true
   /auth/config:
     get:
       operationId: authConfig
