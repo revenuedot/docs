@@ -23,7 +23,7 @@ Open **Project settings** in the sidebar. The tabs are **General**, **AI feature
 | **Allowlisted app user IDs** | Only customers with one of the listed app user IDs (up to 500, any alias counts) get entitlements and currency from sandbox purchases. |
 | **Nobody** | Sandbox purchases never unlock entitlements or credit currency. |
 
-The server enforces it. A sandbox purchase by someone outside the setting is still recorded and still sent to your webhooks, so you can see it, but customer info shows no entitlement for it, API v2 `active_entitlements` leaves it out, and product grants credit no currency. Production purchases are never affected.
+The server enforces it. A sandbox purchase by someone outside the setting is still recorded and still sent to your webhooks, so you can see it, but customer info shows no entitlement for it, API v2 `active_entitlements` leaves it out (its subscription shows `gives_access: false`), and product grants credit no currency. Production purchases are never affected.
 
 Use **Allowlisted app user IDs** when people outside your team can reach sandbox purchases, for example through a TestFlight build that anyone with the link can install.
 
@@ -35,7 +35,7 @@ curl -X POST https://api.revenuedot.app/v2/projects/$PROJECT_ID \
 
 ### Transfer project ownership
 
-Every project has one **owner**: the person who created it, or the person it was handed to. Only the owner can transfer the project, and only to a collaborator who already has the **Admin** role. Click **Transfer ownership**, pick the admin and type the project name. You stay an admin. You both get an email, and the audit log records it. If the owner has left the project, any admin can transfer it.
+Every project has one **owner**: the person who created it, or the person it was handed to. Only the owner can transfer the project, and only to a collaborator who already has the **Admin** role. Click **Transfer ownership**, pick the admin and type the project name. You stay an admin. You both get an email, and the audit log records it. The owner always stays an Admin member: nobody can remove or demote them, and they transfer the project before they leave. If the owner's account is deleted, any admin can transfer the project.
 
 ### Delete project
 
@@ -58,8 +58,9 @@ API: `GET` and `POST /v2/projects/{project_id}/brand`, and `/v2/projects/{projec
 Block an app user ID when someone abuses refunds, shares one account widely or uses forged receipts. A blocked customer **loses access to paid features on every platform at once**:
 
 - Customer info has no entitlements, in the SDK, through a subscriber access token and in REST API v1.
-- API v2 `active_entitlements` is empty, and targeting and audiences see no entitlements.
+- API v2 `active_entitlements` is empty, their subscriptions show `gives_access: false`, and targeting and audiences see no entitlements.
 - New purchases credit no in-app currency.
+- Their purchases cannot be restored onto another app user ID: a restore on a fresh ID answers `7102` (receipt already in use) whatever the project's transfer behaviour, so a new account does not bring the access back.
 
 What stays the same: their purchases are still recorded, revenue still counts, and **webhooks are still sent** with their usual `entitlement_ids`. If your backend grants access from webhooks, check the block list there:
 

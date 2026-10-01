@@ -131,18 +131,23 @@ Object.assign(settingsPaths, {
   },
   "/verified/{slug}": {
     get: op({ id: "verifiedPage", tag: "Verified Metrics", summary: "The public Verified Metrics page", security: NONE, source: PUB, extension: true, parameters: [slugParam],
-      description: "HTML with no scripts: the display name, the visible metrics with 28-day sparklines, optional icon and store links, and link-preview tags pointing at `og.png`. Only aggregate production numbers: no customers, no sandbox data, no project id. `Cache-Control: public, max-age=300, s-maxage=900`, an ETag (304 on `If-None-Match`), and on Cloud a copy in the edge cache. 404 with `no-store` when the slug is unknown or not published.",
+      description: "HTML with no scripts: the display name, the visible metrics with 28-day sparklines, optional icon and store links, and link-preview tags pointing at `og.png`. Only aggregate production numbers: no customers, no sandbox data, no project id. `Cache-Control: public, max-age=300, s-maxage=900`, an ETag (304 on `If-None-Match`), and on Cloud a copy in the edge cache keyed by the page's version, so a saved page shows its changes at once. The slug is case-insensitive. 404 with `no-store` when the slug is unknown or not published.",
       responses: { 200: { description: "The page.", content: { "text/html": { schema: str() } } }, 404: ok("Not published.", obj({ object: en(["error"]), type: str(), message: str() })) } }),
   },
   "/verified/{slug}/metrics.json": {
     get: op({ id: "verifiedPageData", tag: "Verified Metrics", summary: "The page's numbers as JSON", security: NONE, source: PUB, extension: true, parameters: [slugParam],
-      description: "Same caching as the page. `computed_at` is when the numbers were computed.",
+      description: "Same caching as the page. `computed_at` is when the numbers were computed. `icon_url` is `/verified/{slug}/icon?v=<asset id>` when the page shows an icon.",
       responses: { 200: ok("The numbers.", obj({
         object: en(["verified_metrics_page"]), url: str(), slug: str(), display_name: str(), chart_type: str(), computed_at: ms("When the numbers were computed."), icon_url: nstr(),
         store_links: obj({ app_store: nstr(), play_store: nstr() }),
         metrics: arr(obj({ id: en(METRICS), name: str(), unit: en(["$", "#"]), caption: str(), value: { type: "number" }, sparkline: arr({ type: "number" }, { description: "One value per UTC day, oldest first (28 days; empty for active customers)." }) })),
       }), { object: "verified_metrics_page", url: "https://api.revenuedot.app/verified/scanner", slug: "scanner", display_name: "Scanner", chart_type: "number_sparkline", computed_at: 1790894800000, icon_url: null, store_links: { app_store: "https://apps.apple.com/app/id1234567890", play_store: null }, metrics: [{ id: "mrr", name: "MRR", unit: "$", caption: "Monthly recurring revenue", value: 93.4, sparkline: [88.1, 90.2, 93.4] }] }),
         404: ok("Not published.", obj({ object: en(["error"]), type: str(), message: str() })) } }),
+  },
+  "/verified/{slug}/icon": {
+    get: op({ id: "verifiedPageIcon", tag: "Verified Metrics", summary: "The page's project icon", security: NONE, source: PUB, extension: true, parameters: [slugParam],
+      description: "The uploaded image the page shows as its icon, served by slug so the page never names the project. Same caching as the page; 404 when the page is not published or shows no icon.",
+      responses: { 200: { description: "The image (PNG, JPEG or WebP).", content: { "image/png": { schema: str(undefined, { format: "binary" }) } } }, 404: ok("Not published, or no icon.", obj({ object: en(["error"]), type: str(), message: str() })) } }),
   },
   "/verified/{slug}/og.png": {
     get: op({ id: "verifiedPageImage", tag: "Verified Metrics", summary: "The page's 1200×630 link preview", security: NONE, source: PUB, extension: true, parameters: [slugParam],

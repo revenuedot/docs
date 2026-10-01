@@ -341,6 +341,7 @@ export const schemas = {
   CustomerSummary: obj({
     object: { type: "string", const: "customer_summary" }, id: str("The id you asked for."), original_app_user_id: str(), aliases: arr(str()),
     total_revenue_in_usd: num(), sandbox_revenue_in_usd: num(), country: nstr(), platform: nstr(), stores: arr(str()), offering_override: nstr(),
+    blocked: bool("One of the customer's app user ids is blocked: no entitlements anywhere."),
     active_entitlements: arr({ type: "object" }), granted_entitlements: arr({ type: "object" }), subscriptions: arr({ type: "object" }), purchases: arr({ type: "object" }),
   }, ["object", "id", "original_app_user_id"]),
   ImportResult: obj({

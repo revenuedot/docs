@@ -11,14 +11,14 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (192)
+## Operations on this page (193)
 
 - **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects), [Update account settings](#update-account-settings), [Email a password reset link](#email-a-password-reset-link), [Check a password reset link](#check-a-password-reset-link), [Set a new password from a reset link](#set-a-new-password-from-a-reset-link), [Confirm an email address](#confirm-an-email-address), [Send a new confirmation email](#send-a-new-confirmation-email), [Look up an invite](#look-up-an-invite), [Accept an invite](#accept-an-invite)
 - **Members and invites**: [List open invites](#list-open-invites), [Invite someone by email](#invite-someone-by-email), [Resend an invite](#resend-an-invite), [Revoke an invite](#revoke-an-invite), [Change a member's role](#change-a-members-role), [Remove a member, or leave the project](#remove-a-member-or-leave-the-project)
 - **Project settings**: [Get a project with its settings](#get-a-project-with-its-settings), [Update a project's name, transfer behaviour and sandbox testing access](#update-a-projects-name-transfer-behaviour-and-sandbox-testing-access), [Delete a project and everything in it](#delete-a-project-and-everything-in-it), [Get the Customer Center configuration of the project](#get-the-customer-center-configuration-of-the-project), [Set the Customer Center configuration](#set-the-customer-center-configuration), [Transfer project ownership to an admin](#transfer-project-ownership-to-an-admin)
 - **Brand**: [Colour and gradient presets](#colour-and-gradient-presets), [Replace colour or gradient presets](#replace-colour-or-gradient-presets)
 - **Blocked customers**: [List blocked app user ids](#list-blocked-app-user-ids), [Block an app user id](#block-an-app-user-id), [Is this app user id blocked?](#is-this-app-user-id-blocked), [Unblock an app user id](#unblock-an-app-user-id)
-- **Verified Metrics**: [Verified Metrics page settings](#verified-metrics-page-settings), [Save Verified Metrics page settings](#save-verified-metrics-page-settings), [Whether a slug is free](#whether-a-slug-is-free), [Publish the page](#publish-the-page), [Unpublish the page](#unpublish-the-page), [The public Verified Metrics page](#the-public-verified-metrics-page), [The page's numbers as JSON](#the-pages-numbers-as-json), [The page's 1200×630 link preview](#the-pages-1200630-link-preview)
+- **Verified Metrics**: [Verified Metrics page settings](#verified-metrics-page-settings), [Save Verified Metrics page settings](#save-verified-metrics-page-settings), [Whether a slug is free](#whether-a-slug-is-free), [Publish the page](#publish-the-page), [Unpublish the page](#unpublish-the-page), [The public Verified Metrics page](#the-public-verified-metrics-page), [The page's numbers as JSON](#the-pages-numbers-as-json), [The page's project icon](#the-pages-project-icon), [The page's 1200×630 link preview](#the-pages-1200630-link-preview)
 - **Auth**: [Auth on or off](#auth-on-or-off), [Turn Auth or anonymous sign-in on or off](#turn-auth-or-anonymous-sign-in-on-or-off), [List identity providers](#list-identity-providers), [Add a Firebase or OpenID Connect provider](#add-a-firebase-or-openid-connect-provider), [Get an identity provider](#get-an-identity-provider), [Update or turn off an identity provider](#update-or-turn-off-an-identity-provider), [Delete an identity provider](#delete-an-identity-provider), [Check an ID token without signing in](#check-an-id-token-without-signing-in), [List signed-in identities](#list-signed-in-identities), [Read a signed-in user's balances and entitlements by identity](#read-a-signed-in-users-balances-and-entitlements-by-identity), [Unlink an identity and sign it out](#unlink-an-identity-and-sign-it-out)
 - **Store setup**: [Store setup state of an app](#store-setup-state-of-an-app), [Check store credentials with Apple, Google, Amazon or Stripe](#check-store-credentials-with-apple-google-amazon-or-stripe), [Extend every active App Store subscriber of a product](#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](#status-of-a-mass-extension), [Setup health](#setup-health)
 - **API keys**: [List secret keys](#list-secret-keys), [Create a secret key](#create-a-secret-key), [Delete a secret key](#delete-a-secret-key)
@@ -1661,7 +1661,7 @@ Example 200 response:
 
 `GET /verified/{slug}` · Auth: none · RevenueDot extension
 
-HTML with no scripts: the display name, the visible metrics with 28-day sparklines, optional icon and store links, and link-preview tags pointing at `og.png`. Only aggregate production numbers: no customers, no sandbox data, no project id. `Cache-Control: public, max-age=300, s-maxage=900`, an ETag (304 on `If-None-Match`), and on Cloud a copy in the edge cache. 404 with `no-store` when the slug is unknown or not published.
+HTML with no scripts: the display name, the visible metrics with 28-day sparklines, optional icon and store links, and link-preview tags pointing at `og.png`. Only aggregate production numbers: no customers, no sandbox data, no project id. `Cache-Control: public, max-age=300, s-maxage=900`, an ETag (304 on `If-None-Match`), and on Cloud a copy in the edge cache keyed by the page's version, so a saved page shows its changes at once. The slug is case-insensitive. 404 with `no-store` when the slug is unknown or not published.
 
 **Path parameters**
 
@@ -1684,7 +1684,7 @@ curl -s "$REVENUEDOT_URL/verified/$SLUG"
 
 `GET /verified/{slug}/metrics.json` · Auth: none · RevenueDot extension
 
-Same caching as the page. `computed_at` is when the numbers were computed.
+Same caching as the page. `computed_at` is when the numbers were computed. `icon_url` is `/verified/{slug}/icon?v=<asset id>` when the page shows an icon.
 
 **Path parameters**
 
@@ -1734,6 +1734,29 @@ Example 200 response:
   ]
 }
 ```
+
+### The page's project icon
+
+`GET /verified/{slug}/icon` · Auth: none · RevenueDot extension
+
+The uploaded image the page shows as its icon, served by slug so the page never names the project. Same caching as the page; 404 when the page is not published or shows no icon.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `slug` | string | yes | The page's slug. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/verified/$SLUG/icon"
+```
+
+**Responses**
+
+- **200**: The image (PNG, JPEG or WebP).
+- **404**: Not published, or no icon.
 
 ### The page's 1200×630 link preview
 
@@ -8821,6 +8844,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `platform` | string or null | no |  |
 | `stores` | array of string | no |  |
 | `offering_override` | string or null | no |  |
+| `blocked` | boolean | no | One of the customer's app user ids is blocked: no entitlements anywhere. |
 | `active_entitlements` | array of object | no |  |
 | `granted_entitlements` | array of object | no |  |
 | `subscriptions` | array of object | no |  |

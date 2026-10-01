@@ -15,7 +15,7 @@ Auth is in beta. It works with Firebase Authentication and with any OpenID Conne
 2. Click **Add provider**.
    - **Firebase:** enter the Firebase project ID (Firebase console → Project settings → General). RevenueDot accepts tokens whose `iss` is `https://securetoken.google.com/<project id>` and whose `aud` is the project ID, signed with Google's published keys.
    - **OpenID Connect:** enter the **issuer** exactly as your tokens' `iss` claim (Auth0's ends with a slash), the **audiences** (the client IDs in `aud`), and optionally a JWKS URL. Without one, RevenueDot reads `jwks_uri` from `<issuer>/.well-known/openid-configuration`.
-3. Choose how a user becomes an app user ID: the claim (`sub` by default, which never changes) and an optional prefix such as `firebase:`. A user who signed in once keeps their app user ID even if you change this later.
+3. Choose how a user becomes an app user ID: the claim (`sub` by default, which never changes) and an optional prefix such as `firebase:`. A user who signed in once keeps their app user ID even if you change this later. The mapped ID must be 1 to 100 characters and must not start with `$RCAnonymousID:`; a token that maps to such an ID is refused.
 4. Use **Test a token** with an ID token from your app. It runs every check and shows the app user ID it would sign in as, without signing anyone in.
 
 What RevenueDot checks on every sign-in: the signature (RS256/384/512, PS256/384/512, ES256/384 or EdDSA; never `none` or HMAC), the issuer, the audience, that `exp` is in the future and `nbf`, `iat` and Firebase's `auth_time` are not (60 seconds of leeway), a subject of at most 255 characters, and a token of at most 16 KB. Keys are fetched over https from public addresses only (on RevenueDot Cloud), never through a redirect, and cached for as long as the provider says (5 minutes to 24 hours). A new key ID makes RevenueDot fetch the keys again, at most once a minute. If the provider is down, keys already fetched keep working.
@@ -44,8 +44,8 @@ curl -X POST https://api.revenuedot.app/v1/auth/login \
 ```
 
 - The **access token** lasts one hour and speaks for one app user ID of one app. Send it as `Authorization: Bearer` to the `/v1/customer/*` paths. Its `rc.app_user_id` claim is the app user ID.
-- **Refresh** before it expires with `POST /v1/auth/token` and `{"grant_type":"refresh_token","refresh_token":"rdrf_…"}`. The refresh token lasts 30 days and is replaced on every refresh; an old one is refused.
-- **Sign out** with `POST /v1/auth/revoke` and `{"token":"rdrf_…","token_type_hint":"refresh_token"}`. The session and every access token it issued stop working at once.
+- **Refresh** before it expires with `POST /v1/auth/token` and `{"grant_type":"refresh_token","refresh_token":"rdrf_…"}`. The refresh token lasts 30 days and is replaced on every refresh. Presenting a replaced refresh token again counts as theft: the whole session ends, so refresh once at a time and keep only the newest token. Refreshing stops working when Auth, the session's provider or (for anonymous sessions) anonymous sign-in is turned off.
+- **Sign out** with `POST /v1/auth/revoke` and `{"token":"rdrf_…","token_type_hint":"refresh_token"}`. The session and every access token it issued stop working at once. A refresh token ends its session whatever `token_type_hint` says; an access token alone stops only that token.
 
 Use `firebase` for Firebase tokens and `oidc` for any OpenID Connect provider (`google`, `apple` and `facebook` are accepted as names for OpenID Connect providers too). Errors use the SDK's format: `401` with code `7224` for a token that fails a check, `403` with `7224` when Auth is off or no provider fits, `503` when the provider's keys cannot be loaded (retry).
 

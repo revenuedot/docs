@@ -33554,7 +33554,7 @@ paths:
       tags:
         - Verified Metrics
       summary: The public Verified Metrics page
-      description: "HTML with no scripts: the display name, the visible metrics with 28-day sparklines, optional icon and store links, and link-preview tags pointing at `og.png`. Only aggregate production numbers: no customers, no sandbox data, no project id. `Cache-Control: public, max-age=300, s-maxage=900`, an ETag (304 on `If-None-Match`), and on Cloud a copy in the edge cache. 404 with `no-store` when the slug is unknown or not published."
+      description: "HTML with no scripts: the display name, the visible metrics with 28-day sparklines, optional icon and store links, and link-preview tags pointing at `og.png`. Only aggregate production numbers: no customers, no sandbox data, no project id. `Cache-Control: public, max-age=300, s-maxage=900`, an ETag (304 on `If-None-Match`), and on Cloud a copy in the edge cache keyed by the page's version, so a saved page shows its changes at once. The slug is case-insensitive. 404 with `no-store` when the slug is unknown or not published."
       security: []
       parameters:
         - name: slug
@@ -33593,7 +33593,7 @@ paths:
       tags:
         - Verified Metrics
       summary: The page's numbers as JSON
-      description: Same caching as the page. `computed_at` is when the numbers were computed.
+      description: Same caching as the page. `computed_at` is when the numbers were computed. `icon_url` is `/verified/{slug}/icon?v=<asset id>` when the page shows an icon.
       security: []
       parameters:
         - name: slug
@@ -33694,6 +33694,46 @@ paths:
                       - 93.4
         "404":
           description: Not published.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/verified.ts
+      x-revenuedot-extension: true
+  /verified/{slug}/icon:
+    get:
+      operationId: verifiedPageIcon
+      tags:
+        - Verified Metrics
+      summary: The page's project icon
+      description: The uploaded image the page shows as its icon, served by slug so the page never names the project. Same caching as the page; 404 when the page is not published or shows no icon.
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The page's slug.
+      responses:
+        "200":
+          description: The image (PNG, JPEG or WebP).
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Not published, or no icon.
           content:
             application/json:
               schema:
@@ -44637,6 +44677,9 @@ components:
           type:
             - string
             - "null"
+        blocked:
+          type: boolean
+          description: "One of the customer's app user ids is blocked: no entitlements anywhere."
         active_entitlements:
           type: array
           items:
