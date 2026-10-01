@@ -21,9 +21,9 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Offerings (SDK)**: [Get offerings](#get-offerings), [Get offerings without a user](#get-offerings-without-a-user), [Test Store product details](#test-store-product-details)
 - **Identity**: [Log in (identify)](#log-in-identify), [Alias two app user ids](#alias-two-app-user-ids)
 - **Attributes**: [Set customer attributes](#set-customer-attributes)
-- **SDK support**: [Intro offer eligibility (StoreKit 1)](#intro-offer-eligibility-storekit-1), [Sign a promotional offer (iOS)](#sign-a-promotional-offer-ios), [Attribution data (deprecated iOS call)](#attribution-data-deprecated-ios-call), [Apple AdServices token](#apple-adservices-token), [SDK health report availability](#sdk-health-report-availability), [SDK health report](#sdk-health-report), [Product to entitlement mapping (offline entitlements)](#product-to-entitlement-mapping-offline-entitlements), [Customer Center configuration](#customer-center-configuration), [Customer Center support ticket](#customer-center-support-ticket), [Virtual currency balances](#virtual-currency-balances), [Redeem a web purchase](#redeem-a-web-purchase), [Register an Apple external purchase token (iOS)](#register-an-apple-external-purchase-token-ios), [Rewarded ad verification (not available)](#rewarded-ad-verification-not-available), [Amazon receipt details](#amazon-receipt-details), [Paywall workflows (web SDK)](#paywall-workflows-web-sdk), [One paywall workflow (web SDK)](#one-paywall-workflow-web-sdk), [Restore eligibility (StoreKit 2)](#restore-eligibility-storekit-2), [Remote config fallback (none)](#remote-config-fallback-none), [Remote config: paywalls and UI settings](#remote-config-paywalls-and-ui-settings), [Download a remote-config blob](#download-a-remote-config-blob), [SDK paywall, Customer Center and ad events](#sdk-paywall-customer-center-and-ad-events), [SDK diagnostics (accepted, not stored)](#sdk-diagnostics-accepted-not-stored)
+- **SDK support**: [Intro offer eligibility (StoreKit 1)](#intro-offer-eligibility-storekit-1), [Sign a promotional offer (iOS)](#sign-a-promotional-offer-ios), [Attribution data (deprecated iOS call)](#attribution-data-deprecated-ios-call), [Apple AdServices token](#apple-adservices-token), [SDK health report availability](#sdk-health-report-availability), [SDK health report](#sdk-health-report), [Product to entitlement mapping (offline entitlements)](#product-to-entitlement-mapping-offline-entitlements), [Customer Center configuration](#customer-center-configuration), [Customer Center support ticket](#customer-center-support-ticket), [Virtual currency balances](#virtual-currency-balances), [Redeem a web purchase](#redeem-a-web-purchase), [Register an Apple external purchase token (iOS)](#register-an-apple-external-purchase-token-ios), [Rewarded ad verification status](#rewarded-ad-verification-status), [Amazon receipt details](#amazon-receipt-details), [Paywall workflows (web SDK)](#paywall-workflows-web-sdk), [One paywall workflow (web SDK)](#one-paywall-workflow-web-sdk), [Restore eligibility (StoreKit 2)](#restore-eligibility-storekit-2), [Remote config fallback (none)](#remote-config-fallback-none), [Remote config: paywalls and UI settings](#remote-config-paywalls-and-ui-settings), [Download a remote-config blob](#download-a-remote-config-blob), [SDK paywall, Customer Center and ad events](#sdk-paywall-customer-center-and-ad-events), [SDK diagnostics (accepted, not stored)](#sdk-diagnostics-accepted-not-stored)
 - **Web Billing**: [Web offering products](#web-offering-products), [Start a hosted web checkout](#start-a-hosted-web-checkout), [Web Billing purchase (not available)](#web-billing-purchase-not-available), [Prepare a Web Billing checkout (not available)](#prepare-a-web-billing-checkout-not-available), [Start a Web Billing checkout (not available)](#start-a-web-billing-checkout-not-available), [Web Billing checkout status](#web-billing-checkout-status), [Refresh Web Billing checkout pricing](#refresh-web-billing-checkout-pricing), [Complete a Web Billing checkout](#complete-a-web-billing-checkout), [Web checkout branding](#web-checkout-branding)
-- **Subscriber tokens**: [Get customer info (subscriber token)](#get-customer-info-subscriber-token), [Get offerings (subscriber token)](#get-offerings-subscriber-token), [Intro offer eligibility (StoreKit 1) (subscriber token)](#intro-offer-eligibility-storekit-1-subscriber-token), [Attribution data (deprecated iOS call) (subscriber token)](#attribution-data-deprecated-ios-call-subscriber-token), [Set customer attributes (subscriber token)](#set-customer-attributes-subscriber-token), [Apple AdServices token (subscriber token)](#apple-adservices-token-subscriber-token), [SDK health report (subscriber token)](#sdk-health-report-subscriber-token), [Customer Center configuration (subscriber token)](#customer-center-configuration-subscriber-token), [Customer Center support ticket (subscriber token)](#customer-center-support-ticket-subscriber-token), [Virtual currency balances (subscriber token)](#virtual-currency-balances-subscriber-token), [Restore eligibility (StoreKit 2) (subscriber token)](#restore-eligibility-storekit-2-subscriber-token), [Rewarded ad verification (not available) (subscriber token)](#rewarded-ad-verification-not-available-subscriber-token), [Web offering products (subscriber token)](#web-offering-products-subscriber-token), [Test Store product details (subscriber token)](#test-store-product-details-subscriber-token), [Spend in-app currency as the subscriber](#spend-in-app-currency-as-the-subscriber)
+- **Subscriber tokens**: [Get customer info (subscriber token)](#get-customer-info-subscriber-token), [Get offerings (subscriber token)](#get-offerings-subscriber-token), [Intro offer eligibility (StoreKit 1) (subscriber token)](#intro-offer-eligibility-storekit-1-subscriber-token), [Attribution data (deprecated iOS call) (subscriber token)](#attribution-data-deprecated-ios-call-subscriber-token), [Set customer attributes (subscriber token)](#set-customer-attributes-subscriber-token), [Apple AdServices token (subscriber token)](#apple-adservices-token-subscriber-token), [SDK health report (subscriber token)](#sdk-health-report-subscriber-token), [Customer Center configuration (subscriber token)](#customer-center-configuration-subscriber-token), [Customer Center support ticket (subscriber token)](#customer-center-support-ticket-subscriber-token), [Virtual currency balances (subscriber token)](#virtual-currency-balances-subscriber-token), [Restore eligibility (StoreKit 2) (subscriber token)](#restore-eligibility-storekit-2-subscriber-token), [Rewarded ad verification status (subscriber token)](#rewarded-ad-verification-status-subscriber-token), [Web offering products (subscriber token)](#web-offering-products-subscriber-token), [Test Store product details (subscriber token)](#test-store-product-details-subscriber-token), [Spend in-app currency as the subscriber](#spend-in-app-currency-as-the-subscriber)
 - **Store notifications**: [App Store Server Notifications v2](#app-store-server-notifications-v2), [Google Play real-time developer notifications (Pub/Sub push)](#google-play-real-time-developer-notifications-pubsub-push), [Amazon Appstore Real-time Notifications (SNS)](#amazon-appstore-real-time-notifications-sns), [Stripe webhooks](#stripe-webhooks)
 - **Response signing**: [Public key for response signatures](#public-key-for-response-signatures)
 
@@ -1123,11 +1123,15 @@ Example 200 response:
 }
 ```
 
-### Rewarded ad verification (not available)
+### Rewarded ad verification status
 
 `GET /v1/subscribers/{app_user_id}/ads/reward_verifications/{client_transaction_id}` · Auth: public app key
 
-What `pollRewardVerification` polls. There is no server-side ad verification, so the answer is always the final `failed`, and the SDK stops after one request.
+What `pollRewardVerification` polls after the ad's reward callback fires (up to 10 times, about a second apart). The ad network's server-side callback (`GET /v1/ads/admob/ssv`) records the reward; the first matching reward rule grants it. See [Ads: rewarded ads](../docs/guides/ads.md#rewarded-ads).
+
+- `pending`: no callback recorded yet for this id, or the grant is still being made. The SDK asks again.
+- `verified`: `reward` is the first granted reward and `more_rewards` the rest. `reward` is null when no rule matched: verified, nothing granted. The SDK then refreshes the customer's balances and customer info.
+- `failed`: `failure_reason` is `user_mismatch` (the reward belongs to another customer), `missing_user` (the callback had no user id) or `grant_failed` (the rule names a currency or entitlement that no longer exists).
 
 **Path parameters**
 
@@ -1144,17 +1148,20 @@ curl -s "$REVENUEDOT_URL/v1/subscribers/user_1/ads/reward_verifications/$CLIENT_
 
 **Responses**
 
-- **200**: Failed.
+- **200**: The verification status.
 - **401**: Unknown API key. Returns [V1Error](#v1error).
 
 Example 200 response:
 
 ```json
 {
-  "status": "failed",
-  "reward": null,
-  "failure_reason": "not_supported",
-  "message": "Server-side reward verification is not available on RevenueDot."
+  "status": "verified",
+  "reward": {
+    "type": "virtual_currency",
+    "code": "GEMS",
+    "amount": 10
+  },
+  "more_rewards": []
 }
 ```
 
@@ -1383,7 +1390,7 @@ curl -s "$REVENUEDOT_URL/blobs/$BLOB_REF"
 
 `POST /v1/events` · Auth: public app key
 
-Stored for the paywall, ad and Customer Center charts (each SDK event id once). A malformed batch is still answered 200 so the SDK does not resend it forever.
+Stored for the paywall, ad and Customer Center charts and the [Ads Overview](../docs/guides/ads.md#track-ad-events) (each SDK event id once). Ad events are the `rc_ads_*` types. A malformed batch is still answered 200 so the SDK does not resend it forever.
 
 **Example request**
 
@@ -2051,7 +2058,7 @@ Example 200 response:
 }
 ```
 
-### Rewarded ad verification (not available) (subscriber token)
+### Rewarded ad verification status (subscriber token)
 
 `GET /v1/customer/ads/reward_verifications/{client_transaction_id}` · Auth: none
 
@@ -2071,17 +2078,20 @@ curl -s "$REVENUEDOT_URL/v1/customer/ads/reward_verifications/$CLIENT_TRANSACTIO
 
 **Responses**
 
-- **200**: Failed.
+- **200**: The verification status.
 - **401**: Unknown API key. Returns [V1Error](#v1error).
 
 Example 200 response:
 
 ```json
 {
-  "status": "failed",
-  "reward": null,
-  "failure_reason": "not_supported",
-  "message": "Server-side reward verification is not available on RevenueDot."
+  "status": "verified",
+  "reward": {
+    "type": "virtual_currency",
+    "code": "GEMS",
+    "amount": 10
+  },
+  "more_rewards": []
 }
 ```
 

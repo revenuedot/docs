@@ -62,7 +62,7 @@ const EVENTS = [
   ["PRICE_INCREASE_CONSENT_REQUIRED", "The store asks the customer to accept a price increase.", null],
   ["PRICE_INCREASE_CONSENT_APPROVED", "The customer accepted the price increase.", null],
   ["TRANSFER", "A purchase moved to another customer because that customer restored it (transfer behaviour `transfer` or `transfer_if_no_active`).", "transfer"],
-  ["VIRTUAL_CURRENCY_TRANSACTION", "An in-app currency was credited because a purchase of a granting product was recorded. Not sent for adjustments made through the API.", "vc"],
+  ["VIRTUAL_CURRENCY_TRANSACTION", "An in-app currency was credited because a purchase of a granting product was recorded (`source: in_app_purchase`), or because a rewarded ad was verified and a reward rule granted currency (`source: ad_reward`, a RevenueDot extension; `product_id` and `store` are null and `transaction_id` is the ad network's transaction id). Not sent for adjustments made through the API.", "vc"],
   ["EXPERIMENT_ENROLLMENT", "A customer was enrolled in an offering experiment. Sent once per customer and experiment.", "experiment"],
   ["SUBSCRIBER_ALIAS", "A new app user id joined an existing customer: `logIn` onto an anonymous customer, `logIn` that merged an anonymous customer into an existing one, Android's alias call, or a restore that merged two customers. RevenueCat deprecated this event and sends it only to older projects, so RevenueDot delivers it only to webhooks whose `event_types` filter names `subscriber_alias`; it always appears in the customer's event history.", "alias"],
   ["PURCHASE_REDEEMED", "A web purchase was redeemed in the app through a redemption link (`POST /v1/subscribers/redeem_purchase`): the anonymous customer who paid on the web was merged into the app user. Fields follow RevenueCat's sample; `app_user_id` is added so analytics tools know who it is. See [Redemption links](../docs/guides/redemption-links.md).", "redeemed"],
@@ -106,9 +106,10 @@ for (const [type, description, extra] of EVENTS) {
     }, ["id", "type", "event_timestamp_ms", "store", "environment", "transferred_from", "transferred_to"]);
   } else if (extra === "vc") {
     schema = payload({
-      id: lifecycle.id, type: lifecycle.type, event_timestamp_ms: lifecycle.event_timestamp_ms, app_id: lifecycle.app_id, app_user_id: lifecycle.app_user_id, aliases: lifecycle.aliases, store: lifecycle.store,
+      id: lifecycle.id, type: lifecycle.type, event_timestamp_ms: lifecycle.event_timestamp_ms, app_id: lifecycle.app_id, app_user_id: lifecycle.app_user_id, aliases: lifecycle.aliases, store: { ...lifecycle.store, type: ["string", "null"], enum: [...lifecycle.store.enum, null], description: "Null for an ad reward." },
       adjustments: arr(obj({ amount: int("Credited amount."), currency: obj({ code: str(), name: str(), description: nstr() }, ["code", "name"]) }, ["amount", "currency"])),
-      product_id: lifecycle.product_id, product_display_name: str("The product's display name."), purchase_environment: en(["PRODUCTION", "SANDBOX"]), source: en(["in_app_purchase"]),
+      product_id: { ...lifecycle.product_id, type: ["string", "null"], description: "The granting product, or null for an ad reward." }, product_display_name: nstr("The product's display name, or null for an ad reward."), purchase_environment: en(["PRODUCTION", "SANDBOX"]),
+      source: en(["in_app_purchase", "ad_reward"], "`ad_reward` is a RevenueDot extension: RevenueCat documents no source value for rewarded ads."),
       transaction_id: lifecycle.transaction_id, virtual_currency_transaction_id: str("Starts with vatx."), subscriber_attributes: lifecycle.subscriber_attributes,
     }, ["id", "type", "event_timestamp_ms", "app_user_id", "adjustments", "product_id", "source", "store"]);
   } else if (extra === "experiment") {

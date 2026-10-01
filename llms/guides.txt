@@ -10,7 +10,7 @@ Generated from https://github.com/revenuedot/docs by scripts/gen-llms.mjs. Index
 # Which guide do I need?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/README.md
-Description: Step-by-step guides for connecting stores, selling on the web with purchase links and funnels, webhooks, integrations and data exports, refund requests, retention and win-back, support, customer lists, testing, your team, alert emails, and running RevenueDot on your own servers.
+Description: Step-by-step guides for stores, web billing, webhooks, integrations and data exports, ads and rewarded ads, refunds, retention and win-back, support, customer lists, testing, your team, alerts, and running RevenueDot on your own servers.
 
 Each guide is one task, start to finish. Connect a store first, then receive webhooks; run the server yourself with the self-hosting guides.
 
@@ -27,7 +27,8 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Give a discount or a code at web checkout | [Web discounts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-discounts.md) |
 | Put my purchase links and funnels on my own domain | [Custom domains](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/custom-domains.md) |
 | Receive purchase events in my backend and verify them | [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md) |
-| Send purchase events to Slack, Segment, Amplitude, Mixpanel, PostHog, Firebase, BigQuery, AppsFlyer, Adjust or Meta, or export my data to S3, R2 or Google Cloud Storage | [Integrations and data exports](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md) |
+| Send purchase events to any of RevenueCat's 37 integrations (Segment, Amplitude, AppsFlyer, Braze, Branch, Statsig, Superwall ...) or BigQuery, or export my data to S3, R2 or Google Cloud Storage | [Integrations and data exports](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md) |
+| See ad revenue next to subscription revenue, verify rewarded ads on the server, or connect AdMob | [Ads](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/ads.md) |
 | Have the SDK verify that responses come from my server | [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md) |
 | Test purchases without any store account | [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md) |
 | Test with App Store sandbox, Xcode or Google Play testers | [Sandbox testing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/sandbox-testing.md) |
@@ -46,7 +47,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Answer Apple refund requests automatically and see my refund rate | [Refund Control](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/refund-control.md) |
 | Offer a discount when customers cancel, in my app or on Apple's cancel screen | [Retention offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/retention.md) |
 | Email churned subscribers an offer to come back | [Win-back campaigns](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-campaigns.md) |
-| Get Customer Center support requests by email, or show subscriptions in Intercom or Zendesk | [Support](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/support-integrations.md) |
+| Get Customer Center support requests by email, or show subscriptions in the Intercom inbox or a Zendesk sidebar | [Support](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/support-integrations.md) |
 | Filter, save and export lists of customers | [Customer lists](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/customer-lists.md) |
 
 Moving from RevenueCat? Start with [Migrate from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md). Looking for a specific endpoint? See the [API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/README.md).
@@ -2710,10 +2711,19 @@ GROUP BY pe.period ORDER BY pe.period;
 
 ---
 
-# How do I send purchase events to Slack, Segment, Amplitude, Mixpanel, PostHog, Firebase, BigQuery, AppsFlyer, Adjust or Meta, and export my data?
+# How do I send purchase events to analytics, attribution and marketing tools, and export my data?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md
-Description: Connect an integration with its API key, and every purchase, trial, renewal, cancellation and refund is sent to it with RevenueCat's event names, retried on failure and logged. Scheduled exports write CSV or Parquet files to S3, R2 or Google Cloud Storage every day.
+Description: Every entry of RevenueCat's integration catalogue (37) plus BigQuery. Connect a tool with its key, and every purchase, trial, renewal and refund is sent with RevenueCat's event names, retried and logged. Exports write CSV or Parquet to S3, R2 or GCS.
+
+RevenueDot has every entry of RevenueCat's integration catalogue, 37 in all ([third-party tools](https://www.revenuecat.com/docs/integrations/third-party-integrations), [attribution](https://www.revenuecat.com/docs/integrations/attribution)), plus BigQuery:
+
+- **Core:** [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md), [Scheduled data exports](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#scheduled-data-exports), [BigQuery](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#bigquery).
+- **Analytics:** [Segment](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#segment), [Amplitude](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#amplitude), [Mixpanel](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#mixpanel), [PostHog](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#posthog), [Firebase](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#firebase), [mParticle](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#mparticle), [Statsig](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#statsig), [Superwall](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#superwall), [TelemetryDeck](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#telemetrydeck).
+- **Attribution:** [AppsFlyer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#appsflyer), [Adjust](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#adjust), [Meta](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#meta), [Apple Search Ads](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#apple-search-ads), [Appstack](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#appstack), [Asapty](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#asapty), [Branch](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#branch), [Google Tag Manager](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#google_tag_manager), [Kochava](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#kochava), [Airbridge](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#airbridge), [SplitMetrics Acquire](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#splitmetrics), [Singular](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#singular), [SolarEngine](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#solarengine), [Tenjin](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#tenjin).
+- **Marketing:** [Slack](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#slack), [Airship](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#airship), [Braze](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#braze), [CleverTap](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#clevertap), [Customer.io](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#customerio), [Discord](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#discord), [Intercom](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#intercom), [Iterable](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#iterable), [OneSignal](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#onesignal).
+- **Ads:** [Google AdMob](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/ads.md#admob).
+- **Support:** [Intercom inbox](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/support-integrations.md#intercom), [Zendesk](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/support-integrations.md#zendesk).
 
 Open **Integrations** in the dashboard, pick the tool, paste its key and click **Connect**. From then on, every event your webhooks would get also goes to that tool: purchases, trials, conversions, renewals, cancellations, refunds, billing issues and more. Event names and reserved attributes match [RevenueCat's integrations](https://www.revenuecat.com/docs/integrations/third-party-integrations/amplitude), so charts and funnels built on `rc_initial_purchase_event` keep working after you switch. Failed sends retry after 5, 10, 20, 40 and 80 minutes, and each integration has a delivery log with the request, the answer and **Retry**.
 
@@ -2729,7 +2739,7 @@ For your own warehouse, a **scheduled data export** writes CSV or Parquet files 
 - **Test:** **Send test event** sends a `TEST` event to that integration only. Attribution tools need the customer's device ids, so give the app user id of a customer whose attributes include them.
 
 ### Event names
-| What happened | Segment, Amplitude, Mixpanel, PostHog, AppsFlyer | Firebase | Meta |
+| What happened | Segment, Amplitude, Mixpanel, PostHog, AppsFlyer and most others | Firebase | Meta |
 |---|---|---|---|
 | Purchase | `rc_initial_purchase_event` | `purchase` | `Subscribe` |
 | Free trial starts | `rc_trial_started_event` | `rc_trial_start` | `StartTrial` |
@@ -2743,7 +2753,6 @@ For your own warehouse, a **scheduled data export** writes CSV or Parquet files 
 | Expiration | `rc_expiration_event` | `rc_expiration` | |
 | Billing issue | `rc_billing_issue_event` | `rc_billing_issue` | |
 | Product change | `rc_product_change_event` | `rc_product_change` | |
-
 | Web purchase redeemed in the app | `rc_purchase_redeemed` (Segment, Amplitude, Mixpanel) | | |
 | Funnel viewed | `rd_funnel_viewed` (Segment, Amplitude, Mixpanel, PostHog) | | |
 | Funnel step completed | `rd_funnel_step_completed` (Segment, Amplitude, Mixpanel, PostHog) | | |
@@ -2766,9 +2775,25 @@ Set these with the SDK's attribute calls (`Purchases.shared.attribution.setAppsf
 | `$adjustId` | Adjust (required) |
 | `$fbAnonId`, `$attConsentStatus` | Meta |
 | `$idfa`, `$idfv`, `$gpsAdId`, `$amazonAdId`, `$ip`, `$email`, `$phoneNumber` | AppsFlyer, Adjust, Meta (email and phone are SHA-256 hashed for Meta) |
+| `$mparticleId` | mParticle's `mpid` |
+| `$telemetryDeckUserId`, `$telemetryDeckAppId` | TelemetryDeck (the user id is required) |
+| `$appleAdsCampaignId`, `$appleAdsAdGroupId`, `$appleAdsKeywordId` and the other `$appleAds*` ids | Set by RevenueDot from the AdServices token; read by Asapty, SplitMetrics Acquire and the Apple Search Ads report |
+| `$appstackId` | Appstack |
+| `$branchId`, `$androidId` | Branch |
+| `$kochavaDeviceId` | Kochava (required) |
+| `$airbridgeDeviceId` | Airbridge |
+| `$singularDeviceId`, `$limitDataSharing` | Singular (the device id is required for V2) |
+| `$solarEngineDistinctId`, `$solarEngineAccountId`, `$solarEngineVisitorId` | SolarEngine |
+| `$tenjinId` | Tenjin (required) |
+| `$airshipChannelId` | Airship's channel |
+| `$brazeAliasName`, `$brazeAliasLabel` | Braze's user alias |
+| `$clevertapId` | CleverTap's `objectId` |
+| `$customerioId` | Customer.io's person id |
+| `$iterableUserId`, `$iterableCampaignId`, `$iterableTemplateId` | Iterable |
+| `$onesignalUserId` | OneSignal's user |
 
 ## Connect with the API
-Every dashboard action is an API call under `/v2/projects/{project_id}/integrations/partners` with a secret key that has `project_configuration:integrations:read_write`. `GET .../integrations/catalog` lists the fields each tool takes.
+Every dashboard action is an API call under `/v2/projects/{project_id}/integrations/partners` with a secret key that has `project_configuration:integrations:read_write`. `GET .../integrations/catalog` lists the fields each tool takes, with `api` (`documented`, or `webhook` for the [four webhook partners](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#webhook-partners)) and `connection` (`true` for AdMob, Apple Search Ads, the Intercom inbox and Zendesk, which receive no events).
 
 ```bash
 curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners" \
@@ -2857,6 +2882,179 @@ Events go to Adjust's S2S endpoint with the customer's `adid`, device ids and `e
 
 Trial starts arrive as `StartTrial`, purchases, conversions and renewals as `Subscribe`, one-time purchases as `fb_mobile_purchase`, through the [Conversions API for app events](https://developers.facebook.com/docs/marketing-api/conversions-api/app-events) with `action_source: app`. Meta matches on `$fbAnonId` or the advertising id; the app user id, email and phone number are sent SHA-256 hashed. On iOS, events are sent only when `$attConsentStatus` is `authorized`, unless you turn on **Send iOS events without ATT consent**. Meta takes no negative revenue, so refunds are not sent. Turn off automatic purchase logging in the Meta SDK to avoid counting purchases twice.
 
+## Superwall, Appstack, SplitMetrics Acquire and SolarEngine take a webhook
+These four partners publish no API for subscription events. They ask RevenueCat customers for a webhook instead, so RevenueDot sends them exactly what a [webhook](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md) gets: RevenueCat's webhook body, `{"api_version":"1.0","event":{...}}`, POSTed as JSON to the URL the partner gives you, with the **Authorization header value** you enter.
+- Every event type is sent except experiment enrollments.
+- Sandbox events carry `environment: SANDBOX` and are sent when the integration's **Environment** includes sandbox.
+- Their catalogue cards say **Via webhook**.
+- The URL is checked when you save (https only on RevenueDot Cloud) and again before each send.
+
+## mParticle
+1. In mParticle, open **Setup → Inputs → Feeds**, add a **Custom Feed** (server-to-server) and copy its key and secret.
+2. In RevenueDot, open **Integrations → mParticle**, enter the **Server-to-server key** and **Server-to-server secret**, pick the **Data center** (US1, US2, EU1 or AU1; default US1) and click **Connect mParticle**.
+
+Each event is one batch to mParticle's [Events API](https://docs.mparticle.com/developers/apis/http/). Money events are commerce events with a `purchase` action, refunds a `refund` action; the rest are custom events named like RevenueCat's mParticle events (`initial_purchase`, `renewal` ...). The user is `$mparticleId` as `mpid` when your app set it, with the app user id as `customer_id`, `$email`, and `$idfa`, `$idfv`, `$gpsAdId` and `$ip` as device info. `source_message_id` is the event id, so mParticle drops a repeat. Sandbox events go to the same feed with `environment: development`.
+
+## Statsig
+1. In Statsig, open **Settings → Keys & Environments** and copy the **Server Secret Key** (`secret-…`).
+2. In RevenueDot, open **Integrations → Statsig**, paste it as **Server secret key** and click **Connect Statsig**.
+
+Each event is a custom event through Statsig's [log_event API](https://docs.statsig.com/api-reference/events/log-custom-events), with `value` = the revenue (negative for refunds) and the product, store and transaction ids in `metadata`. `userID` is the app user id, so it must match the user id your app gives the Statsig SDK. Sandbox events are sent with the `development` environment tier, which Statsig keeps out of production metrics.
+
+## Superwall
+Superwall publishes no event API: RevenueDot sends RevenueCat's webhook body to the URL Superwall gives you (see [webhook partners](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#webhook-partners)).
+1. In Superwall, **Settings → Revenue Tracking → RevenueCat** shows an integration token, not a URL ([Superwall's guide](https://superwall.com/docs/overview-settings-revenue-tracking)). Ask Superwall support for the URL that receives RevenueCat webhooks.
+2. In RevenueDot, open **Integrations → Superwall**, enter the **Superwall webhook URL** and, if Superwall asks for it, the token as **Authorization header value**, then click **Connect Superwall**.
+
+The Superwall SDK reads the same app user id, which travels in the body as `app_user_id`, `original_app_user_id` and `aliases`.
+
+## TelemetryDeck
+1. In TelemetryDeck, copy the app's **App ID** from its settings (and your **Namespace**, if TelemetryDeck gave you one).
+2. In your app, set `$telemetryDeckUserId` to the TelemetryDeck SDK's hashed user id, and optionally `$telemetryDeckAppId`.
+3. In RevenueDot, open **Integrations → TelemetryDeck**, enter the **App ID** (used for customers without `$telemetryDeckAppId`) and **Namespace**, and click **Connect TelemetryDeck**.
+
+Each event is one signal through TelemetryDeck's [ingest API v2](https://telemetrydeck.com/docs/ingest/v2), named with RevenueCat's event names, with `floatValue` = the revenue (negative for refunds) and the event's fields as `RevenueCat.event.*` parameters. Customers without `$telemetryDeckUserId` are skipped, because RevenueDot cannot recreate TelemetryDeck's hash. Sandbox events are sent with `isTestMode: true`.
+
+## Apple Search Ads
+Attribution needs no setup. When your app calls `enableAdServicesAttributionTokenCollection()` (iOS), RevenueDot resolves the AdServices token with Apple and stores the campaign on the customer as `$appleAdsCampaignId`, `$appleAdsAdGroupId`, `$appleAdsKeywordId` and the other `$appleAds*` attributes. Asapty, SplitMetrics Acquire and every tool that reads attributes get them from there.
+
+**Revenue by campaign:** open **Integrations → Apple Search Ads**. The report lists, for customers first seen in the last 28 or 90 days or 12 months, each campaign's customers, paying customers, revenue to date and revenue per customer (production purchases, US dollars, refunds negative). The API is `GET /v2/projects/{project_id}/ads/apple_search_ads/report?range=90d`.
+
+**Campaign names (optional):** Apple's attribution API returns campaign ids, not names. To see names, add an Apple Search Ads API user:
+1. In Apple Search Ads, invite an API user (a read-only role is enough). Generate a P-256 key pair (`openssl ecparam -genkey -name prime256v1 -noout -out private-key.pem`, then `openssl ec -in private-key.pem -pubout -out public-key.pem`) and upload the public key on the user's **API** tab ([Apple's guide](https://developer.apple.com/documentation/apple_search_ads/implementing_oauth_for_the_apple_search_ads_api)).
+2. In RevenueDot, enter the **Organization ID** (Apple Search Ads › Account settings), **Client ID**, **Team ID** and **Key ID** from the API tab, and paste `private-key.pem` as **Private key (PEM)**. Click **Connect Apple Search Ads**.
+3. Click **Load campaign names**. RevenueDot signs in to Apple's Campaign Management API v5 and loads the names of up to 200 campaigns and their ad groups.
+
+## Appstack
+Appstack publishes no event API: RevenueDot sends RevenueCat's webhook body to Appstack's URL ([how Appstack connects to RevenueCat](https://www.revenuecat.com/docs/integrations/attribution/appstack)).
+1. In Appstack, open **Integrations → RevenueCat** and copy the **Webhook URL** and the **Authorization Header**.
+2. In RevenueDot, open **Integrations → Appstack**, paste them as **Appstack webhook URL** and **Authorization header value**, and click **Connect Appstack**.
+
+Appstack matches customers on `$appstackId` (the Appstack SDK's id), which travels in the body's `subscriber_attributes`; set it from your app.
+
+## Asapty
+1. In Asapty, copy your **Asapty ID** from **Settings → General**.
+2. In RevenueDot, open **Integrations → Asapty**, enter it and click **Connect Asapty**.
+
+Each event is the request RevenueCat [documents for Asapty](https://www.revenuecat.com/docs/integrations/attribution/reference/asapty), with the customer's Apple Search Ads campaign, ad group, keyword and ad ids (see [Apple Search Ads](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#apple-search-ads)) and revenue as a two-decimal string. Event names are `initial_purchase_event`, `renewal_event` and so on. Customers without `$appleAdsCampaignId` are skipped. Asapty takes production events only, so sandbox events are skipped, and refunds go with revenue 0.00.
+
+## Branch
+1. In Branch, open **Account Settings → Profile** and copy the live **Branch Key** (`key_live_…`), and the test key (`key_test_…`) for sandbox events.
+2. In your app, call `collectDeviceIdentifiers()` so RevenueDot has `$idfa` or `$idfv` (iOS) and `$gpsAdId` or `$androidId` (Android).
+3. In RevenueDot, open **Integrations → Branch**, enter the **Branch key** and **Sandbox Branch key**, and click **Connect Branch**.
+
+Events go through Branch's [v2 Events API](https://help.branch.io/apidocs/events-api): trial starts as `START_TRIAL`, purchases, conversions and renewals as `SUBSCRIBE`, one-time purchases as `PURCHASE`, with the revenue and the product; other events as custom events with RevenueCat's names. `developer_identity` is `$branchId` or the app user id. Customers without a device id are skipped. Without the sandbox key, sandbox events are not sent. Branch takes no negative revenue, so refunds carry none.
+
+## Google Tag Manager
+Events go to your **server-side** Tag Manager container in the GA4 Measurement Protocol format, as [Google documents for server containers](https://developers.google.com/tag-platform/tag-manager/server-side/send-data). The container's tags send them on to GA4, Google Ads or anything else.
+1. In Tag Manager, open the server container, **Admin → Container Settings → Server container URLs**, and copy the URL. Add a **Measurement Protocol (GA4)** client on the path `/mp/collect`.
+2. In GA4, copy the data stream's **Measurement ID** (`G-…`), and a second stream's for sandbox events. A **Measurement Protocol API secret** is optional.
+3. In RevenueDot, open **Integrations → Google Tag Manager**, enter the **Server container URL**, **Measurement ID**, **Measurement Protocol API secret**, **Sandbox measurement ID** and **Sandbox API secret**, and click **Connect Google Tag Manager**.
+
+Purchases, conversions, renewals and one-time purchases arrive as GA4's `purchase` event (`value`, `transaction_id`, `items`), the rest with RevenueCat's names. `client_id` and `user_id` are the app user id, and `event_id` is the event id for deduplication in your tags. Without a sandbox measurement ID, sandbox events are not sent. Refunds carry no value.
+
+## Kochava
+1. In Kochava, copy each app's **App GUID** from its **Edit App** page, and the GUIDs of Kochava test apps for sandbox events.
+2. In your app, set `$kochavaDeviceId` to the Kochava SDK's device id and call `collectDeviceIdentifiers()`.
+3. In RevenueDot, open **Integrations → Kochava**, enter the **iOS app GUID**, **Android app GUID**, **iOS test app GUID** and **Android test app GUID**, and click **Connect Kochava**.
+
+Events are Kochava [post-install events](https://support.kochava.com/server-to-server-integration/post-install-event-setup): trial starts as `Start Trial`, purchases, conversions and renewals as `Subscribe`, one-time purchases as `Purchase`, other events with RevenueCat's names, and the revenue as `sum` (negative for refunds). Customers without `$kochavaDeviceId`, or without `$idfa`/`$idfv` (iOS) or `$gpsAdId`/`$androidId` (Android), are skipped. Sandbox events go only to the test app GUIDs. Apps with Kochava's strict authentication turned on are not supported, because Kochava does not publish its header for this endpoint.
+
+## Airbridge
+1. In Airbridge, note the app's name (its subdomain in your workspace) and copy the server-to-server **API token** from **Settings → Tokens**.
+2. In your app, set `$airbridgeDeviceId` to the Airbridge SDK's device id.
+3. In RevenueDot, open **Integrations → Airbridge**, enter the **App name** and **API token** (and a second app's **Sandbox app name** and **Sandbox API token** for sandbox events), and click **Connect Airbridge**.
+
+Events go through Airbridge's [server-to-server event API](https://help.airbridge.io/en/references/s2s-event/send-in-app-events) as Airbridge's standard events (`airbridge.startTrial`, `airbridge.subscribe`, `airbridge.ecommerce.order.completed`, `airbridge.unsubscribe`), others with RevenueCat's names. `externalUserID` is the app user id; `$airbridgeDeviceId`, `$idfa`, `$idfv` and `$gpsAdId` are the device. `eventUUID` is the event id, so Airbridge drops a repeat. Airbridge drops events older than 24 hours, so RevenueDot skips them (a replay of old events sends nothing). Without the sandbox app name, sandbox events are not sent. Refunds carry no value.
+
+## SplitMetrics Acquire
+SplitMetrics Acquire publishes no event API: RevenueDot sends RevenueCat's webhook body to the URL SplitMetrics gives you (see [webhook partners](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#webhook-partners)).
+1. SplitMetrics Acquire shows a Client ID for RevenueCat, not a URL ([SplitMetrics' guide](https://help.splitmetrics.com/en/articles/5817211-how-to-link-revenuecat-partner-integration)). Ask SplitMetrics support for the URL that receives RevenueCat webhooks for your Client ID.
+2. In RevenueDot, open **Integrations → SplitMetrics Acquire**, enter the **SplitMetrics Acquire webhook URL** (and an **Authorization header value** if SplitMetrics gives you one), and click **Connect SplitMetrics Acquire**.
+
+SplitMetrics matches on the Apple Search Ads attributes in the body's `subscriber_attributes` (see [Apple Search Ads](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#apple-search-ads)).
+
+## Singular
+1. In Singular, open **Developer Tools → SDK Keys** and copy the **SDK Key** (and a sandbox key, if you use one).
+2. In your app, set `$singularDeviceId` to the Singular SDK's device id (for the V2 endpoint), or call `collectDeviceIdentifiers()` (for V1).
+3. In RevenueDot, open **Integrations → Singular**, enter the **SDK key** and **Sandbox SDK key**, pick the **Event endpoint** and click **Connect Singular**. Singular accounts created from July 15, 2026 must use **V2**.
+
+Events go through Singular's [server-to-server EVENT endpoint](https://support.singular.net/hc/en-us/articles/31496864868635) with the parameters RevenueCat [documents for Singular](https://www.revenuecat.com/docs/integrations/attribution/reference/singular), RevenueCat's event names and the revenue as `amt` (negative for refunds). V2 matches on `$singularDeviceId`, V1 on the advertising ids; customers without them are skipped. Without the sandbox key, sandbox events are not sent.
+
+## SolarEngine
+SolarEngine publishes no event API: RevenueDot sends RevenueCat's webhook body to the URL SolarEngine gives you (see [webhook partners](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#webhook-partners)). RevenueCat's own [SolarEngine page](https://www.revenuecat.com/docs/integrations/attribution/reference/solarengine) names the hosts and a signature but not the full request, which is not enough to build it.
+1. Ask SolarEngine support for the URL that receives RevenueCat webhooks for your app.
+2. In your app, set `$solarEngineDistinctId`, `$solarEngineAccountId` and `$solarEngineVisitorId` from the SolarEngine SDK.
+3. In RevenueDot, open **Integrations → SolarEngine**, enter the **SolarEngine webhook URL** (and an **Authorization header value** if SolarEngine gives you one), and click **Connect SolarEngine**.
+
+It sends production events by default, because SolarEngine documents no sandbox handling.
+
+## Tenjin
+1. In Tenjin, open **Configure → Apps**, pick each app and copy its **SDK key**.
+2. In your app, set `$tenjinId` to the Tenjin SDK's analytics installation id and call `collectDeviceIdentifiers()`.
+3. In RevenueDot, open **Integrations → Tenjin**, enter the **iOS SDK key** and **Android SDK key** (Amazon purchases use the Android key), and click **Connect Tenjin**.
+
+Purchases, conversions, renewals and one-time purchases go to Tenjin's [server-to-server purchase endpoint](https://tenjin.com/docs/server-to-server-s2s-setup/) with the price; other events go as events with RevenueCat's names. Customers without `$tenjinId` are skipped. Tenjin keeps no separate sandbox data, so sandbox events are skipped, and refunds go as an event without money.
+
+## Airship
+1. In Airship, copy the project's **App key** and create a **Bearer token** with the Events role (and Attributes, if you set the status attribute) under **Settings → Tokens**. Use a second project's key and token for sandbox events.
+2. To set the subscription status on users, create a text attribute named `rc_subscription_status` in Airship.
+3. In RevenueDot, open **Integrations → Airship**, enter the **App key**, **Bearer token** and **Cloud site** (US or EU), the **Sandbox app key** and **Sandbox bearer token**, tick **Set the rc_subscription_status attribute** if you created it, and click **Connect Airship**.
+
+Each event is an Airship [custom event](https://www.airship.com/docs/developer/rest-api/ua/operations/custom-events/) with a lower-case name, on the device's channel (`$airshipChannelId`) or else on the named user (the app user id). Anonymous app user ids are never named users, so their events are skipped without a channel. Airship does not deduplicate, so a replayed event is recorded again.
+
+## Braze
+1. In Braze, copy your instance's **REST endpoint** from **Settings → APIs and Identifiers** and create a **REST API key** with the `users.track` permission (and a second workspace's key for sandbox events).
+2. In RevenueDot, open **Integrations → Braze**, pick the **REST endpoint**, enter the **REST API key** and **Sandbox REST API key**, optionally an **App identifier**, pick how **Revenue** is sent and click **Connect Braze**.
+
+Each event is one [`/users/track`](https://www.braze.com/docs/api/endpoints/user_data/post_user_track) request with a custom event, the `rc_subscription_status` attribute and, for money, either an `ecommerce.order_placed` event (**eCommerce order placed events**) or a purchase object (**Legacy purchase objects**). The user is the alias `$brazeAliasName` + `$brazeAliasLabel` when both are set, else the app user id as `external_id`. Refunds are not sent as negative purchases. A replayed event is recorded again.
+
+## CleverTap
+1. In CleverTap, copy the **Account ID** and **Passcode** from the project's settings (and a second account's for sandbox events).
+2. In RevenueDot, open **Integrations → CleverTap**, enter them, pick the **Region** and click **Connect CleverTap**.
+
+Each event goes through CleverTap's [Upload API](https://developer.clevertap.com/docs/upload-events-api) with a profile update setting `rc_subscription_status`. The user is `$clevertapId` as `objectId` when set, else the app user id as `identity`. A replayed event is recorded again.
+
+## Customer.io
+1. In Customer.io, open **Workspace Settings → API Credentials** and copy the Track API **Site ID** and **API key** (and a second workspace's for sandbox events).
+2. In RevenueDot, open **Integrations → Customer.io**, enter the **Site ID** and **Track API key**, pick the **Region** (US or EU) and click **Connect Customer.io**.
+
+Each event updates the person (`rc_subscription_status`, `app_user_id`, `$email` as `email`) and then records the event through the [Track API](https://docs.customer.io/integrations/api/track/). The person's id is `$customerioId` when set, else the app user id. The event id is derived from RevenueDot's, so a retry is not recorded twice.
+
+## Discord
+1. In Discord, open the channel's settings, **Integrations → Webhooks → New Webhook**, and copy the webhook URL.
+2. In RevenueDot, open **Integrations → Discord**, paste it as **Webhook URL** and click **Connect Discord**.
+
+Purchases, trial starts, conversions and cancellations, renewals, cancellations, refunds, one-time purchases, billing issues, product changes and refund reversals post one message each, like [Slack](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#slack). Sandbox events are labelled **Sandbox**; the default **Environment** is production. Mentions are turned off, so an app user id like `@everyone` never pings anyone.
+
+## Intercom
+This sends subscription events to Intercom contacts. To show a customer's subscription next to each conversation in the Intercom inbox, see [Intercom inbox](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#intercom-inbox).
+1. In the Intercom Developer Hub, open your app's **Authentication** and copy the **Access token**.
+2. In RevenueDot, open **Integrations → Intercom**, paste it, pick the **Data hosting region** (US, EU or Australia) and click **Connect Intercom**.
+
+Each event is an Intercom [data event](https://developers.intercom.com/docs/references/rest-api/api.intercom.io/data-events/createdataevent) on the contact whose user id is your app user id (anonymous app user ids use `$email` instead, and are skipped without it), with `subscription_status` and up to 10 keys of metadata. Money events carry the revenue in cents; refunds carry none. Intercom answers 404 for a contact it does not have. Sandbox events go to the same workspace with `environment: SANDBOX` when the **Environment** includes sandbox.
+
+## Iterable
+1. In Iterable, create a **server-side** API key (and one in a second project for sandbox events).
+2. In RevenueDot, open **Integrations → Iterable**, enter the **Server-side API key** and **Sandbox server-side API key**, pick the **Data center** (US or EU), tick **Send paid events as Iterable purchases** if you want Iterable's revenue reports, and click **Connect Iterable**.
+
+Each event goes to Iterable's `events/track` (or `commerce/trackPurchase` for paid events with the box ticked), then `users/update` sets `rc_subscription_status` ([Iterable API](https://api.iterable.com/api/docs)). The user is `$email`, else `$iterableUserId`, else the app user id. `$iterableCampaignId` and `$iterableTemplateId` attribute the event. The event id is Iterable's record id, so a retry updates the same record. Refunds go as events with negative revenue, never as purchases.
+
+## OneSignal
+1. In OneSignal, open **Settings → Keys & IDs** and copy the **App ID** and an **App API key**.
+2. In RevenueDot, open **Integrations → OneSignal**, enter them and click **Connect OneSignal**.
+
+OneSignal gets no events: each event updates the user's [tags](https://documentation.onesignal.com/reference/update-user) with RevenueCat's tag names (`app_user_id`, `period_type`, `purchased_at`, `expiration_at`, `store`, `environment`, `last_event_type`, `product_id`, `entitlement_ids`, `active_subscription`, `subscription_status`, `grace_period_expiration_at`), for segments and messages. The user is `$onesignalUserId` (the OneSignal ID of the v5 SDKs) when set, else the app user id as `external_id` (set it with `OneSignal.login`). Anonymous app user ids are skipped.
+
+## Google AdMob
+AdMob receives no events. Connecting it loads your ad unit names for the Ads Overview; rewarded ads and ad revenue work without it. See [Ads: AdMob](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/ads.md#admob).
+
+## Intercom inbox
+A Canvas Kit app that shows the customer's subscription status, plan, renewal date and total spent next to each conversation in Intercom. See [Support: Intercom](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/support-integrations.md#intercom).
+
+## Zendesk
+A ticket sidebar app with the requester's entitlements, subscriptions, refunds and open tickets. See [Support: Zendesk](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/support-integrations.md#zendesk).
+
 ## Scheduled data exports
 1. Create a bucket and credentials:
    - **Amazon S3:** an IAM user with `s3:PutObject` on `arn:aws:s3:::<bucket>/*` and `s3:ListBucket` on `arn:aws:s3:::<bucket>`, and its access key.
@@ -2894,6 +3092,218 @@ FROM transactions WHERE NOT is_sandbox GROUP BY 1 ORDER BY 1;
 - Set `REVENUEDOT_ENCRYPTION_KEY` (`openssl rand -base64 32`) in `.env` so integration keys are encrypted at rest. Without it the key is derived from `REVENUEDOT_SIGNING_KEY`; with neither, they are stored unencrypted (never shown by the API). Changing the key means entering the integrations' keys again.
 - Deliveries and exports run in the server's background job, every 30 seconds on Node and every minute on RevenueDot Cloud.
 - Parquet works on both, since the writer is plain JavaScript.
+
+---
+
+# Ads
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/ads.md
+Description: Ad revenue from the RevenueCat SDK's ad events in US dollars next to subscription revenue, with eCPM and breakdowns. Rewarded ads verified on the server with AdMob's signed callback, granting currency or access by rules. Optional AdMob connection.
+
+RevenueDot shows the money your app makes from ads next to the money it makes from subscriptions, in US dollars, from the ad events the RevenueCat SDK already sends. It also verifies rewarded ads on the server: AdMob tells RevenueDot that a customer watched the ad, a reward rule grants in-app currency or a few days of access, and your app only asks whether it went through.
+
+You need nothing on the server to start. The dashboard has three pages:
+- **Ads > Overview**: ad revenue, impressions, eCPM, clicks and the ad share of revenue.
+- **Ads > Rewards**: the AdMob callback URL, reward rules, a test reward and the rewards ledger.
+- **Integrations > Google AdMob** (optional): sign in with Google to load your ad unit names.
+
+## Track ad events
+Ad revenue reaches RevenueDot through the SDK's ad tracker, which posts ad events to `POST /v1/events` at your proxy URL, in the same batches as paywall events. Your app keeps its SDK and its code.
+
+1. Point the SDK at RevenueDot (see [Connect your app](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/connect-your-app.md)).
+   - **iOS:** the stock SDK sends ad events to the proxy URL.
+   - **Android:** the stock SDK sends ad events to RevenueCat's hosts even with a proxy URL. Use the [RevenueDot Android fork](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/android.md), which sends them to your server.
+2. Report the ads your app shows, in one of two ways:
+   - **RevenueCat's AdMob adapter** tracks loads, impressions, clicks and revenue for you: [purchases-ios-admob](https://github.com/RevenueCat/purchases-ios/tree/main/AdapterSDKs/RevenueCatAdMob) on iOS and [purchases-admob](https://github.com/RevenueCat/purchases-android/tree/main/feature/admob) on Android.
+   - **Any other network or mediator** (AppLovin MAX, ironSource and the rest): call the ad tracker yourself from the network's callbacks.
+
+```swift
+// iOS 15+: report the revenue of one impression from the mediator's paid-event callback.
+Purchases.shared.adTracker.trackAdRevenue(AdRevenue(
+    networkName: "AdMob", mediatorName: .adMob, adFormat: .rewarded, placement: "level_end",
+    adUnitId: "ca-app-pub-3940256099942544/5224354917", impressionId: impressionId,
+    revenueMicros: 12_500, currency: "USD", precision: .exact
+))
+```
+
+```kotlin
+// Android: the same with the RevenueDot fork.
+Purchases.sharedInstance.adTracker.trackAdRevenue(AdRevenueData(
+    networkName = "AdMob", mediatorName = AdMediatorName.AD_MOB, adFormat = AdFormat.REWARDED, placement = "level_end",
+    adUnitId = "ca-app-pub-3940256099942544/5224354917", impressionId = impressionId,
+    revenueMicros = 12_500, currency = "USD", precision = AdRevenuePrecision.EXACT,
+))
+```
+
+The tracker also has `trackAdLoaded`, `trackAdFailedToLoad`, `trackAdDisplayed` and `trackAdOpened`. RevenueDot stores these event types:
+
+| SDK event | What it counts |
+|---|---|
+| `rc_ads_ad_revenue` | Revenue of one impression: `revenue_micros` (millionths of `currency`), `precision` (`exact`, `publisher_defined`, `estimated` or `unknown`) |
+| `rc_ads_ad_displayed` | One impression |
+| `rc_ads_ad_opened` | One click |
+| `rc_ads_ad_loaded`, `rc_ads_ad_failed_to_load` | Loads and failed loads, for the fill rate |
+| `rc_ads_ad_reward_sdk_*` | The SDK's own record of a rewarded ad's verification |
+
+Each event carries the network (`network_name`), the mediator (`mediator_name`: `AdMob`, `AppLovin` or any name), the format (`banner`, `interstitial`, `rewarded`, `rewarded_interstitial`, `native`, `app_open` or `other`), the placement you choose, the ad unit id and an impression id. Each event id is stored once, so a batch the SDK sends twice is not counted twice.
+
+**Sandbox:** the iOS SDK marks sandbox and TestFlight builds, and every Test Store app is sandbox. Sandbox ad events never mix with production: the Overview shows one environment at a time.
+
+## What the Overview shows
+Open **Ads > Overview**. Pick the period (7, 28 or 90 days, or 12 months; whole UTC days ending today), an app, and **Sandbox data** to see sandbox events instead of production.
+
+**Cards**, each with the change from the previous period of the same length:
+- **Ad revenue:** the sum of `revenue_micros` ÷ 1,000,000 of the revenue events, converted to US dollars at the rate of each event's day. The rates are the same as [Charts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md) use. Revenue in a currency without a rate counts as 0 and is listed as unconverted in the API answer.
+- **Impressions:** displayed events. Some networks send only one revenue event per impression and no displayed events; then each revenue event counts as one impression, so eCPM stays a real number.
+- **eCPM:** ad revenue ÷ impressions × 1,000.
+- **Clicks**, with the **CTR** (clicks ÷ impressions).
+- **Ad share of revenue:** ad revenue ÷ (ad revenue + subscription revenue).
+- **Subscription revenue:** purchases, renewals and one-time purchases made in the period, in US dollars, minus refunds, for the same environment and app.
+
+**Daily chart:** ad revenue, impressions or eCPM per day, or **With subscriptions** to stack ad revenue and subscription revenue.
+
+**Breakdown table:** ad revenue, impressions, eCPM, clicks and share of ad revenue by **Network**, **Format**, **Placement**, **Ad unit** or **Mediator**. Ad units show their AdMob names once you [connect AdMob](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/ads.md#admob).
+
+The same numbers per day, plus fill rate, ad-monetized customers and ARPDAU, are on the [Ads charts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md#ads). Before your first ad event, the page shows three steps instead: add the SDK ad adapter, explore your ad analytics, and connect AdMob.
+
+## Rewarded ads
+Rewarded ads are verified by the ad network's server, not by the app. A modified app cannot grant itself a reward, because only a callback signed by Google does.
+
+How one reward goes, start to finish:
+1. The rewarded ad loads. Your app asks the SDK for a **reward verification token** and passes it to AdMob's server-side verification options.
+2. The customer watches the ad. AdMob calls RevenueDot's callback URL with a signed request that carries the token.
+3. RevenueDot checks Google's signature, records the reward once, and the first matching **reward rule** grants in-app currency or an entitlement.
+4. The SDK polls RevenueDot until the answer is `verified` (with the reward) or `failed`, then refreshes the customer's balances and customer info.
+
+Only AdMob's callback is verified today. AppLovin MAX, ironSource and Unity Ads callbacks are not.
+
+### 1. Paste the callback URL into AdMob
+Open **Ads > Rewards** and copy the **AdMob callback URL**:
+- RevenueDot Cloud: `https://api.revenuedot.app/v1/ads/admob/ssv`
+- Self-hosted: `<your server>/v1/ads/admob/ssv`, for example `https://revenuedot.example.com/v1/ads/admob/ssv`
+
+In AdMob, open each rewarded ad unit, turn on **Server-side verification** and paste the URL. AdMob's **Verify URL** button calls it without parameters, and RevenueDot answers 200. One URL serves every project: the token in each callback names the app.
+
+### 2. Pass the token in your app
+Call these when the ad has loaded and when its reward callback fires.
+
+```swift
+// After the rewarded ad loads
+let token = Purchases.shared.generateRewardVerificationToken(impressionId: impressionId)
+let options = ServerSideVerificationOptions()
+options.userIdentifier = token.appUserID
+options.customRewardString = token.customData
+rewardedAd.serverSideVerificationOptions = options
+
+// When the ad's reward callback fires
+let result = await Purchases.shared.pollRewardVerification(clientTransactionID: token.clientTransactionID)
+if let gems = result.verifiedReward?.virtualCurrency { showReward(gems.amount) }
+```
+
+```kotlin
+// After the rewarded ad loads
+val token = Purchases.sharedInstance.generateRewardVerificationToken(impressionId)
+rewardedAd.setServerSideVerificationOptions(
+    ServerSideVerificationOptions.Builder()
+        .setUserId(token.appUserID)
+        .setCustomData(token.customData)
+        .build()
+)
+
+// When the ad's reward callback fires (inside a coroutine)
+val result = Purchases.sharedInstance.awaitPollRewardVerification(token.clientTransactionId)
+```
+
+On Android without coroutines, call `Purchases.sharedInstance.pollRewardVerification(token.clientTransactionId, callback)`. With RevenueCat's iOS AdMob adapter, `ad.enableRewardVerification()` does these steps for you ([adapter README](https://github.com/RevenueCat/purchases-ios/tree/main/AdapterSDKs/RevenueCatAdMob)).
+
+The token's `customData` is `{"api_key":"<the app's public key>","client_transaction_id":"<a new UUID>","impression_id":"<the impression id>"}`. The user id must be the app user id the token was made for: a reward for one customer never shows up in another customer's poll.
+
+### 3. Add reward rules
+A reward rule says what a verified reward grants. Open **Ads > Rewards > New rule**:
+- **Grant:**
+  - **In-app currency:** the currency (create it under **Product catalog > Virtual currencies** first) and either a **Fixed amount** per reward or the **Network's amount** (AdMob's `reward_amount`) times a **Multiplier**, rounded, at least 1.
+  - **Temporary access:** an entitlement for a number of minutes, hours or days (up to 365 days). It is a promotional grant, so customer info, webhooks and integrations see it like any other, and it ends on its own.
+- **Only when** (all optional; empty matches everything):
+  - **App**.
+  - **Ad unit**: the full id (`ca-app-pub-…/5224354917`) or the number AdMob's callback sends (`5224354917`); either form matches.
+  - **Reward item**: AdMob's `reward_item`, such as `coins`, ignoring case.
+
+Rules are checked from top to bottom, and **the first rule that matches decides**. Drag rules to reorder them. A turned-off rule is skipped. When no rule matches, the reward is verified with nothing granted, and the SDK reports "verified, no reward". A project can have up to 200 rules.
+
+**Currency rewards** are written to the in-app currency ledger once per reward, so a callback Google sends twice never credits twice. The balance is what `GET /v1/subscribers/{app_user_id}/virtual_currencies` returns, and a `VIRTUAL_CURRENCY_TRANSACTION` webhook goes out with `source: "ad_reward"` (a RevenueDot addition; see [webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md)).
+
+### 4. Test a reward and read the ledger
+**Send a test reward** runs the same rules and grants as a real AdMob callback, for an app user ID you enter, without an ad. It is marked sandbox in the ledger, but the currency or access is granted for real.
+
+The **Ledger** lists every verified reward, newest first: when, the customer, the network, the ad unit, AdMob's reward item and amount, the status and what was granted. A reward fails with one of these reasons:
+
+| Reason | What happened | What to do |
+|---|---|---|
+| `missing_user` | AdMob's callback had no user id | Set `userIdentifier` (iOS) or `setUserId` (Android) to the token's `appUserID` |
+| `user_mismatch` | The poll came from a different customer than the reward's user id (the poll answers this; the ledger keeps the reward) | Generate the token after the customer logs in, and pass its `appUserID` |
+| `grant_failed` | The matching rule names an in-app currency or entitlement that no longer exists | Fix or delete the rule |
+
+### What the poll answers
+`GET /v1/subscribers/{app_user_id}/ads/reward_verifications/{client_transaction_id}` (or `/v1/customer/ads/reward_verifications/{id}` with a subscriber token). The SDK asks up to 10 times, about a second apart.
+
+| Answer | When |
+|---|---|
+| `{"status":"pending"}` | AdMob has not called yet, or the grant is still being made |
+| `{"status":"verified","reward":{"type":"virtual_currency","code":"GEMS","amount":10},"more_rewards":[]}` | A currency rule matched |
+| `{"status":"verified","reward":{"type":"entitlement","identifier":"pro","expires_at":"2026-10-02T12:00:00Z"},"more_rewards":[]}` | An access rule matched |
+| `{"status":"verified","reward":null,"more_rewards":[]}` | No rule matched |
+| `{"status":"failed","failure_reason":"user_mismatch","message":"…"}` | One of the reasons above |
+
+### How the callback is checked
+AdMob signs the query string before `&signature=` with ECDSA (P-256, SHA-256). RevenueDot checks it with Google's published keys at `https://www.gstatic.com/admob/reward/verifier-keys.json`, as [Google's server-side verification guide](https://developers.google.com/admob/android/ssv) describes, and fetches the keys again when it sees an unknown key id.
+- A bad signature answers 403 and records nothing.
+- When Google's keys cannot be fetched, RevenueDot answers 503. Google retries callbacks that do not answer 200, so the reward is not lost.
+- A callback whose `custom_data` is not a RevenueDot token is answered 200 and ignored, so Google stops retrying it.
+
+## AdMob
+Connecting AdMob loads your ad unit names, so the Overview shows "Level end rewarded" instead of `ca-app-pub-…/5224354917`. It is optional: ad revenue and rewarded ads work without it.
+
+1. **Use a Google OAuth client.** Google requires one to read AdMob data.
+   - **RevenueDot Cloud** has one; skip to step 3.
+   - **Self-hosted:** set `REVENUEDOT_GOOGLE_OAUTH_CLIENT_ID` and `REVENUEDOT_GOOGLE_OAUTH_CLIENT_SECRET` on the server for every project, or let each project enter its own client on its AdMob page (**Use your own Google OAuth client**).
+2. **Create the client** (self-hosted, or a project's own client): in Google Cloud, enable the **AdMob API**, then create an OAuth client of type **Web application** and add this authorized redirect URI: `<API origin>/v1/ads/admob/oauth/callback`, for example `https://revenuedot.example.com/v1/ads/admob/oauth/callback`. The AdMob page shows the exact URI.
+3. **Connect.** Open **Integrations > Google AdMob** and select **Connect with Google**. Sign in with the Google account that has your AdMob account and allow read-only access (scope `https://www.googleapis.com/auth/admob.readonly`). The sign-in link works once, for 10 minutes.
+
+RevenueDot stores the refresh token encrypted, lists your AdMob accounts and loads every ad unit (name, format, app), up to 5,000. It loads them again **once a day**; **Refresh now** loads them at once. **Disconnect** deletes the Google tokens and the loaded ad units; ad revenue from the SDK and rewarded ads keep working.
+
+## Use the API
+Every page is an API call with a secret key ([API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#ads)). The Overview needs `charts_metrics:overview:read`; rules, the ledger and AdMob need `project_configuration:integrations:read` or `:read_write`.
+
+```bash
+curl -s "https://api.revenuedot.app/v2/projects/$PROJECT_ID/ads/overview?range=28d&environment=production" \
+  -H "Authorization: Bearer $REVENUEDOT_SECRET_KEY"
+
+curl -s -X POST "https://api.revenuedot.app/v2/projects/$PROJECT_ID/ads/reward_rules" \
+  -H "Authorization: Bearer $REVENUEDOT_SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"Gems for level-end ads","ad_unit_id":"ca-app-pub-3940256099942544/5224354917","kind":"virtual_currency","currency_code":"GEMS","amount":10}'
+```
+
+| Endpoint | What it does |
+|---|---|
+| `GET /v2/projects/{project_id}/ads/overview` | The Overview's totals, previous period, daily series and breakdowns. `range`: `7d`, `28d` (default), `90d` or `12m`; `environment`: `production` (default) or `sandbox`; `app_id` |
+| `GET`, `POST /v2/projects/{project_id}/ads/reward_rules` | List rules in order; create one (it goes last) |
+| `POST`, `DELETE /v2/projects/{project_id}/ads/reward_rules/{rule_id}` | Update or turn off a rule; delete it |
+| `POST /v2/projects/{project_id}/ads/reward_rules/actions/reorder` | `{"rule_ids":[...]}`, every rule once, in the new order |
+| `GET /v2/projects/{project_id}/ads/reward_verifications?status=&app_user_id=` | The ledger, newest first, paged |
+| `POST /v2/projects/{project_id}/ads/reward_verifications/test` | A test reward: `{"app_user_id":"user_42"}`, optionally `app_id`, `ad_unit_id`, `reward_item`, `reward_amount` |
+| `GET`, `DELETE /v2/projects/{project_id}/ads/admob` | The AdMob connection, its ad units and the URLs to paste; disconnect |
+| `POST /v2/projects/{project_id}/ads/admob/connect` | Google's sign-in URL (body: optional `client_id`, `client_secret`) |
+| `POST /v2/projects/{project_id}/ads/admob/refresh` | Load the ad units now |
+| `GET /v1/ads/admob/ssv` | AdMob's callback (Google calls it; no key) |
+| `GET /v1/ads/admob/oauth/callback` | Google's redirect after sign-in (no key) |
+
+## How this compares to RevenueCat
+RevenueDot answers the same SDK calls: the ad event names, the reward verification token and the poll's answers come from the RevenueCat SDKs' own code ([purchases-ios](https://github.com/RevenueCat/purchases-ios/tree/main/Sources/Ads), [purchases-android](https://github.com/RevenueCat/purchases-android)). RevenueCat does not publish its callback URL or how it configures rewards, so the callback URL and the reward rules above are RevenueDot's own. Apps that move from RevenueCat paste RevenueDot's callback URL into AdMob and add their rules again.
+
+## Related
+- [Charts: Ads](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md#ads)
+- [Integrations](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md), including [Apple Search Ads](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#apple-search-ads)
+- [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md)
 
 ---
 
@@ -3176,7 +3586,7 @@ Every email has an unsubscribe link. When your server's public URL is https, the
 # How do I handle support requests from the Customer Center?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/support-integrations.md
-Description: Customer Center tickets reach your support inbox with the customer's subscription details, and Intercom or Zendesk sidebars can show a customer's subscription state from RevenueDot's support summary endpoint.
+Description: Customer Center tickets reach your support inbox with the customer's subscription details. RevenueDot's Intercom inbox app and Zendesk sidebar app show each customer's subscription, entitlements, total spent, refunds and open tickets next to the conversation.
 
 The RevenueCat SDK's Customer Center can let customers write to you from inside your app. RevenueDot stores each request, emails it to your support address and lists it under **Lifecycle > Support > Tickets**. Your help desk can also show the customer's subscription next to the conversation.
 
@@ -3190,16 +3600,47 @@ Open **Lifecycle > Support > Customer Center**.
 The SDK reads these settings with the rest of the Customer Center configuration. A customer can send up to 5 tickets an hour, one device (IP address) up to 20, and the whole project receives up to 100 an hour, so a leaked SDK key cannot flood your inbox. The customer's email must be one plain address, and the message is cut at 5,000 characters. If tickets are off, the SDK offers its email link instead.
 
 ## Show subscription data in Intercom or Zendesk
-Help desks know the customer's email. Call the support summary with a secret API key that has `customer_information:customers:read`:
+RevenueDot has a ready app for each help desk. Both show the customer's status, active entitlements, plan, store, renewal or expiry date, billing issue, total spent, customer since, refund requests and open tickets, with a link to the customer in the dashboard.
+
+## Intercom
+The Intercom inbox app is a [Canvas Kit](https://developers.intercom.com/docs/canvas-kit) app that you create in your own Intercom workspace. Intercom calls RevenueDot directly, and RevenueDot checks every request's signature, so no API key is involved.
+
+1. In the [Intercom Developer Hub](https://app.intercom.com/a/apps/_/developer-hub), create an app and open **Canvas Kit**. For the **Inbox**, set the initialize URL to:
+   - RevenueDot Cloud: `https://api.revenuedot.app/v1/support/intercom/{project_id}/canvas`
+   - Self-hosted: `<your server>/v1/support/intercom/{project_id}/canvas`
+
+   Use your project ID, for example `https://api.revenuedot.app/v1/support/intercom/proj1a2b3c4d/canvas`. The **Integrations → Intercom inbox** page in RevenueDot shows the exact URL to copy.
+2. In the Developer Hub, open **Basic information** and copy the app's **client secret**. In RevenueDot, open **Integrations → Intercom inbox**, paste it as **Intercom app client secret** and click **Connect Intercom inbox**.
+3. Install the app in your workspace and add it to the inbox sidebar.
+
+**How a request is checked:** Intercom signs the raw request body with the client secret and sends the hex HMAC-SHA256 in `X-Body-Signature`. RevenueDot computes the same signature with the saved secret and answers 401 when it is missing or does not match. A project without a connected Intercom inbox answers 404.
+
+**How the customer is found:** by the contact's user ID (`external_id`), which should be your app user ID, then by the contact's email against the customers' `$email` attribute. Without a match the sidebar says so. The answer is Canvas Kit components: a table of the fields above and an **Open in RevenueDot** button.
+
+To send subscription events to Intercom contacts as well, use the separate [Intercom integration](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#intercom).
+
+## Zendesk
+The Zendesk app is a private ticket sidebar app. Its source is in the RevenueDot repository: [integrations/zendesk-app](https://github.com/revenuedot/revenuedot/tree/main/integrations/zendesk-app) (manifest, sidebar page, translations and logos). It looks the ticket requester up by email with `GET /v2/projects/{project_id}/support_summaries?email=`.
+
+1. In RevenueDot, open **API keys** and create a secret key with only the `customer_information:customers:read` permission.
+2. Download the [integrations/zendesk-app](https://github.com/revenuedot/revenuedot/tree/main/integrations/zendesk-app) folder, zip its contents (or run `zcli apps:package` in it) and upload the zip as a private app in Zendesk: **Admin Center › Apps and integrations › Zendesk Support apps › Upload private app** ([Zendesk's guide](https://developer.zendesk.com/documentation/apps/getting-started/uploading-and-installing-a-private-app/)). `zcli apps:create` in the folder does both.
+3. Fill in the app's three settings:
+   - **RevenueDot API URL:** `https://api.revenuedot.app` on RevenueDot Cloud, or your server's URL.
+   - **Project ID:** from **Project settings** in the dashboard, or the **Integrations → Zendesk** page.
+   - **Secret API key:** the key from step 1. Zendesk keeps it as a secure setting and adds it to the request on Zendesk's servers, so agents' browsers never see it.
+4. In RevenueDot, open **Integrations → Zendesk** and click **Mark as installed**, so the card shows the app as active.
+
+**Self-hosted servers:** Zendesk sends a secure setting only to the domains listed in the manifest's `domainWhitelist` ([Zendesk's guide](https://developer.zendesk.com/documentation/apps/app-developer-guide/making-api-requests-from-a-zendesk-app/)). Add your server's host name to `domainWhitelist` in `manifest.json` (it lists `api.revenuedot.app`) before you upload the app, for example `"domainWhitelist": ["revenuedot.example.com"]`.
+
+## Use the support summary from your own app
+Any other help desk can call the support summary with a secret API key that has `customer_information:customers:read`:
 
 ```bash
 curl "https://api.revenuedot.app/v2/projects/$PROJECT_ID/support_summaries?email=wren@example.com" \
   -H "Authorization: Bearer $REVENUEDOT_SECRET_KEY"
 ```
 
-or, when you know the app user ID, `GET /v2/projects/{project_id}/customers/{app_user_id}/support_summary`. The answer has the customer's status, active entitlements, each subscription with its store, auto-renew state and expiry, total spent, refund requests, open tickets and a link to the customer in the dashboard ([API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#support)).
-
-Use it from an Intercom Canvas Kit app or a Zendesk sidebar app: your app's backend calls RevenueDot with the secret key (never put the key in the help desk's browser code) and renders the fields you want.
+or, when you know the app user ID, `GET /v2/projects/{project_id}/customers/{app_user_id}/support_summary`. The answer has the customer's status, active entitlements, each subscription with its store, auto-renew state and expiry, total spent, refund requests, open tickets and a link to the customer in the dashboard ([API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#support)). Call it from your app's backend, never from code that runs in an agent's browser, because the key is secret.
 
 ---
 

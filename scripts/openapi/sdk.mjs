@@ -225,10 +225,34 @@ What \`Purchases.redeemWebPurchase()\` calls with the \`redemption_token\` from 
       responses: { 200: ok("Registered.", obj({ id: str(), purchase_type: str(), is_sandbox: bool(), token_source: en(["APPLE_SDK", "RC_GENERATED"]) }), { id: "ept3b1f0c9e2d8a4f6b9c7e5d3a1b2c4d6e", purchase_type: "LINK_OUT", is_sandbox: true, token_source: "APPLE_SDK" }), ...v1Errors(401) } }),
   },
   "/v1/subscribers/{app_user_id}/ads/reward_verifications/{client_transaction_id}": {
-    get: op({ id: "rewardVerification", tag: "SDK support", summary: "Rewarded ad verification (not available)", security: PUBLIC, source: SDK,
+    get: op({ id: "rewardVerification", tag: "SDK support", summary: "Rewarded ad verification status", security: PUBLIC, source: SDK,
       parameters: [user, { name: "client_transaction_id", in: "path", required: true, schema: str(), description: "From `generateRewardVerificationToken`." }],
-      description: "What `pollRewardVerification` polls. There is no server-side ad verification, so the answer is always the final `failed`, and the SDK stops after one request.",
-      responses: { 200: ok("Failed.", obj({ status: en(["pending", "verified", "failed"]), reward: { type: "null" }, failure_reason: str(), message: str() }), { status: "failed", reward: null, failure_reason: "not_supported", message: "Server-side reward verification is not available on RevenueDot." }), ...v1Errors(401) } }),
+      description: `
+What \`pollRewardVerification\` polls after the ad's reward callback fires (up to 10 times, about a second apart). The ad network's server-side callback (\`GET /v1/ads/admob/ssv\`) records the reward; the first matching reward rule grants it. See [Ads: rewarded ads](../docs/guides/ads.md#rewarded-ads).
+
+- \`pending\`: no callback recorded yet for this id, or the grant is still being made. The SDK asks again.
+- \`verified\`: \`reward\` is the first granted reward and \`more_rewards\` the rest. \`reward\` is null when no rule matched: verified, nothing granted. The SDK then refreshes the customer's balances and customer info.
+- \`failed\`: \`failure_reason\` is \`user_mismatch\` (the reward belongs to another customer), \`missing_user\` (the callback had no user id) or \`grant_failed\` (the rule names a currency or entitlement that no longer exists).`,
+      responses: { 200: { description: "The verification status.", content: { "application/json": {
+        schema: obj({
+          status: en(["pending", "verified", "failed"]),
+          reward: { oneOf: [
+            obj({ type: en(["virtual_currency"]), code: str(), amount: int("More than 0.") }, ["type", "code", "amount"]),
+            obj({ type: en(["entitlement"]), identifier: str("Entitlement lookup key."), expires_at: str("ISO 8601.") }, ["type", "identifier", "expires_at"]),
+            { type: "null" },
+          ], description: "Verified only." },
+          more_rewards: arr({ type: "object" }, { description: "Verified only. Further rewards, same shape as `reward`." }),
+          failure_reason: en(["user_mismatch", "missing_user", "grant_failed"], "Failed only."),
+          message: str("Failed only. The reason in words."),
+        }, ["status"]),
+        examples: {
+          currency: { summary: "Verified: in-app currency", value: { status: "verified", reward: { type: "virtual_currency", code: "GEMS", amount: 10 }, more_rewards: [] } },
+          entitlement: { summary: "Verified: temporary access", value: { status: "verified", reward: { type: "entitlement", identifier: "pro", expires_at: "2026-10-02T12:00:00Z" }, more_rewards: [] } },
+          pending: { summary: "No callback yet", value: { status: "pending" } },
+          nothing: { summary: "Verified, no rule matched", value: { status: "verified", reward: null, more_rewards: [] } },
+          failed: { summary: "Failed", value: { status: "failed", failure_reason: "user_mismatch", message: "The ad network's user id is not this customer." } },
+        },
+      } } }, ...v1Errors(401) } }),
   },
   "/v1/receipts/amazon/{store_user_id}/{receipt_id}": {
     get: op({ id: "amazonReceipt", tag: "SDK support", summary: "Amazon receipt details", security: PUBLIC, source: SDK,
@@ -280,7 +304,7 @@ published paywall, keyed by workflow id, with \`offering_identifier\`). The othe
   },
   "/v1/events": {
     post: op({ id: "postEvents", tag: "SDK support", summary: "SDK paywall, Customer Center and ad events", security: PUBLIC, source: SDK,
-      description: "Stored for the paywall, ad and Customer Center charts (each SDK event id once). A malformed batch is still answered 200 so the SDK does not resend it forever.", responses: { 200: empty() } }),
+      description: "Stored for the paywall, ad and Customer Center charts and the [Ads Overview](../docs/guides/ads.md#track-ad-events) (each SDK event id once). Ad events are the `rc_ads_*` types. A malformed batch is still answered 200 so the SDK does not resend it forever.", responses: { 200: empty() } }),
   },
   "/v1/diagnostics": {
     post: op({ id: "postDiagnostics", tag: "SDK support", summary: "SDK diagnostics (accepted, not stored)", security: PUBLIC, source: SDK, responses: { 200: empty() } }),
