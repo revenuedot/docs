@@ -2,7 +2,7 @@
 // This file: the webhook events (OpenAPI `webhooks`) with example payloads recorded from a RevenueDot server.
 // Docs: https://revenuedot.app/docs/guides/webhooks   Migrate from RevenueCat: https://revenuedot.app/docs/migrate
 import { readFileSync } from "node:fs";
-import { arr, bool, en, int, nstr, num, obj, ok, str } from "./common.mjs";
+import { arr, bool, en, int, nint, nstr, num, obj, ok, str } from "./common.mjs";
 
 const EXAMPLES = JSON.parse(readFileSync(new URL("./webhook-examples.json", import.meta.url), "utf8"));
 
@@ -65,14 +65,18 @@ const EVENTS = [
   ["VIRTUAL_CURRENCY_TRANSACTION", "An in-app currency was credited because a purchase of a granting product was recorded. Not sent for adjustments made through the API.", "vc"],
   ["EXPERIMENT_ENROLLMENT", "A customer was enrolled in an offering experiment. Sent once per customer and experiment.", "experiment"],
   ["SUBSCRIBER_ALIAS", "A new app user id joined an existing customer: `logIn` onto an anonymous customer, `logIn` that merged an anonymous customer into an existing one, Android's alias call, or a restore that merged two customers. RevenueCat deprecated this event and sends it only to older projects, so RevenueDot delivers it only to webhooks whose `event_types` filter names `subscriber_alias`; it always appears in the customer's event history.", "alias"],
+  ["PURCHASE_REDEEMED", "A web purchase was redeemed in the app through a redemption link (`POST /v1/subscribers/redeem_purchase`): the anonymous customer who paid on the web was merged into the app user. Fields follow RevenueCat's sample; `app_user_id` is added so analytics tools know who it is. See [Redemption links](../docs/guides/redemption-links.md).", "redeemed"],
+  ["FUNNEL_VIEWED", "RevenueDot type. A visitor opened a published funnel. Opt-in: sent only to webhooks and integrations whose `event_types` names `funnel_viewed`. `app_user_id` is null unless the page URL had `?app_user_id=`. See [Funnels](../docs/guides/funnels.md).", "funnel"],
+  ["FUNNEL_STEP_COMPLETED", "RevenueDot type. A visitor finished a funnel step, with the answer for a question (an email step's answer is `provided`, never the address). Opt-in: `funnel_step_completed`.", "funnel"],
+  ["FUNNEL_PURCHASE", "RevenueDot type. A funnel's checkout was paid. `app_user_id` is the buyer's (anonymous unless the page had one) and `product_id` the Stripe price. Opt-in: `funnel_purchase`.", "funnel"],
   ["TEST", "Sent by the dashboard's \"Send test event\" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase.", {}],
 ];
 
 /**
  * Accepted in a webhook's `event_types` filter, never sent, because RevenueDot never has the fact behind them: it never
- * grants unverified access during a store outage, has no billing engine issuing invoices, and issues no web redemption links.
+ * grants unverified access during a store outage, and has no billing engine issuing invoices.
  */
-export const NOT_SENT = ["TEMPORARY_ENTITLEMENT_GRANT", "INVOICE_ISSUANCE", "PURCHASE_REDEEMED"];
+export const NOT_SENT = ["TEMPORARY_ENTITLEMENT_GRANT", "INVOICE_ISSUANCE"];
 
 const headers = {
   "X-RevenueCat-Webhook-Signature": { required: true, schema: str(), description: "`t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\" with the webhook's signing secret>`. Signed again on every attempt.", example: "t=1790800914,v1=0a1552334e825926036f7efe21527800ea45caa63eca523c6120c6da9041ef99" },
@@ -117,6 +121,24 @@ for (const [type, description, extra] of EVENTS) {
       id: lifecycle.id, type: lifecycle.type, event_timestamp_ms: lifecycle.event_timestamp_ms, app_id: lifecycle.app_id, app_user_id: str("The app user id the app uses now."),
       original_app_user_id: lifecycle.original_app_user_id, aliases: lifecycle.aliases, subscriber_attributes: lifecycle.subscriber_attributes,
     }, ["id", "type", "event_timestamp_ms", "app_user_id", "original_app_user_id", "aliases"]);
+  } else if (extra === "redeemed") {
+    schema = payload({
+      id: lifecycle.id, type: lifecycle.type, event_timestamp_ms: lifecycle.event_timestamp_ms, app_id: str("The Stripe app the purchase was made through."), store: en(["STRIPE"]), environment: lifecycle.environment,
+      redeemed_from: arr(str(), { description: "The anonymous web buyer's app user id." }), redeemed_by: arr(str(), { description: "The app user id that redeemed it." }),
+      redemption_outcome: en(["alias"], "The web customer was merged into the app user."), redemption_platform: nstr("From the SDK's X-Platform header: ios, android, web ..."),
+      product_id: nstr("The web product's store identifier (the Stripe price id)."), entitlement_ids: { type: ["array", "null"], items: str(), description: "Entitlements the product unlocks, or null." },
+      workflow_id: nstr("The funnel id when the purchase came from a funnel, else null."), workflow_step_id: { type: "null" }, trace_id: str("The web checkout id (wco_...)."),
+      app_user_id: str("The app user id that redeemed it. A RevenueDot addition to RevenueCat's sample."),
+    }, ["id", "type", "event_timestamp_ms", "store", "environment", "redeemed_from", "redeemed_by", "redemption_outcome", "app_user_id"]);
+  } else if (extra === "funnel") {
+    schema = payload({
+      id: lifecycle.id, type: lifecycle.type, event_timestamp_ms: lifecycle.event_timestamp_ms, app_id: nstr("The funnel's Stripe app."), app_user_id: nstr("The visitor's app user id, when known."), aliases: lifecycle.aliases,
+      environment: en(["PRODUCTION", "SANDBOX"], "SANDBOX when the Stripe app uses a test-mode key."), store: en(["STRIPE"]), funnel_id: str(), funnel_name: str(), funnel_slug: str(), session_id: str("The page session; one per visit."),
+      step_id: nstr(), step_type: { type: ["string", "null"], enum: ["question", "info", "email", "paywall", "success", null] }, step_index: nint("0-based position of the step."),
+      answer: { description: "FUNNEL_STEP_COMPLETED of a question: the answer, or a list for multiple choice. Otherwise null.", oneOf: [str(), arr(str()), { type: "null" }] },
+      product_id: str("FUNNEL_PURCHASE only: the Stripe price id."), subscriber_attributes: { type: "object", description: "Always empty." },
+    }, ["id", "type", "event_timestamp_ms", "environment", "store", "funnel_id", "funnel_name", "session_id"]);
+    schema.properties.event.additionalProperties = { type: "string", description: "The page's `utm_*` query parameters, such as `utm_source`." };
   } else if (extra === null) {
     const pick = ["id", "type", "event_timestamp_ms", "app_id", "app_user_id", "original_app_user_id", "aliases", "product_id", "transaction_id", "original_transaction_id", "store", "environment", "currency", "country_code", "subscriber_attributes"];
     schema = payload(Object.fromEntries(pick.map((k) => [k, lifecycle[k]])), ["id", "type", "event_timestamp_ms", "app_user_id", "product_id", "store", "environment"]);

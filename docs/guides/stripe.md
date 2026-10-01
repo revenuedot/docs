@@ -5,7 +5,9 @@ description: Create a Stripe app, save a restricted API key and a webhook signin
 
 # How do I track Stripe subscriptions from my own Stripe account in RevenueDot?
 
-Four steps: create a Stripe app in RevenueDot, save a **restricted API key** from your Stripe account, add a **webhook endpoint** in Stripe and save its signing secret, then have your backend **post each purchase** to `POST /v1/receipts`. Customers who pay on your website then get the same entitlements in your apps when they use the same app user ID. RevenueDot only reads from Stripe: it never charges, refunds or changes anything there.
+Four steps: create a Stripe app in RevenueDot, save a **restricted API key** from your Stripe account, add a **webhook endpoint** in Stripe and save its signing secret, then have your backend **post each purchase** to `POST /v1/receipts`. Customers who pay on your website then get the same entitlements in your apps when they use the same app user ID. For this, RevenueDot only reads from Stripe: it never charges, refunds or changes anything there.
+
+**No checkout of your own?** RevenueDot can host one on the same Stripe app: purchase links, funnels and redemption links, with products, prices and coupons it creates in your account. That needs write permissions on the key. See [Sell on the web with Stripe](web-billing.md).
 
 ## 1. Create the app
 ```bash
@@ -18,7 +20,7 @@ The app's public key starts with `strp_`. Create its products with `store_identi
 
 ## 2. Save a restricted API key
 1. In the [Stripe Dashboard → Developers → API keys](https://dashboard.stripe.com/apikeys/create), click **Create restricted key**.
-2. Give it **Read** access to Subscriptions, Invoices, Checkout Sessions, Charges, Customers, Products and Prices. Leave everything else at None.
+2. Give it **Read** access to Subscriptions, Invoices, Checkout Sessions, Charges, Customers, Products and Prices. Leave everything else at None. For [web billing](web-billing.md#1-connect-stripe), give Products, Prices, Checkout Sessions, Coupons and Promotion Codes **Write** instead.
 3. In the dashboard, open the app → **Stripe API key**, paste it and click **Check credentials**. RevenueDot lists one subscription and one Checkout Session: a wrong key says so, and a key without a permission names the one it lacks.
 
 With the API:
@@ -36,7 +38,7 @@ A publishable key (`pk_…`) is refused. Using a Stripe Connect platform key for
 
 ## 3. Add the webhook endpoint
 1. Copy the app's webhook URL, `https://revenuedot.example.com/v1/notifications/stripe/{app_id}`, from the dashboard or from `store_settings` (`notification_url`).
-2. In the [Stripe Dashboard → Developers → Webhooks](https://dashboard.stripe.com/webhooks/create), add an endpoint with that URL and these events: `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.subscription.paused`, `customer.subscription.resumed`, `invoice.paid`, `invoice.payment_failed`, `invoice.updated`, `charge.refunded`, `checkout.session.completed`. Other events are accepted and ignored.
+2. In the [Stripe Dashboard → Developers → Webhooks](https://dashboard.stripe.com/webhooks/create), add an endpoint with that URL and these events: `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.subscription.paused`, `customer.subscription.resumed`, `invoice.paid`, `invoice.payment_failed`, `invoice.updated`, `charge.refunded`, `checkout.session.completed`. Other events are accepted and ignored. For [web billing](web-billing.md), `checkout.session.completed` also records purchases from RevenueDot's hosted checkout, and `checkout.session.async_payment_succeeded` records the ones paid with delayed methods.
 3. Reveal the endpoint's **Signing secret** (`whsec_…`) and paste it on the app page, or save it as `stripe_webhook_secret`.
 
 Every event must carry a valid `Stripe-Signature`: RevenueDot computes the HMAC-SHA256 of `"<t>.<body>"` with the signing secret, the way [Stripe documents it](https://docs.stripe.com/webhooks#verify-manually), and refuses a timestamp more than 5 minutes off. A missing secret or a bad signature answers 400. Each event is stored once (by event ID), copied to `notification_forward_url` when set, and applied by reading the subscription from Stripe again, so events arriving out of order cannot roll a subscription back. Temporary failures answer 500, and Stripe retries.
@@ -84,11 +86,12 @@ Webhooks report `store: STRIPE` with no store commission. Revenue is what each i
 Both Stripe API shapes work: before 2025-03-31 (period fields on the subscription, `invoice.subscription`) and after (period fields on the subscription item, `invoice.parent.subscription_details`).
 
 ## Not supported yet
-- "Connect with Stripe" (OAuth) instead of a restricted key, and hosted checkout: these need RevenueDot's own Stripe platform and come later.
+- "Connect with Stripe" (OAuth) instead of a restricted key. It needs RevenueDot's own Stripe platform account and comes later. Hosted checkout works today with a restricted key: see [Sell on the web with Stripe](web-billing.md).
 - Subscription schedules, metered and tiered prices, and subscriptions with several items.
 - A scheduled re-check without webhooks: without the webhook endpoint, a cancellation shows only when your backend posts the subscription again.
 
 ## Related
+- [Sell on the web with Stripe](web-billing.md): hosted checkout, purchase links, funnels and redemption links
 - [Webhooks out of RevenueDot](webhooks.md)
 - [Sandbox and production](../concepts/sandbox.md)
 - [SDK endpoints: POST /v1/receipts](../../api/sdk-endpoints.md)

@@ -22,7 +22,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/webhooks" 
 - **`signing_secret` is shown once**, in this answer. Store it as a secret in your backend.
 - `authorization_header` (optional) is sent verbatim as the `Authorization` header, the same role as the authorization header setting in [RevenueCat's webhooks](https://www.revenuecat.com/docs/integrations/webhooks).
 - `environment`: `production`, `sandbox`, or `null` for both.
-- `event_types`: lower-case types such as `["initial_purchase","renewal"]`; empty means all.
+- `event_types`: lower-case types such as `["initial_purchase","renewal"]`; empty means all except the opt-in types below.
 - `app_id`: only one app's events; `null` for all apps.
 - **Pause without deleting:** send `{"enabled":false}` to `POST /v2/projects/{project_id}/integrations/webhooks/{id}`, or use the Deliveries switch on the webhook's dashboard page. Events recorded while it is paused are not sent; queued retries resume when you turn it back on. `enabled` is a RevenueDot addition; read it with `GET /v2/projects/{project_id}/webhooks`.
 
@@ -39,9 +39,11 @@ X-RevenueCat-Webhook-Signature: t=1790800914,v1=0a1552334e825926036f7efe21527800
 
 Every field of every event type, with full examples, is on [Webhook events](../../api/webhook-events.md). Handlers written for RevenueCat's webhooks work unchanged: the field names and values are the same.
 
-RevenueDot sends 18 of RevenueCat's 21 event types:
+RevenueDot sends 19 of RevenueCat's 21 event types:
+- **`PURCHASE_REDEEMED`** is sent when an app redeems a web purchase with a [redemption link](redemption-links.md). `redeemed_from` is the anonymous web buyer, `redeemed_by` and `app_user_id` the app's user.
 - **`SUBSCRIBER_ALIAS`** is sent only to webhooks whose `event_types` names `subscriber_alias`. RevenueCat deprecated it and sends it only to older projects, so a webhook without a filter never gets it.
-- **`TEMPORARY_ENTITLEMENT_GRANT`, `INVOICE_ISSUANCE` and `PURCHASE_REDEEMED`** are never sent. RevenueDot never grants access it has not verified during a store outage (the SDK keeps access on the device instead, see [offline entitlements](offline-entitlements.md)), has no billing engine that issues invoices, and issues no web purchase redemption links.
+- **`TEMPORARY_ENTITLEMENT_GRANT` and `INVOICE_ISSUANCE`** are never sent. RevenueDot never grants access it has not verified during a store outage (the SDK keeps access on the device instead, see [offline entitlements](offline-entitlements.md)), and has no billing engine that issues invoices.
+- **`FUNNEL_VIEWED`, `FUNNEL_STEP_COMPLETED` and `FUNNEL_PURCHASE`** are RevenueDot's own types for [funnels](funnels.md). Like `SUBSCRIBER_ALIAS`, they are opt-in: only webhooks whose `event_types` names `funnel_viewed`, `funnel_step_completed` or `funnel_purchase` get them, so a handler written for RevenueCat's types never sees them.
 - **`offer_code`** carries the App Store or Google Play offer id of the period, such as a [win-back offer](win-back-offers.md).
 
 ## 3. Verify the signature

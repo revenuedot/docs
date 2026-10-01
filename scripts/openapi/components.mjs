@@ -31,7 +31,7 @@ export const V2_ERROR_TYPES = [
 
 /** SDK and REST v1 error codes (apps/server/src/errors.ts) with the HTTP status each is sent with. */
 export const V1_ERROR_CODES = [
-  { code: 7000, name: "BAD_REQUEST / INVALID_PLATFORM", status: "400", meaning: "The request is malformed, a secret-key receipt post has no X-Platform app, the store action does not exist for this store, or a web checkout was asked for (RevenueDot takes no web payments)." },
+  { code: 7000, name: "BAD_REQUEST / INVALID_PLATFORM", status: "400", meaning: "The request is malformed, a secret-key receipt post has no X-Platform app, the store action does not exist for this store, a hosted checkout was asked for a package with no web product, or purchases-js asked for its own Web Billing checkout (`rcb_` keys), which RevenueDot does not have." },
   { code: 7101, name: "STORE_PROBLEM", status: "400 or 503", meaning: "The store refused the request (400), or the store or its credentials could not be used right now (503, retry later)." },
   { code: 7102, name: "RECEIPT_ALREADY_IN_USE", status: "400", meaning: "The purchase belongs to another customer and the project's transfer behaviour is keep or transfer_if_no_active." },
   { code: 7103, name: "INVALID_RECEIPT", status: "400", meaning: "The receipt, signed transaction or purchase token is not valid, or it belongs to another bundle id or package name." },
@@ -44,7 +44,9 @@ export const V1_ERROR_CODES = [
   { code: 7259, name: "NOT_FOUND", status: "404", meaning: "The customer, entitlement, offering or subscription does not exist." },
   { code: 7263, name: "INVALID_SUBSCRIBER_ATTRIBUTES", status: "400", meaning: "Some attributes were not saved; `attribute_errors` lists them." },
   { code: 7662, name: "UNSUPPORTED_RECEIPT", status: "400", meaning: "Receipts for this app's store are not supported yet (Web Billing, Paddle, Roku), and the Android SDK's Amazon receipt lookup with a key that is not an Amazon app's." },
-  { code: 7849, name: "INVALID_WEB_REDEMPTION_TOKEN", status: "400", meaning: "A web purchase redemption token is not valid. RevenueDot has no web purchases, so every token answers this; the SDKs return the `invalidToken` result." },
+  { code: 7849, name: "INVALID_WEB_REDEMPTION_TOKEN", status: "400", meaning: "A web purchase redemption token is unknown, malformed or from another project. The SDKs return the `invalidToken` result." },
+  { code: 7852, name: "PURCHASE_BELONGS_TO_OTHER_USER", status: "400", meaning: "Another customer already redeemed this web purchase. The SDKs return `purchaseBelongsToOtherUser`." },
+  { code: 7853, name: "EXPIRED_WEB_REDEMPTION_TOKEN", status: "400", meaning: "The redemption link expired. `purchase_redemption_error_info.obfuscated_email` names where a new link was emailed. The SDKs return `expired`." },
   { code: 7877, name: "INVALID_OPERATION_SESSION", status: "400", meaning: "A Web Billing checkout session does not exist." },
 ];
 

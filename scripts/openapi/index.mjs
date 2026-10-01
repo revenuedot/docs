@@ -12,6 +12,7 @@ import { integrationPaths } from "./integrations.mjs";
 import { webhooks } from "./webhooks.mjs";
 import { v2RestPaths } from "./v2-rest.mjs";
 import { lifecyclePaths } from "./lifecycle.mjs";
+import { webPaths, webSchemas } from "./web.mjs";
 
 /**
  * Tags in reading order. `x-page` is the generated Markdown page (api/<page>.md) the tag's operations go to.
@@ -24,7 +25,7 @@ export const TAGS = [
   ["Identity", "sdk-endpoints", "`logIn` and aliases."],
   ["Attributes", "sdk-endpoints", "Customer attributes such as `$email`."],
   ["SDK support", "sdk-endpoints", "Endpoints the SDK calls for features RevenueDot answers minimally, so the SDK keeps working."],
-  ["Web Billing", "sdk-endpoints", "Web checkout calls from the iOS SDK and purchases-js. RevenueDot takes no web payments, so a checkout answers an error the SDK shows as a failed purchase."],
+  ["Web Billing", "sdk-endpoints", "Web checkout calls from the iOS SDK and purchases-js. The iOS SDK's paywall web checkout opens a Stripe Checkout on your own Stripe account ([web billing](../docs/guides/web-billing.md)). The purchases-js checkout for RevenueCat Billing (`rcb_` keys, Stripe Elements inside the SDK) is not available and answers an error the SDK shows as a failed purchase."],
   ["Subscriber tokens", "sdk-endpoints", "The SDK endpoints for one customer, authorized by a subscriber access token from `POST /v2/projects/{project_id}/apps/{app_id}/authenticate` instead of the app key. The RevenueCat SDKs call these paths in their internal token mode."],
   ["Store notifications", "sdk-endpoints", "Where App Store Connect and Google Pub/Sub send server notifications."],
   ["Response signing", "sdk-endpoints", "Trusted Entitlements: the public key responses are signed with."],
@@ -49,7 +50,8 @@ export const TAGS = [
   ["Experiments", "rest-v2", "Offering A/B tests and their results."],
   ["Paywalls", "rest-v2", "Paywall components the SDK renders, their publishing and versions, and the images and fonts they use."],
   ["Webhook integrations", "rest-v2", "Where events are sent."],
-  ["Discounts and invoices", "rest-v2", "RevenueCat Billing (Web Billing) objects. RevenueDot does not have that billing engine, so these operations answer on purpose: writes 422, lists empty, single reads 404."],
+  ["Discounts", "rest-v2", "Web discounts for RevenueDot's web checkout, with RevenueCat's v2 discount operations and shapes. Each discount is a Stripe coupon and each code a Stripe promotion code in your own Stripe account. See [Web discounts](../docs/guides/web-discounts.md)."],
+  ["Invoices", "rest-v2", "RevenueCat Billing invoices. Stripe issues the invoices for RevenueDot's web checkout, so these answer on purpose: the list is empty and a file is 404."],
   ["Collaborators", "rest-v2", "Dashboard users of the project."],
   ["Dashboard auth", "extensions", "Sign-up, sign-in, password reset, email confirmation, invites and account settings for the dashboard. The session cookie also authorizes REST API v2."],
   ["Members and invites", "extensions", "Invite people to a project by email, change their role, remove them. Dashboard session only."],
@@ -68,6 +70,10 @@ export const TAGS = [
   ["Test Store", "extensions", "Simulated purchases and lifecycles for development."],
   ["Dashboard data", "extensions", "Series and rows the dashboard shows."],
   ["Migration import", "extensions", "Bulk import from RevenueCat, used by the `revenuedot import` CLI."],
+  ["Web billing", "extensions", "Sell on the web through your own Stripe account: web providers and the setup checklist, the web config (checkout look, success page, deep link scheme), web products created in Stripe, web discounts with RevenueDot's extra settings, and the project's web address and custom domain. See [Sell on the web with Stripe](../docs/guides/web-billing.md)."],
+  ["Purchase links", "extensions", "A hosted checkout page for one offering. See [Purchase links](../docs/guides/purchase-links.md)."],
+  ["Funnels", "extensions", "Multi-step web-to-app funnels: quiz, info, email, paywall and success steps, publishing, analytics and Build with AI. See [Funnels](../docs/guides/funnels.md)."],
+  ["Hosted pages", "extensions", "The public pages RevenueDot serves for purchase links, funnels and redemption links, and the three calls those pages make. No API key. They live under `/pay` on the API host, at the root of `REVENUEDOT_PAY_URL` when it is a host of its own, and at the root of a verified custom domain."],
   ["OAuth for MCP clients", "extensions", "OAuth 2.1 with PKCE so MCP clients can connect to one project without copying a key."],
   ["Webhook events", "webhook-events", "What RevenueDot POSTs to your webhook URL."],
 ];
@@ -96,9 +102,9 @@ export function buildDocument() {
       { url: "https://{host}", description: "Your self-hosted RevenueDot", variables: { host: { default: "revenuedot.example.com" } } },
     ],
     tags: tags(),
-    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...lifecyclePaths, ...extensionPaths },
+    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...lifecyclePaths, ...webPaths, ...extensionPaths },
     webhooks,
-    components: { schemas, parameters, responses, securitySchemes },
+    components: { schemas: { ...schemas, ...webSchemas }, parameters, responses, securitySchemes },
     security: [{ secretApiKey: [] }],
     externalDocs: { description: "RevenueDot documentation", url: "https://github.com/revenuedot/docs" },
   };

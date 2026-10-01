@@ -97,9 +97,9 @@ Receipts are accepted today for four app types:
 | `play_store` | Google Play |
 | `test_store` | RevenueDot Test Store (no real store) |
 | `amazon` | Amazon Appstore ([guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md)) |
-| `stripe` | Stripe subscriptions from your own Stripe account, posted by your backend ([guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md)) |
+| `stripe` | Stripe purchases on your own Stripe account: from RevenueDot's hosted checkout ([web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md)) or posted by your backend ([guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md)) |
 
-Web Billing, Paddle and Roku apps can be created, but their receipts answer HTTP 400 with code 7662. See [Projects and apps](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md).
+RevenueCat Billing (`rcb_`), Paddle and Roku apps can be created, but their receipts answer HTTP 400 with code 7662. See [Projects and apps](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md).
 
 ## Is it production-ready?
 No. The App Store and Google Play code is tested against mocked Apple and Google APIs only. No real App Store or Google Play sandbox purchase has run end to end yet. Use it for evaluation and testing, and keep RevenueCat for live customers until a release says otherwise. See [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md).
@@ -138,7 +138,13 @@ Yes, with the Test Store: create a `test_store` app and use its `test_` key. See
 They are not implemented. The SDK endpoints answer empty or 404 in the way that makes the SDK hide those features, so your app does not crash. Paywalls built in RevenueCat do not render against RevenueDot.
 
 ## Does the web SDK work?
-`purchases-js` works with Test Store (`test_`) keys against RevenueDot. Web Billing (`rcb_`) and Paddle purchases do not work yet. Stripe purchases from your own checkout are posted by your backend instead ([Stripe guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md)). With the stock SDK, turn off analytics events (`flags: { collectAnalyticsEvents: false }`), because the stock SDK sends them to RevenueCat. See the [web guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/web.md).
+`purchases-js` works with Test Store (`test_`) keys against RevenueDot. RevenueCat Billing (`rcb_`) and Paddle purchases do not. For real payments on the web, use RevenueDot's hosted checkout on your Stripe account ([web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md)), or post purchases from your own Stripe checkout from your backend ([Stripe guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md)). With the stock SDK, turn off analytics events (`flags: { collectAnalyticsEvents: false }`), because the stock SDK sends them to RevenueCat. See the [web guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/web.md).
+
+## Can I sell my app's subscription on the web?
+Yes, on your own Stripe account. Connect Stripe with a restricted key, add a web config, and let RevenueDot create your web products in Stripe. Then share a [purchase link](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md) for an offering, or publish a multi-step [funnel](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md). Buyers pay on Stripe Checkout, and the purchase gives the same entitlements as an in-app purchase. See [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md).
+
+## How does a web purchase reach the app?
+Two ways. If the checkout knew the buyer's app user id (a purchase link with `?app_user_id=`, or the iOS paywall's web checkout), the purchase is on that user at once: `customerInfo` shows it the next time the app asks. Otherwise the buyer gets a **redemption link**, on the success page and by email. It opens your app with `<scheme>://redeem_web_purchase?redemption_token=…`, and your app passes it to `Purchases.shared.redeemWebPurchase(...)`. The web purchase then moves to the app's user. See [Redemption links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md).
 
 ## Can AI agents set it up?
 Yes. The hosted MCP server is live at `https://mcp.revenuedot.app/mcp`: your client signs in with OAuth, or sends a secret key. It has 17 tools for the catalog, customers, access grants, webhooks and import status ([revenuedot/mcp](https://github.com/revenuedot/mcp)). The local version is on npm: `npx -y @revenuedot/mcp`. Agent skills for Claude Code, Codex and Cursor are in [revenuedot/agent-skills](https://github.com/revenuedot/agent-skills).
@@ -168,7 +174,7 @@ Find your symptom below; each row gives the cause and the fix. Most problems com
 | Logs say entitlement verification FAILED | The stock SDK checks RevenueCat's signing key | Turn verification off. See [signature verification](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/signature-verification-failed.md) |
 | Offerings are empty | No offering is marked current, or its packages point at products of another app | Mark an offering current and add this app's products to its packages. See [Offerings and packages](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/offerings-and-packages.md) |
 | iOS says "No base price found for product" with a `test_` key | The server was built before the 2026-09-30 Test Store fix | Rebuild the server from the current source. See [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md) |
-| Web purchases with an `rcb_` key fail | Web Billing is not supported yet | Use a Test Store (`test_`) key. See [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md) |
+| Web purchases with an `rcb_` key fail | RevenueCat Billing is not supported | Sell on the web with RevenueDot's hosted checkout on your Stripe account ([web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md)), or test with a Test Store (`test_`) key |
 | An Android emulator cannot reach `http://localhost:8787` | `localhost` is the emulator itself | Use `http://10.0.2.2:8787` |
 | Android needs HTTPS | Android blocks cleartext HTTP by default | Use HTTPS, or allow cleartext for your dev host in the network security config |
 
@@ -179,7 +185,7 @@ Find your symptom below; each row gives the cause and the fix. Most problems com
 | `/v1/receipts` answers 400, code 7103 | The receipt cannot be verified, or is for another bundle ID or package name | See [4xx or 5xx](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/receipt-errors-4xx-vs-5xx.md) |
 | `/v1/receipts` answers 500, code 7234 | A StoreKit 1 receipt, and no App Store in-app purchase key | Add the key. See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md) |
 | `/v1/receipts` answers 503, code 7101 | Apple or Google failed, or the Google service account is wrong | Run **Verify credentials** on the app page. The SDK retries on its own |
-| `/v1/receipts` answers 400, code 7662 | The app is a Web Billing, Paddle or Roku app | Not supported yet. Use App Store, Mac App Store, Google Play, Amazon Appstore, Stripe or Test Store |
+| `/v1/receipts` answers 400, code 7662 | The app is a RevenueCat Billing, Paddle or Roku app | Not supported. Use App Store, Mac App Store, Google Play, Amazon Appstore, Stripe or Test Store |
 | Restore fails with 7102 | Another user owns the purchase and the transfer behaviour forbids moving it | See [How do I restore purchases?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/restore-purchases.md) |
 | Xcode StoreKit test purchases fail with 7103 | Xcode signs them with its own certificate | Add the `xcode_certificate` credential. See [Test purchases](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/test-sandbox-purchases.md) |
 
@@ -239,7 +245,7 @@ The list below is complete as of **2026-09-30**. The biggest gap: **no real App 
 ## Stores and purchases
 1. **Real store purchases are untested end to end.** The App Store and Google Play code passes tests against mocked Apple and Google APIs.
    - Workaround: test with App Store sandbox and Google Play license testers, report what you find, and keep live customers on your current backend. See [Test purchases](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/test-sandbox-purchases.md).
-2. **Six app types accept receipts:** `app_store`, `mac_app_store`, `play_store`, `amazon`, `stripe` and `test_store`. Web Billing (`rcb_`), Paddle and Roku receipts answer HTTP 400, code 7662. Amazon and Stripe are tested against mocked store APIs only; no real Amazon or Stripe purchase has run yet.
+2. **Six app types accept receipts:** `app_store`, `mac_app_store`, `play_store`, `amazon`, `stripe` and `test_store`. RevenueCat Billing (`rcb_`), Paddle and Roku receipts answer HTTP 400, code 7662. Amazon and Stripe are tested against mocked store APIs only; no real Amazon or Stripe purchase has run yet. That includes [web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md): the hosted checkout, purchase links and funnels run against an in-memory copy of Stripe's API in the tests.
    - Workaround: none yet.
 3. **StoreKit 1 receipts need the App Store in-app purchase key.** Without it, RevenueDot answers HTTP 500, code 7234, so the SDK keeps retrying.
    - Workaround: add the key. For local development only, set the `allow_unsigned_receipts` credential. See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md).
@@ -263,7 +269,7 @@ The list below is complete as of **2026-09-30**. The biggest gap: **no real App 
     - Workaround: use the stock RevenueCat SDK with a proxy URL, or build a fork from its `revenuedot/main-patches` branch.
 
 ## Webhooks and events
-12. **Three event types are never sent:** `TEMPORARY_ENTITLEMENT_GRANT`, `INVOICE_ISSUANCE` and `PURCHASE_REDEEMED`, because RevenueDot never has the facts behind them. You can select them in filters. `SUBSCRIBER_ALIAS` is sent only to webhooks whose filter names it.
+12. **Two event types are never sent:** `TEMPORARY_ENTITLEMENT_GRANT` and `INVOICE_ISSUANCE`, because RevenueDot never has the facts behind them. You can select them in filters. `SUBSCRIBER_ALIAS` and the funnel types (`FUNNEL_VIEWED`, `FUNNEL_STEP_COMPLETED`, `FUNNEL_PURCHASE`) are sent only to webhooks whose filter names them.
     - Workaround: none needed unless your backend relies on them. See [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md).
 13. **Webhook payloads leave out `metadata`, and send `renewal_number` only on `REFUND_REVERSED`.** `experiments` is sent for customers in an offering experiment. Every other field matches RevenueCat's sample payloads.
     - Workaround: count renewals in your backend from `RENEWAL` events.
@@ -795,7 +801,7 @@ curl -s -X POST -H "Authorization: Bearer $SECRET_KEY" \
 3. **The app filter excludes it.** If `app_id` is set, events from other apps are skipped.
 4. **The webhook did not exist yet.** Deliveries are queued when the event happens, for the webhooks that exist then. A webhook you add later does not get older events.
 5. **No event happened.** An imported customer produces no events unless the import ran with `--emit-events`. A purchase RevenueDot has not seen, reported only by a store notification, produces nothing unless `track_new_purchases` is on. See [Why are store notifications not arriving?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/store-notifications-not-arriving.md)
-6. **The event type is never sent, or only on request.** RevenueDot accepts `TEMPORARY_ENTITLEMENT_GRANT`, `INVOICE_ISSUANCE` and `PURCHASE_REDEEMED` in filters but never produces them, and sends `SUBSCRIBER_ALIAS` only to webhooks whose filter names it. See [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md).
+6. **The event type is never sent, or only on request.** RevenueDot accepts `TEMPORARY_ENTITLEMENT_GRANT` and `INVOICE_ISSUANCE` in filters but never produces them, and sends `SUBSCRIBER_ALIAS` and the funnel types (`FUNNEL_VIEWED`, `FUNNEL_STEP_COMPLETED`, `FUNNEL_PURCHASE`) only to webhooks whose filter names them. See [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md).
 
 ## Deliveries that fail
 1. **Your backend answers something other than 200.** Only 200 counts as delivered. A 201, 204 or redirect is a failure and is retried. Answer 200 as soon as you have stored the event, and do slow work afterwards.

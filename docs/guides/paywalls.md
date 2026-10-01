@@ -28,7 +28,7 @@ Open **Paywalls** in the dashboard. You can start in three ways:
 | Limited offer | A countdown to the end of an offer, one plan, dark | Discount offers after a cancelled purchase made 17% of revenue (Superwall) |
 | Tiers | Two tiers in tabs (Plus and Pro), two plans each | Tiers let a customer pick a level, then a period |
 | Reviews | Rating, a user count and one review, then two plans | Reviews with price anchoring: +17% revenue per user (RevenueCat) |
-| Web checkout | The button opens web checkout instead of the store sheet | Use it only where the store rules allow external purchases |
+| Web checkout | The button opens web checkout instead of the store sheet (iOS; see [web billing](web-billing.md#the-ios-sdks-web-checkout)) | Use it only where the store rules allow external purchases |
 
 ## Edit a paywall
 

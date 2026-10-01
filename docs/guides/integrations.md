@@ -34,6 +34,13 @@ For your own warehouse, a **scheduled data export** writes CSV or Parquet files 
 | Billing issue | `rc_billing_issue_event` | `rc_billing_issue` | |
 | Product change | `rc_product_change_event` | `rc_product_change` | |
 
+| Web purchase redeemed in the app | `rc_purchase_redeemed` (Segment, Amplitude, Mixpanel) | | |
+| Funnel viewed | `rd_funnel_viewed` (Segment, Amplitude, Mixpanel, PostHog) | | |
+| Funnel step completed | `rd_funnel_step_completed` (Segment, Amplitude, Mixpanel, PostHog) | | |
+| Funnel purchase | `rd_funnel_purchase` (Segment, Amplitude, Mixpanel, PostHog) | | |
+
+The three funnel events come from RevenueDot's web [funnels](funnels.md) and are **opt-in**: add `funnel_viewed`, `funnel_step_completed` and `funnel_purchase` to the integration's event types to get them. They carry `funnel_id`, `funnel_name`, `funnel_slug`, `session_id`, `step_id`, `step_type`, `step_index`, `answer`, `product_id` and the page's `utm_*` parameters as event properties. A visitor has no app user id until they pay, unless the funnel URL had `?app_user_id=`.
+
 Rename any of them under **Event names** on the integration's page, or with `event_names` in the API. Each event also sets the customer's `rc_subscription_status` (`active`, `trial`, `cancelled`, `cancelled_trial`, `grace_period`, `expired`, `paused` ...) where the tool has profiles.
 
 ### Reserved attributes your app sets

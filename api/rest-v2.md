@@ -32,7 +32,8 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Experiments**: [List experiments](#list-experiments), [Create an offering experiment](#create-an-offering-experiment), [Get an experiment](#get-an-experiment), [Update an experiment](#update-an-experiment), [Delete an experiment](#delete-an-experiment), [Start or resume](#start-or-resume), [Pause: enrolled customers keep their variant, nobody new joins](#pause-enrolled-customers-keep-their-variant-nobody-new-joins), [Stop for good](#stop-for-good), [Results per variant](#results-per-variant)
 - **Paywalls**: [List paywalls](#list-paywalls), [Create a paywall](#create-a-paywall), [Get a paywall](#get-a-paywall), [Update a paywall's draft](#update-a-paywalls-draft), [Delete a paywall](#delete-a-paywall), [Publish a paywall](#publish-a-paywall), [Unpublish a paywall](#unpublish-a-paywall), [Attach an offering to a paywall](#attach-an-offering-to-a-paywall), [Detach the offering from a paywall](#detach-the-offering-from-a-paywall), [Duplicate a paywall](#duplicate-a-paywall), [List saved snapshots](#list-saved-snapshots), [Save a named snapshot](#save-a-named-snapshot), [Restore a snapshot into the draft](#restore-a-snapshot-into-the-draft), [Get a snapshot](#get-a-snapshot), [Get the template form of a paywall](#get-the-template-form-of-a-paywall), [Store the template form of a paywall](#store-the-template-form-of-a-paywall), [List the template gallery](#list-the-template-gallery), [Validate paywall components](#validate-paywall-components), [Whether the AI generator is available](#whether-the-ai-generator-is-available), [Generate a paywall with AI](#generate-a-paywall-with-ai), [List images](#list-images), [Upload an image](#upload-an-image), [List fonts](#list-fonts), [Upload a font](#upload-a-font), [Download a paywall image or font](#download-a-paywall-image-or-font), [Download a built-in paywall icon](#download-a-built-in-paywall-icon)
 - **Webhook integrations**: [List webhooks](#list-webhooks), [Create a webhook](#create-a-webhook), [Get a webhook](#get-a-webhook), [Update a webhook](#update-a-webhook), [Delete a webhook](#delete-a-webhook)
-- **Discounts and invoices**: [List discounts](#list-discounts), [Create a discount](#create-a-discount), [Get a discount](#get-a-discount), [Update a discount](#update-a-discount), [Delete a discount](#delete-a-discount), [Enable a discount](#enable-a-discount), [Disable a discount](#disable-a-discount), [List a discount's codes](#list-a-discounts-codes), [Create discount codes](#create-discount-codes), [Delete a discount code](#delete-a-discount-code), [List a customer's invoices](#list-a-customers-invoices), [Download an invoice](#download-an-invoice)
+- **Discounts**: [List discounts](#list-discounts), [Create a discount](#create-a-discount), [Get a discount](#get-a-discount), [Update a discount](#update-a-discount), [Delete a discount](#delete-a-discount), [Enable a discount](#enable-a-discount), [Disable a discount](#disable-a-discount), [List a discount's codes](#list-a-discounts-codes), [Create discount codes](#create-discount-codes), [Delete a discount code](#delete-a-discount-code)
+- **Invoices**: [List a customer's invoices](#list-a-customers-invoices), [Download an invoice](#download-an-invoice)
 - **Collaborators**: [List collaborators](#list-collaborators)
 
 ## Projects
@@ -5321,7 +5322,7 @@ The answer includes `signing_secret` (whsec_...) once. Store it: it verifies the
 | `url` | string | yes | http(s) URL. |
 | `authorization_header` | string or null | no | Sent as the Authorization header. |
 | `environment` | `production`, `sandbox`, null | no | Null or absent: both. |
-| `event_types` | array of `initial_purchase`, `renewal`, `product_change`, `cancellation`, `billing_issue`, `non_renewing_purchase`, `uncancellation`, `transfer`, `subscription_paused`, `expiration`, `subscription_extended`, `invoice_issuance`, `temporary_entitlement_grant`, `refund_reversed`, `virtual_currency_transaction`, `test`, `experiment_enrollment`, `purchase_redeemed`, `subscriber_alias`, `price_increase_consent_required`, `price_increase_consent_approved` | no | Empty or absent: every type. |
+| `event_types` | array of `initial_purchase`, `renewal`, `product_change`, `cancellation`, `billing_issue`, `non_renewing_purchase`, `uncancellation`, `transfer`, `subscription_paused`, `expiration`, `subscription_extended`, `invoice_issuance`, `temporary_entitlement_grant`, `refund_reversed`, `virtual_currency_transaction`, `test`, `experiment_enrollment`, `purchase_redeemed`, `subscriber_alias`, `price_increase_consent_required`, `price_increase_consent_approved`, `funnel_viewed`, `funnel_step_completed`, `funnel_purchase` | no | Empty or absent: every type except the opt-in ones (`subscriber_alias` and the three RevenueDot funnel types), which are sent only when named here. |
 | `app_id` | string or null | no | Only this app's events. |
 
 **Example request**
@@ -5459,15 +5460,15 @@ Example 200 response:
 }
 ```
 
-## Discounts and invoices
+## Discounts
 
-RevenueCat Billing (Web Billing) objects. RevenueDot does not have that billing engine, so these operations answer on purpose: writes 422, lists empty, single reads 404.
+Web discounts for RevenueDot's web checkout, with RevenueCat's v2 discount operations and shapes. Each discount is a Stripe coupon and each code a Stripe promotion code in your own Stripe account. See [Web discounts](../docs/guides/web-discounts.md).
 
 ### List discounts
 
 `GET /v2/projects/{project_id}/discounts` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read`
 
-Always an empty list. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any.
+The project's web discounts in RevenueCat's `Discount` shape. RevenueDot's extra settings (`max_redemptions`, `expires_at`), the codes and the Stripe ids are on `GET /web_discounts`.
 
 **Path parameters**
 
@@ -5490,16 +5491,33 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts" -H "Authorization: B
 
 **Responses**
 
-- **200**: Always an empty list.
+- **200**: A page of discounts. Returns a list of [Discount](#discount).
+- **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
 Example 200 response:
 
 ```json
 {
   "object": "list",
-  "items": [],
+  "items": [
+    {
+      "object": "discount",
+      "id": "disc5k2m9q4x7a1b3c",
+      "identifier": "spring20",
+      "customer_facing_name": "Spring sale",
+      "duration_mode": "time_window",
+      "eligibility": "everyone",
+      "time_window": "P3M",
+      "disabled_at": null,
+      "type": "percentage",
+      "percentage": 20,
+      "created_at": 1790800901115,
+      "updated_at": 1790801342625
+    }
+  ],
   "next_page": null,
   "url": "/v2/projects/proj18pzzkao/discounts"
 }
@@ -5509,7 +5527,9 @@ Example 200 response:
 
 `POST /v2/projects/{project_id}/discounts` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read_write`
 
-Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+Creates the discount and a Stripe coupon for it in every Stripe app of the project that has a key: `percent_off`, or `amount_off` and `currency` with `currency_options` for the other currencies; `duration` `once`, `repeating` with `duration_in_months`, or `forever`; `applies_to.products` from `product_identifiers`; `max_redemptions`; `redeem_by` from `expires_at`. Add codes with `POST /discounts/{discount_id}/discount_codes`, or set it as a purchase link's or paywall step's automatic discount.
+
+`max_redemptions` and `expires_at` are RevenueDot additions to RevenueCat's request. 409 when the identifier exists. Stripe errors answer 422 `store_error` (`retryable: true` while Stripe is unavailable) and nothing is saved. See [Web discounts](../docs/guides/web-discounts.md).
 
 **Path parameters**
 
@@ -5517,30 +5537,68 @@ Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Bi
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
 
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `identifier` | string | yes | Letters, digits, `_ . -`. |
+| `customer_facing_name` | string | yes |  |
+| `type` | `percentage`, `fixed_amount` | yes |  |
+| `percentage` | integer | no | For `percentage`: 1 to 100. |
+| `fixed_amounts` | object | no | For `fixed_amount`: amount off by currency, keyed by the currency code. |
+| `duration_mode` | `one_time`, `time_window`, `forever` | yes |  |
+| `eligibility` | `everyone`, `never_purchased`, `never_subscribed`, `never_subscribed_to_the_same_product` | yes |  |
+| `time_window` | string | no | For `time_window`: whole months or years, 1 to 36 months (`P3M`, `P1Y`). Stripe repeats a coupon only by months. |
+| `product_identifiers` | array of string | no | Store identifiers (the Stripe price id of a web product) or product ids. Empty or absent: every product. |
+| `max_redemptions` | integer or null | no | RevenueDot addition: paid checkouts it may be used in. Sent to Stripe as the coupon's `max_redemptions`. |
+| `expires_at` | integer or null | no | RevenueDot addition: when it stops working, epoch milliseconds. Sent to Stripe as `redeem_by`. |
+
 **Example request**
 
 ```bash
-curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts" -H "Authorization: Bearer $SECRET_KEY"
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"identifier":"spring20","customer_facing_name":"Spring sale","type":"percentage","percentage":20,"duration_mode":"time_window","time_window":"P3M","eligibility":"everyone","max_redemptions":100}'
 ```
 
 **Responses**
 
+- **201**: The discount. Returns [Discount](#discount).
+- **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+Example 201 response:
+
+```json
+{
+  "object": "discount",
+  "id": "disc5k2m9q4x7a1b3c",
+  "identifier": "spring20",
+  "customer_facing_name": "Spring sale",
+  "duration_mode": "time_window",
+  "eligibility": "everyone",
+  "time_window": "P3M",
+  "disabled_at": null,
+  "type": "percentage",
+  "percentage": 20,
+  "created_at": 1790800901115,
+  "updated_at": 1790801342625
+}
+```
 
 ### Get a discount
 
 `GET /v2/projects/{project_id}/discounts/{discount_id}` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read`
 
-Answers 404 `resource_missing`: there is no discount. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any.
-
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
-| `discount_id` | string | yes | Discount id. |
+| `discount_id` | string | yes | Discount id (disc...). |
 
 **Example request**
 
@@ -5550,47 +5608,108 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_ID" -H "Aut
 
 **Responses**
 
+- **200**: The discount. Returns [Discount](#discount).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "discount",
+  "id": "disc8h3n1v6w0z2y4d",
+  "identifier": "five_off",
+  "customer_facing_name": "$5 off",
+  "duration_mode": "one_time",
+  "eligibility": "never_purchased",
+  "time_window": null,
+  "disabled_at": null,
+  "type": "fixed_amount",
+  "fixed_amount": {
+    "USD": 5,
+    "EUR": 4.5
+  },
+  "created_at": 1790800901115,
+  "updated_at": 1790801342625
+}
+```
 
 ### Update a discount
 
 `PATCH /v2/projects/{project_id}/discounts/{discount_id}` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read_write`
 
-Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+Send only what changes. A Stripe coupon cannot change its amount or duration, so a change to `type`, `percentage`, `fixed_amounts`, `duration_mode`, `time_window`, `product_identifiers`, `max_redemptions` or `expires_at` creates a new coupon and new promotion codes, and turns the old promotion codes off. Subscriptions that already use the old coupon keep it. A new name or eligibility changes nothing in Stripe. Stripe errors answer 422 `store_error` (`retryable: true` while Stripe is unavailable) and nothing is saved.
 
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
-| `discount_id` | string | yes | Discount id. |
+| `discount_id` | string | yes | Discount id (disc...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `customer_facing_name` | string | no |  |
+| `type` | `percentage`, `fixed_amount` | no |  |
+| `percentage` | integer | no | For `percentage`: 1 to 100. |
+| `fixed_amounts` | object | no | For `fixed_amount`: amount off by currency, keyed by the currency code. |
+| `duration_mode` | `one_time`, `time_window`, `forever` | no |  |
+| `eligibility` | `everyone`, `never_purchased`, `never_subscribed`, `never_subscribed_to_the_same_product` | no |  |
+| `time_window` | string | no | For `time_window`: whole months or years, 1 to 36 months (`P3M`, `P1Y`). Stripe repeats a coupon only by months. |
+| `product_identifiers` | array of string | no | Store identifiers (the Stripe price id of a web product) or product ids. Empty or absent: every product. |
+| `max_redemptions` | integer or null | no | RevenueDot addition: paid checkouts it may be used in. Sent to Stripe as the coupon's `max_redemptions`. |
+| `expires_at` | integer or null | no | RevenueDot addition: when it stops working, epoch milliseconds. Sent to Stripe as `redeem_by`. |
 
 **Example request**
 
 ```bash
-curl -s -X PATCH "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_ID" -H "Authorization: Bearer $SECRET_KEY"
+curl -s -X PATCH "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_ID" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"percentage":30,"customer_facing_name":"Spring sale 30"}'
 ```
 
 **Responses**
 
+- **200**: The discount. Returns [Discount](#discount).
+- **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "discount",
+  "id": "disc5k2m9q4x7a1b3c",
+  "identifier": "spring20",
+  "customer_facing_name": "Spring sale 30",
+  "duration_mode": "time_window",
+  "eligibility": "everyone",
+  "time_window": "P3M",
+  "disabled_at": null,
+  "type": "percentage",
+  "percentage": 30,
+  "created_at": 1790800901115,
+  "updated_at": 1790801342625
+}
+```
 
 ### Delete a discount
 
 `DELETE /v2/projects/{project_id}/discounts/{discount_id}` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read_write`
 
-Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+Turns its promotion codes off and deletes its Stripe coupons. Subscriptions that already use the coupon keep the discount, as in Stripe. Stripe errors answer 422 `store_error` (`retryable: true` while Stripe is unavailable) and nothing is saved.
 
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
-| `discount_id` | string | yes | Discount id. |
+| `discount_id` | string | yes | Discount id (disc...). |
 
 **Example request**
 
@@ -5600,22 +5719,34 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_I
 
 **Responses**
 
+- **200**: Deleted. Returns [Deleted](#deleted).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "discount",
+  "id": "disc5k2m9q4x7a1b3c",
+  "deleted_at": 1790801342625
+}
+```
 
 ### Enable a discount
 
 `POST /v2/projects/{project_id}/discounts/{discount_id}/actions/enable` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read_write`
 
-Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+Checkout accepts it again and its Stripe promotion codes are turned back on. Stripe errors answer 422 `store_error` (`retryable: true` while Stripe is unavailable) and nothing is saved.
 
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
-| `discount_id` | string | yes | Discount id. |
+| `discount_id` | string | yes | Discount id (disc...). |
 
 **Example request**
 
@@ -5625,22 +5756,43 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_ID/
 
 **Responses**
 
+- **200**: The discount. Returns [Discount](#discount).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "discount",
+  "id": "disc5k2m9q4x7a1b3c",
+  "identifier": "spring20",
+  "customer_facing_name": "Spring sale",
+  "duration_mode": "time_window",
+  "eligibility": "everyone",
+  "time_window": "P3M",
+  "disabled_at": null,
+  "type": "percentage",
+  "percentage": 20,
+  "created_at": 1790800901115,
+  "updated_at": 1790801342625
+}
+```
 
 ### Disable a discount
 
 `POST /v2/projects/{project_id}/discounts/{discount_id}/actions/disable` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read_write`
 
-Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+Checkout refuses it ("This code is no longer active.") and its Stripe promotion codes are turned off. Stripe errors answer 422 `store_error` (`retryable: true` while Stripe is unavailable) and nothing is saved.
 
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
-| `discount_id` | string | yes | Discount id. |
+| `discount_id` | string | yes | Discount id (disc...). |
 
 **Example request**
 
@@ -5650,22 +5802,41 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_ID/
 
 **Responses**
 
+- **200**: The discount. Returns [Discount](#discount).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "discount",
+  "id": "disc5k2m9q4x7a1b3c",
+  "identifier": "spring20",
+  "customer_facing_name": "Spring sale",
+  "duration_mode": "time_window",
+  "eligibility": "everyone",
+  "time_window": "P3M",
+  "disabled_at": 1790801342625,
+  "type": "percentage",
+  "percentage": 20,
+  "created_at": 1790800901115,
+  "updated_at": 1790801342625
+}
+```
 
 ### List a discount's codes
 
 `GET /v2/projects/{project_id}/discounts/{discount_id}/discount_codes` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read`
-
-Answers 404 `resource_missing`: there is no discount. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any.
 
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
-| `discount_id` | string | yes | Discount id. |
+| `discount_id` | string | yes | Discount id (disc...). |
 
 **Query parameters**
 
@@ -5682,48 +5853,95 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_ID/discount
 
 **Responses**
 
+- **200**: A page of codes. Returns a list of [DiscountCode](#discountcode).
+- **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "items": [
+    {
+      "object": "discount_code",
+      "code": "SPRING20",
+      "created_at": 1790800901115
+    }
+  ],
+  "next_page": null,
+  "url": "/v2/projects/proj18pzzkao/discounts/disc5k2m9q4x7a1b3c/discount_codes"
+}
+```
 
 ### Create discount codes
 
 `POST /v2/projects/{project_id}/discounts/{discount_id}/discount_codes` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read_write`
 
-Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+Each code becomes a Stripe promotion code on the discount's coupon, active unless the discount is disabled. Codes are unique in the project whatever their case (409 when one is taken). Letters, digits, `_` and `-`. Stripe errors answer 422 `store_error` (`retryable: true` while Stripe is unavailable) and nothing is saved.
 
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
-| `discount_id` | string | yes | Discount id. |
+| `discount_id` | string | yes | Discount id (disc...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `codes` | array of string | yes |  |
 
 **Example request**
 
 ```bash
-curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_ID/discount_codes" -H "Authorization: Bearer $SECRET_KEY"
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_ID/discount_codes" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"codes":["SPRING20","friends"]}'
 ```
 
 **Responses**
 
+- **201**: The new codes.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+Example 201 response:
+
+```json
+[
+  {
+    "object": "discount_code",
+    "code": "SPRING20",
+    "created_at": 1790800901115
+  },
+  {
+    "object": "discount_code",
+    "code": "friends",
+    "created_at": 1790800901115
+  }
+]
+```
 
 ### Delete a discount code
 
 `DELETE /v2/projects/{project_id}/discounts/{discount_id}/discount_codes/{discount_code}` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read_write`
 
-Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+Its Stripe promotion code is turned off. Stripe errors answer 422 `store_error` (`retryable: true` while Stripe is unavailable) and nothing is saved.
 
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
-| `discount_id` | string | yes | Discount id. |
-| `discount_code` | string | yes |  |
+| `discount_id` | string | yes | Discount id (disc...). |
+| `discount_code` | string | yes | The code, URL-encoded. Any case. |
 
 **Example request**
 
@@ -5733,15 +5951,31 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_I
 
 **Responses**
 
+- **200**: Deleted. Returns [Deleted](#deleted).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "discount_code",
+  "id": "friends",
+  "deleted_at": 1790801342625
+}
+```
+
+## Invoices
+
+RevenueCat Billing invoices. Stripe issues the invoices for RevenueDot's web checkout, so these answer on purpose: the list is empty and a file is 404.
 
 ### List a customer's invoices
 
 `GET /v2/projects/{project_id}/customers/{customer_id}/invoices` · Auth: secret key or dashboard session · Permissions: `customer_information:invoices:read`
 
-Always an empty list for a known customer; 404 for an unknown one. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any.
+Always an empty list for a known customer; 404 for an unknown one. Invoices belong to RevenueCat Billing, which issues its own. For web purchases through RevenueDot's checkout, Stripe issues the invoices in your Stripe account.
 
 **Path parameters**
 
@@ -5785,7 +6019,7 @@ Example 200 response:
 
 `GET /v2/projects/{project_id}/customers/{customer_id}/invoices/{invoice_id}/file` · Auth: secret key or dashboard session · Permissions: `customer_information:invoices:read`
 
-Answers 404 `resource_missing`: there is no invoice. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any.
+Answers 404 `resource_missing`: there is no invoice. Invoices belong to RevenueCat Billing, which issues its own. For web purchases through RevenueDot's checkout, Stripe issues the invoices in your Stripe account.
 
 **Path parameters**
 
@@ -5961,6 +6195,72 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `object` | string | yes | The deleted object's type. |
 | `id` | string | yes |  |
 | `deleted_at` | integer | yes | When it was deleted. Epoch milliseconds. |
+
+### Discount
+
+A web discount, in RevenueCat's `Discount` shape. Each one is a Stripe coupon in every Stripe app of the project.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `discount` | yes |  |
+| `id` | string | yes | Discount id (disc...). |
+| `identifier` | string | yes | Your identifier for the discount, unique in the project. |
+| `customer_facing_name` | string | yes | The name buyers see at checkout and Stripe puts on the coupon (first 40 characters). |
+| `duration_mode` | `one_time`, `time_window`, `forever` | yes | `one_time`: the first payment. `time_window`: every payment for `time_window`. `forever`: every payment. |
+| `eligibility` | `everyone`, `never_purchased`, `never_subscribed`, `never_subscribed_to_the_same_product` | yes | Who may use it, checked against the buyer's purchase history when the checkout has an app user id. |
+| `time_window` | string or null | no | ISO 8601 months or years (`P3M`, `P1Y`), 1 to 36 months, for `time_window`. Otherwise null. |
+| `disabled_at` | integer or null | no | When it was disabled. Epoch milliseconds, or null. |
+| `type` | `percentage` | yes |  |
+| `percentage` | integer | yes | Percent off, 1 to 100. |
+| `created_at` | integer | yes | When it was created. Epoch milliseconds. |
+| `updated_at` | integer | yes | When it last changed. Epoch milliseconds. |
+| `fixed_amount` | object | yes | Amount off by currency code, in major units: `{ "USD": 5, "EUR": 4.5 }`. |
+
+### DiscountCode
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `discount_code` | yes |  |
+| `code` | string | yes | The code buyers type. Matched without regard to case. |
+| `created_at` | integer | yes | When it was created. Epoch milliseconds. |
+
+### DiscountFixedAmountVariant
+
+A fixed amount discount (RevenueCat's shape).
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `discount` | yes |  |
+| `id` | string | yes | Discount id (disc...). |
+| `identifier` | string | yes | Your identifier for the discount, unique in the project. |
+| `customer_facing_name` | string | yes | The name buyers see at checkout and Stripe puts on the coupon (first 40 characters). |
+| `duration_mode` | `one_time`, `time_window`, `forever` | yes | `one_time`: the first payment. `time_window`: every payment for `time_window`. `forever`: every payment. |
+| `eligibility` | `everyone`, `never_purchased`, `never_subscribed`, `never_subscribed_to_the_same_product` | yes | Who may use it, checked against the buyer's purchase history when the checkout has an app user id. |
+| `time_window` | string or null | no | ISO 8601 months or years (`P3M`, `P1Y`), 1 to 36 months, for `time_window`. Otherwise null. |
+| `disabled_at` | integer or null | no | When it was disabled. Epoch milliseconds, or null. |
+| `type` | `fixed_amount` | yes |  |
+| `fixed_amount` | object | yes | Amount off by currency code, in major units: `{ "USD": 5, "EUR": 4.5 }`. |
+| `created_at` | integer | yes | When it was created. Epoch milliseconds. |
+| `updated_at` | integer | yes | When it last changed. Epoch milliseconds. |
+
+### DiscountPercentageVariant
+
+A percentage discount (RevenueCat's shape).
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `discount` | yes |  |
+| `id` | string | yes | Discount id (disc...). |
+| `identifier` | string | yes | Your identifier for the discount, unique in the project. |
+| `customer_facing_name` | string | yes | The name buyers see at checkout and Stripe puts on the coupon (first 40 characters). |
+| `duration_mode` | `one_time`, `time_window`, `forever` | yes | `one_time`: the first payment. `time_window`: every payment for `time_window`. `forever`: every payment. |
+| `eligibility` | `everyone`, `never_purchased`, `never_subscribed`, `never_subscribed_to_the_same_product` | yes | Who may use it, checked against the buyer's purchase history when the checkout has an app user id. |
+| `time_window` | string or null | no | ISO 8601 months or years (`P3M`, `P1Y`), 1 to 36 months, for `time_window`. Otherwise null. |
+| `disabled_at` | integer or null | no | When it was disabled. Epoch milliseconds, or null. |
+| `type` | `percentage` | yes |  |
+| `percentage` | integer | yes | Percent off, 1 to 100. |
+| `created_at` | integer | yes | When it was created. Epoch milliseconds. |
+| `updated_at` | integer | yes | When it last changed. Epoch milliseconds. |
 
 ### Entitlement
 

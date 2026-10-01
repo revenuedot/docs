@@ -13,7 +13,7 @@ const READ = ["project_configuration:integrations:read"], WRITE = ["project_conf
 const id = { name: "integration_id", in: "path", required: true, schema: str(), description: "Integration id (intg_...)." };
 const exportId = { name: "export_id", in: "path", required: true, schema: str(), description: "Export id (export_...)." };
 const TYPES = ["slack", "segment", "amplitude", "mixpanel", "posthog", "firebase", "bigquery", "appsflyer", "adjust", "meta"];
-const STEPS = ["initial_purchase", "trial_started", "trial_converted", "trial_cancelled", "renewal", "cancellation", "uncancellation", "non_subscription_purchase", "subscription_paused", "expiration", "billing_issue", "product_change", "transfer", "purchase_redeemed", "experiment_enrollment", "test"];
+const STEPS = ["initial_purchase", "trial_started", "trial_converted", "trial_cancelled", "renewal", "cancellation", "uncancellation", "non_subscription_purchase", "subscription_paused", "expiration", "billing_issue", "product_change", "transfer", "purchase_redeemed", "experiment_enrollment", "refund_reversed", "test", "funnel_viewed", "funnel_step_completed", "funnel_purchase"];
 const hint = obj({ configured: bool(), hint: nstr("The last four characters, or a service account's client_email.") }, ["configured", "hint"]);
 
 const field = obj({
