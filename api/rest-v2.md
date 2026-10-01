@@ -13,7 +13,7 @@ RevenueDot-only endpoints are on [Extensions](extensions.md).
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (148)
+## Operations on this page (160)
 
 - **Projects**: [List projects](#list-projects), [Create a project](#create-a-project)
 - **Apps**: [List apps](#list-apps), [Create an app](#create-an-app), [Get an app](#get-an-app), [Update an app and its store credentials](#update-an-app-and-its-store-credentials), [Delete an app](#delete-an-app), [Get an app's public SDK key](#get-an-apps-public-sdk-key), [Get a StoreKit configuration file](#get-a-storekit-configuration-file), [Issue a subscriber access token](#issue-a-subscriber-access-token)
@@ -25,12 +25,12 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Subscriptions**: [Find subscriptions by store id](#find-subscriptions-by-store-id), [Get a subscription](#get-a-subscription), [List the entitlements a subscription unlocks](#list-the-entitlements-a-subscription-unlocks), [List a subscription's payments](#list-a-subscriptions-payments), [Cancel a subscription (Google Play)](#cancel-a-subscription-google-play), [Refund and revoke a subscription (Google Play)](#refund-and-revoke-a-subscription-google-play), [Extend a subscription](#extend-a-subscription), [Refund one payment of a subscription (Google Play)](#refund-one-payment-of-a-subscription-google-play), [Get where the customer manages a subscription](#get-where-the-customer-manages-a-subscription)
 - **Purchases**: [Find one-time purchases by store id](#find-one-time-purchases-by-store-id), [Get a one-time purchase](#get-a-one-time-purchase), [List the entitlements a purchase unlocks](#list-the-entitlements-a-purchase-unlocks), [Refund a one-time purchase (Google Play)](#refund-a-one-time-purchase-google-play)
 - **Metrics**: [Overview metrics](#overview-metrics), [Revenue over a date range](#revenue-over-a-date-range)
-- **Charts**: [Get chart data](#get-chart-data), [Get available options for a chart](#get-available-options-for-a-chart)
+- **Charts**: [Get chart data](#get-chart-data), [Get available options for a chart](#get-available-options-for-a-chart), [List saved charts](#list-saved-charts), [Save a chart view](#save-a-chart-view), [Get a saved chart](#get-a-saved-chart), [Rename or update a saved chart](#rename-or-update-a-saved-chart), [Delete a saved chart](#delete-a-saved-chart)
 - **In-app currencies**: [List in-app currencies](#list-in-app-currencies), [Create an in-app currency](#create-an-in-app-currency), [Get an in-app currency](#get-an-in-app-currency), [Update an in-app currency](#update-an-in-app-currency), [Delete an in-app currency](#delete-an-in-app-currency), [Archive an in-app currency](#archive-an-in-app-currency), [Unarchive an in-app currency](#unarchive-an-in-app-currency), [List a customer's balances](#list-a-customers-balances), [Credit or spend in-app currency](#credit-or-spend-in-app-currency), [Change a balance without a ledger entry](#change-a-balance-without-a-ledger-entry)
 - **Audit log**: [List audit log entries](#list-audit-log-entries)
 - **Targeting**: [List audiences](#list-audiences), [Create an audience](#create-an-audience), [Preview who matches](#preview-who-matches), [Known values for attribution and custom-attribute fields](#known-values-for-attribution-and-custom-attribute-fields), [Get an audience](#get-an-audience), [Update an audience](#update-an-audience), [Delete an unused audience](#delete-an-unused-audience), [List targeting rules in order](#list-targeting-rules-in-order), [Create a targeting rule](#create-a-targeting-rule), [Set the evaluation order](#set-the-evaluation-order), [Get a targeting rule](#get-a-targeting-rule), [Update a targeting rule](#update-a-targeting-rule), [Delete a targeting rule](#delete-a-targeting-rule)
 - **Experiments**: [List experiments](#list-experiments), [Create an offering experiment](#create-an-offering-experiment), [Get an experiment](#get-an-experiment), [Update an experiment](#update-an-experiment), [Delete an experiment](#delete-an-experiment), [Start or resume](#start-or-resume), [Pause: enrolled customers keep their variant, nobody new joins](#pause-enrolled-customers-keep-their-variant-nobody-new-joins), [Stop for good](#stop-for-good), [Results per variant](#results-per-variant)
-- **Paywalls**: [List paywalls](#list-paywalls), [Create a paywall](#create-a-paywall), [Get a paywall](#get-a-paywall), [Update a paywall's draft](#update-a-paywalls-draft), [Delete a paywall](#delete-a-paywall), [Publish a paywall](#publish-a-paywall), [Unpublish a paywall](#unpublish-a-paywall), [Attach an offering to a paywall](#attach-an-offering-to-a-paywall), [Detach the offering from a paywall](#detach-the-offering-from-a-paywall), [Duplicate a paywall](#duplicate-a-paywall), [Save a named snapshot](#save-a-named-snapshot), [Get a snapshot](#get-a-snapshot), [Get the template form of a paywall](#get-the-template-form-of-a-paywall), [Store the template form of a paywall](#store-the-template-form-of-a-paywall), [List images](#list-images), [Upload an image](#upload-an-image), [List fonts](#list-fonts), [Upload a font](#upload-a-font), [Download a paywall image or font](#download-a-paywall-image-or-font)
+- **Paywalls**: [List paywalls](#list-paywalls), [Create a paywall](#create-a-paywall), [Get a paywall](#get-a-paywall), [Update a paywall's draft](#update-a-paywalls-draft), [Delete a paywall](#delete-a-paywall), [Publish a paywall](#publish-a-paywall), [Unpublish a paywall](#unpublish-a-paywall), [Attach an offering to a paywall](#attach-an-offering-to-a-paywall), [Detach the offering from a paywall](#detach-the-offering-from-a-paywall), [Duplicate a paywall](#duplicate-a-paywall), [List saved snapshots](#list-saved-snapshots), [Save a named snapshot](#save-a-named-snapshot), [Restore a snapshot into the draft](#restore-a-snapshot-into-the-draft), [Get a snapshot](#get-a-snapshot), [Get the template form of a paywall](#get-the-template-form-of-a-paywall), [Store the template form of a paywall](#store-the-template-form-of-a-paywall), [List the template gallery](#list-the-template-gallery), [Validate paywall components](#validate-paywall-components), [Whether the AI generator is available](#whether-the-ai-generator-is-available), [Generate a paywall with AI](#generate-a-paywall-with-ai), [List images](#list-images), [Upload an image](#upload-an-image), [List fonts](#list-fonts), [Upload a font](#upload-a-font), [Download a paywall image or font](#download-a-paywall-image-or-font), [Download a built-in paywall icon](#download-a-built-in-paywall-icon)
 - **Webhook integrations**: [List webhooks](#list-webhooks), [Create a webhook](#create-a-webhook), [Get a webhook](#get-a-webhook), [Update a webhook](#update-a-webhook), [Delete a webhook](#delete-a-webhook)
 - **Discounts and invoices**: [List discounts](#list-discounts), [Create a discount](#create-a-discount), [Get a discount](#get-a-discount), [Update a discount](#update-a-discount), [Delete a discount](#delete-a-discount), [Enable a discount](#enable-a-discount), [Disable a discount](#disable-a-discount), [List a discount's codes](#list-a-discounts-codes), [Create discount codes](#create-discount-codes), [Delete a discount code](#delete-a-discount-code), [List a customer's invoices](#list-a-customers-invoices), [Download an invoice](#download-an-invoice)
 - **Collaborators**: [List collaborators](#list-collaborators)
@@ -2496,7 +2496,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/subscriptions/$SUBSCRIP
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
-- **503**: The store could not be reached. Retry later. Returns [V2Error](#v2error).
+- **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](#v2error).
 
 ### Refund and revoke a subscription (Google Play)
 
@@ -2524,7 +2524,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/subscriptions/$SUBSCRIP
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
-- **503**: The store could not be reached. Retry later. Returns [V2Error](#v2error).
+- **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](#v2error).
 
 ### Extend a subscription
 
@@ -2562,7 +2562,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/subscriptions/$SUBSCRIP
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
-- **503**: The store could not be reached. Retry later. Returns [V2Error](#v2error).
+- **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](#v2error).
 
 ### Refund one payment of a subscription (Google Play)
 
@@ -2589,7 +2589,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/subscriptions/$SUBSCRIP
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
-- **503**: The store could not be reached. Retry later. Returns [V2Error](#v2error).
+- **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](#v2error).
 
 ### Get where the customer manages a subscription
 
@@ -2741,7 +2741,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/purchases/$PURCHASE_ID/
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
-- **503**: The store could not be reached. Retry later. Returns [V2Error](#v2error).
+- **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](#v2error).
 
 ## Metrics
 
@@ -2907,6 +2907,171 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/charts/$CHART_NAME/options" -H 
 **Responses**
 
 - **200**: The options.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### List saved charts
+
+`GET /v2/projects/{project_id}/saved_charts` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/saved_charts" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: A page of saved charts.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Save a chart view
+
+`POST /v2/projects/{project_id}/saved_charts` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read_write`
+
+A named chart with the dashboard view that produced it (range, dates, resolution, segment, filters, selectors, environment, compare). Up to 200 per project.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | yes |  |
+| `chart_name` | `actives`, `actives_movement`, `actives_new`, `arr`, `churn`, `cohort_explorer`, `conversion_to_paying`, `customers_new`, `initial_conversion`, `ltv_per_customer`, `ltv_per_paying_customer`, `mrr`, `mrr_movement`, `prediction_explorer`, `refund_rate`, `refund_request`, `refunds`, `revenue`, `subscription_retention`, `subscription_status`, `trials`, `trials_movement`, `trials_new`, `customers_active`, `trial_conversion`, `trial_conversion_rate`, `trial_cancellation`, `non-subscription_purchases`, `ad_revenue`, `ad_impressions`, `ad_clicks`, `ad_monetized_customers`, `ad_arpdau`, `ad_rpm`, `ad_fill_rate`, `ad_ctr`, `paywall_encounter`, `paywall_conversion`, `paywall_ltv`, `paywall_abandonment`, `app_store_save_outcomes`, `play_store_cancel_reasons`, `customer_center_survey_responses` | yes |  |
+| `view` | object | no |  |
+| `view.range` | string | no | 7d, 30d, 90d, 12m or custom. |
+| `view.start` | string | no | Custom range start, YYYY-MM-DD. |
+| `view.end` | string | no | Custom range end. |
+| `view.res` | string | no | day, week, month, quarter or year. |
+| `view.segment` | string | no |  |
+| `view.filters` | string | no | The filters parameter's JSON. |
+| `view.sel` | string | no | The selectors parameter's JSON. |
+| `view.env` | `production`, `sandbox` | no |  |
+| `view.compare` | boolean | no | Compare to the previous period. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/saved_charts" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"name":"MRR by country","chart_name":"mrr","view":{"range":"90d","res":"week","segment":"country","compare":true}}'
+```
+
+**Responses**
+
+- **201**: The saved chart.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### Get a saved chart
+
+`GET /v2/projects/{project_id}/saved_charts/{saved_chart_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `saved_chart_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/saved_charts/$SAVED_CHART_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The saved chart.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Rename or update a saved chart
+
+`PATCH /v2/projects/{project_id}/saved_charts/{saved_chart_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `saved_chart_id` | string | yes |  |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | no |  |
+| `view` | object | no |  |
+| `view.range` | string | no | 7d, 30d, 90d, 12m or custom. |
+| `view.start` | string | no | Custom range start, YYYY-MM-DD. |
+| `view.end` | string | no | Custom range end. |
+| `view.res` | string | no | day, week, month, quarter or year. |
+| `view.segment` | string | no |  |
+| `view.filters` | string | no | The filters parameter's JSON. |
+| `view.sel` | string | no | The selectors parameter's JSON. |
+| `view.env` | `production`, `sandbox` | no |  |
+| `view.compare` | boolean | no | Compare to the previous period. |
+
+**Example request**
+
+```bash
+curl -s -X PATCH "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/saved_charts/$SAVED_CHART_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The saved chart.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Delete a saved chart
+
+`DELETE /v2/projects/{project_id}/saved_charts/{saved_chart_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `saved_chart_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/saved_charts/$SAVED_CHART_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deleted.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
@@ -4232,7 +4397,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls" -H "Authorization: Be
 
 `POST /v2/projects/{project_id}/paywalls` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read_write`
 
-Either `{ offering_id }` for an empty paywall on that offering, or a full draft with `components_config` and `components_localizations`. An offering has at most one paywall. Nothing reaches the SDK until it is published.
+Either `{ offering_id }` for an empty paywall on that offering, a full draft with `components_config` and `components_localizations`, or (RevenueDot extension) `{ template_id }` for a gallery template built with the offering's packages (see `GET /paywall_templates`). An offering has at most one paywall. Nothing reaches the SDK until it is published.
 
 **Path parameters**
 
@@ -4246,7 +4411,7 @@ Either `{ offering_id }` for an empty paywall on that offering, or a full draft 
 
 ```bash
 curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls" -H "Authorization: Bearer $SECRET_KEY" \
-  -H "Content-Type: application/json" -d '{"offering_id":"ofrngm2u3h89blc"}'
+  -H "Content-Type: application/json" -d '{"offering_id":"ofrngm2u3h89blc","template_id":"trial_timeline","template_options":{"app_name":"Scanner","accent_color":"#2563eb","terms_url":"https://example.com/terms","privacy_url":"https://example.com/privacy"}}'
 ```
 
 **Responses**
@@ -4416,7 +4581,7 @@ Example 200 response:
 
 `POST /v2/projects/{project_id}/paywalls/{paywall_id}/actions/publish` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read_write`
 
-The draft becomes what the SDK receives in `paywall_components` for the paywall's offering. Needs an offering and unpublished changes.
+The draft becomes what the SDK receives in `paywall_components` for the paywall's offering (and as a workflow in remote config). Needs an offering and unpublished changes, and the components must decode in the SDKs: otherwise 422 names the first problem (`POST /paywalls/validate` lists all). Locales missing a string are served the default locale's.
 
 **Path parameters**
 
@@ -4622,6 +4787,38 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/ac
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
 
+### List saved snapshots
+
+`GET /v2/projects/{project_id}/paywalls/{paywall_id}/versions` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `paywall_id` | string | yes | Paywall id (pw...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/versions" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: A page of snapshots (without their content).
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
 ### Save a named snapshot
 
 `POST /v2/projects/{project_id}/paywalls/{paywall_id}/versions` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read_write`
@@ -4654,6 +4851,33 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/ve
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### Restore a snapshot into the draft
+
+`POST /v2/projects/{project_id}/paywalls/{paywall_id}/versions/{version_id}/actions/restore` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
+
+The snapshot becomes the draft (the revision bumps). Publish to send it to apps.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `paywall_id` | string | yes | Paywall id (pw...). |
+| `version_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/versions/$VERSION_ID/actions/restore" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The paywall with `components`.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
 ### Get a snapshot
 
@@ -4737,6 +4961,133 @@ curl -s -X PUT "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/tem
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### List the template gallery
+
+`GET /v2/projects/{project_id}/paywall_templates` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`
+
+The ten gallery layouts with the fields the dashboard filters on. Create a paywall from one with `POST /paywalls` and `template_id`. `icon_base_url` is where the built-in icons are served.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywall_templates" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The templates.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Validate paywall components
+
+`POST /v2/projects/{project_id}/paywalls/validate` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`
+
+Checks components JSON the way the SDKs decode it, without saving: `errors` stop publishing (the SDK would fail or render it wrong), `warnings` do not. With `repair: true` it first fills missing required fields and inline texts (the same repair as the AI generator) and returns the repaired JSON and what it fixed. With `offering_id`, packages are checked against the offering.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `components_config` | object | yes |  |
+| `components_localizations` | object | yes |  |
+| `default_locale` | string | no |  |
+| `offering_id` | string or null | no |  |
+| `repair` | boolean | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/validate" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"components_config":{"base":{"stack":{"type":"stack","components":[{"type":"text","text":"Go Pro"}]}}},"components_localizations":{},"repair":true}'
+```
+
+**Responses**
+
+- **200**: The result.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Whether the AI generator is available
+
+`GET /v2/projects/{project_id}/paywalls/ai` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`
+
+RevenueDot Cloud uses Workers AI. A self-hosted server needs OPENAI_API_KEY or ANTHROPIC_API_KEY; without either, `available` is false.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/ai" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The generator.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Generate a paywall with AI
+
+`POST /v2/projects/{project_id}/paywalls/generate` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
+
+Asks the language model for a paywall, repairs its answer into components the SDKs decode and returns it without saving. Save it with `POST /paywalls`. One generation every 5 seconds and 60 a day per project.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `prompt` | string | yes |  |
+| `app_name` | string | no |  |
+| `brand_colors` | array of string | no |  |
+| `offering_id` | string or null | no |  |
+| `locale` | string | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/generate" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"prompt":"A calm sleep app, explain the 7-day trial, yearly first","app_name":"Calm","brand_colors":["#0f766e"],"offering_id":"ofrngm2u3h89blc"}'
+```
+
+**Responses**
+
+- **200**: A paywall draft.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **429**: Too many requests. Retry later. Returns [V2Error](#v2error).
+- **502**: An upstream service (the store or the language model) gave no usable answer. Retry later. Returns [V2Error](#v2error).
+- **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](#v2error).
 
 ### List images
 
@@ -4873,7 +5224,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/fonts" -H "Authorizatio
 
 `GET /assets/{project_id}/{object_name}` · Auth: none
 
-Public and cached for a year: object names are random and never change content. The SDK reads `asset_base_url` + object name.
+Public and cached for a year (`Cache-Control: immutable`, a strong `ETag`, 304 on `If-None-Match`): object names are random and never change content. The SDK reads `asset_base_url` + object name. On Cloud repeat downloads come from Cloudflare's edge cache.
 
 **Path parameters**
 
@@ -4892,6 +5243,29 @@ curl -s "$REVENUEDOT_URL/assets/$PROJECT_ID/$OBJECT_NAME"
 
 - **200**: The file bytes with their content type.
 - **404**: No such asset.
+
+### Download a built-in paywall icon
+
+`GET /assets/icons/{file}` · Auth: none · RevenueDot extension
+
+The icons that icon and timeline components use (`base_url` + `formats.heic`). Cached for a year.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `file` | string | yes | `{name}.png` (96 × 96, white on transparent; the SDKs tint it), `.heic` and `.webp` names serve the same PNG, or `{name}.svg`. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/assets/icons/$FILE"
+```
+
+**Responses**
+
+- **200**: The image.
+- **404**: No such icon.
 
 ## Webhook integrations
 

@@ -1,11 +1,13 @@
 // RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
 // This file: the two chart operations (RevenueCat-compatible) in the OpenAPI document.
 // Docs: https://revenuedot.app/docs/guides/charts   Migrate from RevenueCat: https://revenuedot.app/docs/migrate
-import { SECRET, arr, bool, en, int, nint, nms, nstr, obj, ok, op, param, str, v2Errors } from "./common.mjs";
+import { SECRET, arr, body, bool, en, int, listOf, nint, nms, nstr, obj, ok, op, param, str, v2Errors } from "./common.mjs";
 
 const P = "/v2/projects/{project_id}/charts/{chart_name}";
 const R = "routes/v2/charts.ts";
 const SCOPES = ["charts_metrics:charts:read"];
+const WRITE_SCOPES = ["charts_metrics:charts:read_write"];
+const SR = "routes/v2/saved-charts.ts";
 
 /** RevenueCat's 41 API chart names, plus the two RevenueDot names for dashboard-only charts. */
 export const CHART_NAMES = [
@@ -57,6 +59,13 @@ const chartOptions = obj({
 
 const q = (name, schema, description) => ({ name, in: "query", schema, description });
 
+const view = obj({
+  range: str("7d, 30d, 90d, 12m or custom."), start: str("Custom range start, YYYY-MM-DD."), end: str("Custom range end."), res: str("day, week, month, quarter or year."),
+  segment: str(), filters: str("The filters parameter's JSON."), sel: str("The selectors parameter's JSON."), env: en(["production", "sandbox"]), compare: bool("Compare to the previous period."),
+});
+const savedChart = obj({ object: en(["saved_chart"]), id: str(), name: str(), chart_name: str(), view, created_at: int(), updated_at: int() }, ["object", "id", "name", "chart_name", "view", "created_at", "updated_at"]);
+const savedId = { name: "saved_chart_id", in: "path", required: true, schema: str() };
+
 export const chartPaths = {
   [P]: {
     get: op({ id: "getChartData", tag: "Charts", summary: "Get chart data", security: SECRET, source: R, scopes: SCOPES,
@@ -82,5 +91,21 @@ Sandbox purchases, granted access and Family Sharing are excluded; money is USD 
       description: "Resolutions, segments, filters with the values present in the project's data, and the chart's selectors.",
       parameters: [param("ProjectId"), chartName, environment],
       responses: { 200: ok("The options.", chartOptions), ...v2Errors(401, 403, 404) } }),
+  },
+  "/v2/projects/{project_id}/saved_charts": {
+    get: op({ id: "listSavedCharts", tag: "Charts", summary: "List saved charts", security: SECRET, source: SR, extension: true, scopes: SCOPES, parameters: [param("ProjectId"), param("Limit"), param("StartingAfter")],
+      responses: { 200: ok("A page of saved charts.", listOf(savedChart)), ...v2Errors(400, 401, 403, 404) } }),
+    post: op({ id: "createSavedChart", tag: "Charts", summary: "Save a chart view", security: SECRET, source: SR, extension: true, scopes: WRITE_SCOPES, parameters: [param("ProjectId")],
+      description: "A named chart with the dashboard view that produced it (range, dates, resolution, segment, filters, selectors, environment, compare). Up to 200 per project.",
+      requestBody: body(obj({ name: str(undefined, { minLength: 1, maxLength: 120 }), chart_name: en(CHART_NAMES), view }, ["name", "chart_name"]), { name: "MRR by country", chart_name: "mrr", view: { range: "90d", res: "week", segment: "country", compare: true } }),
+      responses: { 201: ok("The saved chart.", savedChart), ...v2Errors(400, 401, 403, 404, 422) } }),
+  },
+  "/v2/projects/{project_id}/saved_charts/{saved_chart_id}": {
+    get: op({ id: "getSavedChart", tag: "Charts", summary: "Get a saved chart", security: SECRET, source: SR, extension: true, scopes: SCOPES, parameters: [param("ProjectId"), savedId],
+      responses: { 200: ok("The saved chart.", savedChart), ...v2Errors(401, 403, 404) } }),
+    patch: op({ id: "updateSavedChart", tag: "Charts", summary: "Rename or update a saved chart", security: SECRET, source: SR, extension: true, scopes: WRITE_SCOPES, parameters: [param("ProjectId"), savedId],
+      requestBody: body(obj({ name: str(undefined, { minLength: 1, maxLength: 120 }), view })), responses: { 200: ok("The saved chart.", savedChart), ...v2Errors(400, 401, 403, 404) } }),
+    delete: op({ id: "deleteSavedChart", tag: "Charts", summary: "Delete a saved chart", security: SECRET, source: SR, extension: true, scopes: WRITE_SCOPES, parameters: [param("ProjectId"), savedId],
+      responses: { 200: ok("Deleted.", obj({ object: en(["saved_chart"]), id: str(), deleted_at: int() }, ["object", "id", "deleted_at"])), ...v2Errors(401, 403, 404) } }),
   },
 };

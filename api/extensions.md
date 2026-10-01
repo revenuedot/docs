@@ -1022,7 +1022,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/actions/ma
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
-- **503**: The store could not be reached. Retry later. Returns [V2Error](#v2error).
+- **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](#v2error).
 
 ### Status of a mass extension
 
@@ -1057,7 +1057,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/mass_extensions/$R
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
-- **503**: The store could not be reached. Retry later. Returns [V2Error](#v2error).
+- **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](#v2error).
 
 ### Setup health
 

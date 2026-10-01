@@ -362,7 +362,7 @@ export const parameters = {
 };
 
 const v2err = (status, type, message, retryable = false) => ok(
-  { 400: "The request is invalid.", 401: "No API key, or an unknown one.", 403: "The key lacks a permission, or a public key was used.", 404: "Not found in this project (another project's ids also answer 404).", 409: "It already exists, or it conflicts with another object.", 422: "The request is valid but cannot be done in this state or for this store.", 429: "Too many requests. Retry later.", 500: "Server error. Retry later.", 503: "The store could not be reached. Retry later." }[status],
+  { 400: "The request is invalid.", 401: "No API key, or an unknown one.", 403: "The key lacks a permission, or a public key was used.", 404: "Not found in this project (another project's ids also answer 404).", 409: "It already exists, or it conflicts with another object.", 422: "The request is valid but cannot be done in this state or for this store.", 429: "Too many requests. Retry later.", 500: "Server error. Retry later.", 502: "An upstream service (the store or the language model) gave no usable answer. Retry later.", 503: "The store could not be reached, or the feature is not configured on this server." }[status],
   ref("V2Error"),
   { object: "error", type, message, ...(status === 400 ? { param: "app_id" } : {}), doc_url: `https://revenuedot.app/docs/api/errors#${type.replace(/_/g, "-")}`, retryable },
 );
@@ -376,6 +376,7 @@ export const responses = {
   V2Error409: v2err(409, "resource_already_exists", "An entitlement with lookup_key pro already exists."),
   V2Error422: v2err(422, "unprocessable_entity_error", "The current offering cannot be archived. Make another offering current first."),
   V2Error429: v2err(429, "rate_limit_error", "This project sent too many invites today. Try again tomorrow.", true),
+  V2Error502: v2err(502, "server_error", "The language model did not answer. Try again.", true),
   V2Error503: v2err(503, "server_error", "The server could not complete the request. Try again.", true),
   V1Error400: v1err(400, 7103, "The receipt is not a valid Test Store purchase token.", "Bad request. For receipts, a 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction."),
   V1Error401: v1err(401, 7225, "Invalid API Key.", "Unknown API key."),
