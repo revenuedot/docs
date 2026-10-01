@@ -1,6 +1,6 @@
 ---
 title: Which guide do I need?
-description: Step-by-step guides for connecting stores, selling on the web with purchase links and funnels, webhooks, integrations and data exports, refund requests, retention and win-back, support, customer lists, testing, your team, alert emails, and running RevenueDot on your own servers.
+description: Step-by-step guides for stores, web billing, webhooks, integrations and data exports, ads and rewarded ads, refunds, retention and win-back, support, customer lists, testing, your team, alerts, and running RevenueDot on your own servers.
 ---
 
 # Which guide do I need?
@@ -20,7 +20,8 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Give a discount or a code at web checkout | [Web discounts](web-discounts.md) |
 | Put my purchase links and funnels on my own domain | [Custom domains](custom-domains.md) |
 | Receive purchase events in my backend and verify them | [Webhooks](webhooks.md) |
-| Send purchase events to Slack, Segment, Amplitude, Mixpanel, PostHog, Firebase, BigQuery, AppsFlyer, Adjust or Meta, or export my data to S3, R2 or Google Cloud Storage | [Integrations and data exports](integrations.md) |
+| Send purchase events to any of RevenueCat's 37 integrations (Segment, Amplitude, AppsFlyer, Braze, Branch, Statsig, Superwall ...) or BigQuery, or export my data to S3, R2 or Google Cloud Storage | [Integrations and data exports](integrations.md) |
+| See ad revenue next to subscription revenue, verify rewarded ads on the server, or connect AdMob | [Ads](ads.md) |
 | Have the SDK verify that responses come from my server | [Trusted Entitlements](trusted-entitlements.md) |
 | Test purchases without any store account | [Test Store](test-store.md) |
 | Test with App Store sandbox, Xcode or Google Play testers | [Sandbox testing](sandbox-testing.md) |
@@ -39,7 +40,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Answer Apple refund requests automatically and see my refund rate | [Refund Control](refund-control.md) |
 | Offer a discount when customers cancel, in my app or on Apple's cancel screen | [Retention offers](retention.md) |
 | Email churned subscribers an offer to come back | [Win-back campaigns](win-back-campaigns.md) |
-| Get Customer Center support requests by email, or show subscriptions in Intercom or Zendesk | [Support](support-integrations.md) |
+| Get Customer Center support requests by email, or show subscriptions in the Intercom inbox or a Zendesk sidebar | [Support](support-integrations.md) |
 | Filter, save and export lists of customers | [Customer lists](customer-lists.md) |
 
 Moving from RevenueCat? Start with [Migrate from RevenueCat](../migrate/README.md). Looking for a specific endpoint? See the [API reference](../../api/README.md).
