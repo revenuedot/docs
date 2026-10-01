@@ -10,7 +10,7 @@ Generated from https://github.com/revenuedot/docs by scripts/gen-llms.mjs. Index
 # Which guide do I need?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/README.md
-Description: Step-by-step guides for connecting the App Store and Google Play, receiving webhooks, sending events to analytics and attribution tools, exporting data, response signing, testing, inviting your team, alert emails, and running RevenueDot on your own servers.
+Description: Step-by-step guides for connecting the App Store, Google Play, the Amazon Appstore and Stripe, receiving webhooks, sending events to analytics and attribution tools, exporting data, response signing, testing, inviting your team, alert emails, and running RevenueDot on your own servers.
 
 Each guide is one task, start to finish. Connect a store first, then receive webhooks; run the server yourself with the self-hosting guides.
 
@@ -18,6 +18,8 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 |---|---|
 | Accept App Store purchases and get Apple's notifications | [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md) |
 | Accept Google Play purchases and get real-time notifications | [Connect Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md) |
+| Accept Amazon Appstore purchases on Fire tablets and Fire TV | [Connect the Amazon Appstore](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md) |
+| Track subscriptions sold with my own Stripe account | [Connect Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md) |
 | Receive purchase events in my backend and verify them | [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md) |
 | Send purchase events to Slack, Segment, Amplitude, Mixpanel, PostHog, Firebase, BigQuery, AppsFlyer, Adjust or Meta, or export my data to S3, R2 or Google Cloud Storage | [Integrations and data exports](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md) |
 | Have the SDK verify that responses come from my server | [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md) |
@@ -207,6 +209,192 @@ These call Google's API with the service account. They are tested against a mock
 - [Android SDK guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/android.md)
 - [Test with Play license testers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/sandbox-testing.md)
 - [Store notifications not arriving](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/store-notifications-not-arriving.md)
+- [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md)
+
+---
+
+# How do I connect the Amazon Appstore to RevenueDot?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md
+Description: Create an Amazon app with your package name, save the Amazon shared key so RevenueDot can check receipts with Amazon's Receipt Verification Service, and add RevenueDot's URL as a Real-time Notifications endpoint.
+
+Three steps: create an Amazon Appstore app in RevenueDot with your package name, save the **shared key** from the Amazon Developer Console, and add RevenueDot's URL as a **Real-time Notifications** endpoint. Your Android app keeps using the RevenueCat Android SDK built for Amazon; only its proxy URL changes. The dashboard's app page shows the same steps and checks each one.
+
+## 1. Create the app
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"Scanner (Fire)","type":"amazon","amazon":{"package_name":"com.example.scanner"}}'
+```
+
+The app's public SDK key starts with `amzn_`. Create its products with `store_identifier` set to the **term SKU** for subscriptions (for example `pro.monthly`, the SKU of one subscription term) and the SKU for consumables and entitlements. See [Products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md).
+
+In your app, configure the SDK for Amazon with this key and the proxy URL:
+
+```kotlin
+Purchases.proxyURL = URL("https://api.revenuedot.app")   // or your own server
+Purchases.configure(AmazonConfiguration.Builder(this, "amzn_…").build())
+```
+
+## 2. Save the shared key
+RevenueDot sends every receipt to Amazon's [Receipt Verification Service](https://developer.amazon.com/docs/in-app-purchasing/iap-rvs-for-android-apps.html) (RVS) with your shared key. RVS is the only source of dates and state: what the device posts is never trusted for those.
+
+1. Sign in to the [Amazon Developer Console → Settings → Identity](https://developer.amazon.com/settings/console/sdk/shared-key) and copy the **Shared Key**.
+2. In the dashboard, open the app → **Amazon shared key**, paste it and click **Check credentials**. RevenueDot asks RVS about a made-up receipt: Amazon answers 496 for a wrong key, so a wrong key shows up here, not on a customer's purchase.
+
+With the API:
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"amazon":{"shared_secret":"<your shared key>"}}'
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/actions/verify_credentials" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+### What the SDK sees
+- The SDK first asks `GET /v1/receipts/amazon/{store_user_id}/{receipt_id}` for a subscription's term SKU, then posts the receipt to `POST /v1/receipts` with `fetch_token` = the receipt ID and `store_user_id` = the Amazon user ID.
+- An unknown receipt or user answers **400** (code 7103), so the SDK stops trying.
+- Amazon being down, throttling, a missing shared key or one Amazon rejects answer **5xx** (code 7101). The SDK keeps the purchase unfulfilled and retries, so nobody loses a purchase while you fix the key. A rejected key also marks the app's credentials as failing and sends an [alert email](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md).
+
+## 3. Add the Real-time Notifications endpoint
+Amazon sends renewals, cancellations, grace periods, tier changes and refunds of one-time purchases through Amazon SNS.
+
+1. Copy the app's notification URL, `https://revenuedot.example.com/v1/notifications/amazon/{app_id}`, from the dashboard or from `GET /v2/projects/{project_id}/apps/{app_id}/store_settings` (`notification_url`).
+2. In the [Amazon Appstore Console](https://developer.amazon.com/apps-and-games/console/apps/list.html), open your app → **App Services** → **Real-time Notifications**, expand **Add an Endpoint**, paste the URL and click **Submit**.
+3. RevenueDot confirms the SNS subscription by itself, and the console shows **Verified** within seconds. The app's notification status turns **Ready**.
+
+For each message RevenueDot:
+- checks the **SNS signature**: the signing certificate must come from an `sns.<region>.amazonaws.com` HTTPS URL, and the message must verify with it (SignatureVersion 1 or 2). Anything else gets 400 and changes nothing;
+- stores the raw message once (by SNS message ID) and copies it to `notification_forward_url` when set;
+- reads the receipt again from RVS with the notification's Amazon user ID and applies what Amazon says.
+
+Optionally, pin the SNS topic so messages from any other topic are refused. Copy the `TopicArn` of the first notification (it is in the stored message) into **SNS topic ARN** on the app page, or with the API: `{"amazon":{"sns_topic_arn":"arn:aws:sns:us-east-1:…"}}`.
+
+Notifications about a receipt RevenueDot has never seen answer 200 and are ignored, unless **Track new purchases from server-to-server notifications** is on. Amazon's notifications carry no app user ID, so such a purchase starts on an anonymous customer until the app posts its receipt.
+
+## How Amazon states map to events
+| What Amazon reports | Event |
+|---|---|
+| A new subscription receipt | `INITIAL_PURCHASE` (`TRIAL` while `freeTrialEndDate` is ahead, `INTRO` during an introductory promotion) |
+| `renewalDate` moved one term later | `RENEWAL` (with `is_trial_conversion` after a trial) |
+| Auto-renew off, or back on | `CANCELLATION` (`UNSUBSCRIBE`), `UNCANCELLATION` |
+| A grace period | `BILLING_ISSUE` and `CANCELLATION` (`BILLING_ERROR`); access continues to `gracePeriodEndDate` |
+| `cancelDate` reached, or grace over | `EXPIRATION` |
+| A deferred tier change (`deferredSku`) | `PRODUCT_CHANGE` to the deferred SKU |
+| An immediate tier change (new receipt, `cancelledReceiptId`) | `INITIAL_PURCHASE` on the new receipt, `PRODUCT_CHANGE` on the old one |
+| A consumable or entitlement bought | `NON_RENEWING_PURCHASE` |
+| A consumable or entitlement cancelled (`*_CANCELLED`, or RVS answers 410) | `CANCELLATION` (`CUSTOMER_SUPPORT`) with a negative price |
+
+Webhooks report `store: AMAZON`. Amazon has no subscription pause, and like RevenueCat, RevenueDot does not detect refunds of Amazon subscriptions ([RevenueCat: refunds](https://www.revenuecat.com/docs/subscription-guidance/refunds)).
+
+## Sandbox
+- Purchases from **Live App Testing** (`betaProduct`) and Amazon's test transactions (`testTransaction`) are sandbox data and stay out of production numbers.
+- Receipts from **App Tester** exist only in RVS's cloud sandbox. When production RVS does not know a receipt, RevenueDot asks the cloud sandbox, and a receipt found there is sandbox data.
+- Amazon's accelerated test timelines are not supported; event times follow real time ([RevenueCat: Amazon sandbox](https://www.revenuecat.com/docs/test-and-launch/sandbox/amazon-store-sandbox-testing) has the same limit).
+
+## Prices
+RVS has no price. The price and currency the SDK posts (the marketplace's local price) are saved with the purchase and converted to USD at the purchase date's rate. Renewals that arrive by notification keep the last known price.
+
+## Related
+- [Android SDK guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/android.md)
+- [Store notifications not arriving](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/store-notifications-not-arriving.md)
+- [SDK endpoints: Amazon receipt details](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md)
+- [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md)
+
+---
+
+# How do I track Stripe subscriptions from my own Stripe account in RevenueDot?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md
+Description: Create a Stripe app, save a restricted API key and a webhook signing secret from your own Stripe account, post each new subscription or Checkout Session to /v1/receipts, and let Stripe's webhooks keep it current.
+
+Four steps: create a Stripe app in RevenueDot, save a **restricted API key** from your Stripe account, add a **webhook endpoint** in Stripe and save its signing secret, then have your backend **post each purchase** to `POST /v1/receipts`. Customers who pay on your website then get the same entitlements in your apps when they use the same app user ID. RevenueDot only reads from Stripe: it never charges, refunds or changes anything there.
+
+## 1. Create the app
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"Scanner (Web)","type":"stripe"}'
+```
+
+The app's public key starts with `strp_`. Create its products with `store_identifier` set to the **Stripe product ID** (`prod_…`). To sell several prices of one Stripe product as separate products, use the **price ID** (`price_…`) instead; a price ID wins over its product ID. See [Products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md).
+
+## 2. Save a restricted API key
+1. In the [Stripe Dashboard → Developers → API keys](https://dashboard.stripe.com/apikeys/create), click **Create restricted key**.
+2. Give it **Read** access to Subscriptions, Invoices, Checkout Sessions, Charges, Customers, Products and Prices. Leave everything else at None.
+3. In the dashboard, open the app → **Stripe API key**, paste it and click **Check credentials**. RevenueDot lists one subscription and one Checkout Session: a wrong key says so, and a key without a permission names the one it lacks.
+
+With the API:
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"stripe":{"stripe_secret_key":"rk_live_…"}}'
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/actions/verify_credentials" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+A publishable key (`pk_…`) is refused. Using a Stripe Connect platform key for one connected account? Also save `stripe_account_id` (`acct_…`); RevenueDot sends it as `Stripe-Account`.
+
+**Test mode.** The key decides the environment: a test-mode key (`rk_test_…`) or a [Stripe sandbox](https://docs.stripe.com/sandboxes) records sandbox data, kept out of production numbers. Use one Stripe app per Stripe account, mode or sandbox, as [RevenueCat recommends](https://www.revenuecat.com/docs/web/integrations/stripe) too.
+
+## 3. Add the webhook endpoint
+1. Copy the app's webhook URL, `https://revenuedot.example.com/v1/notifications/stripe/{app_id}`, from the dashboard or from `store_settings` (`notification_url`).
+2. In the [Stripe Dashboard → Developers → Webhooks](https://dashboard.stripe.com/webhooks/create), add an endpoint with that URL and these events: `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.subscription.paused`, `customer.subscription.resumed`, `invoice.paid`, `invoice.payment_failed`, `invoice.updated`, `charge.refunded`, `checkout.session.completed`. Other events are accepted and ignored.
+3. Reveal the endpoint's **Signing secret** (`whsec_…`) and paste it on the app page, or save it as `stripe_webhook_secret`.
+
+Every event must carry a valid `Stripe-Signature`: RevenueDot computes the HMAC-SHA256 of `"<t>.<body>"` with the signing secret, the way [Stripe documents it](https://docs.stripe.com/webhooks#verify-manually), and refuses a timestamp more than 5 minutes off. A missing secret or a bad signature answers 400. Each event is stored once (by event ID), copied to `notification_forward_url` when set, and applied by reading the subscription from Stripe again, so events arriving out of order cannot roll a subscription back. Temporary failures answer 500, and Stripe retries.
+
+## 4. Post each purchase from your backend
+After Stripe confirms a purchase (`customer.subscription.created` or `checkout.session.completed`), post its subscription ID or Checkout Session ID with the customer's app user ID:
+
+```bash
+curl -X POST "$REVENUEDOT_URL/v1/receipts" \
+  -H "Authorization: Bearer strp_…" -H "X-Platform: stripe" -H "Content-Type: application/json" \
+  -d '{"app_user_id":"user_123","fetch_token":"sub_1Abc…"}'
+```
+
+- A **subscription ID** (`sub_…`) records the subscription.
+- A **Checkout Session ID** (`cs_…`) records the session's subscription, or, for a payment-mode session, each line item as a one-time purchase (consumable or not, by your catalog). One-time purchases need a Checkout Session.
+- The answer is the customer's [customer info](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/customers-and-app-user-ids.md). Posting the same ID again changes nothing.
+- **400** (code 7103) means it can never succeed: an unknown ID, an expired session, a subscription whose first payment never completed. **5xx** (code 7101) means try again later: Stripe was unavailable, the key was rejected, or the first invoice is not paid yet.
+
+### When a subscription counts
+By default a subscription counts once its latest invoice is **paid**. Set `register_on` to `invoice_created` (on the app page: "When the invoice is created") to grant access while the first invoice is still open, as RevenueCat's ["Subscription purchase recognition"](https://www.revenuecat.com/docs/web/integrations/stripe/track-external-purchases) setting does.
+
+### Purchases you never posted
+Turn on **Track new purchases from server-to-server notifications** to record subscriptions and Checkout purchases that RevenueDot first hears about from a webhook. The customer is found by `app_user_id_source`:
+- `metadata` (default): the metadata key `app_user_id_metadata_key` (default `app_user_id`) on the Checkout Session or the subscription. Set it in both when a session creates a subscription.
+- `customer_id`: the Stripe customer ID becomes the app user ID.
+- `anonymous`: an anonymous ID.
+
+## How Stripe states map to events
+| What Stripe reports | Event |
+|---|---|
+| An active subscription with a paid invoice | `INITIAL_PURCHASE` (`TRIAL` while `trialing`, at price 0) |
+| A new paid invoice for the next period | `RENEWAL` (with `is_trial_conversion` after a trial) |
+| `cancel_at_period_end` or a future `cancel_at`; undone | `CANCELLATION` (`UNSUBSCRIBE`); `UNCANCELLATION` |
+| `past_due`: the renewal invoice failed | `BILLING_ISSUE`, `CANCELLATION` (`BILLING_ERROR`); access to the end of the paid period, grace until Stripe's next payment attempt |
+| Paid after `past_due` | `RENEWAL` |
+| `unpaid`, or retries run out | `EXPIRATION` (`BILLING_ERROR`) |
+| `canceled` (`customer.subscription.deleted`) | `CANCELLATION` if not seen before, then `EXPIRATION` at `ended_at` |
+| `pause_collection` with `resumes_at` | `SUBSCRIPTION_PAUSED` |
+| Another price or product on the subscription | `PRODUCT_CHANGE`; a proration invoice in the middle of a period is not a renewal and adds no revenue |
+| `charge.refunded` in full for the latest period | `CANCELLATION` (`CUSTOMER_SUPPORT`), a negative transaction, and access ends at the refund. A later paid period is a `RENEWAL` |
+| A payment-mode Checkout Session | `NON_RENEWING_PURCHASE`; a full refund is `CANCELLATION` (`CUSTOMER_SUPPORT`) |
+
+Webhooks report `store: STRIPE` with no store commission. Revenue is what each invoice charged (`amount_paid`), so coupons show in revenue; it is converted to USD at the period start's rate. Zero-decimal currencies such as JPY are not divided by 100.
+
+Both Stripe API shapes work: before 2025-03-31 (period fields on the subscription, `invoice.subscription`) and after (period fields on the subscription item, `invoice.parent.subscription_details`).
+
+## Not supported yet
+- "Connect with Stripe" (OAuth) instead of a restricted key, and hosted checkout: these need RevenueDot's own Stripe platform and come later.
+- Subscription schedules, metered and tiered prices, and subscriptions with several items.
+- A scheduled re-check without webhooks: without the webhook endpoint, a cancellation shows only when your backend posts the subscription again.
+
+## Related
+- [Webhooks out of RevenueDot](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md)
+- [Sandbox and production](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/sandbox.md)
+- [SDK endpoints: POST /v1/receipts](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md)
 - [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md)
 
 ---

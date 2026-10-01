@@ -14,7 +14,7 @@ Work through these steps in order. RevenueCat keeps running until the last secti
 - [ ] Optional: set `REVENUEDOT_SIGNING_KEY` if you plan to use fork builds with your own key. See [Trusted Entitlements](../guides/trusted-entitlements.md).
 
 ## 2. Import
-- [ ] Dry run: `npx revenuedot import --from-revenuecat --rc-key sk_... --rc-project proj... --to https://revenuedot.example.com --to-key sk_... --dry-run`. Until the CLI is on npm, run it from source; see [The importer](importer.md#run-it).
+- [ ] Dry run: `npx revenuedot import --from-revenuecat --rc-project proj... --to https://revenuedot.example.com --dry-run`. It asks for both secret keys. Until the CLI is on npm, run it from source; see [The importer](importer.md#run-it).
 - [ ] Import: the same command without `--dry-run`. Re-run it until the report says the pass is complete.
 - [ ] Add each app's store credentials in the dashboard: the App Store in-app purchase key, and the Google Play service account with "View financial data". See [Connect the App Store](../guides/app-store.md) and [Connect Google Play](../guides/google-play.md).
 - [ ] Click **Check credentials** on each app page, so Apple and Google confirm the credentials work.

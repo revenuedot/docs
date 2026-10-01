@@ -31,7 +31,13 @@ The codes are defined in [`apps/server/src/errors.ts`](https://github.com/revenu
 | 401 | 7225 | Invalid API key | `routes/sdk.ts` | The `Authorization: Bearer` key is missing or unknown. Every SDK call answers this, not only receipts |
 | 400 | 7220 | Invalid app user ID | `routes/sdk.ts` | `app_user_id` is empty or longer than 100 characters |
 | 400 | 7000 | Bad request | `routes/sdk.ts` | A receipt posted with a secret key (`sk_`) has no `X-Platform` header, so RevenueDot cannot tell which app it is for |
-| 400 | 7662 | Receipts for this store are not supported yet | `routes/sdk.ts` | The key belongs to an Amazon, Stripe, Web Billing, Paddle or Roku app |
+| 400 | 7662 | Receipts for this store are not supported yet | `routes/sdk.ts` | The key belongs to a Web Billing, Paddle or Roku app, or a non-Amazon key asked for Amazon receipt details |
+| 400 | 7103 | Invalid receipt | `stores/amazon/index.ts` | Amazon does not know the receipt or the Amazon user (`store_user_id` missing or wrong) |
+| 500 | 7101 | Store problem | `stores/amazon/api.ts` | No Amazon shared key saved, or Amazon rejected it (RVS 496). The SDK keeps the purchase |
+| 503 | 7101 | Store problem | `stores/amazon/api.ts` | Amazon's Receipt Verification Service is down, throttling or slow |
+| 400 | 7103 | Invalid receipt | `stores/stripe/index.ts` | Not a `sub_` or `cs_` id, unknown to Stripe, an expired Checkout Session, or a subscription whose first payment never completed |
+| 500 | 7101 | Store problem | `stores/stripe/api.ts` | No Stripe key saved, or Stripe rejected it (401 or 403) |
+| 503 | 7101 | Store problem | `stores/stripe/index.ts` | Stripe is unavailable, or the first invoice or Checkout Session is not paid yet: post again later |
 | 400 | 7103 | Invalid receipt | `routes/sdk.ts` | The body has neither `fetch_token` nor `app_transaction` |
 | 400 | 7103 | Invalid receipt | `stores/test-store.ts` | The Test Store token is not `test_<ms>_<id>`, or `product_id` is missing |
 | 400 | 7103 | Invalid receipt | `stores/apple/index.ts` | The StoreKit 2 transaction's signature does not verify, the bundle ID does not match the app, the app receipt cannot be parsed, or it is an Xcode receipt without the `xcode_certificate` credential |
@@ -55,7 +61,7 @@ A wrong App Store key or Google service account is your setup problem, not the c
 3. **For 7103 from the App Store,** check the app's `bundle_id` matches the build you are testing. For Xcode StoreKit testing, add the `xcode_certificate` credential. See [How do I test purchases without real money?](test-sandbox-purchases.md)
 4. **For 7103 from Google,** check the app's `package_name`, and that the purchase was made by this app.
 5. **For 7102,** decide who should own restored purchases and set `transfer_behavior`. See [How do I restore purchases?](restore-purchases.md)
-6. **For 7662,** use an App Store, Mac App Store, Google Play or Test Store app. Other stores are not supported yet.
+6. **For 7662,** use an App Store, Mac App Store, Google Play, Amazon Appstore, Stripe or Test Store app. Web Billing, Paddle and Roku are not supported yet.
 7. **For 7234,** add the App Store in-app purchase key to the app. See [Connect the App Store](../guides/app-store.md). For local development only, you can set `allow_unsigned_receipts`.
 8. **For 7101 from Google,** run **Verify credentials** on the app page, or `POST /v2/projects/{project_id}/apps/{app_id}/actions/verify_credentials`, and grant the service account access in Play Console. See [Connect Google Play](../guides/google-play.md).
 9. **For 7110,** read the server log. The error is printed there with its stack. Open an issue if it looks like a bug.

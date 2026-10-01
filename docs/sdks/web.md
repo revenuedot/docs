@@ -1,11 +1,11 @@
 ---
 title: How do I use RevenueDot with the web SDK (purchases-js)?
-description: Pass httpConfig.proxyURL to Purchases.configure and turn off analytics events. Only Test Store (test_) keys work against RevenueDot today; Web Billing, Stripe and Paddle do not.
+description: Pass httpConfig.proxyURL to Purchases.configure and turn off analytics events. Only Test Store (test_) keys work against RevenueDot today; Web Billing and Paddle do not. Stripe purchases are posted by your backend.
 ---
 
 # How do I use RevenueDot with the web SDK (purchases-js)?
 
-Pass `httpConfig: { proxyURL: "https://revenuedot.example.com" }` to `Purchases.configure`, and set `flags: { collectAnalyticsEvents: false }` so the stock SDK does not send analytics events to RevenueCat. **Only Test Store (`test_`) keys work against RevenueDot today.** Web Billing (`rcb_`), Stripe (`strp_`) and Paddle (`pdl_`) purchases do not: RevenueDot answers their receipts with error 7662.
+Pass `httpConfig: { proxyURL: "https://revenuedot.example.com" }` to `Purchases.configure`, and set `flags: { collectAnalyticsEvents: false }` so the stock SDK does not send analytics events to RevenueCat. **Only Test Store (`test_`) keys work against RevenueDot today.** Web Billing (`rcb_`) and Paddle (`pdl_`) purchases do not: RevenueDot answers their receipts with error 7662. Purchases from your own Stripe checkout are posted by your backend with the Stripe app's `strp_` key, not by purchases-js ([Stripe guide](../guides/stripe.md)).
 
 ## Use the RevenueCat SDK you already ship (proxy mode)
 ```ts

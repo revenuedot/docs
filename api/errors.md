@@ -32,7 +32,7 @@ RevenueDot answers errors in the format each API's clients already parse: SDK en
 | 7234 | INVALID_APPLE_SUBSCRIPTION_KEY | 400 or 500 | A StoreKit 1 receipt arrived for an App Store app without an in-app purchase key, or the key is incomplete (500, so the SDK retries once you add the key). A promotional offer cannot be signed without the key (400; the SDK reports `invalidAppleSubscriptionKeyError` for that offer). |
 | 7259 | NOT_FOUND | 404 | The customer, entitlement, offering or subscription does not exist. |
 | 7263 | INVALID_SUBSCRIBER_ATTRIBUTES | 400 | Some attributes were not saved; `attribute_errors` lists them. |
-| 7662 | UNSUPPORTED_RECEIPT | 400 | Receipts for this app's store are not supported yet (Amazon, Stripe, Web Billing, Paddle, Roku), including the Android SDK's Amazon receipt lookup. |
+| 7662 | UNSUPPORTED_RECEIPT | 400 | Receipts for this app's store are not supported yet (Web Billing, Paddle, Roku), and the Android SDK's Amazon receipt lookup with a key that is not an Amazon app's. |
 | 7849 | INVALID_WEB_REDEMPTION_TOKEN | 400 | A web purchase redemption token is not valid. RevenueDot has no web purchases, so every token answers this; the SDKs return the `invalidToken` result. |
 | 7877 | INVALID_OPERATION_SESSION | 400 | A Web Billing checkout session does not exist. |
 
@@ -97,7 +97,7 @@ The key lacks a permission, a public app key was used, or the action needs a das
 
 ### store_error
 
-The App Store or Google Play refused the action (422) or could not be reached (503, `retryable: true`).
+The App Store or Google Play refused the action, or could not be reached (`retryable: true`). Always 422.
 
 <a id="server-error"></a>
 

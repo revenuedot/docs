@@ -33,7 +33,6 @@ RevenueDot answers the RevenueCat SDKs, REST API v1 and v2, and webhook payloads
 | Web purchase redemption (`redeemWebPurchase`) | 400 with code 7849 | The SDK returns `invalidToken`: there are no web purchases to redeem |
 | Web checkout (iOS hosted checkout, purchases-js with `rcb_` keys) | 400 with code 7000; branding answers the app's name | The checkout fails with an error and is not retried |
 | Rewarded ad verification (`pollRewardVerification`) | `status: failed` | Polling stops after one request and returns failed |
-| Amazon receipt lookup (Android) | 400 with code 7662 | The Amazon purchase fails and stays unconsumed |
 | SDK health report | Always "passed" | No effect |
 
 Source: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/routes/sdk.ts).
@@ -44,7 +43,8 @@ Source: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenued
 - The full list of SDK calls and what each answers is in [`prd/sdk-api/PRD.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/sdk-api/PRD.md#endpoint-inventory).
 
 **Stores and receipts**
-- RevenueDot accepts purchases only for App Store, Mac App Store, Google Play and Test Store apps. Receipts for Amazon, Web Billing (`rcb_`), Stripe, Paddle and Roku apps answer HTTP 400 with code 7662.
+- RevenueDot accepts purchases for App Store, Mac App Store, Google Play, Amazon Appstore, Stripe and Test Store apps ([Amazon guide](../guides/amazon-appstore.md), [Stripe guide](../guides/stripe.md)). Receipts for Web Billing (`rcb_`), Paddle and Roku apps answer HTTP 400 with code 7662.
+- Like RevenueCat, RevenueDot does not detect refunds of Amazon subscriptions. Stripe Connect OAuth ("Connect with Stripe") is not available; save a restricted key instead.
 - purchases-js therefore works only with Test Store (`test_`) keys.
 - StoreKit 1 receipts need the App Store in-app purchase key on the app. Without it RevenueDot answers code 7234 as HTTP 500, so the SDK retries after you add the key. For development, `allow_unsigned_receipts` skips this.
 - The app-specific shared secret is stored but not used.
@@ -89,16 +89,16 @@ Source: [`prd/migration/PRD.md`](https://github.com/revenuedot/revenuedot/blob/m
 
 ## Features not built yet, by tier
 **Tier 1 (the current build), not finished**
-- SDK fork packages are built but not published to any registry.
+- SDK fork packages are partly published: `@revenuedot/purchases-js`, `@revenuedot/purchases-typescript-internal` and `@revenuedot/purchases-js-hybrid-mappings` on npm, `app.revenuedot.purchases` on Maven Central and `RevenueDotPurchases` and `RevenueDotPurchasesUI` on CocoaPods. The React Native, Flutter, Capacitor, Cordova, Unity and Kotlin Multiplatform packages are not published yet.
 - Real App Store and Google Play sandbox purchases have not run end to end; store handling is tested against mocked Apple and Google APIs.
 
 **Tier 2 (planned)**
-- The integrations listed above; scheduled data exports to S3, R2 or GCS.
-- All 42 charts, with the SQL published.
-- Paywalls: serving the paywall designs the SDKs render, a visual editor and an asset CDN.
-- Targeting, placements and experiments (offering A/B tests).
-- Amazon Appstore, and Stripe subscriptions from your own Stripe account.
+- The integrations not listed above (RevenueDot has 12 of RevenueCat's 37).
+- Paywalls with several screens and navigation between them, exit offers and custom variables.
+- Lifecycle: refund control (Apple consumption information), retention offers, win-back campaigns and the support view.
+- RevenueDot AI, an in-app assistant.
 - Moving between self-host and cloud in one step, and a full export.
+- Cloud billing plans.
 
 **Tier 3 (planned)**
 - SSO/SAML, SCIM, custom roles, several organizations, data-location controls and compliance exports.
