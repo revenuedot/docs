@@ -144,6 +144,12 @@ tags:
   - name: Webhook deliveries
     description: Delivery log, manual retry and test events.
     x-page: extensions
+  - name: Integrations
+    description: "Slack, Segment, Amplitude, Mixpanel, PostHog, Firebase, BigQuery, AppsFlyer, Adjust and Meta: connect, test, the delivery log, retry and replay."
+    x-page: extensions
+  - name: Data exports
+    description: Scheduled CSV or Parquet files of transactions, customers, subscriptions and events in Amazon S3, Cloudflare R2 or Google Cloud Storage.
+    x-page: extensions
   - name: Event log
     description: Every recorded event and money movement.
     x-page: extensions
@@ -14152,6 +14158,2762 @@ paths:
       x-source: routes/v2/charts.ts
       x-scopes:
         - charts_metrics:charts:read
+  /v2/projects/{project_id}/integrations/catalog:
+    get:
+      operationId: listIntegrationTypes
+      tags:
+        - Integrations
+      summary: What each integration needs
+      description: The fields each integration takes (keys, labels, types, options), its default environment and setup guide. The dashboard draws its forms from this.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: Every integration type.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - integration_type
+                        type:
+                          type: string
+                          enum:
+                            - slack
+                            - segment
+                            - amplitude
+                            - mixpanel
+                            - posthog
+                            - firebase
+                            - bigquery
+                            - appsflyer
+                            - adjust
+                            - meta
+                        name:
+                          type: string
+                        category:
+                          type: string
+                          enum:
+                            - core
+                            - analytics
+                            - attribution
+                            - marketing
+                        description:
+                          type: string
+                        default_environment:
+                          type:
+                            - string
+                            - "null"
+                          enum:
+                            - production
+                            - null
+                        event_names:
+                          type: boolean
+                          description: Whether event names can be overridden.
+                        fields:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              key:
+                                type: string
+                              label:
+                                type: string
+                              type:
+                                type: string
+                                enum:
+                                  - text
+                                  - secret
+                                  - select
+                                  - boolean
+                                  - textarea
+                                  - tokens
+                              required:
+                                type: boolean
+                              hint:
+                                type: string
+                              placeholder:
+                                type: string
+                              options:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    value:
+                                      type: string
+                                    label:
+                                      type: string
+                              when:
+                                type: object
+                                properties:
+                                  key:
+                                    type: string
+                                  value:
+                                    type: string
+                                description: Shown only when another field has this value.
+                            required:
+                              - key
+                              - label
+                              - type
+                        docs_url:
+                          type: string
+                      required:
+                        - object
+                        - type
+                        - name
+                        - fields
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/partner-integrations.ts
+      x-scopes:
+        - project_configuration:integrations:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/integrations/partners:
+    get:
+      operationId: listIntegrations
+      tags:
+        - Integrations
+      summary: List integrations
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum:
+              - slack
+              - segment
+              - amplitude
+              - mixpanel
+              - posthog
+              - firebase
+              - bigquery
+              - appsflyer
+              - adjust
+              - meta
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/StartingAfter"
+      responses:
+        "200":
+          description: The project's integrations.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - integration
+                        id:
+                          type: string
+                        project_id:
+                          type: string
+                        type:
+                          type: string
+                          enum:
+                            - slack
+                            - segment
+                            - amplitude
+                            - mixpanel
+                            - posthog
+                            - firebase
+                            - bigquery
+                            - appsflyer
+                            - adjust
+                            - meta
+                        name:
+                          type: string
+                        enabled:
+                          type: boolean
+                        environment:
+                          type:
+                            - string
+                            - "null"
+                          enum:
+                            - production
+                            - sandbox
+                            - null
+                          description: Null sends both.
+                        app_id:
+                          type:
+                            - string
+                            - "null"
+                          description: Only this app's events; null for all.
+                        event_types:
+                          type: array
+                          items:
+                            type: string
+                          description: Lower-case webhook event types; empty for all the integration sends.
+                        settings:
+                          type: object
+                          additionalProperties: true
+                          description: The non-secret settings.
+                        secrets:
+                          type: object
+                          additionalProperties:
+                            type: object
+                            properties:
+                              configured:
+                                type: boolean
+                              hint:
+                                type:
+                                  - string
+                                  - "null"
+                                description: The last four characters, or a service account's client_email.
+                            required:
+                              - configured
+                              - hint
+                          description: "Each secret field: whether it is saved, and its hint. Secrets are never returned."
+                        event_names:
+                          type: object
+                          additionalProperties:
+                            type: string
+                          description: Step → event name overrides.
+                        status:
+                          type: object
+                          properties:
+                            last_delivered_at:
+                              type:
+                                - integer
+                                - "null"
+                              format: int64
+                              description: Last successful delivery. Epoch milliseconds, or null.
+                            last_error:
+                              type:
+                                - string
+                                - "null"
+                            consecutive_failures:
+                              type: integer
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: Created. Epoch milliseconds.
+                        updated_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Last changed. Epoch milliseconds, or null.
+                      required:
+                        - object
+                        - id
+                        - type
+                        - name
+                        - enabled
+                        - settings
+                        - secrets
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/partner-integrations.ts
+      x-scopes:
+        - project_configuration:integrations:read
+      x-revenuedot-extension: true
+    post:
+      operationId: createIntegration
+      tags:
+        - Integrations
+      summary: Connect an integration
+      description: Every event webhooks get is also sent to each enabled integration whose filters match, with the webhook retry schedule (5, 10, 20, 40, 80 minutes). Secrets are encrypted at rest and never returned.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - slack
+                    - segment
+                    - amplitude
+                    - mixpanel
+                    - posthog
+                    - firebase
+                    - bigquery
+                    - appsflyer
+                    - adjust
+                    - meta
+                name:
+                  type: string
+                enabled:
+                  type: boolean
+                environment:
+                  type:
+                    - string
+                    - "null"
+                  enum:
+                    - production
+                    - sandbox
+                    - null
+                app_id:
+                  type:
+                    - string
+                    - "null"
+                event_types:
+                  type: array
+                  items:
+                    type: string
+                settings:
+                  type: object
+                  additionalProperties: true
+                  description: Every field of the integration's catalogue entry, secrets included. On update, a missing secret keeps its saved value; null removes it.
+                event_names:
+                  type: object
+                  additionalProperties:
+                    type: string
+                  propertyNames:
+                    enum:
+                      - initial_purchase
+                      - trial_started
+                      - trial_converted
+                      - trial_cancelled
+                      - renewal
+                      - cancellation
+                      - uncancellation
+                      - non_subscription_purchase
+                      - subscription_paused
+                      - expiration
+                      - billing_issue
+                      - product_change
+                      - transfer
+                      - purchase_redeemed
+                      - experiment_enrollment
+                      - test
+              required:
+                - type
+            example:
+              type: amplitude
+              environment: null
+              settings:
+                api_key: <amplitude api key>
+                region: us
+      responses:
+        "201":
+          description: The integration.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - integration
+                  id:
+                    type: string
+                  project_id:
+                    type: string
+                  type:
+                    type: string
+                    enum:
+                      - slack
+                      - segment
+                      - amplitude
+                      - mixpanel
+                      - posthog
+                      - firebase
+                      - bigquery
+                      - appsflyer
+                      - adjust
+                      - meta
+                  name:
+                    type: string
+                  enabled:
+                    type: boolean
+                  environment:
+                    type:
+                      - string
+                      - "null"
+                    enum:
+                      - production
+                      - sandbox
+                      - null
+                    description: Null sends both.
+                  app_id:
+                    type:
+                      - string
+                      - "null"
+                    description: Only this app's events; null for all.
+                  event_types:
+                    type: array
+                    items:
+                      type: string
+                    description: Lower-case webhook event types; empty for all the integration sends.
+                  settings:
+                    type: object
+                    additionalProperties: true
+                    description: The non-secret settings.
+                  secrets:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        configured:
+                          type: boolean
+                        hint:
+                          type:
+                            - string
+                            - "null"
+                          description: The last four characters, or a service account's client_email.
+                      required:
+                        - configured
+                        - hint
+                    description: "Each secret field: whether it is saved, and its hint. Secrets are never returned."
+                  event_names:
+                    type: object
+                    additionalProperties:
+                      type: string
+                    description: Step → event name overrides.
+                  status:
+                    type: object
+                    properties:
+                      last_delivered_at:
+                        type:
+                          - integer
+                          - "null"
+                        format: int64
+                        description: Last successful delivery. Epoch milliseconds, or null.
+                      last_error:
+                        type:
+                          - string
+                          - "null"
+                      consecutive_failures:
+                        type: integer
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  updated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last changed. Epoch milliseconds, or null.
+                required:
+                  - object
+                  - id
+                  - type
+                  - name
+                  - enabled
+                  - settings
+                  - secrets
+              example:
+                object: integration
+                id: intg_8f2kq0x1m3zv7a
+                project_id: proj1a2b3c4d
+                type: amplitude
+                name: Amplitude
+                enabled: true
+                environment: null
+                app_id: null
+                event_types: []
+                settings:
+                  region: us
+                secrets:
+                  api_key:
+                    configured: true
+                    hint: ••••9f3a
+                  sandbox_api_key:
+                    configured: false
+                    hint: null
+                event_names: {}
+                status:
+                  last_delivered_at: null
+                  last_error: null
+                  consecutive_failures: 0
+                created_at: 1790850000000
+                updated_at: 1790850000000
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/partner-integrations.ts
+      x-scopes:
+        - project_configuration:integrations:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/integrations/partners/{integration_id}:
+    get:
+      operationId: getIntegration
+      tags:
+        - Integrations
+      summary: Get an integration
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: integration_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Integration id (intg_...).
+      responses:
+        "200":
+          description: The integration.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - integration
+                  id:
+                    type: string
+                  project_id:
+                    type: string
+                  type:
+                    type: string
+                    enum:
+                      - slack
+                      - segment
+                      - amplitude
+                      - mixpanel
+                      - posthog
+                      - firebase
+                      - bigquery
+                      - appsflyer
+                      - adjust
+                      - meta
+                  name:
+                    type: string
+                  enabled:
+                    type: boolean
+                  environment:
+                    type:
+                      - string
+                      - "null"
+                    enum:
+                      - production
+                      - sandbox
+                      - null
+                    description: Null sends both.
+                  app_id:
+                    type:
+                      - string
+                      - "null"
+                    description: Only this app's events; null for all.
+                  event_types:
+                    type: array
+                    items:
+                      type: string
+                    description: Lower-case webhook event types; empty for all the integration sends.
+                  settings:
+                    type: object
+                    additionalProperties: true
+                    description: The non-secret settings.
+                  secrets:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        configured:
+                          type: boolean
+                        hint:
+                          type:
+                            - string
+                            - "null"
+                          description: The last four characters, or a service account's client_email.
+                      required:
+                        - configured
+                        - hint
+                    description: "Each secret field: whether it is saved, and its hint. Secrets are never returned."
+                  event_names:
+                    type: object
+                    additionalProperties:
+                      type: string
+                    description: Step → event name overrides.
+                  status:
+                    type: object
+                    properties:
+                      last_delivered_at:
+                        type:
+                          - integer
+                          - "null"
+                        format: int64
+                        description: Last successful delivery. Epoch milliseconds, or null.
+                      last_error:
+                        type:
+                          - string
+                          - "null"
+                      consecutive_failures:
+                        type: integer
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  updated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last changed. Epoch milliseconds, or null.
+                required:
+                  - object
+                  - id
+                  - type
+                  - name
+                  - enabled
+                  - settings
+                  - secrets
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/partner-integrations.ts
+      x-scopes:
+        - project_configuration:integrations:read
+      x-revenuedot-extension: true
+    post:
+      operationId: updateIntegration
+      tags:
+        - Integrations
+      summary: Update, enable or disable an integration
+      description: "`enabled: false` stops new deliveries; failed ones wait until it is on again."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: integration_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Integration id (intg_...).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - slack
+                    - segment
+                    - amplitude
+                    - mixpanel
+                    - posthog
+                    - firebase
+                    - bigquery
+                    - appsflyer
+                    - adjust
+                    - meta
+                name:
+                  type: string
+                enabled:
+                  type: boolean
+                environment:
+                  type:
+                    - string
+                    - "null"
+                  enum:
+                    - production
+                    - sandbox
+                    - null
+                app_id:
+                  type:
+                    - string
+                    - "null"
+                event_types:
+                  type: array
+                  items:
+                    type: string
+                settings:
+                  type: object
+                  additionalProperties: true
+                  description: Every field of the integration's catalogue entry, secrets included. On update, a missing secret keeps its saved value; null removes it.
+                event_names:
+                  type: object
+                  additionalProperties:
+                    type: string
+                  propertyNames:
+                    enum:
+                      - initial_purchase
+                      - trial_started
+                      - trial_converted
+                      - trial_cancelled
+                      - renewal
+                      - cancellation
+                      - uncancellation
+                      - non_subscription_purchase
+                      - subscription_paused
+                      - expiration
+                      - billing_issue
+                      - product_change
+                      - transfer
+                      - purchase_redeemed
+                      - experiment_enrollment
+                      - test
+            example:
+              enabled: false
+      responses:
+        "200":
+          description: The integration.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - integration
+                  id:
+                    type: string
+                  project_id:
+                    type: string
+                  type:
+                    type: string
+                    enum:
+                      - slack
+                      - segment
+                      - amplitude
+                      - mixpanel
+                      - posthog
+                      - firebase
+                      - bigquery
+                      - appsflyer
+                      - adjust
+                      - meta
+                  name:
+                    type: string
+                  enabled:
+                    type: boolean
+                  environment:
+                    type:
+                      - string
+                      - "null"
+                    enum:
+                      - production
+                      - sandbox
+                      - null
+                    description: Null sends both.
+                  app_id:
+                    type:
+                      - string
+                      - "null"
+                    description: Only this app's events; null for all.
+                  event_types:
+                    type: array
+                    items:
+                      type: string
+                    description: Lower-case webhook event types; empty for all the integration sends.
+                  settings:
+                    type: object
+                    additionalProperties: true
+                    description: The non-secret settings.
+                  secrets:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        configured:
+                          type: boolean
+                        hint:
+                          type:
+                            - string
+                            - "null"
+                          description: The last four characters, or a service account's client_email.
+                      required:
+                        - configured
+                        - hint
+                    description: "Each secret field: whether it is saved, and its hint. Secrets are never returned."
+                  event_names:
+                    type: object
+                    additionalProperties:
+                      type: string
+                    description: Step → event name overrides.
+                  status:
+                    type: object
+                    properties:
+                      last_delivered_at:
+                        type:
+                          - integer
+                          - "null"
+                        format: int64
+                        description: Last successful delivery. Epoch milliseconds, or null.
+                      last_error:
+                        type:
+                          - string
+                          - "null"
+                      consecutive_failures:
+                        type: integer
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  updated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last changed. Epoch milliseconds, or null.
+                required:
+                  - object
+                  - id
+                  - type
+                  - name
+                  - enabled
+                  - settings
+                  - secrets
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/partner-integrations.ts
+      x-scopes:
+        - project_configuration:integrations:read_write
+      x-revenuedot-extension: true
+    delete:
+      operationId: deleteIntegration
+      tags:
+        - Integrations
+      summary: Disconnect an integration
+      description: Its delivery log goes with it.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: integration_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Integration id (intg_...).
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - integration
+                  id:
+                    type: string
+                  deleted_at:
+                    type: integer
+                    format: int64
+                    description: When it was deleted. Epoch milliseconds.
+                required:
+                  - object
+                  - id
+                  - deleted_at
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/partner-integrations.ts
+      x-scopes:
+        - project_configuration:integrations:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/integrations/partners/{integration_id}/test:
+    post:
+      operationId: testIntegration
+      tags:
+        - Integrations
+      summary: Send a TEST event to one integration
+      description: With `app_user_id`, the event carries that customer's attributes, so attribution partners (which need `$appsflyerId`, `$adjustId`, `$fbAnonId` ...) can be tested. A disabled integration answers 422.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: integration_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Integration id (intg_...).
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                app_user_id:
+                  type: string
+                environment:
+                  type: string
+                  enum:
+                    - production
+                    - sandbox
+                product_id:
+                  type: string
+            example: {}
+      responses:
+        "201":
+          description: The queued delivery.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - integration_delivery
+                  id:
+                    type: string
+                  integration_id:
+                    type: string
+                  event_id:
+                    type: string
+                  event_type:
+                    type: string
+                    description: Upper-case webhook event type.
+                  status:
+                    type: string
+                    enum:
+                      - pending
+                      - delivered
+                      - failed
+                      - skipped
+                  attempts:
+                    type: integer
+                  sent_as:
+                    type:
+                      - string
+                      - "null"
+                    description: The name the partner received (an event name, an Adjust token or a Slack step).
+                  next_attempt_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Next attempt, while pending. Epoch milliseconds, or null.
+                  request:
+                    type:
+                      - string
+                      - "null"
+                    description: Method and URL of each request, credentials replaced by [redacted].
+                  request_body:
+                    type:
+                      - string
+                      - "null"
+                    description: The request bodies with credentials replaced by [redacted]; first 4,000 characters.
+                  response_status:
+                    type:
+                      - integer
+                      - "null"
+                  response_ms:
+                    type:
+                      - integer
+                      - "null"
+                  response_body:
+                    type:
+                      - string
+                      - "null"
+                    description: The first 1,000 characters of the partner's answer.
+                  last_error:
+                    type:
+                      - string
+                      - "null"
+                    description: Why it failed or was skipped.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Queued. Epoch milliseconds.
+                required:
+                  - object
+                  - id
+                  - integration_id
+                  - event_id
+                  - event_type
+                  - status
+                  - attempts
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/partner-integrations.ts
+      x-scopes:
+        - project_configuration:integrations:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/integrations/partners/{integration_id}/deliveries:
+    get:
+      operationId: listIntegrationDeliveries
+      tags:
+        - Integrations
+      summary: Delivery log of an integration
+      description: Newest first.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: integration_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Integration id (intg_...).
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - pending
+              - delivered
+              - failed
+              - skipped
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/StartingAfter"
+      responses:
+        "200":
+          description: Deliveries.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - integration_delivery
+                        id:
+                          type: string
+                        integration_id:
+                          type: string
+                        event_id:
+                          type: string
+                        event_type:
+                          type: string
+                          description: Upper-case webhook event type.
+                        status:
+                          type: string
+                          enum:
+                            - pending
+                            - delivered
+                            - failed
+                            - skipped
+                        attempts:
+                          type: integer
+                        sent_as:
+                          type:
+                            - string
+                            - "null"
+                          description: The name the partner received (an event name, an Adjust token or a Slack step).
+                        next_attempt_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Next attempt, while pending. Epoch milliseconds, or null.
+                        request:
+                          type:
+                            - string
+                            - "null"
+                          description: Method and URL of each request, credentials replaced by [redacted].
+                        request_body:
+                          type:
+                            - string
+                            - "null"
+                          description: The request bodies with credentials replaced by [redacted]; first 4,000 characters.
+                        response_status:
+                          type:
+                            - integer
+                            - "null"
+                        response_ms:
+                          type:
+                            - integer
+                            - "null"
+                        response_body:
+                          type:
+                            - string
+                            - "null"
+                          description: The first 1,000 characters of the partner's answer.
+                        last_error:
+                          type:
+                            - string
+                            - "null"
+                          description: Why it failed or was skipped.
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: Queued. Epoch milliseconds.
+                      required:
+                        - object
+                        - id
+                        - integration_id
+                        - event_id
+                        - event_type
+                        - status
+                        - attempts
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/partner-integrations.ts
+      x-scopes:
+        - project_configuration:integrations:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/integrations/partners/{integration_id}/deliveries/{delivery_id}/retry:
+    post:
+      operationId: retryIntegrationDelivery
+      tags:
+        - Integrations
+      summary: Retry a delivery now
+      description: The request is built again, so keys and attributes saved since count.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: integration_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Integration id (intg_...).
+        - name: delivery_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The delivery, queued.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - integration_delivery
+                  id:
+                    type: string
+                  integration_id:
+                    type: string
+                  event_id:
+                    type: string
+                  event_type:
+                    type: string
+                    description: Upper-case webhook event type.
+                  status:
+                    type: string
+                    enum:
+                      - pending
+                      - delivered
+                      - failed
+                      - skipped
+                  attempts:
+                    type: integer
+                  sent_as:
+                    type:
+                      - string
+                      - "null"
+                    description: The name the partner received (an event name, an Adjust token or a Slack step).
+                  next_attempt_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Next attempt, while pending. Epoch milliseconds, or null.
+                  request:
+                    type:
+                      - string
+                      - "null"
+                    description: Method and URL of each request, credentials replaced by [redacted].
+                  request_body:
+                    type:
+                      - string
+                      - "null"
+                    description: The request bodies with credentials replaced by [redacted]; first 4,000 characters.
+                  response_status:
+                    type:
+                      - integer
+                      - "null"
+                  response_ms:
+                    type:
+                      - integer
+                      - "null"
+                  response_body:
+                    type:
+                      - string
+                      - "null"
+                    description: The first 1,000 characters of the partner's answer.
+                  last_error:
+                    type:
+                      - string
+                      - "null"
+                    description: Why it failed or was skipped.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Queued. Epoch milliseconds.
+                required:
+                  - object
+                  - id
+                  - integration_id
+                  - event_id
+                  - event_type
+                  - status
+                  - attempts
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/partner-integrations.ts
+      x-scopes:
+        - project_configuration:integrations:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/integrations/partners/{integration_id}/actions/replay:
+    post:
+      operationId: replayIntegrationDeliveries
+      tags:
+        - Integrations
+      summary: Queue failed or skipped deliveries again
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: integration_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Integration id (intg_...).
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - failed
+                    - skipped
+                    - failed_and_skipped
+                  description: Default failed.
+                since:
+                  type: integer
+                  description: Queued at or after (epoch ms).
+                until:
+                  type: integer
+                  description: Queued at or before (epoch ms).
+            example:
+              status: failed_and_skipped
+      responses:
+        "200":
+          description: How many were queued.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - integration_replay
+                  integration_id:
+                    type: string
+                  statuses:
+                    type: array
+                    items:
+                      type: string
+                  queued:
+                    type: integer
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/partner-integrations.ts
+      x-scopes:
+        - project_configuration:integrations:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/integrations/exports:
+    get:
+      operationId: listDataExports
+      tags:
+        - Data exports
+      summary: List scheduled data exports
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/StartingAfter"
+      responses:
+        "200":
+          description: The project's exports.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - data_export
+                        id:
+                          type: string
+                        project_id:
+                          type: string
+                        name:
+                          type: string
+                        enabled:
+                          type: boolean
+                        destination:
+                          type: string
+                          enum:
+                            - s3
+                            - r2
+                            - gcs
+                        config:
+                          type: object
+                          properties:
+                            bucket:
+                              type: string
+                            prefix:
+                              type:
+                                - string
+                                - "null"
+                            region:
+                              type:
+                                - string
+                                - "null"
+                              description: S3 region (default us-east-1).
+                            endpoint:
+                              type:
+                                - string
+                                - "null"
+                              description: S3-compatible endpoint (MinIO and the like).
+                            account_id:
+                              type:
+                                - string
+                                - "null"
+                              description: Cloudflare account id (R2).
+                            access_key_id:
+                              type:
+                                - string
+                                - "null"
+                              description: S3 or R2 access key id.
+                        credentials:
+                          type: object
+                          additionalProperties:
+                            type: object
+                            properties:
+                              configured:
+                                type: boolean
+                              hint:
+                                type:
+                                  - string
+                                  - "null"
+                                description: The last four characters, or a service account's client_email.
+                            required:
+                              - configured
+                              - hint
+                          description: "`secret_access_key` (S3, R2) or `service_account_json` (GCS): whether it is saved, and its hint."
+                        format:
+                          type: string
+                          enum:
+                            - csv
+                            - parquet
+                        compression:
+                          type: string
+                          enum:
+                            - gzip
+                            - none
+                          description: CSV only.
+                        schedule:
+                          type: string
+                          enum:
+                            - daily
+                            - weekly
+                        hour_utc:
+                          type: integer
+                          minimum: 0
+                          maximum: 23
+                        weekday:
+                          type:
+                            - integer
+                            - "null"
+                          description: 0 = Sunday; weekly only.
+                        mode:
+                          type: string
+                          enum:
+                            - incremental
+                            - full
+                        tables:
+                          type: array
+                          items:
+                            type: string
+                            enum:
+                              - transactions
+                              - customers
+                              - subscriptions
+                              - events
+                        environment:
+                          type:
+                            - string
+                            - "null"
+                          enum:
+                            - production
+                            - sandbox
+                            - null
+                        next_run_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Next scheduled run. Epoch milliseconds, or null.
+                        last_run_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Last successful run. Epoch milliseconds, or null.
+                        last_error:
+                          type:
+                            - string
+                            - "null"
+                        consecutive_failures:
+                          type: integer
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: Created. Epoch milliseconds.
+                        updated_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Last changed. Epoch milliseconds, or null.
+                      required:
+                        - object
+                        - id
+                        - name
+                        - destination
+                        - format
+                        - schedule
+                        - mode
+                        - tables
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/data-exports.ts
+      x-scopes:
+        - project_configuration:integrations:read
+      x-revenuedot-extension: true
+    post:
+      operationId: createDataExport
+      tags:
+        - Data exports
+      summary: Create a scheduled data export
+      description: CSV or Parquet files of transactions, customers, subscriptions and events, written daily or weekly to Amazon S3 (or any S3-compatible storage), Cloudflare R2 or Google Cloud Storage under `<prefix>/<YYYY-MM-DD>/<table>_<YYYYMMDDTHHMMSSZ>.<ext>`. Incremental exports write rows that changed since the previous run; each table's first run is complete.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                enabled:
+                  type: boolean
+                destination:
+                  type: string
+                  enum:
+                    - s3
+                    - r2
+                    - gcs
+                config:
+                  type: object
+                  properties:
+                    bucket:
+                      type: string
+                    prefix:
+                      type:
+                        - string
+                        - "null"
+                    region:
+                      type:
+                        - string
+                        - "null"
+                      description: S3 region (default us-east-1).
+                    endpoint:
+                      type:
+                        - string
+                        - "null"
+                      description: S3-compatible endpoint (MinIO and the like).
+                    account_id:
+                      type:
+                        - string
+                        - "null"
+                      description: Cloudflare account id (R2).
+                    access_key_id:
+                      type:
+                        - string
+                        - "null"
+                      description: S3 or R2 access key id.
+                credentials:
+                  type: object
+                  properties:
+                    secret_access_key:
+                      type:
+                        - string
+                        - "null"
+                    service_account_json:
+                      type:
+                        - string
+                        - "null"
+                      description: The service account's JSON key as a string.
+                format:
+                  type: string
+                  enum:
+                    - csv
+                    - parquet
+                compression:
+                  type: string
+                  enum:
+                    - gzip
+                    - none
+                schedule:
+                  type: string
+                  enum:
+                    - daily
+                    - weekly
+                hour_utc:
+                  type: integer
+                weekday:
+                  type:
+                    - integer
+                    - "null"
+                mode:
+                  type: string
+                  enum:
+                    - incremental
+                    - full
+                tables:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - transactions
+                      - customers
+                      - subscriptions
+                      - events
+                environment:
+                  type:
+                    - string
+                    - "null"
+                  enum:
+                    - production
+                    - sandbox
+                    - null
+              required:
+                - destination
+                - config
+            example:
+              name: Warehouse
+              destination: s3
+              config:
+                bucket: acme-exports
+                prefix: revenuedot
+                region: eu-west-1
+                access_key_id: AKIA...
+              credentials:
+                secret_access_key: <secret>
+              format: csv
+              schedule: daily
+              hour_utc: 3
+              tables:
+                - transactions
+      responses:
+        "201":
+          description: The export.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - data_export
+                  id:
+                    type: string
+                  project_id:
+                    type: string
+                  name:
+                    type: string
+                  enabled:
+                    type: boolean
+                  destination:
+                    type: string
+                    enum:
+                      - s3
+                      - r2
+                      - gcs
+                  config:
+                    type: object
+                    properties:
+                      bucket:
+                        type: string
+                      prefix:
+                        type:
+                          - string
+                          - "null"
+                      region:
+                        type:
+                          - string
+                          - "null"
+                        description: S3 region (default us-east-1).
+                      endpoint:
+                        type:
+                          - string
+                          - "null"
+                        description: S3-compatible endpoint (MinIO and the like).
+                      account_id:
+                        type:
+                          - string
+                          - "null"
+                        description: Cloudflare account id (R2).
+                      access_key_id:
+                        type:
+                          - string
+                          - "null"
+                        description: S3 or R2 access key id.
+                  credentials:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        configured:
+                          type: boolean
+                        hint:
+                          type:
+                            - string
+                            - "null"
+                          description: The last four characters, or a service account's client_email.
+                      required:
+                        - configured
+                        - hint
+                    description: "`secret_access_key` (S3, R2) or `service_account_json` (GCS): whether it is saved, and its hint."
+                  format:
+                    type: string
+                    enum:
+                      - csv
+                      - parquet
+                  compression:
+                    type: string
+                    enum:
+                      - gzip
+                      - none
+                    description: CSV only.
+                  schedule:
+                    type: string
+                    enum:
+                      - daily
+                      - weekly
+                  hour_utc:
+                    type: integer
+                    minimum: 0
+                    maximum: 23
+                  weekday:
+                    type:
+                      - integer
+                      - "null"
+                    description: 0 = Sunday; weekly only.
+                  mode:
+                    type: string
+                    enum:
+                      - incremental
+                      - full
+                  tables:
+                    type: array
+                    items:
+                      type: string
+                      enum:
+                        - transactions
+                        - customers
+                        - subscriptions
+                        - events
+                  environment:
+                    type:
+                      - string
+                      - "null"
+                    enum:
+                      - production
+                      - sandbox
+                      - null
+                  next_run_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Next scheduled run. Epoch milliseconds, or null.
+                  last_run_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last successful run. Epoch milliseconds, or null.
+                  last_error:
+                    type:
+                      - string
+                      - "null"
+                  consecutive_failures:
+                    type: integer
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  updated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last changed. Epoch milliseconds, or null.
+                required:
+                  - object
+                  - id
+                  - name
+                  - destination
+                  - format
+                  - schedule
+                  - mode
+                  - tables
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/data-exports.ts
+      x-scopes:
+        - project_configuration:integrations:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/integrations/exports/{export_id}:
+    get:
+      operationId: getDataExport
+      tags:
+        - Data exports
+      summary: Get a data export
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: export_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Export id (export_...).
+      responses:
+        "200":
+          description: The export.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - data_export
+                  id:
+                    type: string
+                  project_id:
+                    type: string
+                  name:
+                    type: string
+                  enabled:
+                    type: boolean
+                  destination:
+                    type: string
+                    enum:
+                      - s3
+                      - r2
+                      - gcs
+                  config:
+                    type: object
+                    properties:
+                      bucket:
+                        type: string
+                      prefix:
+                        type:
+                          - string
+                          - "null"
+                      region:
+                        type:
+                          - string
+                          - "null"
+                        description: S3 region (default us-east-1).
+                      endpoint:
+                        type:
+                          - string
+                          - "null"
+                        description: S3-compatible endpoint (MinIO and the like).
+                      account_id:
+                        type:
+                          - string
+                          - "null"
+                        description: Cloudflare account id (R2).
+                      access_key_id:
+                        type:
+                          - string
+                          - "null"
+                        description: S3 or R2 access key id.
+                  credentials:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        configured:
+                          type: boolean
+                        hint:
+                          type:
+                            - string
+                            - "null"
+                          description: The last four characters, or a service account's client_email.
+                      required:
+                        - configured
+                        - hint
+                    description: "`secret_access_key` (S3, R2) or `service_account_json` (GCS): whether it is saved, and its hint."
+                  format:
+                    type: string
+                    enum:
+                      - csv
+                      - parquet
+                  compression:
+                    type: string
+                    enum:
+                      - gzip
+                      - none
+                    description: CSV only.
+                  schedule:
+                    type: string
+                    enum:
+                      - daily
+                      - weekly
+                  hour_utc:
+                    type: integer
+                    minimum: 0
+                    maximum: 23
+                  weekday:
+                    type:
+                      - integer
+                      - "null"
+                    description: 0 = Sunday; weekly only.
+                  mode:
+                    type: string
+                    enum:
+                      - incremental
+                      - full
+                  tables:
+                    type: array
+                    items:
+                      type: string
+                      enum:
+                        - transactions
+                        - customers
+                        - subscriptions
+                        - events
+                  environment:
+                    type:
+                      - string
+                      - "null"
+                    enum:
+                      - production
+                      - sandbox
+                      - null
+                  next_run_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Next scheduled run. Epoch milliseconds, or null.
+                  last_run_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last successful run. Epoch milliseconds, or null.
+                  last_error:
+                    type:
+                      - string
+                      - "null"
+                  consecutive_failures:
+                    type: integer
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  updated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last changed. Epoch milliseconds, or null.
+                required:
+                  - object
+                  - id
+                  - name
+                  - destination
+                  - format
+                  - schedule
+                  - mode
+                  - tables
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/data-exports.ts
+      x-scopes:
+        - project_configuration:integrations:read
+      x-revenuedot-extension: true
+    post:
+      operationId: updateDataExport
+      tags:
+        - Data exports
+      summary: Update a data export
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: export_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Export id (export_...).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                enabled:
+                  type: boolean
+                destination:
+                  type: string
+                  enum:
+                    - s3
+                    - r2
+                    - gcs
+                config:
+                  type: object
+                  properties:
+                    bucket:
+                      type: string
+                    prefix:
+                      type:
+                        - string
+                        - "null"
+                    region:
+                      type:
+                        - string
+                        - "null"
+                      description: S3 region (default us-east-1).
+                    endpoint:
+                      type:
+                        - string
+                        - "null"
+                      description: S3-compatible endpoint (MinIO and the like).
+                    account_id:
+                      type:
+                        - string
+                        - "null"
+                      description: Cloudflare account id (R2).
+                    access_key_id:
+                      type:
+                        - string
+                        - "null"
+                      description: S3 or R2 access key id.
+                credentials:
+                  type: object
+                  properties:
+                    secret_access_key:
+                      type:
+                        - string
+                        - "null"
+                    service_account_json:
+                      type:
+                        - string
+                        - "null"
+                      description: The service account's JSON key as a string.
+                format:
+                  type: string
+                  enum:
+                    - csv
+                    - parquet
+                compression:
+                  type: string
+                  enum:
+                    - gzip
+                    - none
+                schedule:
+                  type: string
+                  enum:
+                    - daily
+                    - weekly
+                hour_utc:
+                  type: integer
+                weekday:
+                  type:
+                    - integer
+                    - "null"
+                mode:
+                  type: string
+                  enum:
+                    - incremental
+                    - full
+                tables:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - transactions
+                      - customers
+                      - subscriptions
+                      - events
+                environment:
+                  type:
+                    - string
+                    - "null"
+                  enum:
+                    - production
+                    - sandbox
+                    - null
+            example:
+              schedule: weekly
+              weekday: 1
+      responses:
+        "200":
+          description: The export.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - data_export
+                  id:
+                    type: string
+                  project_id:
+                    type: string
+                  name:
+                    type: string
+                  enabled:
+                    type: boolean
+                  destination:
+                    type: string
+                    enum:
+                      - s3
+                      - r2
+                      - gcs
+                  config:
+                    type: object
+                    properties:
+                      bucket:
+                        type: string
+                      prefix:
+                        type:
+                          - string
+                          - "null"
+                      region:
+                        type:
+                          - string
+                          - "null"
+                        description: S3 region (default us-east-1).
+                      endpoint:
+                        type:
+                          - string
+                          - "null"
+                        description: S3-compatible endpoint (MinIO and the like).
+                      account_id:
+                        type:
+                          - string
+                          - "null"
+                        description: Cloudflare account id (R2).
+                      access_key_id:
+                        type:
+                          - string
+                          - "null"
+                        description: S3 or R2 access key id.
+                  credentials:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        configured:
+                          type: boolean
+                        hint:
+                          type:
+                            - string
+                            - "null"
+                          description: The last four characters, or a service account's client_email.
+                      required:
+                        - configured
+                        - hint
+                    description: "`secret_access_key` (S3, R2) or `service_account_json` (GCS): whether it is saved, and its hint."
+                  format:
+                    type: string
+                    enum:
+                      - csv
+                      - parquet
+                  compression:
+                    type: string
+                    enum:
+                      - gzip
+                      - none
+                    description: CSV only.
+                  schedule:
+                    type: string
+                    enum:
+                      - daily
+                      - weekly
+                  hour_utc:
+                    type: integer
+                    minimum: 0
+                    maximum: 23
+                  weekday:
+                    type:
+                      - integer
+                      - "null"
+                    description: 0 = Sunday; weekly only.
+                  mode:
+                    type: string
+                    enum:
+                      - incremental
+                      - full
+                  tables:
+                    type: array
+                    items:
+                      type: string
+                      enum:
+                        - transactions
+                        - customers
+                        - subscriptions
+                        - events
+                  environment:
+                    type:
+                      - string
+                      - "null"
+                    enum:
+                      - production
+                      - sandbox
+                      - null
+                  next_run_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Next scheduled run. Epoch milliseconds, or null.
+                  last_run_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last successful run. Epoch milliseconds, or null.
+                  last_error:
+                    type:
+                      - string
+                      - "null"
+                  consecutive_failures:
+                    type: integer
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  updated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last changed. Epoch milliseconds, or null.
+                required:
+                  - object
+                  - id
+                  - name
+                  - destination
+                  - format
+                  - schedule
+                  - mode
+                  - tables
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/data-exports.ts
+      x-scopes:
+        - project_configuration:integrations:read_write
+      x-revenuedot-extension: true
+    delete:
+      operationId: deleteDataExport
+      tags:
+        - Data exports
+      summary: Delete a data export
+      description: Files already written stay in the bucket.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: export_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Export id (export_...).
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - data_export
+                  id:
+                    type: string
+                  deleted_at:
+                    type: integer
+                    format: int64
+                    description: When it was deleted. Epoch milliseconds.
+                required:
+                  - object
+                  - id
+                  - deleted_at
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/data-exports.ts
+      x-scopes:
+        - project_configuration:integrations:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/integrations/exports/{export_id}/actions/run:
+    post:
+      operationId: runDataExport
+      tags:
+        - Data exports
+      summary: Run an export now
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: export_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Export id (export_...).
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mode:
+                  type: string
+                  enum:
+                    - incremental
+                    - full
+                  description: "Default: the export's mode."
+            example: {}
+      responses:
+        "201":
+          description: The queued run.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - data_export_run
+                  id:
+                    type: string
+                  export_id:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - queued
+                      - running
+                      - succeeded
+                      - failed
+                  trigger:
+                    type: string
+                    enum:
+                      - schedule
+                      - manual
+                  mode:
+                    type: string
+                    enum:
+                      - incremental
+                      - full
+                  window_start:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: "Rows changed after this (null: everything). Epoch milliseconds, or null."
+                  window_end:
+                    type: integer
+                    format: int64
+                    description: Rows changed up to this. Epoch milliseconds.
+                  attempts:
+                    type: integer
+                  next_attempt_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Retry time, while queued. Epoch milliseconds, or null.
+                  files:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        table:
+                          type: string
+                        key:
+                          type: string
+                          description: Object key in the bucket.
+                        rows:
+                          type: integer
+                        bytes:
+                          type: integer
+                  rows:
+                    type: integer
+                  bytes:
+                    type: integer
+                  error:
+                    type:
+                      - string
+                      - "null"
+                  started_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Started. Epoch milliseconds, or null.
+                  finished_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Finished. Epoch milliseconds, or null.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Queued. Epoch milliseconds.
+                required:
+                  - object
+                  - id
+                  - export_id
+                  - status
+                  - trigger
+                  - mode
+                  - window_end
+                  - files
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "409":
+          $ref: "#/components/responses/V2Error409"
+      x-source: routes/v2/data-exports.ts
+      x-scopes:
+        - project_configuration:integrations:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/integrations/exports/{export_id}/actions/check:
+    post:
+      operationId: checkDataExportBucket
+      tags:
+        - Data exports
+      summary: Check the bucket and credentials
+      description: "S3 and R2: HeadBucket. Google Cloud Storage: buckets.get."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: export_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Export id (export_...).
+      responses:
+        "200":
+          description: The result.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - storage_check
+                  export_id:
+                    type: string
+                  ok:
+                    type: boolean
+                  message:
+                    type: string
+                  checked_at:
+                    type: integer
+                    format: int64
+                    description: Checked. Epoch milliseconds.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/data-exports.ts
+      x-scopes:
+        - project_configuration:integrations:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/integrations/exports/{export_id}/runs:
+    get:
+      operationId: listDataExportRuns
+      tags:
+        - Data exports
+      summary: Run history
+      description: Newest first, with each file written.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: export_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Export id (export_...).
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/StartingAfter"
+      responses:
+        "200":
+          description: Runs.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - data_export_run
+                        id:
+                          type: string
+                        export_id:
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                            - queued
+                            - running
+                            - succeeded
+                            - failed
+                        trigger:
+                          type: string
+                          enum:
+                            - schedule
+                            - manual
+                        mode:
+                          type: string
+                          enum:
+                            - incremental
+                            - full
+                        window_start:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: "Rows changed after this (null: everything). Epoch milliseconds, or null."
+                        window_end:
+                          type: integer
+                          format: int64
+                          description: Rows changed up to this. Epoch milliseconds.
+                        attempts:
+                          type: integer
+                        next_attempt_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Retry time, while queued. Epoch milliseconds, or null.
+                        files:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              table:
+                                type: string
+                              key:
+                                type: string
+                                description: Object key in the bucket.
+                              rows:
+                                type: integer
+                              bytes:
+                                type: integer
+                        rows:
+                          type: integer
+                        bytes:
+                          type: integer
+                        error:
+                          type:
+                            - string
+                            - "null"
+                        started_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Started. Epoch milliseconds, or null.
+                        finished_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Finished. Epoch milliseconds, or null.
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: Queued. Epoch milliseconds.
+                      required:
+                        - object
+                        - id
+                        - export_id
+                        - status
+                        - trigger
+                        - mode
+                        - window_end
+                        - files
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/data-exports.ts
+      x-scopes:
+        - project_configuration:integrations:read
+      x-revenuedot-extension: true
   /auth/config:
     get:
       operationId: authConfig
