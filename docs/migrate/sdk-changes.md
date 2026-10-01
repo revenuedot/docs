@@ -117,7 +117,7 @@ Guide: [Flutter](../sdks/flutter.md).
 +  flags: { collectAnalyticsEvents: false },
  });
 ```
-Only Test Store (`test_`) keys work against RevenueDot today; Web Billing (`rcb_`), Stripe and Paddle do not. Fork swap (planned):
+Only Test Store (`test_`) keys work against RevenueDot today; Web Billing (`rcb_`) and Paddle do not. Stripe purchases from your own checkout are posted by your backend ([Stripe guide](../guides/stripe.md)). Fork swap (planned):
 ```diff
 -"@revenuecat/purchases-js": "<version>",
 +"@revenuecat/purchases-js": "npm:@revenuedot/purchases-js@<version>",

@@ -71,7 +71,7 @@ export const v2Paths = {
     post: op({ id: "createApp", tag: "Apps", summary: "Create an app", security: SECRET, source: R.apps, scopes: ["project_configuration:apps:read_write"], parameters: [project],
       description: `
 One app per store. \`app_store\` and \`mac_app_store\` need \`bundle_id\`; \`play_store\` and \`amazon\` need \`package_name\`. The app gets a public SDK key with the store's prefix.
-Other fields in the store object are saved as store credentials (for example \`subscription_private_key\`, \`subscription_key_id\`, \`subscription_key_issuer\`, \`play_service_account_credentials_json\`). They are never returned.`,
+Other fields in the store object are saved as store credentials (for example \`subscription_private_key\`, \`subscription_key_id\`, \`subscription_key_issuer\`, \`play_service_account_credentials_json\`, Amazon's \`shared_secret\`, Stripe's \`stripe_secret_key\` and \`stripe_webhook_secret\`). They are never returned. A Stripe publishable key (\`pk_…\`) or a malformed signing secret is refused with 400.`,
       requestBody: body(obj({
         name: str(undefined, { maxLength: 255 }), type: en(["amazon", "app_store", "mac_app_store", "play_store", "stripe", "rc_billing", "roku", "paddle", "test_store"]),
         app_store: { type: "object", description: "`bundle_id` plus optional credentials." }, mac_app_store: { type: "object" }, play_store: { type: "object", description: "`package_name` plus optional credentials." },
@@ -84,7 +84,7 @@ Other fields in the store object are saved as store credentials (for example \`s
     post: op({ id: "updateApp", tag: "Apps", summary: "Update an app and its store credentials", security: SECRET, source: R.apps, scopes: ["project_configuration:apps:read_write"], parameters: [project, param("AppId")],
       description: `
 Send only the store object of the app's own type. A field set to null removes that credential; other values replace it.
-RevenueDot extensions in the store object: \`notification_forward_url\` (copy store notifications to another URL, for example RevenueCat during a dual run; null or "" turns it off), \`track_new_purchases\`, \`allow_unsigned_receipts\`, \`xcode_certificate\`, \`app_apple_id\`, \`pubsub_audience\`, \`pubsub_service_account\`. See [App Store setup](../docs/guides/app-store.md) and [Google Play setup](../docs/guides/google-play.md).`,
+RevenueDot extensions in the store object: \`notification_forward_url\` (copy store notifications to another URL, for example RevenueCat during a dual run; null or "" turns it off), \`track_new_purchases\`, \`allow_unsigned_receipts\`, \`xcode_certificate\`, \`app_apple_id\`, \`pubsub_audience\`, \`pubsub_service_account\`; Amazon \`shared_secret\`, \`sns_topic_arn\`; Stripe \`stripe_secret_key\`, \`stripe_webhook_secret\`, \`stripe_account_id\`, \`app_user_id_source\` (metadata, customer_id, anonymous), \`app_user_id_metadata_key\`, \`register_on\` (invoice_paid, invoice_created). See [App Store setup](../docs/guides/app-store.md), [Google Play setup](../docs/guides/google-play.md), [Amazon Appstore setup](../docs/guides/amazon-appstore.md) and [Stripe setup](../docs/guides/stripe.md).`,
       requestBody: body(obj({ name: str(), app_store: { type: "object" }, mac_app_store: { type: "object" }, play_store: { type: "object" }, amazon: { type: "object" }, stripe: { type: "object" }, rc_billing: { type: "object" }, roku: { type: "object" }, paddle: { type: "object" } }),
         { app_store: { subscription_private_key: "-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----", subscription_key_id: "ABC123DEFG", subscription_key_issuer: "57246542-96fe-1a63-e053-0824d011072a" } }),
       responses: { 200: ok("The app.", ref("App")), ...v2Errors(400, 401, 403, 404) } }),
@@ -457,16 +457,18 @@ On RevenueDot Cloud the admin needs a confirmed email address. A project can sen
   },
   [`${P}/apps/{app_id}/store_settings`]: {
     get: op({ id: "getStoreSettings", tag: "Store setup", summary: "Store setup state of an app", security: SECRET, source: R.setup, extension: true, scopes: ["project_configuration:apps:read"], parameters: [project, param("AppId")],
-      description: "The notification URL to paste into App Store Connect or Pub/Sub, the notification status, the forwarding URL and which credentials are set. Never a secret.",
+      description: "The notification URL to paste into App Store Connect, Pub/Sub, the Amazon Appstore Console or Stripe, the notification status, the forwarding URL and which credentials are set. Never a secret.",
       responses: { 200: ok("The settings.", ref("StoreSettings")), ...E(404) } }),
   },
   [`${P}/apps/{app_id}/actions/verify_credentials`]: {
-    post: op({ id: "verifyCredentials", tag: "Store setup", summary: "Check store credentials with Apple or Google", security: SECRET, source: R.setup, extension: true, scopes: ["project_configuration:apps:read"], parameters: [project, param("AppId")],
-      description: "Makes one harmless call to the App Store Server API or the Play Developer API. Values in the body are checked before you save them; missing values fall back to the saved ones.",
+    post: op({ id: "verifyCredentials", tag: "Store setup", summary: "Check store credentials with Apple, Google, Amazon or Stripe", security: SECRET, source: R.setup, extension: true, scopes: ["project_configuration:apps:read"], parameters: [project, param("AppId")],
+      description: "Makes one harmless call to the App Store Server API, the Play Developer API, Amazon's Receipt Verification Service (a made-up receipt: 496 means a wrong shared key) or Stripe (lists one subscription and one Checkout Session with the key). Values in the body are checked before you save them; missing values fall back to the saved ones.",
       requestBody: body(obj({
         app_store: obj({ bundle_id: nstr(), subscription_private_key: nstr(), subscription_key_id: nstr(), subscription_key_issuer: nstr() }),
         mac_app_store: obj({ bundle_id: nstr(), subscription_private_key: nstr(), subscription_key_id: nstr(), subscription_key_issuer: nstr() }),
         play_store: obj({ package_name: nstr(), play_service_account_credentials_json: { oneOf: [str(), { type: "object" }, { type: "null" }] } }),
+        amazon: obj({ package_name: nstr(), shared_secret: nstr() }),
+        stripe: obj({ stripe_secret_key: nstr(), stripe_account_id: nstr() }),
       }), {}, false),
       responses: { 200: ok("The result.", ref("CredentialsCheck"), { object: "credentials_check", app_id: "appugfw01uy", store: "app_store", status: "invalid", valid: false, message: "No in-app purchase key yet. Add the .p8 file, the key ID and the issuer ID.", checked_at: 1790801342700 }), ...v2Errors(400, 401, 403, 404) } }),
   },

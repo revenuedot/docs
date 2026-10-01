@@ -127,7 +127,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" -H "Authorization: Bearer
 `POST /v2/projects/{project_id}/apps` · Auth: secret key or dashboard session · Permissions: `project_configuration:apps:read_write`
 
 One app per store. `app_store` and `mac_app_store` need `bundle_id`; `play_store` and `amazon` need `package_name`. The app gets a public SDK key with the store's prefix.
-Other fields in the store object are saved as store credentials (for example `subscription_private_key`, `subscription_key_id`, `subscription_key_issuer`, `play_service_account_credentials_json`). They are never returned.
+Other fields in the store object are saved as store credentials (for example `subscription_private_key`, `subscription_key_id`, `subscription_key_issuer`, `play_service_account_credentials_json`, Amazon's `shared_secret`, Stripe's `stripe_secret_key` and `stripe_webhook_secret`). They are never returned. A Stripe publishable key (`pk_…`) or a malformed signing secret is refused with 400.
 
 **Path parameters**
 
@@ -214,7 +214,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID" -H "Authorization
 `POST /v2/projects/{project_id}/apps/{app_id}` · Auth: secret key or dashboard session · Permissions: `project_configuration:apps:read_write`
 
 Send only the store object of the app's own type. A field set to null removes that credential; other values replace it.
-RevenueDot extensions in the store object: `notification_forward_url` (copy store notifications to another URL, for example RevenueCat during a dual run; null or "" turns it off), `track_new_purchases`, `allow_unsigned_receipts`, `xcode_certificate`, `app_apple_id`, `pubsub_audience`, `pubsub_service_account`. See [App Store setup](../docs/guides/app-store.md) and [Google Play setup](../docs/guides/google-play.md).
+RevenueDot extensions in the store object: `notification_forward_url` (copy store notifications to another URL, for example RevenueCat during a dual run; null or "" turns it off), `track_new_purchases`, `allow_unsigned_receipts`, `xcode_certificate`, `app_apple_id`, `pubsub_audience`, `pubsub_service_account`; Amazon `shared_secret`, `sns_topic_arn`; Stripe `stripe_secret_key`, `stripe_webhook_secret`, `stripe_account_id`, `app_user_id_source` (metadata, customer_id, anonymous), `app_user_id_metadata_key`, `register_on` (invoice_paid, invoice_created). See [App Store setup](../docs/guides/app-store.md), [Google Play setup](../docs/guides/google-play.md), [Amazon Appstore setup](../docs/guides/amazon-appstore.md) and [Stripe setup](../docs/guides/stripe.md).
 
 **Path parameters**
 

@@ -33,7 +33,6 @@ RevenueDot answers the RevenueCat SDKs, REST API v1 and v2, and webhook payloads
 | Web purchase redemption (`redeemWebPurchase`) | 400 with code 7849 | The SDK returns `invalidToken`: there are no web purchases to redeem |
 | Web checkout (iOS hosted checkout, purchases-js with `rcb_` keys) | 400 with code 7000; branding answers the app's name | The checkout fails with an error and is not retried |
 | Rewarded ad verification (`pollRewardVerification`) | `status: failed` | Polling stops after one request and returns failed |
-| Amazon receipt lookup (Android) | 400 with code 7662 | The Amazon purchase fails and stays unconsumed |
 | SDK health report | Always "passed" | No effect |
 
 Source: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/routes/sdk.ts).
@@ -44,7 +43,8 @@ Source: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenued
 - The full list of SDK calls and what each answers is in [`prd/sdk-api/PRD.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/sdk-api/PRD.md#endpoint-inventory).
 
 **Stores and receipts**
-- RevenueDot accepts purchases only for App Store, Mac App Store, Google Play and Test Store apps. Receipts for Amazon, Web Billing (`rcb_`), Stripe, Paddle and Roku apps answer HTTP 400 with code 7662.
+- RevenueDot accepts purchases for App Store, Mac App Store, Google Play, Amazon Appstore, Stripe and Test Store apps ([Amazon guide](../guides/amazon-appstore.md), [Stripe guide](../guides/stripe.md)). Receipts for Web Billing (`rcb_`), Paddle and Roku apps answer HTTP 400 with code 7662.
+- Like RevenueCat, RevenueDot does not detect refunds of Amazon subscriptions. Stripe Connect OAuth ("Connect with Stripe") is not available; save a restricted key instead.
 - purchases-js therefore works only with Test Store (`test_`) keys.
 - StoreKit 1 receipts need the App Store in-app purchase key on the app. Without it RevenueDot answers code 7234 as HTTP 500, so the SDK retries after you add the key. For development, `allow_unsigned_receipts` skips this.
 - The app-specific shared secret is stored but not used.
@@ -99,7 +99,6 @@ Source: [`prd/migration/PRD.md`](https://github.com/revenuedot/revenuedot/blob/m
 - Paywalls: serving the paywall designs the SDKs render, a visual editor and an asset CDN.
 - Targeting, placements and experiments (offering A/B tests).
 - Customer Center configuration, virtual currencies, offline entitlements, promotional-offer signing and win-back offers.
-- Amazon Appstore, and Stripe subscriptions from your own Stripe account.
 - Moving between self-host and cloud in one step, and a full export.
 
 **Tier 3 (planned)**

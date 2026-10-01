@@ -96,8 +96,10 @@ Receipts are accepted today for four app types:
 | `mac_app_store` | Mac App Store |
 | `play_store` | Google Play |
 | `test_store` | RevenueDot Test Store (no real store) |
+| `amazon` | Amazon Appstore ([guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md)) |
+| `stripe` | Stripe subscriptions from your own Stripe account, posted by your backend ([guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md)) |
 
-Amazon, Stripe, Web Billing, Paddle and Roku apps can be created, but their receipts answer HTTP 400 with code 7662. See [Projects and apps](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md).
+Web Billing, Paddle and Roku apps can be created, but their receipts answer HTTP 400 with code 7662. See [Projects and apps](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md).
 
 ## Is it production-ready?
 No. The App Store and Google Play code is tested against mocked Apple and Google APIs only. No real App Store or Google Play sandbox purchase has run end to end yet. Use it for evaluation and testing, and keep RevenueCat for live customers until a release says otherwise. See [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md).
@@ -136,7 +138,7 @@ Yes, with the Test Store: create a `test_store` app and use its `test_` key. See
 They are not implemented. The SDK endpoints answer empty or 404 in the way that makes the SDK hide those features, so your app does not crash. Paywalls built in RevenueCat do not render against RevenueDot.
 
 ## Does the web SDK work?
-`purchases-js` works with Test Store (`test_`) keys against RevenueDot. Web Billing (`rcb_`), Stripe and Paddle purchases do not work yet. With the stock SDK, turn off analytics events (`flags: { collectAnalyticsEvents: false }`), because the stock SDK sends them to RevenueCat. See the [web guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/web.md).
+`purchases-js` works with Test Store (`test_`) keys against RevenueDot. Web Billing (`rcb_`) and Paddle purchases do not work yet. Stripe purchases from your own checkout are posted by your backend instead ([Stripe guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md)). With the stock SDK, turn off analytics events (`flags: { collectAnalyticsEvents: false }`), because the stock SDK sends them to RevenueCat. See the [web guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/web.md).
 
 ## Can AI agents set it up?
 Yes. The hosted MCP server is live at `https://mcp.revenuedot.app/mcp`: your client signs in with OAuth, or sends a secret key. It has 17 tools for the catalog, customers, access grants, webhooks and import status ([revenuedot/mcp](https://github.com/revenuedot/mcp)). The local version is on npm: `npx -y @revenuedot/mcp`. Agent skills for Claude Code, Codex and Cursor are in [revenuedot/agent-skills](https://github.com/revenuedot/agent-skills).
@@ -177,7 +179,7 @@ Find your symptom below; each row gives the cause and the fix. Most problems com
 | `/v1/receipts` answers 400, code 7103 | The receipt cannot be verified, or is for another bundle ID or package name | See [4xx or 5xx](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/receipt-errors-4xx-vs-5xx.md) |
 | `/v1/receipts` answers 500, code 7234 | A StoreKit 1 receipt, and no App Store in-app purchase key | Add the key. See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md) |
 | `/v1/receipts` answers 503, code 7101 | Apple or Google failed, or the Google service account is wrong | Run **Verify credentials** on the app page. The SDK retries on its own |
-| `/v1/receipts` answers 400, code 7662 | The app is an Amazon, Stripe, Web Billing, Paddle or Roku app | Not supported yet. Use App Store, Mac App Store, Google Play or Test Store |
+| `/v1/receipts` answers 400, code 7662 | The app is a Web Billing, Paddle or Roku app | Not supported yet. Use App Store, Mac App Store, Google Play, Amazon Appstore, Stripe or Test Store |
 | Restore fails with 7102 | Another user owns the purchase and the transfer behaviour forbids moving it | See [How do I restore purchases?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/restore-purchases.md) |
 | Xcode StoreKit test purchases fail with 7103 | Xcode signs them with its own certificate | Add the `xcode_certificate` credential. See [Test purchases](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/test-sandbox-purchases.md) |
 
@@ -237,7 +239,7 @@ The list below is complete as of **2026-09-30**. The biggest gap: **no real App 
 ## Stores and purchases
 1. **Real store purchases are untested end to end.** The App Store and Google Play code passes tests against mocked Apple and Google APIs.
    - Workaround: test with App Store sandbox and Google Play license testers, report what you find, and keep live customers on your current backend. See [Test purchases](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/test-sandbox-purchases.md).
-2. **Only four app types accept receipts:** `app_store`, `mac_app_store`, `play_store` and `test_store`. Amazon, Stripe, Web Billing (`rcb_`), Paddle and Roku receipts answer HTTP 400, code 7662.
+2. **Six app types accept receipts:** `app_store`, `mac_app_store`, `play_store`, `amazon`, `stripe` and `test_store`. Web Billing (`rcb_`), Paddle and Roku receipts answer HTTP 400, code 7662. Amazon and Stripe are tested against mocked store APIs only; no real Amazon or Stripe purchase has run yet.
    - Workaround: none yet.
 3. **StoreKit 1 receipts need the App Store in-app purchase key.** Without it, RevenueDot answers HTTP 500, code 7234, so the SDK keeps retrying.
    - Workaround: add the key. For local development only, set the `allow_unsigned_receipts` credential. See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md).
@@ -392,7 +394,13 @@ The codes are defined in [`apps/server/src/errors.ts`](https://github.com/revenu
 | 401 | 7225 | Invalid API key | `routes/sdk.ts` | The `Authorization: Bearer` key is missing or unknown. Every SDK call answers this, not only receipts |
 | 400 | 7220 | Invalid app user ID | `routes/sdk.ts` | `app_user_id` is empty or longer than 100 characters |
 | 400 | 7000 | Bad request | `routes/sdk.ts` | A receipt posted with a secret key (`sk_`) has no `X-Platform` header, so RevenueDot cannot tell which app it is for |
-| 400 | 7662 | Receipts for this store are not supported yet | `routes/sdk.ts` | The key belongs to an Amazon, Stripe, Web Billing, Paddle or Roku app |
+| 400 | 7662 | Receipts for this store are not supported yet | `routes/sdk.ts` | The key belongs to a Web Billing, Paddle or Roku app, or a non-Amazon key asked for Amazon receipt details |
+| 400 | 7103 | Invalid receipt | `stores/amazon/index.ts` | Amazon does not know the receipt or the Amazon user (`store_user_id` missing or wrong) |
+| 500 | 7101 | Store problem | `stores/amazon/api.ts` | No Amazon shared key saved, or Amazon rejected it (RVS 496). The SDK keeps the purchase |
+| 503 | 7101 | Store problem | `stores/amazon/api.ts` | Amazon's Receipt Verification Service is down, throttling or slow |
+| 400 | 7103 | Invalid receipt | `stores/stripe/index.ts` | Not a `sub_` or `cs_` id, unknown to Stripe, an expired Checkout Session, or a subscription whose first payment never completed |
+| 500 | 7101 | Store problem | `stores/stripe/api.ts` | No Stripe key saved, or Stripe rejected it (401 or 403) |
+| 503 | 7101 | Store problem | `stores/stripe/index.ts` | Stripe is unavailable, or the first invoice or Checkout Session is not paid yet: post again later |
 | 400 | 7103 | Invalid receipt | `routes/sdk.ts` | The body has neither `fetch_token` nor `app_transaction` |
 | 400 | 7103 | Invalid receipt | `stores/test-store.ts` | The Test Store token is not `test_<ms>_<id>`, or `product_id` is missing |
 | 400 | 7103 | Invalid receipt | `stores/apple/index.ts` | The StoreKit 2 transaction's signature does not verify, the bundle ID does not match the app, the app receipt cannot be parsed, or it is an Xcode receipt without the `xcode_certificate` credential |
@@ -416,7 +424,7 @@ A wrong App Store key or Google service account is your setup problem, not the c
 3. **For 7103 from the App Store,** check the app's `bundle_id` matches the build you are testing. For Xcode StoreKit testing, add the `xcode_certificate` credential. See [How do I test purchases without real money?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/test-sandbox-purchases.md)
 4. **For 7103 from Google,** check the app's `package_name`, and that the purchase was made by this app.
 5. **For 7102,** decide who should own restored purchases and set `transfer_behavior`. See [How do I restore purchases?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/restore-purchases.md)
-6. **For 7662,** use an App Store, Mac App Store, Google Play or Test Store app. Other stores are not supported yet.
+6. **For 7662,** use an App Store, Mac App Store, Google Play, Amazon Appstore, Stripe or Test Store app. Web Billing, Paddle and Roku are not supported yet.
 7. **For 7234,** add the App Store in-app purchase key to the app. See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md). For local development only, you can set `allow_unsigned_receipts`.
 8. **For 7101 from Google,** run **Verify credentials** on the app page, or `POST /v2/projects/{project_id}/apps/{app_id}/actions/verify_credentials`, and grant the service account access in Play Console. See [Connect Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md).
 9. **For 7110,** read the server log. The error is printed there with its stack. Open an issue if it looks like a bug.

@@ -378,8 +378,9 @@ Create an app per store with `POST /v2/projects/{project_id}/apps` or on the das
 | `mac_app_store` | Mac App Store | `mac_` | `mac_app_store.bundle_id` | Yes |
 | `play_store` | Google Play | `goog_` | `play_store.package_name` | Yes |
 | `test_store` | RevenueDot Test Store | `test_` | none | Yes |
-| `amazon` | Amazon Appstore | `amzn_` | `amazon.package_name` | No (Tier 2) |
-| `stripe`, `rc_billing`, `paddle`, `roku` | Web and other stores | `strp_`, `rcb_`, `pdl_`, `roku_` | none | No (planned) |
+| `amazon` | Amazon Appstore | `amzn_` | `amazon.package_name` | Yes ([guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md)) |
+| `stripe` | Stripe, your own account | `strp_` | none | Yes, posted by your backend ([guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md)) |
+| `rc_billing`, `paddle`, `roku` | Web Billing and other stores | `rcb_`, `pdl_`, `roku_` | none | No (planned) |
 
 ```bash
 curl -s -X POST http://localhost:8787/v2/projects/$PROJECT_ID/apps \
@@ -1218,9 +1219,9 @@ The full order of steps is in [Migrate from RevenueCat](https://raw.githubuserco
 # How do I use RevenueDot with the web SDK (purchases-js)?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/web.md
-Description: Pass httpConfig.proxyURL to Purchases.configure and turn off analytics events. Only Test Store (test_) keys work against RevenueDot today; Web Billing, Stripe and Paddle do not.
+Description: Pass httpConfig.proxyURL to Purchases.configure and turn off analytics events. Only Test Store (test_) keys work against RevenueDot today; Web Billing and Paddle do not. Stripe purchases are posted by your backend.
 
-Pass `httpConfig: { proxyURL: "https://revenuedot.example.com" }` to `Purchases.configure`, and set `flags: { collectAnalyticsEvents: false }` so the stock SDK does not send analytics events to RevenueCat. **Only Test Store (`test_`) keys work against RevenueDot today.** Web Billing (`rcb_`), Stripe (`strp_`) and Paddle (`pdl_`) purchases do not: RevenueDot answers their receipts with error 7662.
+Pass `httpConfig: { proxyURL: "https://revenuedot.example.com" }` to `Purchases.configure`, and set `flags: { collectAnalyticsEvents: false }` so the stock SDK does not send analytics events to RevenueCat. **Only Test Store (`test_`) keys work against RevenueDot today.** Web Billing (`rcb_`) and Paddle (`pdl_`) purchases do not: RevenueDot answers their receipts with error 7662. Purchases from your own Stripe checkout are posted by your backend with the Stripe app's `strp_` key, not by purchases-js ([Stripe guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md)).
 
 ## Use the RevenueCat SDK you already ship (proxy mode)
 ```ts
@@ -1776,7 +1777,7 @@ That chain is why the wrapper forks cannot be used before release: nothing in it
 # Which guide do I need?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/README.md
-Description: Step-by-step guides for connecting the App Store and Google Play, receiving webhooks, response signing, testing, inviting your team, alert emails, and running RevenueDot on your own servers.
+Description: Step-by-step guides for connecting the App Store, Google Play, the Amazon Appstore and Stripe, receiving webhooks, response signing, testing, inviting your team, alert emails, and running RevenueDot on your own servers.
 
 Each guide is one task, start to finish. Connect a store first, then receive webhooks; run the server yourself with the self-hosting guides.
 
@@ -1784,6 +1785,8 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 |---|---|
 | Accept App Store purchases and get Apple's notifications | [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md) |
 | Accept Google Play purchases and get real-time notifications | [Connect Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md) |
+| Accept Amazon Appstore purchases on Fire tablets and Fire TV | [Connect the Amazon Appstore](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md) |
+| Track subscriptions sold with my own Stripe account | [Connect Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md) |
 | Receive purchase events in my backend and verify them | [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md) |
 | Have the SDK verify that responses come from my server | [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md) |
 | Test purchases without any store account | [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md) |
@@ -1964,6 +1967,192 @@ These call Google's API with the service account. They are tested against a mock
 - [Android SDK guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/android.md)
 - [Test with Play license testers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/sandbox-testing.md)
 - [Store notifications not arriving](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/store-notifications-not-arriving.md)
+- [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md)
+
+---
+
+# How do I connect the Amazon Appstore to RevenueDot?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md
+Description: Create an Amazon app with your package name, save the Amazon shared key so RevenueDot can check receipts with Amazon's Receipt Verification Service, and add RevenueDot's URL as a Real-time Notifications endpoint.
+
+Three steps: create an Amazon Appstore app in RevenueDot with your package name, save the **shared key** from the Amazon Developer Console, and add RevenueDot's URL as a **Real-time Notifications** endpoint. Your Android app keeps using the RevenueCat Android SDK built for Amazon; only its proxy URL changes. The dashboard's app page shows the same steps and checks each one.
+
+## 1. Create the app
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"Scanner (Fire)","type":"amazon","amazon":{"package_name":"com.example.scanner"}}'
+```
+
+The app's public SDK key starts with `amzn_`. Create its products with `store_identifier` set to the **term SKU** for subscriptions (for example `pro.monthly`, the SKU of one subscription term) and the SKU for consumables and entitlements. See [Products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md).
+
+In your app, configure the SDK for Amazon with this key and the proxy URL:
+
+```kotlin
+Purchases.proxyURL = URL("https://api.revenuedot.app")   // or your own server
+Purchases.configure(AmazonConfiguration.Builder(this, "amzn_…").build())
+```
+
+## 2. Save the shared key
+RevenueDot sends every receipt to Amazon's [Receipt Verification Service](https://developer.amazon.com/docs/in-app-purchasing/iap-rvs-for-android-apps.html) (RVS) with your shared key. RVS is the only source of dates and state: what the device posts is never trusted for those.
+
+1. Sign in to the [Amazon Developer Console → Settings → Identity](https://developer.amazon.com/settings/console/sdk/shared-key) and copy the **Shared Key**.
+2. In the dashboard, open the app → **Amazon shared key**, paste it and click **Check credentials**. RevenueDot asks RVS about a made-up receipt: Amazon answers 496 for a wrong key, so a wrong key shows up here, not on a customer's purchase.
+
+With the API:
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"amazon":{"shared_secret":"<your shared key>"}}'
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/actions/verify_credentials" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+### What the SDK sees
+- The SDK first asks `GET /v1/receipts/amazon/{store_user_id}/{receipt_id}` for a subscription's term SKU, then posts the receipt to `POST /v1/receipts` with `fetch_token` = the receipt ID and `store_user_id` = the Amazon user ID.
+- An unknown receipt or user answers **400** (code 7103), so the SDK stops trying.
+- Amazon being down, throttling, a missing shared key or one Amazon rejects answer **5xx** (code 7101). The SDK keeps the purchase unfulfilled and retries, so nobody loses a purchase while you fix the key. A rejected key also marks the app's credentials as failing and sends an [alert email](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md).
+
+## 3. Add the Real-time Notifications endpoint
+Amazon sends renewals, cancellations, grace periods, tier changes and refunds of one-time purchases through Amazon SNS.
+
+1. Copy the app's notification URL, `https://revenuedot.example.com/v1/notifications/amazon/{app_id}`, from the dashboard or from `GET /v2/projects/{project_id}/apps/{app_id}/store_settings` (`notification_url`).
+2. In the [Amazon Appstore Console](https://developer.amazon.com/apps-and-games/console/apps/list.html), open your app → **App Services** → **Real-time Notifications**, expand **Add an Endpoint**, paste the URL and click **Submit**.
+3. RevenueDot confirms the SNS subscription by itself, and the console shows **Verified** within seconds. The app's notification status turns **Ready**.
+
+For each message RevenueDot:
+- checks the **SNS signature**: the signing certificate must come from an `sns.<region>.amazonaws.com` HTTPS URL, and the message must verify with it (SignatureVersion 1 or 2). Anything else gets 400 and changes nothing;
+- stores the raw message once (by SNS message ID) and copies it to `notification_forward_url` when set;
+- reads the receipt again from RVS with the notification's Amazon user ID and applies what Amazon says.
+
+Optionally, pin the SNS topic so messages from any other topic are refused. Copy the `TopicArn` of the first notification (it is in the stored message) into **SNS topic ARN** on the app page, or with the API: `{"amazon":{"sns_topic_arn":"arn:aws:sns:us-east-1:…"}}`.
+
+Notifications about a receipt RevenueDot has never seen answer 200 and are ignored, unless **Track new purchases from server-to-server notifications** is on. Amazon's notifications carry no app user ID, so such a purchase starts on an anonymous customer until the app posts its receipt.
+
+## How Amazon states map to events
+| What Amazon reports | Event |
+|---|---|
+| A new subscription receipt | `INITIAL_PURCHASE` (`TRIAL` while `freeTrialEndDate` is ahead, `INTRO` during an introductory promotion) |
+| `renewalDate` moved one term later | `RENEWAL` (with `is_trial_conversion` after a trial) |
+| Auto-renew off, or back on | `CANCELLATION` (`UNSUBSCRIBE`), `UNCANCELLATION` |
+| A grace period | `BILLING_ISSUE` and `CANCELLATION` (`BILLING_ERROR`); access continues to `gracePeriodEndDate` |
+| `cancelDate` reached, or grace over | `EXPIRATION` |
+| A deferred tier change (`deferredSku`) | `PRODUCT_CHANGE` to the deferred SKU |
+| An immediate tier change (new receipt, `cancelledReceiptId`) | `INITIAL_PURCHASE` on the new receipt, `PRODUCT_CHANGE` on the old one |
+| A consumable or entitlement bought | `NON_RENEWING_PURCHASE` |
+| A consumable or entitlement cancelled (`*_CANCELLED`, or RVS answers 410) | `CANCELLATION` (`CUSTOMER_SUPPORT`) with a negative price |
+
+Webhooks report `store: AMAZON`. Amazon has no subscription pause, and like RevenueCat, RevenueDot does not detect refunds of Amazon subscriptions ([RevenueCat: refunds](https://www.revenuecat.com/docs/subscription-guidance/refunds)).
+
+## Sandbox
+- Purchases from **Live App Testing** (`betaProduct`) and Amazon's test transactions (`testTransaction`) are sandbox data and stay out of production numbers.
+- Receipts from **App Tester** exist only in RVS's cloud sandbox. When production RVS does not know a receipt, RevenueDot asks the cloud sandbox, and a receipt found there is sandbox data.
+- Amazon's accelerated test timelines are not supported; event times follow real time ([RevenueCat: Amazon sandbox](https://www.revenuecat.com/docs/test-and-launch/sandbox/amazon-store-sandbox-testing) has the same limit).
+
+## Prices
+RVS has no price. The price and currency the SDK posts (the marketplace's local price) are saved with the purchase and converted to USD at the purchase date's rate. Renewals that arrive by notification keep the last known price.
+
+## Related
+- [Android SDK guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/android.md)
+- [Store notifications not arriving](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/store-notifications-not-arriving.md)
+- [SDK endpoints: Amazon receipt details](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md)
+- [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md)
+
+---
+
+# How do I track Stripe subscriptions from my own Stripe account in RevenueDot?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md
+Description: Create a Stripe app, save a restricted API key and a webhook signing secret from your own Stripe account, post each new subscription or Checkout Session to /v1/receipts, and let Stripe's webhooks keep it current.
+
+Four steps: create a Stripe app in RevenueDot, save a **restricted API key** from your Stripe account, add a **webhook endpoint** in Stripe and save its signing secret, then have your backend **post each purchase** to `POST /v1/receipts`. Customers who pay on your website then get the same entitlements in your apps when they use the same app user ID. RevenueDot only reads from Stripe: it never charges, refunds or changes anything there.
+
+## 1. Create the app
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"Scanner (Web)","type":"stripe"}'
+```
+
+The app's public key starts with `strp_`. Create its products with `store_identifier` set to the **Stripe product ID** (`prod_…`). To sell several prices of one Stripe product as separate products, use the **price ID** (`price_…`) instead; a price ID wins over its product ID. See [Products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md).
+
+## 2. Save a restricted API key
+1. In the [Stripe Dashboard → Developers → API keys](https://dashboard.stripe.com/apikeys/create), click **Create restricted key**.
+2. Give it **Read** access to Subscriptions, Invoices, Checkout Sessions, Charges, Customers, Products and Prices. Leave everything else at None.
+3. In the dashboard, open the app → **Stripe API key**, paste it and click **Check credentials**. RevenueDot lists one subscription and one Checkout Session: a wrong key says so, and a key without a permission names the one it lacks.
+
+With the API:
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"stripe":{"stripe_secret_key":"rk_live_…"}}'
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/actions/verify_credentials" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+A publishable key (`pk_…`) is refused. Using a Stripe Connect platform key for one connected account? Also save `stripe_account_id` (`acct_…`); RevenueDot sends it as `Stripe-Account`.
+
+**Test mode.** The key decides the environment: a test-mode key (`rk_test_…`) or a [Stripe sandbox](https://docs.stripe.com/sandboxes) records sandbox data, kept out of production numbers. Use one Stripe app per Stripe account, mode or sandbox, as [RevenueCat recommends](https://www.revenuecat.com/docs/web/integrations/stripe) too.
+
+## 3. Add the webhook endpoint
+1. Copy the app's webhook URL, `https://revenuedot.example.com/v1/notifications/stripe/{app_id}`, from the dashboard or from `store_settings` (`notification_url`).
+2. In the [Stripe Dashboard → Developers → Webhooks](https://dashboard.stripe.com/webhooks/create), add an endpoint with that URL and these events: `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.subscription.paused`, `customer.subscription.resumed`, `invoice.paid`, `invoice.payment_failed`, `invoice.updated`, `charge.refunded`, `checkout.session.completed`. Other events are accepted and ignored.
+3. Reveal the endpoint's **Signing secret** (`whsec_…`) and paste it on the app page, or save it as `stripe_webhook_secret`.
+
+Every event must carry a valid `Stripe-Signature`: RevenueDot computes the HMAC-SHA256 of `"<t>.<body>"` with the signing secret, the way [Stripe documents it](https://docs.stripe.com/webhooks#verify-manually), and refuses a timestamp more than 5 minutes off. A missing secret or a bad signature answers 400. Each event is stored once (by event ID), copied to `notification_forward_url` when set, and applied by reading the subscription from Stripe again, so events arriving out of order cannot roll a subscription back. Temporary failures answer 500, and Stripe retries.
+
+## 4. Post each purchase from your backend
+After Stripe confirms a purchase (`customer.subscription.created` or `checkout.session.completed`), post its subscription ID or Checkout Session ID with the customer's app user ID:
+
+```bash
+curl -X POST "$REVENUEDOT_URL/v1/receipts" \
+  -H "Authorization: Bearer strp_…" -H "X-Platform: stripe" -H "Content-Type: application/json" \
+  -d '{"app_user_id":"user_123","fetch_token":"sub_1Abc…"}'
+```
+
+- A **subscription ID** (`sub_…`) records the subscription.
+- A **Checkout Session ID** (`cs_…`) records the session's subscription, or, for a payment-mode session, each line item as a one-time purchase (consumable or not, by your catalog). One-time purchases need a Checkout Session.
+- The answer is the customer's [customer info](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/customers-and-app-user-ids.md). Posting the same ID again changes nothing.
+- **400** (code 7103) means it can never succeed: an unknown ID, an expired session, a subscription whose first payment never completed. **5xx** (code 7101) means try again later: Stripe was unavailable, the key was rejected, or the first invoice is not paid yet.
+
+### When a subscription counts
+By default a subscription counts once its latest invoice is **paid**. Set `register_on` to `invoice_created` (on the app page: "When the invoice is created") to grant access while the first invoice is still open, as RevenueCat's ["Subscription purchase recognition"](https://www.revenuecat.com/docs/web/integrations/stripe/track-external-purchases) setting does.
+
+### Purchases you never posted
+Turn on **Track new purchases from server-to-server notifications** to record subscriptions and Checkout purchases that RevenueDot first hears about from a webhook. The customer is found by `app_user_id_source`:
+- `metadata` (default): the metadata key `app_user_id_metadata_key` (default `app_user_id`) on the Checkout Session or the subscription. Set it in both when a session creates a subscription.
+- `customer_id`: the Stripe customer ID becomes the app user ID.
+- `anonymous`: an anonymous ID.
+
+## How Stripe states map to events
+| What Stripe reports | Event |
+|---|---|
+| An active subscription with a paid invoice | `INITIAL_PURCHASE` (`TRIAL` while `trialing`, at price 0) |
+| A new paid invoice for the next period | `RENEWAL` (with `is_trial_conversion` after a trial) |
+| `cancel_at_period_end` or a future `cancel_at`; undone | `CANCELLATION` (`UNSUBSCRIBE`); `UNCANCELLATION` |
+| `past_due`: the renewal invoice failed | `BILLING_ISSUE`, `CANCELLATION` (`BILLING_ERROR`); access to the end of the paid period, grace until Stripe's next payment attempt |
+| Paid after `past_due` | `RENEWAL` |
+| `unpaid`, or retries run out | `EXPIRATION` (`BILLING_ERROR`) |
+| `canceled` (`customer.subscription.deleted`) | `CANCELLATION` if not seen before, then `EXPIRATION` at `ended_at` |
+| `pause_collection` with `resumes_at` | `SUBSCRIPTION_PAUSED` |
+| Another price or product on the subscription | `PRODUCT_CHANGE`; a proration invoice in the middle of a period is not a renewal and adds no revenue |
+| `charge.refunded` in full for the latest period | `CANCELLATION` (`CUSTOMER_SUPPORT`), a negative transaction, and access ends at the refund. A later paid period is a `RENEWAL` |
+| A payment-mode Checkout Session | `NON_RENEWING_PURCHASE`; a full refund is `CANCELLATION` (`CUSTOMER_SUPPORT`) |
+
+Webhooks report `store: STRIPE` with no store commission. Revenue is what each invoice charged (`amount_paid`), so coupons show in revenue; it is converted to USD at the period start's rate. Zero-decimal currencies such as JPY are not divided by 100.
+
+Both Stripe API shapes work: before 2025-03-31 (period fields on the subscription, `invoice.subscription`) and after (period fields on the subscription item, `invoice.parent.subscription_details`).
+
+## Not supported yet
+- "Connect with Stripe" (OAuth) instead of a restricted key, and hosted checkout: these need RevenueDot's own Stripe platform and come later.
+- Subscription schedules, metered and tiered prices, and subscriptions with several items.
+- A scheduled re-check without webhooks: without the webhook endpoint, a cancellation shows only when your backend posts the subscription again.
+
+## Related
+- [Webhooks out of RevenueDot](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md)
+- [Sandbox and production](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/sandbox.md)
+- [SDK endpoints: POST /v1/receipts](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md)
 - [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md)
 
 ---
@@ -3339,7 +3528,7 @@ Guide: [Flutter](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdk
 +  flags: { collectAnalyticsEvents: false },
  });
 ```
-Only Test Store (`test_`) keys work against RevenueDot today; Web Billing (`rcb_`), Stripe and Paddle do not. Fork swap (planned):
+Only Test Store (`test_`) keys work against RevenueDot today; Web Billing (`rcb_`) and Paddle do not. Stripe purchases from your own checkout are posted by your backend ([Stripe guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md)). Fork swap (planned):
 ```diff
 -"@revenuecat/purchases-js": "<version>",
 +"@revenuecat/purchases-js": "npm:@revenuedot/purchases-js@<version>",
@@ -3521,7 +3710,6 @@ RevenueDot answers the RevenueCat SDKs, REST API v1 and v2, and webhook payloads
 | Web purchase redemption (`redeemWebPurchase`) | 400 with code 7849 | The SDK returns `invalidToken`: there are no web purchases to redeem |
 | Web checkout (iOS hosted checkout, purchases-js with `rcb_` keys) | 400 with code 7000; branding answers the app's name | The checkout fails with an error and is not retried |
 | Rewarded ad verification (`pollRewardVerification`) | `status: failed` | Polling stops after one request and returns failed |
-| Amazon receipt lookup (Android) | 400 with code 7662 | The Amazon purchase fails and stays unconsumed |
 | SDK health report | Always "passed" | No effect |
 
 Source: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/routes/sdk.ts).
@@ -3532,7 +3720,8 @@ Source: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenued
 - The full list of SDK calls and what each answers is in [`prd/sdk-api/PRD.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/sdk-api/PRD.md#endpoint-inventory).
 
 **Stores and receipts**
-- RevenueDot accepts purchases only for App Store, Mac App Store, Google Play and Test Store apps. Receipts for Amazon, Web Billing (`rcb_`), Stripe, Paddle and Roku apps answer HTTP 400 with code 7662.
+- RevenueDot accepts purchases for App Store, Mac App Store, Google Play, Amazon Appstore, Stripe and Test Store apps ([Amazon guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md), [Stripe guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md)). Receipts for Web Billing (`rcb_`), Paddle and Roku apps answer HTTP 400 with code 7662.
+- Like RevenueCat, RevenueDot does not detect refunds of Amazon subscriptions. Stripe Connect OAuth ("Connect with Stripe") is not available; save a restricted key instead.
 - purchases-js therefore works only with Test Store (`test_`) keys.
 - StoreKit 1 receipts need the App Store in-app purchase key on the app. Without it RevenueDot answers code 7234 as HTTP 500, so the SDK retries after you add the key. For development, `allow_unsigned_receipts` skips this.
 - The app-specific shared secret is stored but not used.
@@ -3587,7 +3776,6 @@ Source: [`prd/migration/PRD.md`](https://github.com/revenuedot/revenuedot/blob/m
 - Paywalls: serving the paywall designs the SDKs render, a visual editor and an asset CDN.
 - Targeting, placements and experiments (offering A/B tests).
 - Customer Center configuration, virtual currencies, offline entitlements, promotional-offer signing and win-back offers.
-- Amazon Appstore, and Stripe subscriptions from your own Stripe account.
 - Moving between self-host and cloud in one step, and a full export.
 
 **Tier 3 (planned)**
@@ -3617,7 +3805,7 @@ One RevenueDot server answers every API below on one port. The reference is gene
 
 | API | Paths | Auth | Operations | Reference |
 |---|---|---|---|---|
-| SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 45 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
+| SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 47 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
 | REST API v1 | `/v1/subscribers/...` | secret key | 10 | [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md) |
 | REST API v2 | `/v2/projects/...` | secret key or dashboard session | 130 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
 | RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...` | secret key, session or none | 49 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
@@ -3785,7 +3973,7 @@ RevenueDot answers errors in the format each API's clients already parse: SDK en
 | 7234 | INVALID_APPLE_SUBSCRIPTION_KEY | 400 or 500 | A StoreKit 1 receipt arrived for an App Store app without an in-app purchase key, or the key is incomplete (500, so the SDK retries once you add the key). A promotional offer cannot be signed without the key (400; the SDK reports `invalidAppleSubscriptionKeyError` for that offer). |
 | 7259 | NOT_FOUND | 404 | The customer, entitlement, offering or subscription does not exist. |
 | 7263 | INVALID_SUBSCRIBER_ATTRIBUTES | 400 | Some attributes were not saved; `attribute_errors` lists them. |
-| 7662 | UNSUPPORTED_RECEIPT | 400 | Receipts for this app's store are not supported yet (Amazon, Stripe, Web Billing, Paddle, Roku), including the Android SDK's Amazon receipt lookup. |
+| 7662 | UNSUPPORTED_RECEIPT | 400 | Receipts for this app's store are not supported yet (Web Billing, Paddle, Roku), and the Android SDK's Amazon receipt lookup with a key that is not an Amazon app's. |
 | 7849 | INVALID_WEB_REDEMPTION_TOKEN | 400 | A web purchase redemption token is not valid. RevenueDot has no web purchases, so every token answers this; the SDKs return the `invalidToken` result. |
 | 7877 | INVALID_OPERATION_SESSION | 400 | A Web Billing checkout session does not exist. |
 
@@ -3874,7 +4062,7 @@ Responses under `/v1` and `/rcbilling` are signed when the server has a signing 
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (45)
+## Operations on this page (47)
 
 - **Server**: [Server name and docs link](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#server-name-and-docs-link), [Health check](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#health-check), [Connectivity probe](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#connectivity-probe)
 - **Customer info**: [Get customer info](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#get-customer-info)
@@ -3882,9 +4070,9 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Offerings (SDK)**: [Get offerings](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#get-offerings), [Get offerings without a user](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#get-offerings-without-a-user), [Test Store product details](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#test-store-product-details)
 - **Identity**: [Log in (identify)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#log-in-identify), [Alias two app user ids](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#alias-two-app-user-ids)
 - **Attributes**: [Set customer attributes](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#set-customer-attributes)
-- **SDK support**: [Intro offer eligibility (StoreKit 1)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#intro-offer-eligibility-storekit-1), [Sign a promotional offer (iOS)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sign-a-promotional-offer-ios), [Attribution data (deprecated iOS call)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#attribution-data-deprecated-ios-call), [Apple AdServices token](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#apple-adservices-token), [SDK health report availability](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-health-report-availability), [SDK health report](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-health-report), [Product to entitlement mapping (offline entitlements)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#product-to-entitlement-mapping-offline-entitlements), [Customer Center configuration](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-configuration), [Customer Center support ticket (not built)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-support-ticket-not-built), [Virtual currency balances](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#virtual-currency-balances), [Redeem a web purchase (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#redeem-a-web-purchase-not-available), [Register an Apple external purchase token (iOS)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#register-an-apple-external-purchase-token-ios), [Rewarded ad verification (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#rewarded-ad-verification-not-available), [Amazon receipt details (not supported)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#amazon-receipt-details-not-supported), [Paywall workflows (web SDK)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#paywall-workflows-web-sdk), [One paywall workflow (web SDK)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#one-paywall-workflow-web-sdk), [Restore eligibility (StoreKit 2)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#restore-eligibility-storekit-2), [Remote config fallback (none)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#remote-config-fallback-none), [Remote config: paywalls and UI settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#remote-config-paywalls-and-ui-settings), [Download a remote-config blob](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#download-a-remote-config-blob), [SDK paywall and feature events (accepted, not stored)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-paywall-and-feature-events-accepted-not-stored), [SDK diagnostics (accepted, not stored)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-diagnostics-accepted-not-stored)
+- **SDK support**: [Intro offer eligibility (StoreKit 1)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#intro-offer-eligibility-storekit-1), [Sign a promotional offer (iOS)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sign-a-promotional-offer-ios), [Attribution data (deprecated iOS call)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#attribution-data-deprecated-ios-call), [Apple AdServices token](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#apple-adservices-token), [SDK health report availability](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-health-report-availability), [SDK health report](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-health-report), [Product to entitlement mapping (offline entitlements)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#product-to-entitlement-mapping-offline-entitlements), [Customer Center configuration](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-configuration), [Customer Center support ticket (not built)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-support-ticket-not-built), [Virtual currency balances](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#virtual-currency-balances), [Redeem a web purchase (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#redeem-a-web-purchase-not-available), [Register an Apple external purchase token (iOS)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#register-an-apple-external-purchase-token-ios), [Rewarded ad verification (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#rewarded-ad-verification-not-available), [Amazon receipt details](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#amazon-receipt-details), [Paywall workflows (web SDK)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#paywall-workflows-web-sdk), [One paywall workflow (web SDK)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#one-paywall-workflow-web-sdk), [Restore eligibility (StoreKit 2)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#restore-eligibility-storekit-2), [Remote config fallback (none)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#remote-config-fallback-none), [Remote config: paywalls and UI settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#remote-config-paywalls-and-ui-settings), [Download a remote-config blob](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#download-a-remote-config-blob), [SDK paywall and feature events (accepted, not stored)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-paywall-and-feature-events-accepted-not-stored), [SDK diagnostics (accepted, not stored)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-diagnostics-accepted-not-stored)
 - **Web Billing**: [Web offering products](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-offering-products), [Start a hosted web checkout (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#start-a-hosted-web-checkout-not-available), [Web Billing purchase (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-billing-purchase-not-available), [Prepare a Web Billing checkout (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#prepare-a-web-billing-checkout-not-available), [Start a Web Billing checkout (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#start-a-web-billing-checkout-not-available), [Web Billing checkout status](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-billing-checkout-status), [Refresh Web Billing checkout pricing](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#refresh-web-billing-checkout-pricing), [Complete a Web Billing checkout](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#complete-a-web-billing-checkout), [Web checkout branding](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-checkout-branding)
-- **Store notifications**: [App Store Server Notifications v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#app-store-server-notifications-v2), [Google Play real-time developer notifications (Pub/Sub push)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#google-play-real-time-developer-notifications-pubsub-push)
+- **Store notifications**: [App Store Server Notifications v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#app-store-server-notifications-v2), [Google Play real-time developer notifications (Pub/Sub push)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#google-play-real-time-developer-notifications-pubsub-push), [Amazon Appstore Real-time Notifications (SNS)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#amazon-appstore-real-time-notifications-sns), [Stripe webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#stripe-webhooks)
 - **Response signing**: [Public key for response signatures](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#public-key-for-response-signatures)
 
 ## Server
@@ -4062,6 +4250,8 @@ Every purchase, restore and `syncPurchases()` ends here. RevenueDot verifies the
 
 - **App Store:** `fetch_token` is a StoreKit 2 signed transaction (JWS), a StoreKit 1 app receipt (base64) or an Xcode StoreKit test receipt. With the app's in-app purchase key, Apple's App Store Server API supplies the full history and renewal state.
 - **Google Play:** `fetch_token` is the purchase token. RevenueDot checks it with the Play Developer API and acknowledges it.
+- **Amazon Appstore:** `fetch_token` is the receipt id and `store_user_id` the Amazon user id (`X-Platform: amazon`). RevenueDot checks both with Amazon's Receipt Verification Service.
+- **Stripe:** from your backend, with `X-Platform: stripe` and the Stripe app's public key (`strp_`): `fetch_token` is a subscription id (`sub_…`) or a Checkout Session id (`cs_…`). RevenueDot reads it from Stripe with the app's restricted key. An unpaid first invoice or an open session answers 503, so post it again later.
 - **Test Store:** `fetch_token` is `test_<purchase time in ms>_<id>`. Any such token is accepted.
 
 **4xx or 5xx matters.** A 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. RevenueDot answers 5xx for its own and the store's temporary failures so the SDK keeps the purchase and retries.
@@ -4934,17 +5124,20 @@ Example 200 response:
 }
 ```
 
-### Amazon receipt details (not supported)
+### Amazon receipt details
 
 `GET /v1/receipts/amazon/{store_user_id}/{receipt_id}` · Auth: public app key
 
-The Android SDK asks for it on Amazon subscription purchases. Amazon Appstore purchases are not supported: 400 with code 7662, the same answer as a receipt post for an Amazon app, which leaves the purchase unconsumed.
+The Android SDK built for Amazon asks for it on subscription purchases and reads `termSku`, which it then posts as the product id. RevenueDot asks Amazon's Receipt Verification Service with the app's shared key and answers Amazon's receipt unchanged.
+
+- **400 · 7103:** Amazon does not know the receipt or the user. **400 · 7662:** the key is not an Amazon app's.
+- **500 · 7101:** no shared key is saved, or Amazon rejected it. **503 · 7101:** Amazon is unavailable; the SDK keeps the purchase unconsumed and retries. See [Amazon Appstore setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md).
 
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `store_user_id` | string | yes |  |
+| `store_user_id` | string | yes | The Amazon user id. |
 | `receipt_id` | string | yes | Not encoded by the SDK; may contain `/`. |
 
 **Example request**
@@ -4955,8 +5148,33 @@ curl -s "$REVENUEDOT_URL/v1/receipts/amazon/$STORE_USER_ID/$RECEIPT_ID" -H "Auth
 
 **Responses**
 
-- **400**: Not supported. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **200**: Amazon's receipt.
+- **400**: Bad request. For receipts, a 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
 - **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **500**: Server error. The SDK keeps the purchase and retries. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **503**: The store could not be reached. Retry later. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "autoRenewing": true,
+  "betaProduct": false,
+  "cancelDate": null,
+  "cancelReason": null,
+  "countryCode": "US",
+  "freeTrialEndDate": null,
+  "gracePeriodEndDate": null,
+  "productId": "pro.subscription",
+  "productType": "SUBSCRIPTION",
+  "purchaseDate": 1790800914000,
+  "receiptId": "q1YqVrJSSs7P1UvMTazKz9PLTCwoTswtyEktM8jLz0kpLQ1JTSlFMsjILCoQ:3:11",
+  "renewalDate": 1793392914000,
+  "term": "1 Month",
+  "termSku": "pro.monthly",
+  "testTransaction": false
+}
+```
 
 ### Paywall workflows (web SDK)
 
@@ -5460,6 +5678,111 @@ curl -s -X POST "$REVENUEDOT_URL/v1/notifications/google/$APP_ID"
 - **404**: Unknown app. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
 - **500**: Temporary failure; Pub/Sub retries. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
 - **503**: Google's signing keys could not be loaded. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "status": "processed"
+}
+```
+
+### Amazon Appstore Real-time Notifications (SNS)
+
+`POST /v1/notifications/amazon/{app_id}` · Auth: none
+
+Add this URL as an endpoint under App Services → Real-time Notifications in the Amazon Appstore Console. Amazon delivers through Amazon SNS.
+Every message must carry a valid SNS signature (SignatureVersion 1 or 2, certificate from an `sns.<region>.amazonaws.com` URL). The subscription confirmation is accepted by fetching its `SubscribeURL`, which is what makes Amazon show "Verified". Each message is stored once (by SNS message id), forwarded when `notification_forward_url` is set, and applied by reading the receipt from Amazon's Receipt Verification Service.
+
+- **200:** handled, confirmed, a duplicate, ignored (another package) or a receipt that can never be checked.
+- **400:** not an SNS message, a bad signature, or a topic other than the app's `sns_topic_arn`. **404:** no Amazon app with this id.
+- **500 or 503:** a temporary failure; SNS retries. See [Amazon Appstore setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `app_id` | string | yes | App id (app...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `Type` | `Notification`, `SubscriptionConfirmation`, `UnsubscribeConfirmation` | yes |  |
+| `MessageId` | string | yes |  |
+| `TopicArn` | string | no |  |
+| `Message` | string | no | For notifications: Amazon's JSON (appPackageName, notificationType, appUserId, receiptId, relatedReceipts, timestamp, betaProductTransaction). |
+| `SubscribeURL` | string | no | Subscription confirmations only. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/notifications/amazon/$APP_ID"
+```
+
+**Responses**
+
+- **200**: Handled.
+- **400**: Not accepted. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **404**: Unknown app. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **500**: Temporary failure; SNS retries. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **503**: The SNS certificate or confirmation failed; SNS retries. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "status": "processed"
+}
+```
+
+### Stripe webhooks
+
+`POST /v1/notifications/stripe/{app_id}` · Auth: none
+
+Add this URL as a webhook endpoint in your Stripe account with the events `customer.subscription.created`, `.updated`, `.deleted`, `.paused`, `.resumed`, `invoice.paid`, `invoice.payment_failed`, `invoice.updated`, `charge.refunded` and `checkout.session.completed`, and save its signing secret on the app.
+Each event is stored once (by event id), forwarded when `notification_forward_url` is set, and applied by reading the subscription from Stripe, so event order does not matter. Other event types are accepted and ignored.
+
+- **200:** handled, a duplicate, ignored, an unknown purchase (applied only with `track_new_purchases`) or an object Stripe no longer has.
+- **400:** no signing secret saved, a missing or wrong `Stripe-Signature`, or not a Stripe event. **404:** no Stripe app with this id.
+- **500:** a temporary failure; Stripe retries for three days. See [Stripe setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `app_id` | string | yes | App id (app...). |
+
+**Headers**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `Stripe-Signature` | string | yes | `t=<unix seconds>,v1=<hex HMAC-SHA256 of "<t>.<body>">`, checked with the app's `stripe_webhook_secret` within 5 minutes. |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `id` | string | yes | evt_… |
+| `object` | `"event"` | no |  |
+| `type` | string | yes |  |
+| `created` | integer | no |  |
+| `livemode` | boolean | no |  |
+| `data` | object | yes |  |
+| `data.object` | object | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/notifications/stripe/$APP_ID"
+```
+
+**Responses**
+
+- **200**: Handled.
+- **400**: Not accepted. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **404**: Unknown app. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **500**: Temporary failure; Stripe retries. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
 
 Example 200 response:
 
@@ -6627,7 +6950,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" -H "Authorization: Bearer
 `POST /v2/projects/{project_id}/apps` · Auth: secret key or dashboard session · Permissions: `project_configuration:apps:read_write`
 
 One app per store. `app_store` and `mac_app_store` need `bundle_id`; `play_store` and `amazon` need `package_name`. The app gets a public SDK key with the store's prefix.
-Other fields in the store object are saved as store credentials (for example `subscription_private_key`, `subscription_key_id`, `subscription_key_issuer`, `play_service_account_credentials_json`). They are never returned.
+Other fields in the store object are saved as store credentials (for example `subscription_private_key`, `subscription_key_id`, `subscription_key_issuer`, `play_service_account_credentials_json`, Amazon's `shared_secret`, Stripe's `stripe_secret_key` and `stripe_webhook_secret`). They are never returned. A Stripe publishable key (`pk_…`) or a malformed signing secret is refused with 400.
 
 **Path parameters**
 
@@ -6714,7 +7037,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID" -H "Authorization
 `POST /v2/projects/{project_id}/apps/{app_id}` · Auth: secret key or dashboard session · Permissions: `project_configuration:apps:read_write`
 
 Send only the store object of the app's own type. A field set to null removes that credential; other values replace it.
-RevenueDot extensions in the store object: `notification_forward_url` (copy store notifications to another URL, for example RevenueCat during a dual run; null or "" turns it off), `track_new_purchases`, `allow_unsigned_receipts`, `xcode_certificate`, `app_apple_id`, `pubsub_audience`, `pubsub_service_account`. See [App Store setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md) and [Google Play setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md).
+RevenueDot extensions in the store object: `notification_forward_url` (copy store notifications to another URL, for example RevenueCat during a dual run; null or "" turns it off), `track_new_purchases`, `allow_unsigned_receipts`, `xcode_certificate`, `app_apple_id`, `pubsub_audience`, `pubsub_service_account`; Amazon `shared_secret`, `sns_topic_arn`; Stripe `stripe_secret_key`, `stripe_webhook_secret`, `stripe_account_id`, `app_user_id_source` (metadata, customer_id, anonymous), `app_user_id_metadata_key`, `register_on` (invoice_paid, invoice_created). See [App Store setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md), [Google Play setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md), [Amazon Appstore setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md) and [Stripe setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md).
 
 **Path parameters**
 
@@ -11725,7 +12048,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Dashboard auth**: [Whether sign-up is open](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-sign-up-is-open), [Create a dashboard account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-dashboard-account), [Sign in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-in), [Sign out](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out), [The signed-in user and their projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-signed-in-user-and-their-projects), [Update account settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-account-settings), [Email a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#email-a-password-reset-link), [Check a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-a-password-reset-link), [Set a new password from a reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-a-new-password-from-a-reset-link), [Confirm an email address](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#confirm-an-email-address), [Send a new confirmation email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-new-confirmation-email), [Look up an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#look-up-an-invite), [Accept an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#accept-an-invite)
 - **Members and invites**: [List open invites](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-open-invites), [Invite someone by email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#invite-someone-by-email), [Resend an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#resend-an-invite), [Revoke an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#revoke-an-invite), [Change a member's role](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-a-members-role), [Remove a member, or leave the project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#remove-a-member-or-leave-the-project)
 - **Project settings**: [Get a project with its settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-project-with-its-settings), [Update a project's name and transfer behaviour](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-a-projects-name-and-transfer-behaviour), [Delete a project and everything in it](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-project-and-everything-in-it), [Get the Customer Center configuration of the project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-the-customer-center-configuration-of-the-project), [Set the Customer Center configuration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-the-customer-center-configuration)
-- **Store setup**: [Store setup state of an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#store-setup-state-of-an-app), [Check store credentials with Apple or Google](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-store-credentials-with-apple-or-google), [Extend every active App Store subscriber of a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#status-of-a-mass-extension), [Setup health](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#setup-health)
+- **Store setup**: [Store setup state of an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#store-setup-state-of-an-app), [Check store credentials with Apple, Google, Amazon or Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-store-credentials-with-apple-google-amazon-or-stripe), [Extend every active App Store subscriber of a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#status-of-a-mass-extension), [Setup health](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#setup-health)
 - **API keys**: [List secret keys](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-secret-keys), [Create a secret key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-secret-key), [Delete a secret key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-secret-key)
 - **Webhook deliveries**: [Send a TEST event to one webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-each-webhook-is-enabled), [Delivery log of a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delivery-log-of-a-webhook), [Retry a delivery now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#retry-a-delivery-now)
 - **Event log**: [Event log](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#event-log), [Transaction feed](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#transaction-feed)
@@ -12603,7 +12926,7 @@ Notification URLs, credential checks, setup health and App Store mass extensions
 
 `GET /v2/projects/{project_id}/apps/{app_id}/store_settings` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read`
 
-The notification URL to paste into App Store Connect or Pub/Sub, the notification status, the forwarding URL and which credentials are set. Never a secret.
+The notification URL to paste into App Store Connect, Pub/Sub, the Amazon Appstore Console or Stripe, the notification status, the forwarding URL and which credentials are set. Never a secret.
 
 **Path parameters**
 
@@ -12625,11 +12948,11 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/store_settings" -H
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
-### Check store credentials with Apple or Google
+### Check store credentials with Apple, Google, Amazon or Stripe
 
 `POST /v2/projects/{project_id}/apps/{app_id}/actions/verify_credentials` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read`
 
-Makes one harmless call to the App Store Server API or the Play Developer API. Values in the body are checked before you save them; missing values fall back to the saved ones.
+Makes one harmless call to the App Store Server API, the Play Developer API, Amazon's Receipt Verification Service (a made-up receipt: 496 means a wrong shared key) or Stripe (lists one subscription and one Checkout Session with the key). Values in the body are checked before you save them; missing values fall back to the saved ones.
 
 **Path parameters**
 
@@ -12655,6 +12978,12 @@ Makes one harmless call to the App Store Server API or the Play Developer API. V
 | `play_store` | object | no |  |
 | `play_store.package_name` | string or null | no |  |
 | `play_store.play_service_account_credentials_json` | string or object or null | no |  |
+| `amazon` | object | no |  |
+| `amazon.package_name` | string or null | no |  |
+| `amazon.shared_secret` | string or null | no |  |
+| `stripe` | object | no |  |
+| `stripe.stripe_secret_key` | string or null | no |  |
+| `stripe.stripe_account_id` | string or null | no |  |
 
 **Example request**
 
@@ -13647,6 +13976,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `checked_at` | integer | yes | Checked at. Epoch milliseconds. |
 | `key_id` | string | no |  |
 | `client_email` | string or null | no |  |
+| `mode` | `live`, `test` | no | Stripe: the key's mode. |
 
 ### Customer
 
@@ -13968,7 +14298,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `app_id` | string | yes |  |
 | `type` | string | yes |  |
 | `api_origin` | string | yes | This server as the outside world reaches it: the SDK's proxy URL. |
-| `notification_url` | string or null | no | App Store or Google Play notification URL for this app. |
+| `notification_url` | string or null | no | The store notification URL for this app (App Store, Google Play, Amazon or Stripe). |
 | `notification_forward_url` | string or null | no | Where notifications are copied during a dual run. |
 | `last_notification_at` | integer or null | no | Last notification processed for a known purchase. Epoch milliseconds, or null. |
 | `last_notification_error` | string or null | no |  |
@@ -13996,6 +14326,22 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `credentials.play_service_account.client_email` | string or null | no |  |
 | `credentials.xcode_certificate` | object | no |  |
 | `credentials.xcode_certificate.configured` | boolean | no |  |
+| `credentials.amazon_shared_secret` | object | no |  |
+| `credentials.amazon_shared_secret.configured` | boolean | no |  |
+| `credentials.stripe_secret_key` | object | no |  |
+| `credentials.stripe_secret_key.configured` | boolean | no |  |
+| `credentials.stripe_secret_key.mode` | `live`, `test`, null | no |  |
+| `credentials.stripe_secret_key.kind` | `restricted`, `secret`, `other`, null | no |  |
+| `credentials.stripe_secret_key.last4` | string or null | no | Last four characters of the key; the key itself is never returned. |
+| `credentials.stripe_webhook_secret` | object | no |  |
+| `credentials.stripe_webhook_secret.configured` | boolean | no |  |
+| `sns_topic_arn` | string or null | no | Amazon: the only SNS topic notifications are accepted from, when set. |
+| `stripe` | object or null | no | Stripe apps only. |
+| `stripe.stripe_account_id` | string or null | no |  |
+| `stripe.app_user_id_source` | `metadata`, `customer_id`, `anonymous` | no |  |
+| `stripe.app_user_id_metadata_key` | string | no |  |
+| `stripe.register_on` | `invoice_paid`, `invoice_created` | no |  |
+| `stripe.configured` | boolean | no |  |
 
 ### Subscription
 
@@ -15453,8 +15799,10 @@ Receipts are accepted today for four app types:
 | `mac_app_store` | Mac App Store |
 | `play_store` | Google Play |
 | `test_store` | RevenueDot Test Store (no real store) |
+| `amazon` | Amazon Appstore ([guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md)) |
+| `stripe` | Stripe subscriptions from your own Stripe account, posted by your backend ([guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md)) |
 
-Amazon, Stripe, Web Billing, Paddle and Roku apps can be created, but their receipts answer HTTP 400 with code 7662. See [Projects and apps](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md).
+Web Billing, Paddle and Roku apps can be created, but their receipts answer HTTP 400 with code 7662. See [Projects and apps](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md).
 
 ## Is it production-ready?
 No. The App Store and Google Play code is tested against mocked Apple and Google APIs only. No real App Store or Google Play sandbox purchase has run end to end yet. Use it for evaluation and testing, and keep RevenueCat for live customers until a release says otherwise. See [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md).
@@ -15493,7 +15841,7 @@ Yes, with the Test Store: create a `test_store` app and use its `test_` key. See
 They are not implemented. The SDK endpoints answer empty or 404 in the way that makes the SDK hide those features, so your app does not crash. Paywalls built in RevenueCat do not render against RevenueDot.
 
 ## Does the web SDK work?
-`purchases-js` works with Test Store (`test_`) keys against RevenueDot. Web Billing (`rcb_`), Stripe and Paddle purchases do not work yet. With the stock SDK, turn off analytics events (`flags: { collectAnalyticsEvents: false }`), because the stock SDK sends them to RevenueCat. See the [web guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/web.md).
+`purchases-js` works with Test Store (`test_`) keys against RevenueDot. Web Billing (`rcb_`) and Paddle purchases do not work yet. Stripe purchases from your own checkout are posted by your backend instead ([Stripe guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md)). With the stock SDK, turn off analytics events (`flags: { collectAnalyticsEvents: false }`), because the stock SDK sends them to RevenueCat. See the [web guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/web.md).
 
 ## Can AI agents set it up?
 Yes. The hosted MCP server is live at `https://mcp.revenuedot.app/mcp`: your client signs in with OAuth, or sends a secret key. It has 17 tools for the catalog, customers, access grants, webhooks and import status ([revenuedot/mcp](https://github.com/revenuedot/mcp)). The local version is on npm: `npx -y @revenuedot/mcp`. Agent skills for Claude Code, Codex and Cursor are in [revenuedot/agent-skills](https://github.com/revenuedot/agent-skills).
@@ -15534,7 +15882,7 @@ Find your symptom below; each row gives the cause and the fix. Most problems com
 | `/v1/receipts` answers 400, code 7103 | The receipt cannot be verified, or is for another bundle ID or package name | See [4xx or 5xx](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/receipt-errors-4xx-vs-5xx.md) |
 | `/v1/receipts` answers 500, code 7234 | A StoreKit 1 receipt, and no App Store in-app purchase key | Add the key. See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md) |
 | `/v1/receipts` answers 503, code 7101 | Apple or Google failed, or the Google service account is wrong | Run **Verify credentials** on the app page. The SDK retries on its own |
-| `/v1/receipts` answers 400, code 7662 | The app is an Amazon, Stripe, Web Billing, Paddle or Roku app | Not supported yet. Use App Store, Mac App Store, Google Play or Test Store |
+| `/v1/receipts` answers 400, code 7662 | The app is a Web Billing, Paddle or Roku app | Not supported yet. Use App Store, Mac App Store, Google Play, Amazon Appstore, Stripe or Test Store |
 | Restore fails with 7102 | Another user owns the purchase and the transfer behaviour forbids moving it | See [How do I restore purchases?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/restore-purchases.md) |
 | Xcode StoreKit test purchases fail with 7103 | Xcode signs them with its own certificate | Add the `xcode_certificate` credential. See [Test purchases](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/test-sandbox-purchases.md) |
 
@@ -15594,7 +15942,7 @@ The list below is complete as of **2026-09-30**. The biggest gap: **no real App 
 ## Stores and purchases
 1. **Real store purchases are untested end to end.** The App Store and Google Play code passes tests against mocked Apple and Google APIs.
    - Workaround: test with App Store sandbox and Google Play license testers, report what you find, and keep live customers on your current backend. See [Test purchases](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/test-sandbox-purchases.md).
-2. **Only four app types accept receipts:** `app_store`, `mac_app_store`, `play_store` and `test_store`. Amazon, Stripe, Web Billing (`rcb_`), Paddle and Roku receipts answer HTTP 400, code 7662.
+2. **Six app types accept receipts:** `app_store`, `mac_app_store`, `play_store`, `amazon`, `stripe` and `test_store`. Web Billing (`rcb_`), Paddle and Roku receipts answer HTTP 400, code 7662. Amazon and Stripe are tested against mocked store APIs only; no real Amazon or Stripe purchase has run yet.
    - Workaround: none yet.
 3. **StoreKit 1 receipts need the App Store in-app purchase key.** Without it, RevenueDot answers HTTP 500, code 7234, so the SDK keeps retrying.
    - Workaround: add the key. For local development only, set the `allow_unsigned_receipts` credential. See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md).
@@ -15749,7 +16097,13 @@ The codes are defined in [`apps/server/src/errors.ts`](https://github.com/revenu
 | 401 | 7225 | Invalid API key | `routes/sdk.ts` | The `Authorization: Bearer` key is missing or unknown. Every SDK call answers this, not only receipts |
 | 400 | 7220 | Invalid app user ID | `routes/sdk.ts` | `app_user_id` is empty or longer than 100 characters |
 | 400 | 7000 | Bad request | `routes/sdk.ts` | A receipt posted with a secret key (`sk_`) has no `X-Platform` header, so RevenueDot cannot tell which app it is for |
-| 400 | 7662 | Receipts for this store are not supported yet | `routes/sdk.ts` | The key belongs to an Amazon, Stripe, Web Billing, Paddle or Roku app |
+| 400 | 7662 | Receipts for this store are not supported yet | `routes/sdk.ts` | The key belongs to a Web Billing, Paddle or Roku app, or a non-Amazon key asked for Amazon receipt details |
+| 400 | 7103 | Invalid receipt | `stores/amazon/index.ts` | Amazon does not know the receipt or the Amazon user (`store_user_id` missing or wrong) |
+| 500 | 7101 | Store problem | `stores/amazon/api.ts` | No Amazon shared key saved, or Amazon rejected it (RVS 496). The SDK keeps the purchase |
+| 503 | 7101 | Store problem | `stores/amazon/api.ts` | Amazon's Receipt Verification Service is down, throttling or slow |
+| 400 | 7103 | Invalid receipt | `stores/stripe/index.ts` | Not a `sub_` or `cs_` id, unknown to Stripe, an expired Checkout Session, or a subscription whose first payment never completed |
+| 500 | 7101 | Store problem | `stores/stripe/api.ts` | No Stripe key saved, or Stripe rejected it (401 or 403) |
+| 503 | 7101 | Store problem | `stores/stripe/index.ts` | Stripe is unavailable, or the first invoice or Checkout Session is not paid yet: post again later |
 | 400 | 7103 | Invalid receipt | `routes/sdk.ts` | The body has neither `fetch_token` nor `app_transaction` |
 | 400 | 7103 | Invalid receipt | `stores/test-store.ts` | The Test Store token is not `test_<ms>_<id>`, or `product_id` is missing |
 | 400 | 7103 | Invalid receipt | `stores/apple/index.ts` | The StoreKit 2 transaction's signature does not verify, the bundle ID does not match the app, the app receipt cannot be parsed, or it is an Xcode receipt without the `xcode_certificate` credential |
@@ -15773,7 +16127,7 @@ A wrong App Store key or Google service account is your setup problem, not the c
 3. **For 7103 from the App Store,** check the app's `bundle_id` matches the build you are testing. For Xcode StoreKit testing, add the `xcode_certificate` credential. See [How do I test purchases without real money?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/test-sandbox-purchases.md)
 4. **For 7103 from Google,** check the app's `package_name`, and that the purchase was made by this app.
 5. **For 7102,** decide who should own restored purchases and set `transfer_behavior`. See [How do I restore purchases?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/restore-purchases.md)
-6. **For 7662,** use an App Store, Mac App Store, Google Play or Test Store app. Other stores are not supported yet.
+6. **For 7662,** use an App Store, Mac App Store, Google Play, Amazon Appstore, Stripe or Test Store app. Web Billing, Paddle and Roku are not supported yet.
 7. **For 7234,** add the App Store in-app purchase key to the app. See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md). For local development only, you can set `allow_unsigned_receipts`.
 8. **For 7101 from Google,** run **Verify credentials** on the app page, or `POST /v2/projects/{project_id}/apps/{app_id}/actions/verify_credentials`, and grant the service account access in Play Console. See [Connect Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md).
 9. **For 7110,** read the server log. The error is printed there with its stack. Open an issue if it looks like a bug.

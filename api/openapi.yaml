@@ -425,6 +425,8 @@ paths:
 
         - **App Store:** `fetch_token` is a StoreKit 2 signed transaction (JWS), a StoreKit 1 app receipt (base64) or an Xcode StoreKit test receipt. With the app's in-app purchase key, Apple's App Store Server API supplies the full history and renewal state.
         - **Google Play:** `fetch_token` is the purchase token. RevenueDot checks it with the Play Developer API and acknowledges it.
+        - **Amazon Appstore:** `fetch_token` is the receipt id and `store_user_id` the Amazon user id (`X-Platform: amazon`). RevenueDot checks both with Amazon's Receipt Verification Service.
+        - **Stripe:** from your backend, with `X-Platform: stripe` and the Stripe app's public key (`strp_`): `fetch_token` is a subscription id (`sub_…`) or a Checkout Session id (`cs_…`). RevenueDot reads it from Stripe with the app's restricted key. An unpaid first invoice or an open session answers 503, so post it again later.
         - **Test Store:** `fetch_token` is `test_<purchase time in ms>_<id>`. Any such token is accepted.
 
         **4xx or 5xx matters.** A 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. RevenueDot answers 5xx for its own and the store's temporary failures so the SDK keeps the purchase and retries.
@@ -1400,8 +1402,12 @@ paths:
       operationId: amazonReceipt
       tags:
         - SDK support
-      summary: Amazon receipt details (not supported)
-      description: "The Android SDK asks for it on Amazon subscription purchases. Amazon Appstore purchases are not supported: 400 with code 7662, the same answer as a receipt post for an Amazon app, which leaves the purchase unconsumed."
+      summary: Amazon receipt details
+      description: |-
+        The Android SDK built for Amazon asks for it on subscription purchases and reads `termSku`, which it then posts as the product id. RevenueDot asks Amazon's Receipt Verification Service with the app's shared key and answers Amazon's receipt unchanged.
+
+        - **400 · 7103:** Amazon does not know the receipt or the user. **400 · 7662:** the key is not an Amazon app's.
+        - **500 · 7101:** no shared key is saved, or Amazon rejected it. **503 · 7101:** Amazon is unavailable; the SDK keeps the purchase unconsumed and retries. See [Amazon Appstore setup](../docs/guides/amazon-appstore.md).
       security:
         - publicApiKey: []
       parameters:
@@ -1410,6 +1416,7 @@ paths:
           required: true
           schema:
             type: string
+          description: The Amazon user id.
         - name: receipt_id
           in: path
           required: true
@@ -1417,17 +1424,37 @@ paths:
             type: string
           description: Not encoded by the SDK; may contain `/`.
       responses:
-        "400":
-          description: Not supported.
+        "200":
+          description: Amazon's receipt.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/V1Error"
+                type: object
+                description: "Amazon RVS receipt: receiptId, productId, productType, termSku, term, purchaseDate, renewalDate, cancelDate, autoRenewing, freeTrialEndDate, gracePeriodEndDate, testTransaction, betaProduct and more."
               example:
-                code: 7662
-                message: Amazon Appstore purchases are not supported yet.
+                autoRenewing: true
+                betaProduct: false
+                cancelDate: null
+                cancelReason: null
+                countryCode: US
+                freeTrialEndDate: null
+                gracePeriodEndDate: null
+                productId: pro.subscription
+                productType: SUBSCRIPTION
+                purchaseDate: 1790800914000
+                receiptId: q1YqVrJSSs7P1UvMTazKz9PLTCwoTswtyEktM8jLz0kpLQ1JTSlFMsjILCoQ:3:11
+                renewalDate: 1793392914000
+                term: 1 Month
+                termSku: pro.monthly
+                testTransaction: false
+        "400":
+          $ref: "#/components/responses/V1Error400"
         "401":
           $ref: "#/components/responses/V1Error401"
+        "500":
+          $ref: "#/components/responses/V1Error500"
+        "503":
+          $ref: "#/components/responses/V1Error503"
       x-source: routes/sdk.ts
   /v1/subscribers/{app_user_id}/workflows:
     get:
@@ -2140,6 +2167,186 @@ paths:
               schema:
                 $ref: "#/components/schemas/V1Error"
       x-source: stores/google/notifications.ts
+  /v1/notifications/amazon/{app_id}:
+    post:
+      operationId: amazonNotification
+      tags:
+        - Store notifications
+      summary: Amazon Appstore Real-time Notifications (SNS)
+      description: |-
+        Add this URL as an endpoint under App Services → Real-time Notifications in the Amazon Appstore Console. Amazon delivers through Amazon SNS.
+        Every message must carry a valid SNS signature (SignatureVersion 1 or 2, certificate from an `sns.<region>.amazonaws.com` URL). The subscription confirmation is accepted by fetching its `SubscribeURL`, which is what makes Amazon show "Verified". Each message is stored once (by SNS message id), forwarded when `notification_forward_url` is set, and applied by reading the receipt from Amazon's Receipt Verification Service.
+
+        - **200:** handled, confirmed, a duplicate, ignored (another package) or a receipt that can never be checked.
+        - **400:** not an SNS message, a bad signature, or a topic other than the app's `sns_topic_arn`. **404:** no Amazon app with this id.
+        - **500 or 503:** a temporary failure; SNS retries. See [Amazon Appstore setup](../docs/guides/amazon-appstore.md).
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                Type:
+                  type: string
+                  enum:
+                    - Notification
+                    - SubscriptionConfirmation
+                    - UnsubscribeConfirmation
+                MessageId:
+                  type: string
+                TopicArn:
+                  type: string
+                Message:
+                  type: string
+                  description: "For notifications: Amazon's JSON (appPackageName, notificationType, appUserId, receiptId, relatedReceipts, timestamp, betaProductTransaction)."
+                SubscribeURL:
+                  type: string
+                  description: Subscription confirmations only.
+              required:
+                - Type
+                - MessageId
+              description: An SNS message as SNS posts it, with its Timestamp, SignatureVersion, Signature and SigningCertURL (checked, not listed here).
+      responses:
+        "200":
+          description: Handled.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - processed
+                      - confirmed
+                      - unknown_purchase
+                      - ignored
+                      - duplicate
+                      - invalid_receipt
+              example:
+                status: processed
+        "400":
+          description: Not accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+              example:
+                code: 7000
+                message: The SNS signature does not match the message
+        "404":
+          description: Unknown app.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+        "500":
+          description: Temporary failure; SNS retries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+        "503":
+          description: The SNS certificate or confirmation failed; SNS retries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+      x-source: stores/amazon/notifications.ts
+  /v1/notifications/stripe/{app_id}:
+    post:
+      operationId: stripeNotification
+      tags:
+        - Store notifications
+      summary: Stripe webhooks
+      description: |-
+        Add this URL as a webhook endpoint in your Stripe account with the events `customer.subscription.created`, `.updated`, `.deleted`, `.paused`, `.resumed`, `invoice.paid`, `invoice.payment_failed`, `invoice.updated`, `charge.refunded` and `checkout.session.completed`, and save its signing secret on the app.
+        Each event is stored once (by event id), forwarded when `notification_forward_url` is set, and applied by reading the subscription from Stripe, so event order does not matter. Other event types are accepted and ignored.
+
+        - **200:** handled, a duplicate, ignored, an unknown purchase (applied only with `track_new_purchases`) or an object Stripe no longer has.
+        - **400:** no signing secret saved, a missing or wrong `Stripe-Signature`, or not a Stripe event. **404:** no Stripe app with this id.
+        - **500:** a temporary failure; Stripe retries for three days. See [Stripe setup](../docs/guides/stripe.md).
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/AppId"
+        - name: Stripe-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+          description: "`t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<body>\">`, checked with the app's `stripe_webhook_secret` within 5 minutes."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  description: evt_…
+                object:
+                  type: string
+                  const: event
+                type:
+                  type: string
+                created:
+                  type: integer
+                livemode:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    object:
+                      type: object
+              required:
+                - id
+                - type
+                - data
+      responses:
+        "200":
+          description: Handled.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - processed
+                      - unknown_purchase
+                      - ignored
+                      - duplicate
+                      - invalid
+              example:
+                status: processed
+        "400":
+          description: Not accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+              example:
+                code: 7000
+                message: No signature in Stripe-Signature matches the payload. Check the webhook signing secret.
+        "404":
+          description: Unknown app.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+        "500":
+          description: Temporary failure; Stripe retries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+      x-source: stores/stripe/notifications.ts
   /v1/subscribers/{app_user_id}/entitlements/{entitlement_identifier}/promotional:
     post:
       operationId: grantPromotional
@@ -3152,7 +3359,7 @@ paths:
       summary: Create an app
       description: |-
         One app per store. `app_store` and `mac_app_store` need `bundle_id`; `play_store` and `amazon` need `package_name`. The app gets a public SDK key with the store's prefix.
-        Other fields in the store object are saved as store credentials (for example `subscription_private_key`, `subscription_key_id`, `subscription_key_issuer`, `play_service_account_credentials_json`). They are never returned.
+        Other fields in the store object are saved as store credentials (for example `subscription_private_key`, `subscription_key_id`, `subscription_key_issuer`, `play_service_account_credentials_json`, Amazon's `shared_secret`, Stripe's `stripe_secret_key` and `stripe_webhook_secret`). They are never returned. A Stripe publishable key (`pk_…`) or a malformed signing secret is refused with 400.
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -3278,7 +3485,7 @@ paths:
       summary: Update an app and its store credentials
       description: |-
         Send only the store object of the app's own type. A field set to null removes that credential; other values replace it.
-        RevenueDot extensions in the store object: `notification_forward_url` (copy store notifications to another URL, for example RevenueCat during a dual run; null or "" turns it off), `track_new_purchases`, `allow_unsigned_receipts`, `xcode_certificate`, `app_apple_id`, `pubsub_audience`, `pubsub_service_account`. See [App Store setup](../docs/guides/app-store.md) and [Google Play setup](../docs/guides/google-play.md).
+        RevenueDot extensions in the store object: `notification_forward_url` (copy store notifications to another URL, for example RevenueCat during a dual run; null or "" turns it off), `track_new_purchases`, `allow_unsigned_receipts`, `xcode_certificate`, `app_apple_id`, `pubsub_audience`, `pubsub_service_account`; Amazon `shared_secret`, `sns_topic_arn`; Stripe `stripe_secret_key`, `stripe_webhook_secret`, `stripe_account_id`, `app_user_id_source` (metadata, customer_id, anonymous), `app_user_id_metadata_key`, `register_on` (invoice_paid, invoice_created). See [App Store setup](../docs/guides/app-store.md), [Google Play setup](../docs/guides/google-play.md), [Amazon Appstore setup](../docs/guides/amazon-appstore.md) and [Stripe setup](../docs/guides/stripe.md).
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -15053,7 +15260,7 @@ paths:
       tags:
         - Store setup
       summary: Store setup state of an app
-      description: The notification URL to paste into App Store Connect or Pub/Sub, the notification status, the forwarding URL and which credentials are set. Never a secret.
+      description: The notification URL to paste into App Store Connect, Pub/Sub, the Amazon Appstore Console or Stripe, the notification status, the forwarding URL and which credentials are set. Never a secret.
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -15082,8 +15289,8 @@ paths:
       operationId: verifyCredentials
       tags:
         - Store setup
-      summary: Check store credentials with Apple or Google
-      description: Makes one harmless call to the App Store Server API or the Play Developer API. Values in the body are checked before you save them; missing values fall back to the saved ones.
+      summary: Check store credentials with Apple, Google, Amazon or Stripe
+      description: "Makes one harmless call to the App Store Server API, the Play Developer API, Amazon's Receipt Verification Service (a made-up receipt: 496 means a wrong shared key) or Stripe (lists one subscription and one Checkout Session with the key). Values in the body are checked before you save them; missing values fall back to the saved ones."
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -15147,6 +15354,28 @@ paths:
                         - type: string
                         - type: object
                         - type: "null"
+                amazon:
+                  type: object
+                  properties:
+                    package_name:
+                      type:
+                        - string
+                        - "null"
+                    shared_secret:
+                      type:
+                        - string
+                        - "null"
+                stripe:
+                  type: object
+                  properties:
+                    stripe_secret_key:
+                      type:
+                        - string
+                        - "null"
+                    stripe_account_id:
+                      type:
+                        - string
+                        - "null"
             example: {}
       responses:
         "200":
@@ -19832,7 +20061,7 @@ components:
         - code: 7662
           name: UNSUPPORTED_RECEIPT
           status: "400"
-          meaning: Receipts for this app's store are not supported yet (Amazon, Stripe, Web Billing, Paddle, Roku), including the Android SDK's Amazon receipt lookup.
+          meaning: Receipts for this app's store are not supported yet (Web Billing, Paddle, Roku), and the Android SDK's Amazon receipt lookup with a key that is not an Amazon app's.
         - code: 7849
           name: INVALID_WEB_REDEMPTION_TOKEN
           status: "400"
@@ -21714,7 +21943,7 @@ components:
           type:
             - string
             - "null"
-          description: App Store or Google Play notification URL for this app.
+          description: The store notification URL for this app (App Store, Google Play, Amazon or Stripe).
         notification_forward_url:
           type:
             - string
@@ -21811,6 +22040,73 @@ components:
               properties:
                 configured:
                   type: boolean
+            amazon_shared_secret:
+              type: object
+              properties:
+                configured:
+                  type: boolean
+            stripe_secret_key:
+              type: object
+              properties:
+                configured:
+                  type: boolean
+                mode:
+                  type:
+                    - string
+                    - "null"
+                  enum:
+                    - live
+                    - test
+                    - null
+                kind:
+                  type:
+                    - string
+                    - "null"
+                  enum:
+                    - restricted
+                    - secret
+                    - other
+                    - null
+                last4:
+                  type:
+                    - string
+                    - "null"
+                  description: Last four characters of the key; the key itself is never returned.
+            stripe_webhook_secret:
+              type: object
+              properties:
+                configured:
+                  type: boolean
+        sns_topic_arn:
+          type:
+            - string
+            - "null"
+          description: "Amazon: the only SNS topic notifications are accepted from, when set."
+        stripe:
+          type:
+            - object
+            - "null"
+          description: Stripe apps only.
+          properties:
+            stripe_account_id:
+              type:
+                - string
+                - "null"
+            app_user_id_source:
+              type: string
+              enum:
+                - metadata
+                - customer_id
+                - anonymous
+            app_user_id_metadata_key:
+              type: string
+            register_on:
+              type: string
+              enum:
+                - invoice_paid
+                - invoice_created
+            configured:
+              type: boolean
       required:
         - object
         - app_id
@@ -21849,6 +22145,12 @@ components:
           type:
             - string
             - "null"
+        mode:
+          type: string
+          enum:
+            - live
+            - test
+          description: "Stripe: the key's mode."
       required:
         - object
         - app_id

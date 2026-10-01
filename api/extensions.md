@@ -16,7 +16,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects), [Update account settings](#update-account-settings), [Email a password reset link](#email-a-password-reset-link), [Check a password reset link](#check-a-password-reset-link), [Set a new password from a reset link](#set-a-new-password-from-a-reset-link), [Confirm an email address](#confirm-an-email-address), [Send a new confirmation email](#send-a-new-confirmation-email), [Look up an invite](#look-up-an-invite), [Accept an invite](#accept-an-invite)
 - **Members and invites**: [List open invites](#list-open-invites), [Invite someone by email](#invite-someone-by-email), [Resend an invite](#resend-an-invite), [Revoke an invite](#revoke-an-invite), [Change a member's role](#change-a-members-role), [Remove a member, or leave the project](#remove-a-member-or-leave-the-project)
 - **Project settings**: [Get a project with its settings](#get-a-project-with-its-settings), [Update a project's name and transfer behaviour](#update-a-projects-name-and-transfer-behaviour), [Delete a project and everything in it](#delete-a-project-and-everything-in-it), [Get the Customer Center configuration of the project](#get-the-customer-center-configuration-of-the-project), [Set the Customer Center configuration](#set-the-customer-center-configuration)
-- **Store setup**: [Store setup state of an app](#store-setup-state-of-an-app), [Check store credentials with Apple or Google](#check-store-credentials-with-apple-or-google), [Extend every active App Store subscriber of a product](#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](#status-of-a-mass-extension), [Setup health](#setup-health)
+- **Store setup**: [Store setup state of an app](#store-setup-state-of-an-app), [Check store credentials with Apple, Google, Amazon or Stripe](#check-store-credentials-with-apple-google-amazon-or-stripe), [Extend every active App Store subscriber of a product](#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](#status-of-a-mass-extension), [Setup health](#setup-health)
 - **API keys**: [List secret keys](#list-secret-keys), [Create a secret key](#create-a-secret-key), [Delete a secret key](#delete-a-secret-key)
 - **Webhook deliveries**: [Send a TEST event to one webhook](#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](#whether-each-webhook-is-enabled), [Delivery log of a webhook](#delivery-log-of-a-webhook), [Retry a delivery now](#retry-a-delivery-now)
 - **Event log**: [Event log](#event-log), [Transaction feed](#transaction-feed)
@@ -894,7 +894,7 @@ Notification URLs, credential checks, setup health and App Store mass extensions
 
 `GET /v2/projects/{project_id}/apps/{app_id}/store_settings` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read`
 
-The notification URL to paste into App Store Connect or Pub/Sub, the notification status, the forwarding URL and which credentials are set. Never a secret.
+The notification URL to paste into App Store Connect, Pub/Sub, the Amazon Appstore Console or Stripe, the notification status, the forwarding URL and which credentials are set. Never a secret.
 
 **Path parameters**
 
@@ -916,11 +916,11 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/store_settings" -H
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
-### Check store credentials with Apple or Google
+### Check store credentials with Apple, Google, Amazon or Stripe
 
 `POST /v2/projects/{project_id}/apps/{app_id}/actions/verify_credentials` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read`
 
-Makes one harmless call to the App Store Server API or the Play Developer API. Values in the body are checked before you save them; missing values fall back to the saved ones.
+Makes one harmless call to the App Store Server API, the Play Developer API, Amazon's Receipt Verification Service (a made-up receipt: 496 means a wrong shared key) or Stripe (lists one subscription and one Checkout Session with the key). Values in the body are checked before you save them; missing values fall back to the saved ones.
 
 **Path parameters**
 
@@ -946,6 +946,12 @@ Makes one harmless call to the App Store Server API or the Play Developer API. V
 | `play_store` | object | no |  |
 | `play_store.package_name` | string or null | no |  |
 | `play_store.play_service_account_credentials_json` | string or object or null | no |  |
+| `amazon` | object | no |  |
+| `amazon.package_name` | string or null | no |  |
+| `amazon.shared_secret` | string or null | no |  |
+| `stripe` | object | no |  |
+| `stripe.stripe_secret_key` | string or null | no |  |
+| `stripe.stripe_account_id` | string or null | no |  |
 
 **Example request**
 
@@ -1938,6 +1944,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `checked_at` | integer | yes | Checked at. Epoch milliseconds. |
 | `key_id` | string | no |  |
 | `client_email` | string or null | no |  |
+| `mode` | `live`, `test` | no | Stripe: the key's mode. |
 
 ### Customer
 
@@ -2259,7 +2266,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `app_id` | string | yes |  |
 | `type` | string | yes |  |
 | `api_origin` | string | yes | This server as the outside world reaches it: the SDK's proxy URL. |
-| `notification_url` | string or null | no | App Store or Google Play notification URL for this app. |
+| `notification_url` | string or null | no | The store notification URL for this app (App Store, Google Play, Amazon or Stripe). |
 | `notification_forward_url` | string or null | no | Where notifications are copied during a dual run. |
 | `last_notification_at` | integer or null | no | Last notification processed for a known purchase. Epoch milliseconds, or null. |
 | `last_notification_error` | string or null | no |  |
@@ -2287,6 +2294,22 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `credentials.play_service_account.client_email` | string or null | no |  |
 | `credentials.xcode_certificate` | object | no |  |
 | `credentials.xcode_certificate.configured` | boolean | no |  |
+| `credentials.amazon_shared_secret` | object | no |  |
+| `credentials.amazon_shared_secret.configured` | boolean | no |  |
+| `credentials.stripe_secret_key` | object | no |  |
+| `credentials.stripe_secret_key.configured` | boolean | no |  |
+| `credentials.stripe_secret_key.mode` | `live`, `test`, null | no |  |
+| `credentials.stripe_secret_key.kind` | `restricted`, `secret`, `other`, null | no |  |
+| `credentials.stripe_secret_key.last4` | string or null | no | Last four characters of the key; the key itself is never returned. |
+| `credentials.stripe_webhook_secret` | object | no |  |
+| `credentials.stripe_webhook_secret.configured` | boolean | no |  |
+| `sns_topic_arn` | string or null | no | Amazon: the only SNS topic notifications are accepted from, when set. |
+| `stripe` | object or null | no | Stripe apps only. |
+| `stripe.stripe_account_id` | string or null | no |  |
+| `stripe.app_user_id_source` | `metadata`, `customer_id`, `anonymous` | no |  |
+| `stripe.app_user_id_metadata_key` | string | no |  |
+| `stripe.register_on` | `invoice_paid`, `invoice_created` | no |  |
+| `stripe.configured` | boolean | no |  |
 
 ### Subscription
 
