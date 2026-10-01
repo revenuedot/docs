@@ -13,7 +13,7 @@ RevenueDot-only endpoints are on [Extensions](extensions.md).
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (130)
+## Operations on this page (132)
 
 - **Projects**: [List projects](#list-projects), [Create a project](#create-a-project)
 - **Apps**: [List apps](#list-apps), [Create an app](#create-an-app), [Get an app](#get-an-app), [Update an app and its store credentials](#update-an-app-and-its-store-credentials), [Delete an app](#delete-an-app), [Get an app's public SDK key](#get-an-apps-public-sdk-key), [Get a StoreKit configuration file](#get-a-storekit-configuration-file)
@@ -25,6 +25,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Subscriptions**: [Find subscriptions by store id](#find-subscriptions-by-store-id), [Get a subscription](#get-a-subscription), [List the entitlements a subscription unlocks](#list-the-entitlements-a-subscription-unlocks), [List a subscription's payments](#list-a-subscriptions-payments), [Cancel a subscription (Google Play)](#cancel-a-subscription-google-play), [Refund and revoke a subscription (Google Play)](#refund-and-revoke-a-subscription-google-play), [Extend a subscription](#extend-a-subscription), [Refund one payment of a subscription (Google Play)](#refund-one-payment-of-a-subscription-google-play), [Get where the customer manages a subscription](#get-where-the-customer-manages-a-subscription)
 - **Purchases**: [Find one-time purchases by store id](#find-one-time-purchases-by-store-id), [Get a one-time purchase](#get-a-one-time-purchase), [List the entitlements a purchase unlocks](#list-the-entitlements-a-purchase-unlocks), [Refund a one-time purchase (Google Play)](#refund-a-one-time-purchase-google-play)
 - **Metrics**: [Overview metrics](#overview-metrics), [Revenue over a date range](#revenue-over-a-date-range)
+- **Charts**: [Get chart data](#get-chart-data), [Get available options for a chart](#get-available-options-for-a-chart)
 - **In-app currencies**: [List in-app currencies](#list-in-app-currencies), [Create an in-app currency](#create-an-in-app-currency), [Get an in-app currency](#get-an-in-app-currency), [Update an in-app currency](#update-an-in-app-currency), [Delete an in-app currency](#delete-an-in-app-currency), [Archive an in-app currency](#archive-an-in-app-currency), [Unarchive an in-app currency](#unarchive-an-in-app-currency), [List a customer's balances](#list-a-customers-balances), [Credit or spend in-app currency](#credit-or-spend-in-app-currency), [Change a balance without a ledger entry](#change-a-balance-without-a-ledger-entry)
 - **Audit log**: [List audit log entries](#list-audit-log-entries)
 - **Targeting**: [List audiences](#list-audiences), [Create an audience](#create-an-audience), [Preview who matches](#preview-who-matches), [Known values for attribution and custom-attribute fields](#known-values-for-attribution-and-custom-attribute-fields), [Get an audience](#get-an-audience), [Update an audience](#update-an-audience), [Delete an unused audience](#delete-an-unused-audience), [List targeting rules in order](#list-targeting-rules-in-order), [Create a targeting rule](#create-a-targeting-rule), [Set the evaluation order](#set-the-evaluation-order), [Get a targeting rule](#get-a-targeting-rule), [Update a targeting rule](#update-a-targeting-rule), [Delete a targeting rule](#delete-a-targeting-rule)
@@ -2638,6 +2639,89 @@ Example 200 response:
   "revenue_type": "revenue"
 }
 ```
+
+## Charts
+
+Every built-in chart (revenue, MRR, subscriptions, trials, conversion, LTV, churn, refunds, paywalls, ads) with RevenueCat's definitions.
+
+### Get chart data
+
+`GET /v2/projects/{project_id}/charts/{chart_name}` · Auth: secret key or dashboard session · Permissions: `charts_metrics:charts:read`
+
+Time series or cohort table for one chart, computed from the project's purchases when asked. Definitions, filters and SQL: https://revenuedot.app/docs/guides/charts.
+
+Sandbox purchases, granted access and Family Sharing are excluded; money is USD at the purchase-date rate (or `currency` at the same date); periods are UTC.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `chart_name` | `actives`, `actives_movement`, `actives_new`, `arr`, `churn`, `cohort_explorer`, `conversion_to_paying`, `customers_new`, `initial_conversion`, `ltv_per_customer`, `ltv_per_paying_customer`, `mrr`, `mrr_movement`, `prediction_explorer`, `refund_rate`, `refund_request`, `refunds`, `revenue`, `subscription_retention`, `subscription_status`, `trials`, `trials_movement`, `trials_new`, `customers_active`, `trial_conversion`, `trial_conversion_rate`, `trial_cancellation`, `non-subscription_purchases`, `ad_revenue`, `ad_impressions`, `ad_clicks`, `ad_monetized_customers`, `ad_arpdau`, `ad_rpm`, `ad_fill_rate`, `ad_ctr`, `paywall_encounter`, `paywall_conversion`, `paywall_ltv`, `paywall_abandonment`, `app_store_save_outcomes`, `play_store_cancel_reasons`, `customer_center_survey_responses` | yes | The chart. `play_store_cancel_reasons` and `customer_center_survey_responses` are RevenueDot names for charts RevenueCat shows only in its dashboard. Definitions: https://revenuedot.app/docs/guides/charts |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `resolution` | string | no | `0`–`4` or `day`, `week`, `month`, `quarter`, `year`. Default `day` (`month` for cohort tables). At most 1,000 periods. |
+| `start_date` | string | no | First day (YYYY-MM-DD). Default: 30 days ago, or 12 months for cohort tables. |
+| `end_date` | string | no | Last day, inclusive. Default: today. |
+| `expand_periods` | boolean | no | Count the whole first period of flow charts. Default false. |
+| `filters` | string | no | JSON array `[{"name":"country","values":["US"]}]`. Names come from `/options`. |
+| `selectors` | string | no | JSON object, e.g. `{"revenue_type":"proceeds"}`. |
+| `segment` | string | no | One dimension from `/options`. |
+| `limit_num_segments` | integer | no | Top N segments by the first measure; the rest become "Other". |
+| `aggregate` | string | no | `average`, `total` or both, comma separated: `values` is empty and `summary` holds only these. |
+| `currency` | `USD`, `EUR`, `GBP`, `AUD`, `CAD`, `JPY`, `BRL`, `KRW`, `CNY`, `MXN`, `SEK`, `PLN`, `NZD`, `CHF` | no |  |
+| `include_annotations` | boolean | no |  |
+| `realtime` | boolean | no | Accepted for compatibility; every chart uses the real-time (v3) definitions. |
+| `environment` | `production`, `sandbox` | no | RevenueDot extension. `sandbox` shows only sandbox and Test Store purchases. Default `production`. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/charts/$CHART_NAME" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The chart.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Get available options for a chart
+
+`GET /v2/projects/{project_id}/charts/{chart_name}/options` · Auth: secret key or dashboard session · Permissions: `charts_metrics:charts:read`
+
+Resolutions, segments, filters with the values present in the project's data, and the chart's selectors.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `chart_name` | `actives`, `actives_movement`, `actives_new`, `arr`, `churn`, `cohort_explorer`, `conversion_to_paying`, `customers_new`, `initial_conversion`, `ltv_per_customer`, `ltv_per_paying_customer`, `mrr`, `mrr_movement`, `prediction_explorer`, `refund_rate`, `refund_request`, `refunds`, `revenue`, `subscription_retention`, `subscription_status`, `trials`, `trials_movement`, `trials_new`, `customers_active`, `trial_conversion`, `trial_conversion_rate`, `trial_cancellation`, `non-subscription_purchases`, `ad_revenue`, `ad_impressions`, `ad_clicks`, `ad_monetized_customers`, `ad_arpdau`, `ad_rpm`, `ad_fill_rate`, `ad_ctr`, `paywall_encounter`, `paywall_conversion`, `paywall_ltv`, `paywall_abandonment`, `app_store_save_outcomes`, `play_store_cancel_reasons`, `customer_center_survey_responses` | yes | The chart. `play_store_cancel_reasons` and `customer_center_survey_responses` are RevenueDot names for charts RevenueCat shows only in its dashboard. Definitions: https://revenuedot.app/docs/guides/charts |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `environment` | `production`, `sandbox` | no | RevenueDot extension. `sandbox` shows only sandbox and Test Store purchases. Default `production`. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/charts/$CHART_NAME/options" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The options.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
 ## In-app currencies
 
