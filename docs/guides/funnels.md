@@ -1,6 +1,6 @@
 ---
 title: How do I build a web-to-app funnel?
-description: Build a multi-step funnel (questions, info, email, paywall, success) in the dashboard or with AI, publish it to a public URL, sell on Stripe Checkout, and see where visitors drop off. Funnel events can go to webhooks and to Segment, Amplitude, Mixpanel and PostHog.
+description: Build a multi-step funnel (questions, info, email, paywall, success) in the dashboard or with AI, publish it to a public URL, sell on Stripe Checkout, and see where visitors drop off. Funnel events can go to webhooks, analytics tools and ad networks.
 ---
 
 # How do I build a web-to-app funnel?
@@ -106,7 +106,7 @@ Three of them can also go to your [webhooks](webhooks.md) and [integrations](int
 | `FUNNEL_STEP_COMPLETED` | `funnel_step_completed` | `rd_funnel_step_completed` |
 | `FUNNEL_PURCHASE` | `funnel_purchase` | `rd_funnel_purchase` |
 
-They are **opt-in**: only webhooks and integrations whose event filter names them receive them, so handlers that know only RevenueCat's event types never see them. Segment, Amplitude, Mixpanel and PostHog send them with the names above.
+They are **opt-in**: only webhooks and integrations whose event filter names them receive them, so handlers that know only RevenueCat's event types never see them. Segment, Amplitude, Mixpanel and PostHog send them with the names above. Meta, Google Tag Manager, Branch and AppsFlyer send them to ad networks as web events, with the visitor's browser and ad click ids; see [Funnel events to ad networks](integrations.md#funnel-events-to-ad-networks).
 
 ```bash
 curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/webhooks" \
@@ -114,7 +114,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/webhooks" 
   -d '{"name":"Funnels","url":"https://api.example.com/webhooks/funnels","event_types":["funnel_viewed","funnel_step_completed","funnel_purchase","initial_purchase"]}'
 ```
 
-Each event carries `funnel_id`, `funnel_name`, `funnel_slug`, `session_id`, `step_id`, `step_type`, `step_index`, `answer`, the page's `utm_*` parameters, `store: STRIPE` and the environment. `FUNNEL_PURCHASE` adds `product_id` and the buyer's `app_user_id`. Each visitor gets an anonymous app user id (`$RCAnonymousID:…`) when the page loads, unless the URL had `?app_user_id=`. Their events and their purchase use the same id, so analytics tools see one user from the first view to the purchase. `session_id` also joins one visit's events. Full fields: [Webhook events](../../api/webhook-events.md#funnel_step_completed).
+Each event carries `funnel_id`, `funnel_name`, `funnel_slug`, `session_id`, `step_id`, `step_type`, `step_index`, `answer`, the page's `utm_*` parameters, the ad click ids from the landing URL (`click_ids`), `store: STRIPE` and the environment. `FUNNEL_PURCHASE` adds `product_id`, `revenue_usd`, `currency` and the buyer's `app_user_id`. While an integration asks for funnel events, events also carry `page_url`, and while that integration is Meta or Branch, the visitor's `client_ip` and `client_user_agent` (deleted after 7 days); otherwise no visitor IP address is stored. Visitors with Global Privacy Control on (`Sec-GPC: 1`) get none of these and no `click_ids`. Each visitor gets an anonymous app user id (`$RCAnonymousID:…`) when the page loads, unless the URL had `?app_user_id=`. Their events and their purchase use the same id, so analytics tools see one user from the first view to the purchase. `session_id` also joins one visit's events. Full fields: [Webhook events](../../api/webhook-events.md#funnel_step_completed).
 
 ## Analytics
 The **Analytics** tab, or the API, shows the last 7, 30 or more days:
@@ -168,7 +168,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/funnels/fnl_7q2k9m4x1z8
 
 ## Not built yet
 - A/B tests of funnel steps, a template gallery, and image upload (use an https image URL).
-- Funnel events go to webhooks and to Segment, Amplitude, Mixpanel and PostHog. Ad networks (Meta, AppsFlyer, Adjust) do not get them yet.
+- Adjust, Kochava, Singular, Tenjin and Airbridge do not get funnel events: they match people by mobile device ids, which a web visitor does not have.
 
 ## Related
 - [Sell on the web with Stripe](web-billing.md)

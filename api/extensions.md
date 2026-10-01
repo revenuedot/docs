@@ -11,7 +11,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (131)
+## Operations on this page (149)
 
 - **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects), [Update account settings](#update-account-settings), [Email a password reset link](#email-a-password-reset-link), [Check a password reset link](#check-a-password-reset-link), [Set a new password from a reset link](#set-a-new-password-from-a-reset-link), [Confirm an email address](#confirm-an-email-address), [Send a new confirmation email](#send-a-new-confirmation-email), [Look up an invite](#look-up-an-invite), [Accept an invite](#accept-an-invite)
 - **Members and invites**: [List open invites](#list-open-invites), [Invite someone by email](#invite-someone-by-email), [Resend an invite](#resend-an-invite), [Revoke an invite](#revoke-an-invite), [Change a member's role](#change-a-members-role), [Remove a member, or leave the project](#remove-a-member-or-leave-the-project)
@@ -20,10 +20,11 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **API keys**: [List secret keys](#list-secret-keys), [Create a secret key](#create-a-secret-key), [Delete a secret key](#delete-a-secret-key)
 - **Webhook deliveries**: [Send a TEST event to one webhook](#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](#whether-each-webhook-is-enabled), [Delivery log of a webhook](#delivery-log-of-a-webhook), [Retry a delivery now](#retry-a-delivery-now)
 - **Integrations**: [What each integration needs](#what-each-integration-needs), [List integrations](#list-integrations), [Connect an integration](#connect-an-integration), [Get an integration](#get-an-integration), [Update, enable or disable an integration](#update-enable-or-disable-an-integration), [Disconnect an integration](#disconnect-an-integration), [Send a TEST event to one integration](#send-a-test-event-to-one-integration), [Delivery log of an integration](#delivery-log-of-an-integration), [Retry a delivery now](#retry-a-delivery-now), [Queue failed or skipped deliveries again](#queue-failed-or-skipped-deliveries-again)
+- **Ads**: [Ads Overview: ad revenue, impressions, eCPM and breakdowns](#ads-overview-ad-revenue-impressions-ecpm-and-breakdowns), [List reward rules in the order they are checked](#list-reward-rules-in-the-order-they-are-checked), [Create a reward rule](#create-a-reward-rule), [Reorder reward rules](#reorder-reward-rules), [Update, turn on or turn off a reward rule](#update-turn-on-or-turn-off-a-reward-rule), [Delete a reward rule](#delete-a-reward-rule), [The rewards ledger](#the-rewards-ledger), [Send a test reward](#send-a-test-reward), [AdMob connection, loaded ad units and the URLs to paste](#admob-connection-loaded-ad-units-and-the-urls-to-paste), [Disconnect AdMob](#disconnect-admob), [Start Google sign-in for AdMob](#start-google-sign-in-for-admob), [Finish Google sign-in for AdMob](#finish-google-sign-in-for-admob), [Load AdMob ad units now](#load-admob-ad-units-now), [Customers and revenue by Apple Search Ads campaign](#customers-and-revenue-by-apple-search-ads-campaign), [Load campaign names from Apple Search Ads](#load-campaign-names-from-apple-search-ads), [AdMob server-side verification callback](#admob-server-side-verification-callback), [Google's redirect after AdMob sign-in](#googles-redirect-after-admob-sign-in)
 - **Data exports**: [List scheduled data exports](#list-scheduled-data-exports), [Create a scheduled data export](#create-a-scheduled-data-export), [Get a data export](#get-a-data-export), [Update a data export](#update-a-data-export), [Delete a data export](#delete-a-data-export), [Run an export now](#run-an-export-now), [Check the bucket and credentials](#check-the-bucket-and-credentials), [Run history](#run-history)
 - **Refund Control**: [Get policies and settings](#get-policies-and-settings), [Save settings and the ordered policies](#save-settings-and-the-ordered-policies), [Refund rate, amounts and counts](#refund-rate-amounts-and-counts), [List refund requests, newest first](#list-refund-requests-newest-first)
 - **Retention**: [List Customer Center retention offers](#list-customer-center-retention-offers), [Create a retention offer](#create-a-retention-offer), [Update a retention offer](#update-a-retention-offer), [Delete a retention offer](#delete-a-retention-offer), [Get Apple Retention Messaging settings](#get-apple-retention-messaging-settings), [Save messages, defaults and real-time rules](#save-messages-defaults-and-real-time-rules), [Upload to Apple and register the real-time URL](#upload-to-apple-and-register-the-real-time-url), [Apple's real-time Get Retention Message call](#apples-real-time-get-retention-message-call)
-- **Support**: [List Customer Center tickets, newest first](#list-customer-center-tickets-newest-first), [Get a ticket](#get-a-ticket), [Close or reopen a ticket](#close-or-reopen-a-ticket), [What a help desk sidebar shows about a customer](#what-a-help-desk-sidebar-shows-about-a-customer), [Look customers up by email](#look-customers-up-by-email)
+- **Support**: [List Customer Center tickets, newest first](#list-customer-center-tickets-newest-first), [Get a ticket](#get-a-ticket), [Close or reopen a ticket](#close-or-reopen-a-ticket), [What a help desk sidebar shows about a customer](#what-a-help-desk-sidebar-shows-about-a-customer), [Look customers up by email](#look-customers-up-by-email), [Intercom inbox app: the customer's subscription as Canvas Kit components](#intercom-inbox-app-the-customers-subscription-as-canvas-kit-components)
 - **Win-back**: [List win-back campaigns](#list-win-back-campaigns), [Create a win-back campaign](#create-a-win-back-campaign), [Get a campaign with stats and recent emails](#get-a-campaign-with-stats-and-recent-emails), [Update, start or pause a campaign](#update-start-or-pause-a-campaign), [Delete a campaign](#delete-a-campaign), [Who would get the email now](#who-would-get-the-email-now), [Send a test email](#send-a-test-email), [Send now](#send-now), [Email button: records the click and redirects to the offer](#email-button-records-the-click-and-redirects-to-the-offer), [Open-tracking image (campaigns with track_opens)](#open-tracking-image-campaigns-with-track_opens), [Unsubscribe page (asks first)](#unsubscribe-page-asks-first), [Unsubscribe (also RFC 8058 one-click)](#unsubscribe-also-rfc-8058-one-click)
 - **Customer lists**: [Customers in a list, with the summary cards](#customers-in-a-list-with-the-summary-cards), [Export a list as CSV](#export-a-list-as-csv)
 - **Event log**: [Event log](#event-log), [Transaction feed](#transaction-feed)
@@ -1332,13 +1333,13 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID/de
 
 ## Integrations
 
-Slack, Segment, Amplitude, Mixpanel, PostHog, Firebase, BigQuery, AppsFlyer, Adjust and Meta: connect, test, the delivery log, retry and replay.
+Every tool of RevenueCat's integration catalogue plus BigQuery: 32 that receive events, and the AdMob, Apple Search Ads, Intercom inbox and Zendesk connections: the catalogue, connect, test, the delivery log, retry and replay. See [Integrations](../docs/guides/integrations.md).
 
 ### What each integration needs
 
 `GET /v2/projects/{project_id}/integrations/catalog` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read`
 
-The fields each integration takes (keys, labels, types, options), its default environment and setup guide. The dashboard draws its forms from this.
+The fields each integration takes (keys, labels, types, options), its default environment, how RevenueDot reaches the partner (`api`), whether it is a connection without events, and its setup guide. The dashboard draws its forms from this. 36 entries: every tool of RevenueCat's integration catalogue plus BigQuery.
 
 **Path parameters**
 
@@ -1359,6 +1360,82 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/catalog" -H "Autho
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "items": [
+    {
+      "object": "integration_type",
+      "type": "statsig",
+      "name": "Statsig",
+      "category": "analytics",
+      "description": "Send subscription events and revenue to Statsig to measure experiments and feature gates by what customers pay.",
+      "default_environment": null,
+      "event_names": true,
+      "fields": [
+        {
+          "key": "server_secret",
+          "label": "Server secret key",
+          "type": "secret",
+          "required": true,
+          "placeholder": "secret-…",
+          "hint": "In Statsig, Settings → Keys & Environments → Server Secret Key."
+        },
+        {
+          "key": "reporting",
+          "label": "Sales reporting",
+          "type": "select",
+          "options": [
+            {
+              "value": "gross",
+              "label": "Gross revenue"
+            },
+            {
+              "value": "proceeds",
+              "label": "After store commission and taxes"
+            }
+          ],
+          "hint": "Revenue is sent in US dollars."
+        }
+      ],
+      "docs_url": "https://revenuedot.app/docs/guides/integrations#statsig",
+      "api": "documented",
+      "connection": false
+    },
+    {
+      "object": "integration_type",
+      "type": "superwall",
+      "name": "Superwall",
+      "category": "analytics",
+      "description": "Send subscription events and revenue to Superwall so paywall reports show what each paywall earned.",
+      "default_environment": null,
+      "event_names": false,
+      "fields": [
+        {
+          "key": "webhook_url",
+          "label": "Superwall webhook URL",
+          "type": "secret",
+          "required": true,
+          "url": true
+        },
+        {
+          "key": "authorization",
+          "label": "Authorization header value",
+          "type": "secret"
+        }
+      ],
+      "docs_url": "https://revenuedot.app/docs/guides/integrations#superwall",
+      "api": "webhook",
+      "connection": false
+    }
+  ],
+  "next_page": null,
+  "url": "/v2/projects/proj1a2b3c4d/integrations/catalog"
+}
+```
+
 ### List integrations
 
 `GET /v2/projects/{project_id}/integrations/partners` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read`
@@ -1373,7 +1450,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/catalog" -H "Autho
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `type` | `slack`, `segment`, `amplitude`, `mixpanel`, `posthog`, `firebase`, `bigquery`, `appsflyer`, `adjust`, `meta` | no |  |
+| `type` | `slack`, `segment`, `amplitude`, `mixpanel`, `posthog`, `firebase`, `bigquery`, `appsflyer`, `adjust`, `meta`, `mparticle`, `statsig`, `superwall`, `telemetrydeck`, `apple_search_ads`, `appstack`, `asapty`, `branch`, `google_tag_manager`, `kochava`, `airbridge`, `splitmetrics`, `singular`, `solarengine`, `tenjin`, `airship`, `braze`, `clevertap`, `customerio`, `discord`, `intercom`, `iterable`, `onesignal`, `admob`, `intercom_inbox`, `zendesk` | no |  |
 | `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
 | `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
 
@@ -1395,7 +1472,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners" -H "Auth
 
 `POST /v2/projects/{project_id}/integrations/partners` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
 
-Every event webhooks get is also sent to each enabled integration whose filters match, with the webhook retry schedule (5, 10, 20, 40, 80 minutes). Secrets are encrypted at rest and never returned.
+Every event webhooks get is also sent to each enabled integration whose filters match, with the webhook retry schedule (5, 10, 20, 40, 80 minutes). Secrets are encrypted at rest and never returned. The connections are saved here too: `apple_search_ads` with an Apple Search Ads API user (for campaign names), `intercom_inbox` with the Intercom app's `client_secret`, and `zendesk` with no settings (it marks the sidebar app as installed). AdMob connects through `POST /v2/projects/{project_id}/ads/admob/connect`.
 
 **Path parameters**
 
@@ -1407,7 +1484,7 @@ Every event webhooks get is also sent to each enabled integration whose filters 
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `type` | `slack`, `segment`, `amplitude`, `mixpanel`, `posthog`, `firebase`, `bigquery`, `appsflyer`, `adjust`, `meta` | yes |  |
+| `type` | `slack`, `segment`, `amplitude`, `mixpanel`, `posthog`, `firebase`, `bigquery`, `appsflyer`, `adjust`, `meta`, `mparticle`, `statsig`, `superwall`, `telemetrydeck`, `apple_search_ads`, `appstack`, `asapty`, `branch`, `google_tag_manager`, `kochava`, `airbridge`, `splitmetrics`, `singular`, `solarengine`, `tenjin`, `airship`, `braze`, `clevertap`, `customerio`, `discord`, `intercom`, `iterable`, `onesignal`, `admob`, `intercom_inbox`, `zendesk` | yes |  |
 | `name` | string | no |  |
 | `enabled` | boolean | no |  |
 | `environment` | `production`, `sandbox`, null | no |  |
@@ -1509,7 +1586,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRAT
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `type` | `slack`, `segment`, `amplitude`, `mixpanel`, `posthog`, `firebase`, `bigquery`, `appsflyer`, `adjust`, `meta` | no |  |
+| `type` | `slack`, `segment`, `amplitude`, `mixpanel`, `posthog`, `firebase`, `bigquery`, `appsflyer`, `adjust`, `meta`, `mparticle`, `statsig`, `superwall`, `telemetrydeck`, `apple_search_ads`, `appstack`, `asapty`, `branch`, `google_tag_manager`, `kochava`, `airbridge`, `splitmetrics`, `singular`, `solarengine`, `tenjin`, `airship`, `braze`, `clevertap`, `customerio`, `discord`, `intercom`, `iterable`, `onesignal`, `admob`, `intercom_inbox`, `zendesk` | no |  |
 | `name` | string | no |  |
 | `enabled` | boolean | no |  |
 | `environment` | `production`, `sandbox`, null | no |  |
@@ -1691,6 +1768,931 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+## Ads
+
+The Ads Overview (ad revenue, impressions, eCPM and breakdowns from the SDK's ad events), rewarded ads verified on the server (AdMob's callback, reward rules, the rewards ledger, test rewards), the AdMob connection and Apple Search Ads campaign reporting. See [Ads](../docs/guides/ads.md).
+
+### Ads Overview: ad revenue, impressions, eCPM and breakdowns
+
+`GET /v2/projects/{project_id}/ads/overview` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:overview:read`
+
+Totals, the previous period, a daily series and breakdowns by network, format, placement, ad unit and mediator, from the ad events the SDK posts to `POST /v1/events`. Money is US dollars at each day's exchange rate.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `range` | `7d`, `28d`, `90d`, `12m` | no | Default 28d. Periods are UTC days ending today. |
+| `environment` | `production`, `sandbox` | no | Default production. |
+| `app_id` | string | no | Only this app's events and purchases. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/overview" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The overview.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "ads_overview",
+  "currency": "USD",
+  "range": "7d",
+  "environment": "production",
+  "app_id": null,
+  "start_date": "2026-09-25",
+  "end_date": "2026-10-01",
+  "has_ad_events": true,
+  "totals": {
+    "ad_revenue": 412.37,
+    "impressions": 183240,
+    "ecpm": 2.25,
+    "clicks": 2210,
+    "ctr": 0.0121,
+    "loaded": 190112,
+    "failed_to_load": 8410,
+    "fill_rate": 0.9576,
+    "revenue_events": 183240,
+    "ad_customers": 9312,
+    "subscription_revenue": 1840.5,
+    "total_revenue": 2252.87,
+    "ad_share": 0.183
+  },
+  "previous": {
+    "ad_revenue": 388.1,
+    "impressions": 176005,
+    "ecpm": 2.21,
+    "clicks": 2034,
+    "ctr": 0.0116,
+    "loaded": 181220,
+    "failed_to_load": 8102,
+    "fill_rate": 0.9572,
+    "revenue_events": 176005,
+    "subscription_revenue": 1702.25
+  },
+  "series": [
+    {
+      "date": "2026-09-25",
+      "ad_revenue": 57.9,
+      "impressions": 25811,
+      "ecpm": 2.24,
+      "clicks": 301,
+      "subscription_revenue": 255.3
+    }
+  ],
+  "by_network": [
+    {
+      "key": "AdMob",
+      "ad_revenue": 301.2,
+      "impressions": 131002,
+      "ecpm": 2.3,
+      "clicks": 1650,
+      "share": 0.7304
+    }
+  ],
+  "by_format": [
+    {
+      "key": "rewarded",
+      "ad_revenue": 250.11,
+      "impressions": 60321,
+      "ecpm": 4.15,
+      "clicks": 801,
+      "share": 0.6065
+    }
+  ],
+  "by_placement": [
+    {
+      "key": "level_end",
+      "ad_revenue": 180.4,
+      "impressions": 41022,
+      "ecpm": 4.4,
+      "clicks": 512,
+      "share": 0.4375
+    }
+  ],
+  "by_ad_unit": [
+    {
+      "key": "ca-app-pub-3940256099942544/5224354917",
+      "ad_revenue": 180.4,
+      "impressions": 41022,
+      "ecpm": 4.4,
+      "clicks": 512,
+      "share": 0.4375,
+      "name": "Level end rewarded",
+      "unit_format": "rewarded"
+    }
+  ],
+  "by_mediator": [
+    {
+      "key": "AdMob",
+      "ad_revenue": 412.37,
+      "impressions": 183240,
+      "ecpm": 2.25,
+      "clicks": 2210,
+      "share": 1
+    }
+  ],
+  "unconverted": [],
+  "ad_units_loaded": 6
+}
+```
+
+### List reward rules in the order they are checked
+
+`GET /v2/projects/{project_id}/ads/reward_rules` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/reward_rules" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Every rule, first checked first.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Create a reward rule
+
+`POST /v2/projects/{project_id}/ads/reward_rules` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+The new rule goes last. A project has at most 200 rules. A currency rule needs `currency_code` and `amount` or `multiplier`; an entitlement rule needs `entitlement_id` and `duration_minutes`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | yes |  |
+| `enabled` | boolean | no | A disabled rule is skipped. Default true. |
+| `app_id` | string or null | no | Only rewards from this app; null matches every app. |
+| `ad_unit_id` | string or null | no | Only this ad unit. AdMob's callback sends the number after the slash (`5224354917`) and the SDK the full id (`ca-app-pub-…/5224354917`); either form matches. Null or empty matches every ad unit. |
+| `reward_item` | string or null | no | Only this AdMob reward item (`reward_item`, compared without case). Null or empty matches every item. |
+| `kind` | `virtual_currency`, `entitlement` | yes | What the rule grants. |
+| `currency_code` | string or null | no | The in-app currency to credit (kind `virtual_currency`). It must exist in the project. |
+| `amount` | integer or null | no | A fixed amount per reward, 1 to 1,000,000,000 (kind `virtual_currency`). |
+| `multiplier` | number or null | no | Instead of `amount`: the ad network's `reward_amount` times this, rounded, at least 1 (kind `virtual_currency`). |
+| `entitlement_id` | string or null | no | The entitlement's lookup key (kind `entitlement`). It must exist in the project. |
+| `duration_minutes` | integer or null | no | How long the entitlement lasts, 1 to 525,600 minutes (kind `entitlement`). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/reward_rules" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"name":"Gems for level-end ads","ad_unit_id":"ca-app-pub-3940256099942544/5224354917","kind":"virtual_currency","currency_code":"GEMS","amount":10}'
+```
+
+**Responses**
+
+- **201**: The rule.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 201 response:
+
+```json
+{
+  "object": "ad_reward_rule",
+  "id": "adrr_4kq0x1m3zv7a2b",
+  "name": "Gems for level-end ads",
+  "enabled": true,
+  "position": 0,
+  "app_id": null,
+  "ad_unit_id": "ca-app-pub-3940256099942544/5224354917",
+  "reward_item": null,
+  "kind": "virtual_currency",
+  "currency_code": "GEMS",
+  "amount": 10,
+  "multiplier": null,
+  "entitlement_id": null,
+  "duration_minutes": null,
+  "created_at": 1790850000000,
+  "updated_at": null
+}
+```
+
+### Reorder reward rules
+
+`POST /v2/projects/{project_id}/ads/reward_rules/actions/reorder` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `rule_ids` | array of string | yes | Every rule id of the project exactly once, in the new order. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/reward_rules/actions/reorder" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"rule_ids":["adrr_8m2v0q1x4k7z3a","adrr_4kq0x1m3zv7a2b"]}'
+```
+
+**Responses**
+
+- **200**: Every rule in the new order.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Update, turn on or turn off a reward rule
+
+`POST /v2/projects/{project_id}/ads/reward_rules/{rule_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+Send only what changes. Switching `kind` clears the other kind's fields. Rewards already granted stay.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `rule_id` | string | yes | Reward rule id (adrr_...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | no |  |
+| `enabled` | boolean | no | A disabled rule is skipped. Default true. |
+| `app_id` | string or null | no | Only rewards from this app; null matches every app. |
+| `ad_unit_id` | string or null | no | Only this ad unit. AdMob's callback sends the number after the slash (`5224354917`) and the SDK the full id (`ca-app-pub-…/5224354917`); either form matches. Null or empty matches every ad unit. |
+| `reward_item` | string or null | no | Only this AdMob reward item (`reward_item`, compared without case). Null or empty matches every item. |
+| `kind` | `virtual_currency`, `entitlement` | no | What the rule grants. |
+| `currency_code` | string or null | no | The in-app currency to credit (kind `virtual_currency`). It must exist in the project. |
+| `amount` | integer or null | no | A fixed amount per reward, 1 to 1,000,000,000 (kind `virtual_currency`). |
+| `multiplier` | number or null | no | Instead of `amount`: the ad network's `reward_amount` times this, rounded, at least 1 (kind `virtual_currency`). |
+| `entitlement_id` | string or null | no | The entitlement's lookup key (kind `entitlement`). It must exist in the project. |
+| `duration_minutes` | integer or null | no | How long the entitlement lasts, 1 to 525,600 minutes (kind `entitlement`). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/reward_rules/$RULE_ID" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"enabled":false}'
+```
+
+**Responses**
+
+- **200**: The rule.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "ad_reward_rule",
+  "id": "adrr_4kq0x1m3zv7a2b",
+  "name": "Gems for level-end ads",
+  "enabled": false,
+  "position": 0,
+  "app_id": null,
+  "ad_unit_id": "ca-app-pub-3940256099942544/5224354917",
+  "reward_item": null,
+  "kind": "virtual_currency",
+  "currency_code": "GEMS",
+  "amount": 10,
+  "multiplier": null,
+  "entitlement_id": null,
+  "duration_minutes": null,
+  "created_at": 1790850000000,
+  "updated_at": 1790853600000
+}
+```
+
+### Delete a reward rule
+
+`DELETE /v2/projects/{project_id}/ads/reward_rules/{rule_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `rule_id` | string | yes | Reward rule id (adrr_...). |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/reward_rules/$RULE_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deleted.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### The rewards ledger
+
+`GET /v2/projects/{project_id}/ads/reward_verifications` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read`
+
+One row per verified callback (and per test reward), newest first, with what it granted.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `status` | `verified`, `failed`, `pending` | no |  |
+| `app_user_id` | string | no | Only this customer's rewards. |
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/reward_verifications" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Verifications.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "items": [
+    {
+      "object": "ad_reward_verification",
+      "id": "adrw_9c2kd81mzq0x4v7a",
+      "app_id": "app1a2b3c4d",
+      "app_user_id": "user_42",
+      "client_transaction_id": "5C1A4F0E-2B7D-4C11-9A3E-0F6B8D2E7A91",
+      "network": "admob",
+      "network_transaction_id": "18fa792de1bca816048293fc71035638",
+      "ad_unit_id": "5224354917",
+      "impression_id": "imp_7f3a",
+      "reward_item": "coins",
+      "reward_amount": 10,
+      "status": "verified",
+      "failure_reason": null,
+      "failure_message": null,
+      "rule_id": "adrr_4kq0x1m3zv7a2b",
+      "rewards": [
+        {
+          "type": "virtual_currency",
+          "code": "GEMS",
+          "amount": 10
+        }
+      ],
+      "is_sandbox": false,
+      "occurred_at": 1790850000000,
+      "created_at": 1790850000420
+    }
+  ],
+  "next_page": null,
+  "url": "/v2/projects/proj1a2b3c4d/ads/reward_verifications"
+}
+```
+
+### Send a test reward
+
+`POST /v2/projects/{project_id}/ads/reward_verifications/test` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`, `customer_information:purchases:read_write`
+
+Runs the same rules and grants as a verified AdMob callback, without an ad: network `test`, marked sandbox. The currency or access is granted for real, so the key also needs `customer_information:purchases:read_write`, like a balance adjustment. With `client_transaction_id`, the SDK's poll for that id answers with this reward.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `app_user_id` | string | yes | The customer to reward. |
+| `app_id` | string or null | no | Match rules for this app. |
+| `ad_unit_id` | string or null | no |  |
+| `reward_item` | string or null | no |  |
+| `reward_amount` | integer or null | no | The network amount a multiplier rule multiplies. |
+| `client_transaction_id` | string | no | Default: a new UUID. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/reward_verifications/test" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"app_user_id":"user_42","reward_item":"coins","reward_amount":5}'
+```
+
+**Responses**
+
+- **201**: The verification.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 201 response:
+
+```json
+{
+  "object": "ad_reward_verification",
+  "id": "adrw_1x0q8m2v4k7z3abc",
+  "app_id": "app1a2b3c4d",
+  "app_user_id": "user_42",
+  "client_transaction_id": "5C1A4F0E-2B7D-4C11-9A3E-0F6B8D2E7A91",
+  "network": "test",
+  "network_transaction_id": "test_proj1a2b3c4d_8E2F…",
+  "ad_unit_id": null,
+  "impression_id": null,
+  "reward_item": "coins",
+  "reward_amount": 5,
+  "status": "verified",
+  "failure_reason": null,
+  "failure_message": null,
+  "rule_id": "adrr_4kq0x1m3zv7a2b",
+  "rewards": [
+    {
+      "type": "virtual_currency",
+      "code": "GEMS",
+      "amount": 10
+    }
+  ],
+  "is_sandbox": true,
+  "occurred_at": 1790850000000,
+  "created_at": 1790850000420
+}
+```
+
+### AdMob connection, loaded ad units and the URLs to paste
+
+`GET /v2/projects/{project_id}/ads/admob` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/admob" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The connection.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "admob_connection",
+  "connected": true,
+  "oauth_client": "server",
+  "client_id": null,
+  "client_secret": {
+    "configured": false,
+    "hint": null
+  },
+  "connected_at": 1790850000000,
+  "accounts": [
+    {
+      "id": "pub-3940256099942544",
+      "currency": "USD"
+    }
+  ],
+  "last_sync_at": 1790936400000,
+  "last_sync_error": null,
+  "ad_units": [
+    {
+      "ad_unit_id": "ca-app-pub-3940256099942544/5224354917",
+      "name": "Level end rewarded",
+      "format": "rewarded",
+      "account_id": "pub-3940256099942544",
+      "app_id": "ca-app-pub-3940256099942544~1458002511",
+      "updated_at": 1790936400000
+    }
+  ],
+  "redirect_uri": "https://api.revenuedot.app/v1/ads/admob/oauth/callback",
+  "ssv_callback_url": "https://api.revenuedot.app/v1/ads/admob/ssv"
+}
+```
+
+### Disconnect AdMob
+
+`DELETE /v2/projects/{project_id}/ads/admob` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+Deletes the Google tokens and the loaded ad units. Ad revenue from the SDK keeps working; rewarded-ad verification then accepts only the ad units named on reward rules.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/admob" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The connection, now empty.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Start Google sign-in for AdMob
+
+`POST /v2/projects/{project_id}/ads/admob/connect` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+Returns Google's authorization URL (scope `https://www.googleapis.com/auth/admob.readonly`, offline access) and a `nonce`. Keep the nonce in the browser that opens the URL. Google redirects to `/v1/ads/admob/oauth/callback`, which sends the code on to the project's AdMob page in the URL fragment; that page finishes with `finishAdMobConnect` and the nonce. So a sign-in link someone else started cannot connect your Google account to their project. The link works once, for 10 minutes. Without a server OAuth client, send the project's own `client_id` and `client_secret` (422 otherwise).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `client_id` | string or null | no | A Google OAuth client id (…apps.googleusercontent.com). Null removes the project's own client. |
+| `client_secret` | string or null | no | Its secret. Leave out to keep the saved one. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/admob/connect" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+**Responses**
+
+- **200**: Google's sign-in URL and the browser's nonce.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+- **502**: An upstream service (the store or the language model) gave no usable answer. Retry later. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "admob_authorization",
+  "nonce": "4f1c…",
+  "url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=…&redirect_uri=https%3A%2F%2Fapi.revenuedot.app%2Fv1%2Fads%2Fadmob%2Foauth%2Fcallback&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fadmob.readonly&access_type=offline&prompt=consent&include_granted_scopes=true&state=…"
+}
+```
+
+### Finish Google sign-in for AdMob
+
+`POST /v2/projects/{project_id}/ads/admob/finish` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+The AdMob page calls this with the `admob_code` and `admob_state` from its URL fragment and the `nonce` from `connectAdMob`. RevenueDot checks that the state is this project's pending sign-in (single use, 10 minutes) and that the nonce matches, exchanges the code for a refresh token (stored encrypted) and loads the ad units. 400 when the state or nonce is wrong, used or expired.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `code` | string | yes | `admob_code` from the fragment. |
+| `state` | string | yes | `admob_state` from the fragment. |
+| `nonce` | string | yes | From `connectAdMob`. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/admob/finish" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"code":"4/0Ab…","state":"proj1a2b3c4d.9f2c…","nonce":"4f1c…"}'
+```
+
+**Responses**
+
+- **200**: The connection.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+- **502**: An upstream service (the store or the language model) gave no usable answer. Retry later. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "admob_connection",
+  "connected": true,
+  "oauth_client": "server",
+  "client_id": null,
+  "client_secret": {
+    "configured": false,
+    "hint": null
+  },
+  "connected_at": 1790850000000,
+  "accounts": [
+    {
+      "id": "pub-3940256099942544",
+      "currency": "USD"
+    }
+  ],
+  "last_sync_at": 1790936400000,
+  "last_sync_error": null,
+  "ad_units": [
+    {
+      "ad_unit_id": "ca-app-pub-3940256099942544/5224354917",
+      "name": "Level end rewarded",
+      "format": "rewarded",
+      "account_id": "pub-3940256099942544",
+      "app_id": "ca-app-pub-3940256099942544~1458002511",
+      "updated_at": 1790936400000
+    }
+  ],
+  "redirect_uri": "https://api.revenuedot.app/v1/ads/admob/oauth/callback",
+  "ssv_callback_url": "https://api.revenuedot.app/v1/ads/admob/ssv"
+}
+```
+
+### Load AdMob ad units now
+
+`POST /v2/projects/{project_id}/ads/admob/refresh` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+Replaces the loaded ad units with the account's current list (up to 5,000). RevenueDot also does this once a day.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/admob/refresh" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The connection.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **502**: An upstream service (the store or the language model) gave no usable answer. Retry later. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "admob_connection",
+  "connected": true,
+  "oauth_client": "server",
+  "client_id": null,
+  "client_secret": {
+    "configured": false,
+    "hint": null
+  },
+  "connected_at": 1790850000000,
+  "accounts": [
+    {
+      "id": "pub-3940256099942544",
+      "currency": "USD"
+    }
+  ],
+  "last_sync_at": 1790936400000,
+  "last_sync_error": null,
+  "ad_units": [
+    {
+      "ad_unit_id": "ca-app-pub-3940256099942544/5224354917",
+      "name": "Level end rewarded",
+      "format": "rewarded",
+      "account_id": "pub-3940256099942544",
+      "app_id": "ca-app-pub-3940256099942544~1458002511",
+      "updated_at": 1790936400000
+    }
+  ],
+  "redirect_uri": "https://api.revenuedot.app/v1/ads/admob/oauth/callback",
+  "ssv_callback_url": "https://api.revenuedot.app/v1/ads/admob/ssv"
+}
+```
+
+### Customers and revenue by Apple Search Ads campaign
+
+`GET /v2/projects/{project_id}/ads/apple_search_ads/report` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:overview:read`
+
+Customers first seen in the period whose `$appleAdsCampaignId` is set (from the SDK's AdServices token), grouped by campaign, with paying customers and production revenue to date.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `range` | `7d`, `28d`, `90d`, `12m` | no | Default 90d. Customers first seen in this period. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/apple_search_ads/report" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The report.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "apple_search_ads_report",
+  "range": "90d",
+  "start_date": "2026-07-04",
+  "currency": "USD",
+  "campaigns": [
+    {
+      "campaign_id": "1234567890",
+      "name": "Brand US",
+      "customers": 412,
+      "paying_customers": 38,
+      "revenue": 1204.55,
+      "revenue_per_customer": 2.92
+    }
+  ],
+  "names_loaded": 12,
+  "last_sync_at": 1790850000000,
+  "last_sync_error": null
+}
+```
+
+### Load campaign names from Apple Search Ads
+
+`POST /v2/projects/{project_id}/ads/apple_search_ads/sync` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+Signs in as the Apple Search Ads API user saved on the project's `apple_search_ads` integration (organization ID, client ID, team ID, key ID, private key) and loads campaign and ad group names from the Campaign Management API v5 (up to 200 campaigns). 422 with Apple's message when the credentials are missing or refused.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/apple_search_ads/sync" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: How many campaigns were named.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "apple_search_ads_sync",
+  "campaigns": 12
+}
+```
+
+### AdMob server-side verification callback
+
+`GET /v1/ads/admob/ssv` · Auth: none · RevenueDot extension
+
+The URL to paste into each rewarded ad unit's server-side verification settings in AdMob. Google calls it with a signed query (`ad_network`, `ad_unit`, `custom_data`, `key_id`, `reward_amount`, `reward_item`, `signature`, `timestamp`, `transaction_id`, `user_id`; [AdMob SSV](https://developers.google.com/admob/android/ssv)); RevenueDot checks the ECDSA signature with Google's published keys, finds the project from the app key in `custom_data` (the SDK's reward verification token), checks that `ad_unit` is one of the project's ad units (loaded by the AdMob connection, or named on a reward rule), records the reward once per AdMob `transaction_id` and grants what the first matching reward rule says. Only the signed part of the query is read. Google signs every publisher's callbacks with the same keys, and the app key ships inside the app, so another AdMob account's callback with your app key is recorded as failed (`unknown_ad_unit`) and grants nothing.
+
+- **200** `{"ok":true,"recorded":true}`: recorded (or already recorded). Also 200 with no parameters (AdMob's **Verify URL** button), and 200 `{"ok":true,"recorded":false,"reason":"invalid_custom_data"}` or `"unknown_api_key"` when `custom_data` is not a RevenueDot token, so Google stops retrying.
+- **400:** the query does not end with `signature` and `key_id`, has anything after `key_id`, or repeats a parameter. **403:** the signature is not valid or the key id is unknown; nothing is recorded.
+- **503:** Google's keys could not be fetched. Google retries callbacks that do not answer 200.
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `ad_unit` | string | no |  |
+| `custom_data` | string | no |  |
+| `key_id` | string | no |  |
+| `reward_amount` | string | no |  |
+| `reward_item` | string | no |  |
+| `signature` | string | no |  |
+| `timestamp` | string | no |  |
+| `transaction_id` | string | no |  |
+| `user_id` | string | no |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/ads/admob/ssv"
+```
+
+**Responses**
+
+- **200**: Recorded, or nothing to record.
+- **400**: Not an AdMob callback.
+- **403**: Bad signature.
+- **503**: Google's keys are unavailable.
+
+Example 200 response:
+
+```json
+{
+  "ok": true,
+  "recorded": true
+}
+```
+
+### Google's redirect after AdMob sign-in
+
+`GET /v1/ads/admob/oauth/callback` · Auth: none · RevenueDot extension
+
+Add `<API origin>/v1/ads/admob/oauth/callback` as an authorized redirect URI of the Google OAuth client. RevenueDot redirects to the project's AdMob page with the code and state in the URL fragment (`#admob_code=…&admob_state=…`, never sent to a server), and the page finishes with `finishAdMobConnect`. A cancelled sign-in redirects with `?admob_error=<message>`.
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `code` | string | no |  |
+| `state` | string | no | From `connectAdMob`; single use, valid 10 minutes. |
+| `error` | string | no | `access_denied` when the user cancelled. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/ads/admob/oauth/callback"
+```
+
+**Responses**
+
+- **302**: To the dashboard's AdMob page.
 
 ## Data exports
 
@@ -2388,7 +3390,7 @@ Example 200 response:
 
 ## Support
 
-Customer Center tickets and the customer summary for help desk sidebars (Intercom, Zendesk).
+Customer Center tickets, the customer summary for help desk sidebars, and the Intercom inbox app's Canvas Kit endpoint. See [Support](../docs/guides/support-integrations.md).
 
 ### List Customer Center tickets, newest first
 
@@ -2533,6 +3535,125 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/support_summaries" -H "Authoriz
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Intercom inbox app: the customer's subscription as Canvas Kit components
+
+`POST /v1/support/intercom/{project_id}/canvas` · Auth: none · RevenueDot extension
+
+Set this URL as the **initialize** URL of an Intercom Canvas Kit app for the Inbox ([Canvas Kit](https://developers.intercom.com/docs/canvas-kit)). Intercom signs each request; RevenueDot checks the signature with the client secret saved on the project's `intercom_inbox` integration. The contact is found by `external_id` (your app user ID), then by email. The answer is a Canvas Kit canvas: status, entitlements, plan, store, renewal or expiry date, billing issue, total spent, customer since, app user ID, country, refund requests, open tickets and an **Open in RevenueDot** button.
+
+- **401:** no signature, or it does not match. **404:** the Intercom inbox is not connected to this project (or turned off). **413:** the body is over 64,000 characters. **400:** the body is not JSON. See [Support](../docs/guides/support-integrations.md#intercom).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Headers**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `X-Body-Signature` | string | yes | Intercom's hex HMAC-SHA256 of the raw body, keyed with the Intercom app's client secret. |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `contact` | object | no | The conversation's contact, as Intercom sends it. |
+| `contact.external_id` | string | no | Your app user ID. |
+| `contact.email` | string | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/support/intercom/$PROJECT_ID/canvas" \
+  -H "Content-Type: application/json" -d '{"contact":{"external_id":"user_42","email":"wren@example.com"}}'
+```
+
+**Responses**
+
+- **200**: Canvas Kit components.
+- **400**: Not JSON.
+- **401**: Missing or wrong signature.
+- **404**: Not connected.
+- **413**: Too large.
+
+Example 200 response:
+
+```json
+{
+  "canvas": {
+    "content": {
+      "components": [
+        {
+          "type": "text",
+          "text": "RevenueDot",
+          "style": "header"
+        },
+        {
+          "type": "data-table",
+          "items": [
+            {
+              "type": "field-value",
+              "field": "Status",
+              "value": "Active"
+            },
+            {
+              "type": "field-value",
+              "field": "Entitlements",
+              "value": "pro"
+            },
+            {
+              "type": "field-value",
+              "field": "Plan",
+              "value": "pro_monthly"
+            },
+            {
+              "type": "field-value",
+              "field": "Store",
+              "value": "app_store"
+            },
+            {
+              "type": "field-value",
+              "field": "Renews",
+              "value": "2026-10-30"
+            },
+            {
+              "type": "field-value",
+              "field": "Total spent",
+              "value": "$59.94"
+            },
+            {
+              "type": "field-value",
+              "field": "Customer since",
+              "value": "2026-04-02"
+            },
+            {
+              "type": "field-value",
+              "field": "App user ID",
+              "value": "user_42"
+            }
+          ]
+        },
+        {
+          "type": "divider"
+        },
+        {
+          "type": "button",
+          "id": "open-revenuedot",
+          "label": "Open in RevenueDot",
+          "style": "secondary",
+          "action": {
+            "type": "url",
+            "url": "https://app.revenuedot.app/projects/proj1a2b3c4d/customers/user_42"
+          }
+        }
+      ]
+    }
+  }
+}
+```
 
 ## Win-back
 
@@ -5513,13 +6634,14 @@ Example 200 response:
 | `step_id` | string | no | Not for funnel_viewed. |
 | `answer` | string or array of string | no | step_completed of a question. |
 | `app_user_id` | string | no |  |
-| `query` | object | no |  |
+| `query` | object | no | The page URL's query: its `utm_*` parameters and ad click ids (`fbclid`, `gclid`, `gbraid`, `wbraid`, `ttclid`, `msclkid`) are kept with the event. |
+| `page_url` | string | no | The page's address without its query (http or https). Kept only while an integration asks for funnel events, for ad networks; the request's IP address and user agent only while that integration is Meta or Branch (deleted after 7 days). Nothing of this with `Sec-GPC: 1`. |
 
 **Example request**
 
 ```bash
 curl -s -X POST "$REVENUEDOT_URL/pay/api/events" \
-  -H "Content-Type: application/json" -d '{"type":"step_completed","funnel_id":"fnl_7q2k9m4x1z8c","session_id":"3f9c2a7b1e8d4c6a9b0f1e2d3c4b5a69","step_id":"goal","answer":"Sleep better","query":{"utm_source":"tiktok"}}'
+  -H "Content-Type: application/json" -d '{"type":"step_completed","funnel_id":"fnl_7q2k9m4x1z8c","session_id":"3f9c2a7b1e8d4c6a9b0f1e2d3c4b5a69","step_id":"goal","answer":"Sleep better","query":{"utm_source":"tiktok","fbclid":"IwAR2xQ9kM"},"page_url":"https://api.revenuedot.app/pay/scanner/sleep-quiz"}'
 ```
 
 **Responses**

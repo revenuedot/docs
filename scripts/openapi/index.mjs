@@ -13,6 +13,7 @@ import { webhooks } from "./webhooks.mjs";
 import { v2RestPaths } from "./v2-rest.mjs";
 import { lifecyclePaths } from "./lifecycle.mjs";
 import { webPaths, webSchemas } from "./web.mjs";
+import { adsPaths } from "./ads.mjs";
 
 /**
  * Tags in reading order. `x-page` is the generated Markdown page (api/<page>.md) the tag's operations go to.
@@ -59,11 +60,12 @@ export const TAGS = [
   ["Store setup", "extensions", "Notification URLs, credential checks, setup health and App Store mass extensions."],
   ["API keys", "extensions", "Secret keys for the REST API."],
   ["Webhook deliveries", "extensions", "Delivery log, manual retry and test events."],
-  ["Integrations", "extensions", "Slack, Segment, Amplitude, Mixpanel, PostHog, Firebase, BigQuery, AppsFlyer, Adjust and Meta: connect, test, the delivery log, retry and replay."],
+  ["Integrations", "extensions", "Every tool of RevenueCat's integration catalogue plus BigQuery: 32 that receive events, and the AdMob, Apple Search Ads, Intercom inbox and Zendesk connections: the catalogue, connect, test, the delivery log, retry and replay. See [Integrations](../docs/guides/integrations.md)."],
+  ["Ads", "extensions", "The Ads Overview (ad revenue, impressions, eCPM and breakdowns from the SDK's ad events), rewarded ads verified on the server (AdMob's callback, reward rules, the rewards ledger, test rewards), the AdMob connection and Apple Search Ads campaign reporting. See [Ads](../docs/guides/ads.md)."],
   ["Data exports", "extensions", "Scheduled CSV or Parquet files of transactions, customers, subscriptions and events in Amazon S3, Cloudflare R2 or Google Cloud Storage."],
   ["Refund Control", "extensions", "Policies that answer Apple's refund requests with consumption information, the refund request log and its cards."],
   ["Retention", "extensions", "Customer Center cancel and refund offers, and Apple's Retention Messaging API (messages, defaults, the real-time call)."],
-  ["Support", "extensions", "Customer Center tickets and the customer summary for help desk sidebars (Intercom, Zendesk)."],
+  ["Support", "extensions", "Customer Center tickets, the customer summary for help desk sidebars, and the Intercom inbox app's Canvas Kit endpoint. See [Support](../docs/guides/support-integrations.md)."],
   ["Win-back", "extensions", "Campaigns that email churned subscribers an offer, with tracked links and one-click unsubscribe."],
   ["Customer lists", "extensions", "Built-in customer lists, saved audiences, filters, summary cards and CSV export."],
   ["Event log", "extensions", "Every recorded event and money movement."],
@@ -102,7 +104,7 @@ export function buildDocument() {
       { url: "https://{host}", description: "Your self-hosted RevenueDot", variables: { host: { default: "revenuedot.example.com" } } },
     ],
     tags: tags(),
-    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...lifecyclePaths, ...webPaths, ...extensionPaths },
+    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...adsPaths, ...lifecyclePaths, ...webPaths, ...extensionPaths },
     webhooks,
     components: { schemas: { ...schemas, ...webSchemas }, parameters, responses, securitySchemes },
     security: [{ secretApiKey: [] }],

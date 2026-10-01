@@ -171,6 +171,27 @@ export const lifecyclePaths = {
       parameters: [project, { name: "email", in: "query", required: true, schema: str(), description: "Matched case-insensitively against the `$email` attribute." }],
       responses: { 200: ok("Up to 10 summaries.", listOf(summary)), ...v2Errors(400, 401, 403, 404) } }),
   },
+  "/v1/support/intercom/{project_id}/canvas": {
+    post: op({ id: "intercomInboxCanvas", tag: "Support", summary: "Intercom inbox app: the customer's subscription as Canvas Kit components", security: NONE, source: "routes/support-apps.ts", extension: true,
+      parameters: [project, { name: "X-Body-Signature", in: "header", required: true, schema: str(), description: "Intercom's hex HMAC-SHA256 of the raw body, keyed with the Intercom app's client secret." }],
+      description: `
+Set this URL as the **initialize** URL of an Intercom Canvas Kit app for the Inbox ([Canvas Kit](https://developers.intercom.com/docs/canvas-kit)). Intercom signs each request; RevenueDot checks the signature with the client secret saved on the project's \`intercom_inbox\` integration. The contact is found by \`external_id\` (your app user ID), then by email. The answer is a Canvas Kit canvas: status, entitlements, plan, store, renewal or expiry date, billing issue, total spent, customer since, app user ID, country, refund requests, open tickets and an **Open in RevenueDot** button.
+
+- **401:** no signature, or it does not match. **404:** the Intercom inbox is not connected to this project (or turned off). **413:** the body is over 64,000 characters. **400:** the body is not JSON. See [Support](../docs/guides/support-integrations.md#intercom).`,
+      requestBody: body(obj({ contact: obj({ external_id: str("Your app user ID."), email: str() }, [], { description: "The conversation's contact, as Intercom sends it." }) }), { contact: { external_id: "user_42", email: "wren@example.com" } }),
+      responses: {
+        200: ok("Canvas Kit components.", obj({ canvas: obj({ content: obj({ components: arr({ type: "object" }) }) }) }), { canvas: { content: { components: [
+          { type: "text", text: "RevenueDot", style: "header" },
+          { type: "data-table", items: [{ type: "field-value", field: "Status", value: "Active" }, { type: "field-value", field: "Entitlements", value: "pro" }, { type: "field-value", field: "Plan", value: "pro_monthly" }, { type: "field-value", field: "Store", value: "app_store" }, { type: "field-value", field: "Renews", value: "2026-10-30" }, { type: "field-value", field: "Total spent", value: "$59.94" }, { type: "field-value", field: "Customer since", value: "2026-04-02" }, { type: "field-value", field: "App user ID", value: "user_42" }] },
+          { type: "divider" },
+          { type: "button", id: "open-revenuedot", label: "Open in RevenueDot", style: "secondary", action: { type: "url", url: "https://app.revenuedot.app/projects/proj1a2b3c4d/customers/user_42" } },
+        ] } } }),
+        400: ok("Not JSON.", obj({ error: str() }), { error: "The body is not JSON." }),
+        401: ok("Missing or wrong signature.", obj({ error: str() }), { error: "The signature is not valid." }),
+        404: ok("Not connected.", obj({ error: str() }), { error: "Intercom is not connected to this project." }),
+        413: ok("Too large.", obj({ error: str() }), { error: "The request is too large." }),
+      } }),
+  },
   [`${P}/winback_campaigns`]: {
     get: op({ ...x, id: "listWinbackCampaigns", tag: "Win-back", summary: "List win-back campaigns", source: WB, scopes: PR, parameters: [project], responses: { 200: ok("Campaigns with stats.", listOf(campaign)), ...E(404) } }),
     post: op({ ...x, id: "createWinbackCampaign", tag: "Win-back", summary: "Create a win-back campaign", source: WB, scopes: PW, parameters: [project],

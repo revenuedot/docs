@@ -1,6 +1,6 @@
 // RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
-// This file: third-party integrations (Slack, Segment, Amplitude, Mixpanel, PostHog, Firebase, BigQuery, AppsFlyer, Adjust,
-// Meta) and scheduled data exports (S3, R2, Google Cloud Storage) in the OpenAPI document. RevenueDot extensions.
+// This file: third-party integrations (every entry of RevenueCat's integration catalogue plus BigQuery) and scheduled data
+// exports (S3, R2, Google Cloud Storage) in the OpenAPI document. RevenueDot extensions.
 // Docs: https://revenuedot.app/docs/guides/integrations   Migrate from RevenueCat: https://revenuedot.app/docs/migrate
 import { SECRET, arr, body, bool, en, int, listOf, ms, nint, nms, nstr, obj, ok, op, param, str, v2Errors } from "./common.mjs";
 
@@ -12,18 +12,27 @@ const RI = "routes/v2/partner-integrations.ts", RX = "routes/v2/data-exports.ts"
 const READ = ["project_configuration:integrations:read"], WRITE = ["project_configuration:integrations:read_write"];
 const id = { name: "integration_id", in: "path", required: true, schema: str(), description: "Integration id (intg_...)." };
 const exportId = { name: "export_id", in: "path", required: true, schema: str(), description: "Export id (export_...)." };
-const TYPES = ["slack", "segment", "amplitude", "mixpanel", "posthog", "firebase", "bigquery", "appsflyer", "adjust", "meta"];
+const TYPES = [
+  "slack", "segment", "amplitude", "mixpanel", "posthog", "firebase", "bigquery", "appsflyer", "adjust", "meta",
+  "mparticle", "statsig", "superwall", "telemetrydeck",
+  "apple_search_ads", "appstack", "asapty", "branch", "google_tag_manager", "kochava", "airbridge", "splitmetrics", "singular", "solarengine", "tenjin",
+  "airship", "braze", "clevertap", "customerio", "discord", "intercom", "iterable", "onesignal",
+  "admob", "intercom_inbox", "zendesk",
+];
 const STEPS = ["initial_purchase", "trial_started", "trial_converted", "trial_cancelled", "renewal", "cancellation", "uncancellation", "non_subscription_purchase", "subscription_paused", "expiration", "billing_issue", "product_change", "transfer", "purchase_redeemed", "experiment_enrollment", "refund_reversed", "test", "funnel_viewed", "funnel_step_completed", "funnel_purchase"];
 const hint = obj({ configured: bool(), hint: nstr("The last four characters, or a service account's client_email.") }, ["configured", "hint"]);
 
 const field = obj({
   key: str(), label: str(), type: en(["text", "secret", "select", "boolean", "textarea", "tokens"]), required: bool(), hint: str(), placeholder: str(),
   options: arr(obj({ value: str(), label: str() })), when: obj({ key: str(), value: str() }, [], { description: "Shown only when another field has this value." }),
+  url: bool("The value is a URL RevenueDot calls. It is checked when saved (https only on RevenueDot Cloud) and again before each send."),
 }, ["key", "label", "type"]);
 const integrationType = obj({
-  object: en(["integration_type"]), type: en(TYPES), name: str(), category: en(["core", "analytics", "attribution", "marketing"]), description: str(),
+  object: en(["integration_type"]), type: en(TYPES), name: str(), category: en(["core", "analytics", "attribution", "marketing", "ads", "support"]), description: str(),
   default_environment: { type: ["string", "null"], enum: ["production", null] }, event_names: bool("Whether event names can be overridden."), fields: arr(field), docs_url: str(),
-}, ["object", "type", "name", "fields"]);
+  api: en(["documented", "webhook"], "`documented`: RevenueDot sends the partner's published API request. `webhook`: the partner publishes no event API; RevenueDot POSTs RevenueCat's webhook body to the URL the partner gives you (Superwall, Appstack, SplitMetrics Acquire, SolarEngine)."),
+  connection: bool("True for AdMob, Apple Search Ads, the Intercom inbox and Zendesk: they receive no events and have their own page in the dashboard."),
+}, ["object", "type", "name", "fields", "api", "connection"]);
 const integration = obj({
   object: en(["integration"]), id: str(), project_id: str(), type: en(TYPES), name: str(), enabled: bool(), environment: { type: ["string", "null"], enum: ["production", "sandbox", null], description: "Null sends both." },
   app_id: nstr("Only this app's events; null for all."), event_types: arr(str(), { description: "Lower-case webhook event types; empty for all the integration sends." }),
@@ -74,13 +83,20 @@ const exampleIntegration = { object: "integration", id: "intg_8f2kq0x1m3zv7a", p
 export const integrationPaths = {
   [`${P}/catalog`]: {
     get: op2({ id: "listIntegrationTypes", tag: "Integrations", summary: "What each integration needs", source: RI, scopes: READ, parameters: [project],
-      description: "The fields each integration takes (keys, labels, types, options), its default environment and setup guide. The dashboard draws its forms from this.",
-      responses: { 200: ok("Every integration type.", listOf(integrationType)), ...E(404) } }),
+      description: "The fields each integration takes (keys, labels, types, options), its default environment, how RevenueDot reaches the partner (`api`), whether it is a connection without events, and its setup guide. The dashboard draws its forms from this. 36 entries: every tool of RevenueCat's integration catalogue plus BigQuery.",
+      responses: { 200: ok("Every integration type.", listOf(integrationType), { object: "list", items: [
+        { object: "integration_type", type: "statsig", name: "Statsig", category: "analytics", description: "Send subscription events and revenue to Statsig to measure experiments and feature gates by what customers pay.", default_environment: null, event_names: true,
+          fields: [{ key: "server_secret", label: "Server secret key", type: "secret", required: true, placeholder: "secret-…", hint: "In Statsig, Settings → Keys & Environments → Server Secret Key." }, { key: "reporting", label: "Sales reporting", type: "select", options: [{ value: "gross", label: "Gross revenue" }, { value: "proceeds", label: "After store commission and taxes" }], hint: "Revenue is sent in US dollars." }],
+          docs_url: "https://revenuedot.app/docs/guides/integrations#statsig", api: "documented", connection: false },
+        { object: "integration_type", type: "superwall", name: "Superwall", category: "analytics", description: "Send subscription events and revenue to Superwall so paywall reports show what each paywall earned.", default_environment: null, event_names: false,
+          fields: [{ key: "webhook_url", label: "Superwall webhook URL", type: "secret", required: true, url: true }, { key: "authorization", label: "Authorization header value", type: "secret" }],
+          docs_url: "https://revenuedot.app/docs/guides/integrations#superwall", api: "webhook", connection: false },
+      ], next_page: null, url: "/v2/projects/proj1a2b3c4d/integrations/catalog" }), ...E(404) } }),
   },
   [`${P}/partners`]: {
     get: op2({ id: "listIntegrations", tag: "Integrations", summary: "List integrations", source: RI, scopes: READ, parameters: [project, { name: "type", in: "query", schema: en(TYPES) }, ...page], responses: { 200: ok("The project's integrations.", listOf(integration)), ...v2Errors(400, 401, 403, 404) } }),
     post: op2({ id: "createIntegration", tag: "Integrations", summary: "Connect an integration", source: RI, scopes: WRITE, parameters: [project],
-      description: "Every event webhooks get is also sent to each enabled integration whose filters match, with the webhook retry schedule (5, 10, 20, 40, 80 minutes). Secrets are encrypted at rest and never returned.",
+      description: "Every event webhooks get is also sent to each enabled integration whose filters match, with the webhook retry schedule (5, 10, 20, 40, 80 minutes). Secrets are encrypted at rest and never returned. The connections are saved here too: `apple_search_ads` with an Apple Search Ads API user (for campaign names), `intercom_inbox` with the Intercom app's `client_secret`, and `zendesk` with no settings (it marks the sidebar app as installed). AdMob connects through `POST /v2/projects/{project_id}/ads/admob/connect`.",
       requestBody: body({ ...integrationIn, required: ["type"] }, { type: "amplitude", environment: null, settings: { api_key: "<amplitude api key>", region: "us" } }),
       responses: { 201: ok("The integration.", integration, exampleIntegration), ...v2Errors(400, 401, 403, 404) } }),
   },

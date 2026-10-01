@@ -663,7 +663,6 @@ RevenueDot answers the RevenueCat SDKs, REST API v1 and v2, and webhook payloads
 | Remote config (`/v1/config/...`) | 204, no body | Nothing to apply |
 | Analytics and diagnostics (`/v1/events`, `/v1/diagnostics`) | Accepted, then dropped | No effect |
 | purchases-js Web Billing checkout (`rcb_` keys) | 400 with code 7000; branding answers the app's name | The checkout fails with an error and is not retried. Sell on the web with RevenueDot's [hosted checkout](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md) instead |
-| Rewarded ad verification (`pollRewardVerification`) | `status: failed` | Polling stops after one request and returns failed |
 | SDK health report | Always "passed" | No effect |
 
 Source: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/routes/sdk.ts).
@@ -671,6 +670,7 @@ Source: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenued
 **Attribution and promotional offers work**
 - `setAttributes` and the reserved setters, `collectDeviceIdentifiers` (RevenueDot fills in `$ip` and `$deviceVersion`), the deprecated Apple Search Ads `addAttributionData` and `enableAdServicesAttributionTokenCollection` are stored as the reserved attributes, such as `$mediaSource`, `$campaign` and the `$appleAds*` ids. RevenueDot looks the AdServices token up with Apple's attribution API. Apple returns campaign ids, not names.
 - Promotional offers (`POST /v1/offers`) are signed with the App Store app's In-App Purchase key. Without the key the SDK gets code 7234 for that offer.
+- Rewarded ad verification (`generateRewardVerificationToken`, `pollRewardVerification`) works with AdMob's server-side verification callback and RevenueDot's reward rules. AppLovin MAX, ironSource and Unity Ads callbacks are not verified yet. See [Ads](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/ads.md#rewarded-ads).
 - Web purchase redemption (`redeemWebPurchase`) and the iOS paywall's web checkout (`/rcbilling/v1/hosted-checkout`) work with RevenueDot's own web checkout on your Stripe account. See [Redemption links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md) and [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md).
 - The full list of SDK calls and what each answers is in [`prd/sdk-api/PRD.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/sdk-api/PRD.md#endpoint-inventory).
 
@@ -695,7 +695,7 @@ Source: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenued
 - **Keys:** the same prefixes as RevenueCat. Public app keys are `appl_`, `mac_`, `goog_`, `test_`, `amzn_`, `strp_`, `rcb_`, `pdl_` and `roku_`; secret keys are `sk_` and belong to one project. See [Projects, apps and API keys](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md).
 - **REST API v1:** all 15 endpoints, with RevenueCat's shapes. See [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md).
 - **REST API v2:** every one of RevenueCat's 128 v2 operations has a route, with RevenueCat's shapes, pagination and errors. 126 do the real work, including the 10 discount operations, which run RevenueDot's [web discounts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-discounts.md) as Stripe coupons. The 2 invoice operations exist only for RevenueCat Billing and answer on purpose: the list is empty and a file is 404. `restore_purchase_by_order_id` also accepts App Store order ids; `create_in_store` also creates Google Play subscriptions. See [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md).
-- **Extensions that RevenueCat's API does not have:** the import endpoints, `notification_forward_url` on apps, `POST /v2/projects/{project_id}/test_purchases`, store settings and credential checks, mass subscription extension, webhook delivery logs with retry, and web billing (web config, web products, purchase links, funnels, domains). See [REST API extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md).
+- **Extensions that RevenueCat's API does not have:** the import endpoints, `notification_forward_url` on apps, `POST /v2/projects/{project_id}/test_purchases`, store settings and credential checks, mass subscription extension, webhook delivery logs with retry, web billing (web config, web products, purchase links, funnels, domains), and ads (the Ads Overview, reward rules and the rewards ledger, AdMob). See [REST API extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md).
 - **Dashboard sessions** can call `/v2` for every project you belong to; a secret key covers one project.
 - **The importer** is RevenueDot's own; see [The importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md).
 
@@ -708,7 +708,7 @@ Source: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenued
 - **Accepted in filters but never sent:** `TEMPORARY_ENTITLEMENT_GRANT` (RevenueDot never grants unverified access during a store outage) and `INVOICE_ISSUANCE` (RevenueCat Billing only).
 - **Refunds** arrive as `CANCELLATION` with `cancel_reason: "CUSTOMER_SUPPORT"` and a negative price.
 - **Imported history sends no webhooks**, unless you import with `--emit-events`.
-- **Integrations:** besides webhooks, events go to Slack, Segment, Amplitude, Mixpanel, PostHog, Firebase, BigQuery, AppsFlyer, Adjust and Meta. See [Integrations](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md).
+- **Integrations:** besides webhooks, events go to every tool of RevenueCat's integration catalogue (37 entries) plus BigQuery. Superwall, Appstack, SplitMetrics Acquire and SolarEngine publish no event API, so they get RevenueCat's webhook body at the URL they give you. See [Integrations](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md).
 
 Details: [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md) and [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md). Source: [`apps/server/src/services/webhooks.ts`](https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/webhooks.ts).
 
@@ -726,7 +726,6 @@ Source: [`prd/migration/PRD.md`](https://github.com/revenuedot/revenuedot/blob/m
 - Real App Store and Google Play sandbox purchases have not run end to end; store handling is tested against mocked Apple and Google APIs.
 
 **Tier 2 (planned)**
-- The integrations not listed above (RevenueDot has 12 of RevenueCat's 37).
 - Paywalls with several screens and navigation between them, exit offers and custom variables.
 - Lifecycle: refund control (Apple consumption information), retention offers, win-back campaigns and the support view.
 - RevenueDot AI, an in-app assistant.

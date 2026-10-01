@@ -154,7 +154,10 @@ tags:
     description: Delivery log, manual retry and test events.
     x-page: extensions
   - name: Integrations
-    description: "Slack, Segment, Amplitude, Mixpanel, PostHog, Firebase, BigQuery, AppsFlyer, Adjust and Meta: connect, test, the delivery log, retry and replay."
+    description: "Every tool of RevenueCat's integration catalogue plus BigQuery: 32 that receive events, and the AdMob, Apple Search Ads, Intercom inbox and Zendesk connections: the catalogue, connect, test, the delivery log, retry and replay. See [Integrations](../docs/guides/integrations.md)."
+    x-page: extensions
+  - name: Ads
+    description: The Ads Overview (ad revenue, impressions, eCPM and breakdowns from the SDK's ad events), rewarded ads verified on the server (AdMob's callback, reward rules, the rewards ledger, test rewards), the AdMob connection and Apple Search Ads campaign reporting. See [Ads](../docs/guides/ads.md).
     x-page: extensions
   - name: Data exports
     description: Scheduled CSV or Parquet files of transactions, customers, subscriptions and events in Amazon S3, Cloudflare R2 or Google Cloud Storage.
@@ -166,7 +169,7 @@ tags:
     description: Customer Center cancel and refund offers, and Apple's Retention Messaging API (messages, defaults, the real-time call).
     x-page: extensions
   - name: Support
-    description: Customer Center tickets and the customer summary for help desk sidebars (Intercom, Zendesk).
+    description: Customer Center tickets, the customer summary for help desk sidebars, and the Intercom inbox app's Canvas Kit endpoint. See [Support](../docs/guides/support-integrations.md).
     x-page: extensions
   - name: Win-back
     description: Campaigns that email churned subscribers an offer, with tracked links and one-click unsubscribe.
@@ -1528,8 +1531,13 @@ paths:
       operationId: rewardVerification
       tags:
         - SDK support
-      summary: Rewarded ad verification (not available)
-      description: What `pollRewardVerification` polls. There is no server-side ad verification, so the answer is always the final `failed`, and the SDK stops after one request.
+      summary: Rewarded ad verification status
+      description: |-
+        What `pollRewardVerification` polls after the ad's reward callback fires (up to 10 times, about a second apart). The ad network's server-side callback (`GET /v1/ads/admob/ssv`) records the reward; the first matching reward rule grants it. See [Ads: rewarded ads](../docs/guides/ads.md#rewarded-ads).
+
+        - `pending`: no callback recorded yet for this id, or the grant is still being made. The SDK asks again.
+        - `verified`: `reward` is the first granted reward and `more_rewards` the rest. `reward` is null when no rule matched: verified, nothing granted. The SDK then refreshes the customer's balances and customer info.
+        - `failed`: `failure_reason` is `user_mismatch` (the reward belongs to another customer), `missing_user` (the callback had no user id) or `grant_failed` (the rule names a currency or entitlement that no longer exists).
       security:
         - publicApiKey: []
       parameters:
@@ -1542,7 +1550,7 @@ paths:
           description: From `generateRewardVerificationToken`.
       responses:
         "200":
-          description: Failed.
+          description: The verification status.
           content:
             application/json:
               schema:
@@ -1555,16 +1563,92 @@ paths:
                       - verified
                       - failed
                   reward:
-                    type: "null"
+                    oneOf:
+                      - type: object
+                        properties:
+                          type:
+                            type: string
+                            enum:
+                              - virtual_currency
+                          code:
+                            type: string
+                          amount:
+                            type: integer
+                            description: More than 0.
+                        required:
+                          - type
+                          - code
+                          - amount
+                      - type: object
+                        properties:
+                          type:
+                            type: string
+                            enum:
+                              - entitlement
+                          identifier:
+                            type: string
+                            description: Entitlement lookup key.
+                          expires_at:
+                            type: string
+                            description: ISO 8601.
+                        required:
+                          - type
+                          - identifier
+                          - expires_at
+                      - type: "null"
+                    description: Verified only.
+                  more_rewards:
+                    type: array
+                    items:
+                      type: object
+                    description: Verified only. Further rewards, same shape as `reward`.
                   failure_reason:
                     type: string
+                    enum:
+                      - user_mismatch
+                      - missing_user
+                      - grant_failed
+                    description: Failed only.
                   message:
                     type: string
-              example:
-                status: failed
-                reward: null
-                failure_reason: not_supported
-                message: Server-side reward verification is not available on RevenueDot.
+                    description: Failed only. The reason in words.
+                required:
+                  - status
+              examples:
+                currency:
+                  summary: "Verified: in-app currency"
+                  value:
+                    status: verified
+                    reward:
+                      type: virtual_currency
+                      code: GEMS
+                      amount: 10
+                    more_rewards: []
+                entitlement:
+                  summary: "Verified: temporary access"
+                  value:
+                    status: verified
+                    reward:
+                      type: entitlement
+                      identifier: pro
+                      expires_at: 2026-10-02T12:00:00Z
+                    more_rewards: []
+                pending:
+                  summary: No callback yet
+                  value:
+                    status: pending
+                nothing:
+                  summary: Verified, no rule matched
+                  value:
+                    status: verified
+                    reward: null
+                    more_rewards: []
+                failed:
+                  summary: Failed
+                  value:
+                    status: failed
+                    failure_reason: user_mismatch
+                    message: The ad network's user id is not this customer.
         "401":
           $ref: "#/components/responses/V1Error401"
       x-source: routes/sdk.ts
@@ -1820,7 +1904,7 @@ paths:
       tags:
         - SDK support
       summary: SDK paywall, Customer Center and ad events
-      description: Stored for the paywall, ad and Customer Center charts (each SDK event id once). A malformed batch is still answered 200 so the SDK does not resend it forever.
+      description: Stored for the paywall, ad and Customer Center charts and the [Ads Overview](../docs/guides/ads.md#track-ad-events) (each SDK event id once). Ad events are the `rc_ads_*` types. A malformed batch is still answered 200 so the SDK does not resend it forever.
       security:
         - publicApiKey: []
       responses:
@@ -3780,7 +3864,7 @@ paths:
       operationId: rewardVerificationWithToken
       tags:
         - Subscriber tokens
-      summary: Rewarded ad verification (not available) (subscriber token)
+      summary: Rewarded ad verification status (subscriber token)
       description: "The subscriber-token form of `GET /v1/subscribers/{app_user_id}/ads/reward_verifications/{client_transaction_id}`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224."
       security:
         - subscriberToken: []
@@ -3793,7 +3877,7 @@ paths:
           description: From `generateRewardVerificationToken`.
       responses:
         "200":
-          description: Failed.
+          description: The verification status.
           content:
             application/json:
               schema:
@@ -3806,16 +3890,92 @@ paths:
                       - verified
                       - failed
                   reward:
-                    type: "null"
+                    oneOf:
+                      - type: object
+                        properties:
+                          type:
+                            type: string
+                            enum:
+                              - virtual_currency
+                          code:
+                            type: string
+                          amount:
+                            type: integer
+                            description: More than 0.
+                        required:
+                          - type
+                          - code
+                          - amount
+                      - type: object
+                        properties:
+                          type:
+                            type: string
+                            enum:
+                              - entitlement
+                          identifier:
+                            type: string
+                            description: Entitlement lookup key.
+                          expires_at:
+                            type: string
+                            description: ISO 8601.
+                        required:
+                          - type
+                          - identifier
+                          - expires_at
+                      - type: "null"
+                    description: Verified only.
+                  more_rewards:
+                    type: array
+                    items:
+                      type: object
+                    description: Verified only. Further rewards, same shape as `reward`.
                   failure_reason:
                     type: string
+                    enum:
+                      - user_mismatch
+                      - missing_user
+                      - grant_failed
+                    description: Failed only.
                   message:
                     type: string
-              example:
-                status: failed
-                reward: null
-                failure_reason: not_supported
-                message: Server-side reward verification is not available on RevenueDot.
+                    description: Failed only. The reason in words.
+                required:
+                  - status
+              examples:
+                currency:
+                  summary: "Verified: in-app currency"
+                  value:
+                    status: verified
+                    reward:
+                      type: virtual_currency
+                      code: GEMS
+                      amount: 10
+                    more_rewards: []
+                entitlement:
+                  summary: "Verified: temporary access"
+                  value:
+                    status: verified
+                    reward:
+                      type: entitlement
+                      identifier: pro
+                      expires_at: 2026-10-02T12:00:00Z
+                    more_rewards: []
+                pending:
+                  summary: No callback yet
+                  value:
+                    status: pending
+                nothing:
+                  summary: Verified, no rule matched
+                  value:
+                    status: verified
+                    reward: null
+                    more_rewards: []
+                failed:
+                  summary: Failed
+                  value:
+                    status: failed
+                    failure_reason: user_mismatch
+                    message: The ad network's user id is not this customer.
         "401":
           $ref: "#/components/responses/V1Error401"
       x-source: routes/sdk.ts
@@ -17005,7 +17165,7 @@ paths:
       tags:
         - Integrations
       summary: What each integration needs
-      description: The fields each integration takes (keys, labels, types, options), its default environment and setup guide. The dashboard draws its forms from this.
+      description: "The fields each integration takes (keys, labels, types, options), its default environment, how RevenueDot reaches the partner (`api`), whether it is a connection without events, and its setup guide. The dashboard draws its forms from this. 36 entries: every tool of RevenueCat's integration catalogue plus BigQuery."
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -17049,6 +17209,32 @@ paths:
                             - appsflyer
                             - adjust
                             - meta
+                            - mparticle
+                            - statsig
+                            - superwall
+                            - telemetrydeck
+                            - apple_search_ads
+                            - appstack
+                            - asapty
+                            - branch
+                            - google_tag_manager
+                            - kochava
+                            - airbridge
+                            - splitmetrics
+                            - singular
+                            - solarengine
+                            - tenjin
+                            - airship
+                            - braze
+                            - clevertap
+                            - customerio
+                            - discord
+                            - intercom
+                            - iterable
+                            - onesignal
+                            - admob
+                            - intercom_inbox
+                            - zendesk
                         name:
                           type: string
                         category:
@@ -17058,6 +17244,8 @@ paths:
                             - analytics
                             - attribution
                             - marketing
+                            - ads
+                            - support
                         description:
                           type: string
                         default_environment:
@@ -17111,17 +17299,31 @@ paths:
                                   value:
                                     type: string
                                 description: Shown only when another field has this value.
+                              url:
+                                type: boolean
+                                description: The value is a URL RevenueDot calls. It is checked when saved (https only on RevenueDot Cloud) and again before each send.
                             required:
                               - key
                               - label
                               - type
                         docs_url:
                           type: string
+                        api:
+                          type: string
+                          enum:
+                            - documented
+                            - webhook
+                          description: "`documented`: RevenueDot sends the partner's published API request. `webhook`: the partner publishes no event API; RevenueDot POSTs RevenueCat's webhook body to the URL the partner gives you (Superwall, Appstack, SplitMetrics Acquire, SolarEngine)."
+                        connection:
+                          type: boolean
+                          description: "True for AdMob, Apple Search Ads, the Intercom inbox and Zendesk: they receive no events and have their own page in the dashboard."
                       required:
                         - object
                         - type
                         - name
                         - fields
+                        - api
+                        - connection
                   next_page:
                     type:
                       - string
@@ -17130,6 +17332,56 @@ paths:
                   url:
                     type: string
                     description: Path of this list.
+              example:
+                object: list
+                items:
+                  - object: integration_type
+                    type: statsig
+                    name: Statsig
+                    category: analytics
+                    description: Send subscription events and revenue to Statsig to measure experiments and feature gates by what customers pay.
+                    default_environment: null
+                    event_names: true
+                    fields:
+                      - key: server_secret
+                        label: Server secret key
+                        type: secret
+                        required: true
+                        placeholder: secret-…
+                        hint: In Statsig, Settings → Keys & Environments → Server Secret Key.
+                      - key: reporting
+                        label: Sales reporting
+                        type: select
+                        options:
+                          - value: gross
+                            label: Gross revenue
+                          - value: proceeds
+                            label: After store commission and taxes
+                        hint: Revenue is sent in US dollars.
+                    docs_url: https://revenuedot.app/docs/guides/integrations#statsig
+                    api: documented
+                    connection: false
+                  - object: integration_type
+                    type: superwall
+                    name: Superwall
+                    category: analytics
+                    description: Send subscription events and revenue to Superwall so paywall reports show what each paywall earned.
+                    default_environment: null
+                    event_names: false
+                    fields:
+                      - key: webhook_url
+                        label: Superwall webhook URL
+                        type: secret
+                        required: true
+                        url: true
+                      - key: authorization
+                        label: Authorization header value
+                        type: secret
+                    docs_url: https://revenuedot.app/docs/guides/integrations#superwall
+                    api: webhook
+                    connection: false
+                next_page: null
+                url: /v2/projects/proj1a2b3c4d/integrations/catalog
         "401":
           $ref: "#/components/responses/V2Error401"
         "403":
@@ -17166,6 +17418,32 @@ paths:
               - appsflyer
               - adjust
               - meta
+              - mparticle
+              - statsig
+              - superwall
+              - telemetrydeck
+              - apple_search_ads
+              - appstack
+              - asapty
+              - branch
+              - google_tag_manager
+              - kochava
+              - airbridge
+              - splitmetrics
+              - singular
+              - solarengine
+              - tenjin
+              - airship
+              - braze
+              - clevertap
+              - customerio
+              - discord
+              - intercom
+              - iterable
+              - onesignal
+              - admob
+              - intercom_inbox
+              - zendesk
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/StartingAfter"
       responses:
@@ -17210,6 +17488,32 @@ paths:
                             - appsflyer
                             - adjust
                             - meta
+                            - mparticle
+                            - statsig
+                            - superwall
+                            - telemetrydeck
+                            - apple_search_ads
+                            - appstack
+                            - asapty
+                            - branch
+                            - google_tag_manager
+                            - kochava
+                            - airbridge
+                            - splitmetrics
+                            - singular
+                            - solarengine
+                            - tenjin
+                            - airship
+                            - braze
+                            - clevertap
+                            - customerio
+                            - discord
+                            - intercom
+                            - iterable
+                            - onesignal
+                            - admob
+                            - intercom_inbox
+                            - zendesk
                         name:
                           type: string
                         enabled:
@@ -17316,7 +17620,7 @@ paths:
       tags:
         - Integrations
       summary: Connect an integration
-      description: Every event webhooks get is also sent to each enabled integration whose filters match, with the webhook retry schedule (5, 10, 20, 40, 80 minutes). Secrets are encrypted at rest and never returned.
+      description: "Every event webhooks get is also sent to each enabled integration whose filters match, with the webhook retry schedule (5, 10, 20, 40, 80 minutes). Secrets are encrypted at rest and never returned. The connections are saved here too: `apple_search_ads` with an Apple Search Ads API user (for campaign names), `intercom_inbox` with the Intercom app's `client_secret`, and `zendesk` with no settings (it marks the sidebar app as installed). AdMob connects through `POST /v2/projects/{project_id}/ads/admob/connect`."
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -17342,6 +17646,32 @@ paths:
                     - appsflyer
                     - adjust
                     - meta
+                    - mparticle
+                    - statsig
+                    - superwall
+                    - telemetrydeck
+                    - apple_search_ads
+                    - appstack
+                    - asapty
+                    - branch
+                    - google_tag_manager
+                    - kochava
+                    - airbridge
+                    - splitmetrics
+                    - singular
+                    - solarengine
+                    - tenjin
+                    - airship
+                    - braze
+                    - clevertap
+                    - customerio
+                    - discord
+                    - intercom
+                    - iterable
+                    - onesignal
+                    - admob
+                    - intercom_inbox
+                    - zendesk
                 name:
                   type: string
                 enabled:
@@ -17429,6 +17759,32 @@ paths:
                       - appsflyer
                       - adjust
                       - meta
+                      - mparticle
+                      - statsig
+                      - superwall
+                      - telemetrydeck
+                      - apple_search_ads
+                      - appstack
+                      - asapty
+                      - branch
+                      - google_tag_manager
+                      - kochava
+                      - airbridge
+                      - splitmetrics
+                      - singular
+                      - solarengine
+                      - tenjin
+                      - airship
+                      - braze
+                      - clevertap
+                      - customerio
+                      - discord
+                      - intercom
+                      - iterable
+                      - onesignal
+                      - admob
+                      - intercom_inbox
+                      - zendesk
                   name:
                     type: string
                   enabled:
@@ -17594,6 +17950,32 @@ paths:
                       - appsflyer
                       - adjust
                       - meta
+                      - mparticle
+                      - statsig
+                      - superwall
+                      - telemetrydeck
+                      - apple_search_ads
+                      - appstack
+                      - asapty
+                      - branch
+                      - google_tag_manager
+                      - kochava
+                      - airbridge
+                      - splitmetrics
+                      - singular
+                      - solarengine
+                      - tenjin
+                      - airship
+                      - braze
+                      - clevertap
+                      - customerio
+                      - discord
+                      - intercom
+                      - iterable
+                      - onesignal
+                      - admob
+                      - intercom_inbox
+                      - zendesk
                   name:
                     type: string
                   enabled:
@@ -17722,6 +18104,32 @@ paths:
                     - appsflyer
                     - adjust
                     - meta
+                    - mparticle
+                    - statsig
+                    - superwall
+                    - telemetrydeck
+                    - apple_search_ads
+                    - appstack
+                    - asapty
+                    - branch
+                    - google_tag_manager
+                    - kochava
+                    - airbridge
+                    - splitmetrics
+                    - singular
+                    - solarengine
+                    - tenjin
+                    - airship
+                    - braze
+                    - clevertap
+                    - customerio
+                    - discord
+                    - intercom
+                    - iterable
+                    - onesignal
+                    - admob
+                    - intercom_inbox
+                    - zendesk
                 name:
                   type: string
                 enabled:
@@ -17803,6 +18211,32 @@ paths:
                       - appsflyer
                       - adjust
                       - meta
+                      - mparticle
+                      - statsig
+                      - superwall
+                      - telemetrydeck
+                      - apple_search_ads
+                      - appstack
+                      - asapty
+                      - branch
+                      - google_tag_manager
+                      - kochava
+                      - airbridge
+                      - splitmetrics
+                      - singular
+                      - solarengine
+                      - tenjin
+                      - airship
+                      - braze
+                      - clevertap
+                      - customerio
+                      - discord
+                      - intercom
+                      - iterable
+                      - onesignal
+                      - admob
+                      - intercom_inbox
+                      - zendesk
                   name:
                     type: string
                   enabled:
@@ -19762,6 +20196,2597 @@ paths:
       x-source: routes/v2/data-exports.ts
       x-scopes:
         - project_configuration:integrations:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ads/overview:
+    get:
+      operationId: getAdsOverview
+      tags:
+        - Ads
+      summary: "Ads Overview: ad revenue, impressions, eCPM and breakdowns"
+      description: Totals, the previous period, a daily series and breakdowns by network, format, placement, ad unit and mediator, from the ad events the SDK posts to `POST /v1/events`. Money is US dollars at each day's exchange rate.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: range
+          in: query
+          schema:
+            type: string
+            enum:
+              - 7d
+              - 28d
+              - 90d
+              - 12m
+          description: Default 28d. Periods are UTC days ending today.
+        - name: environment
+          in: query
+          schema:
+            type: string
+            enum:
+              - production
+              - sandbox
+          description: Default production.
+        - name: app_id
+          in: query
+          schema:
+            type: string
+          description: Only this app's events and purchases.
+      responses:
+        "200":
+          description: The overview.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - ads_overview
+                  currency:
+                    type: string
+                    enum:
+                      - USD
+                  range:
+                    type: string
+                    enum:
+                      - 7d
+                      - 28d
+                      - 90d
+                      - 12m
+                  environment:
+                    type: string
+                    enum:
+                      - production
+                      - sandbox
+                  app_id:
+                    type:
+                      - string
+                      - "null"
+                    description: The app filter, or null for every app.
+                  start_date:
+                    type: string
+                    description: First UTC day of the period (YYYY-MM-DD).
+                  end_date:
+                    type: string
+                    description: Last UTC day of the period, today.
+                  has_ad_events:
+                    type: boolean
+                    description: Whether the project ever received an ad event, in either environment. The dashboard shows its onboarding steps when false.
+                  totals:
+                    type: object
+                    properties:
+                      ad_revenue:
+                        type: number
+                        description: Sum of `revenue_micros` ÷ 1,000,000 of `rc_ads_ad_revenue` events, converted to US dollars at each day's rate.
+                      impressions:
+                        type: integer
+                        description: "`rc_ads_ad_displayed` events. A group with revenue events but no displayed events counts one impression per revenue event."
+                      ecpm:
+                        type:
+                          - number
+                          - "null"
+                        description: Ad revenue ÷ impressions × 1,000, or null without impressions.
+                      clicks:
+                        type: integer
+                        description: "`rc_ads_ad_opened` events."
+                      ctr:
+                        type:
+                          - number
+                          - "null"
+                        description: Clicks ÷ impressions (0 to 1), or null without impressions.
+                      loaded:
+                        type: integer
+                        description: "`rc_ads_ad_loaded` events."
+                      failed_to_load:
+                        type: integer
+                        description: "`rc_ads_ad_failed_to_load` events."
+                      fill_rate:
+                        type:
+                          - number
+                          - "null"
+                        description: Loaded ÷ (loaded + failed to load), or null.
+                      revenue_events:
+                        type: integer
+                        description: "`rc_ads_ad_revenue` events."
+                      ad_customers:
+                        type: integer
+                        description: Distinct customers with an ad event in the period.
+                      subscription_revenue:
+                        type: number
+                        description: US dollar sum of purchases in the period, refunds negative, same environment and app.
+                      total_revenue:
+                        type: number
+                        description: Ad revenue plus subscription revenue.
+                      ad_share:
+                        type:
+                          - number
+                          - "null"
+                        description: Ad revenue ÷ total revenue, or null when both are 0.
+                  previous:
+                    type: object
+                    properties:
+                      ad_revenue:
+                        type: number
+                        description: Sum of `revenue_micros` ÷ 1,000,000 of `rc_ads_ad_revenue` events, converted to US dollars at each day's rate.
+                      impressions:
+                        type: integer
+                        description: "`rc_ads_ad_displayed` events. A group with revenue events but no displayed events counts one impression per revenue event."
+                      ecpm:
+                        type:
+                          - number
+                          - "null"
+                        description: Ad revenue ÷ impressions × 1,000, or null without impressions.
+                      clicks:
+                        type: integer
+                        description: "`rc_ads_ad_opened` events."
+                      ctr:
+                        type:
+                          - number
+                          - "null"
+                        description: Clicks ÷ impressions (0 to 1), or null without impressions.
+                      loaded:
+                        type: integer
+                        description: "`rc_ads_ad_loaded` events."
+                      failed_to_load:
+                        type: integer
+                        description: "`rc_ads_ad_failed_to_load` events."
+                      fill_rate:
+                        type:
+                          - number
+                          - "null"
+                        description: Loaded ÷ (loaded + failed to load), or null.
+                      revenue_events:
+                        type: integer
+                        description: "`rc_ads_ad_revenue` events."
+                      subscription_revenue:
+                        type: number
+                    description: The same totals for the period of the same length just before.
+                  series:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date:
+                          type: string
+                          description: UTC day.
+                        ad_revenue:
+                          type: number
+                        impressions:
+                          type: integer
+                        ecpm:
+                          type:
+                            - number
+                            - "null"
+                        clicks:
+                          type: integer
+                        subscription_revenue:
+                          type: number
+                    description: One row per day of the period, oldest first.
+                  by_network:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key:
+                          type: string
+                          description: The network, format, placement, ad unit id or mediator. Empty when the SDK sent none.
+                        ad_revenue:
+                          type: number
+                          description: US dollars.
+                        impressions:
+                          type: integer
+                        ecpm:
+                          type:
+                            - number
+                            - "null"
+                        clicks:
+                          type: integer
+                        share:
+                          type: number
+                          description: Share of the period's ad revenue (0 to 1).
+                      required:
+                        - key
+                        - ad_revenue
+                        - impressions
+                        - share
+                  by_format:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key:
+                          type: string
+                          description: The network, format, placement, ad unit id or mediator. Empty when the SDK sent none.
+                        ad_revenue:
+                          type: number
+                          description: US dollars.
+                        impressions:
+                          type: integer
+                        ecpm:
+                          type:
+                            - number
+                            - "null"
+                        clicks:
+                          type: integer
+                        share:
+                          type: number
+                          description: Share of the period's ad revenue (0 to 1).
+                      required:
+                        - key
+                        - ad_revenue
+                        - impressions
+                        - share
+                  by_placement:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key:
+                          type: string
+                          description: The network, format, placement, ad unit id or mediator. Empty when the SDK sent none.
+                        ad_revenue:
+                          type: number
+                          description: US dollars.
+                        impressions:
+                          type: integer
+                        ecpm:
+                          type:
+                            - number
+                            - "null"
+                        clicks:
+                          type: integer
+                        share:
+                          type: number
+                          description: Share of the period's ad revenue (0 to 1).
+                      required:
+                        - key
+                        - ad_revenue
+                        - impressions
+                        - share
+                  by_ad_unit:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key:
+                          type: string
+                          description: The network, format, placement, ad unit id or mediator. Empty when the SDK sent none.
+                        ad_revenue:
+                          type: number
+                          description: US dollars.
+                        impressions:
+                          type: integer
+                        ecpm:
+                          type:
+                            - number
+                            - "null"
+                        clicks:
+                          type: integer
+                        share:
+                          type: number
+                          description: Share of the period's ad revenue (0 to 1).
+                        name:
+                          type:
+                            - string
+                            - "null"
+                          description: The AdMob ad unit's name, when AdMob is connected.
+                        unit_format:
+                          type:
+                            - string
+                            - "null"
+                          description: The AdMob ad unit's format.
+                      required:
+                        - key
+                        - ad_revenue
+                        - impressions
+                        - share
+                  by_mediator:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key:
+                          type: string
+                          description: The network, format, placement, ad unit id or mediator. Empty when the SDK sent none.
+                        ad_revenue:
+                          type: number
+                          description: US dollars.
+                        impressions:
+                          type: integer
+                        ecpm:
+                          type:
+                            - number
+                            - "null"
+                        clicks:
+                          type: integer
+                        share:
+                          type: number
+                          description: Share of the period's ad revenue (0 to 1).
+                      required:
+                        - key
+                        - ad_revenue
+                        - impressions
+                        - share
+                  unconverted:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        currency:
+                          type: string
+                        amount:
+                          type: number
+                          description: Revenue in that currency that could not be converted, counted as 0.
+                    description: Currencies with no exchange rate.
+                  ad_units_loaded:
+                    type: integer
+                    description: Ad units loaded from AdMob.
+                required:
+                  - object
+                  - range
+                  - environment
+                  - totals
+                  - previous
+                  - series
+              example:
+                object: ads_overview
+                currency: USD
+                range: 7d
+                environment: production
+                app_id: null
+                start_date: 2026-09-25
+                end_date: 2026-10-01
+                has_ad_events: true
+                totals:
+                  ad_revenue: 412.37
+                  impressions: 183240
+                  ecpm: 2.25
+                  clicks: 2210
+                  ctr: 0.0121
+                  loaded: 190112
+                  failed_to_load: 8410
+                  fill_rate: 0.9576
+                  revenue_events: 183240
+                  ad_customers: 9312
+                  subscription_revenue: 1840.5
+                  total_revenue: 2252.87
+                  ad_share: 0.183
+                previous:
+                  ad_revenue: 388.1
+                  impressions: 176005
+                  ecpm: 2.21
+                  clicks: 2034
+                  ctr: 0.0116
+                  loaded: 181220
+                  failed_to_load: 8102
+                  fill_rate: 0.9572
+                  revenue_events: 176005
+                  subscription_revenue: 1702.25
+                series:
+                  - date: 2026-09-25
+                    ad_revenue: 57.9
+                    impressions: 25811
+                    ecpm: 2.24
+                    clicks: 301
+                    subscription_revenue: 255.3
+                by_network:
+                  - key: AdMob
+                    ad_revenue: 301.2
+                    impressions: 131002
+                    ecpm: 2.3
+                    clicks: 1650
+                    share: 0.7304
+                by_format:
+                  - key: rewarded
+                    ad_revenue: 250.11
+                    impressions: 60321
+                    ecpm: 4.15
+                    clicks: 801
+                    share: 0.6065
+                by_placement:
+                  - key: level_end
+                    ad_revenue: 180.4
+                    impressions: 41022
+                    ecpm: 4.4
+                    clicks: 512
+                    share: 0.4375
+                by_ad_unit:
+                  - key: ca-app-pub-3940256099942544/5224354917
+                    ad_revenue: 180.4
+                    impressions: 41022
+                    ecpm: 4.4
+                    clicks: 512
+                    share: 0.4375
+                    name: Level end rewarded
+                    unit_format: rewarded
+                by_mediator:
+                  - key: AdMob
+                    ad_revenue: 412.37
+                    impressions: 183240
+                    ecpm: 2.25
+                    clicks: 2210
+                    share: 1
+                unconverted: []
+                ad_units_loaded: 6
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/ads.ts
+      x-scopes:
+        - charts_metrics:overview:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ads/reward_rules:
+    get:
+      operationId: listAdRewardRules
+      tags:
+        - Ads
+      summary: List reward rules in the order they are checked
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: Every rule, first checked first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - ad_reward_rule
+                        id:
+                          type: string
+                          description: Starts with adrr_.
+                        name:
+                          type: string
+                          maxLength: 120
+                        enabled:
+                          type: boolean
+                          description: A disabled rule is skipped. Default true.
+                        app_id:
+                          type:
+                            - string
+                            - "null"
+                          description: Only rewards from this app; null matches every app.
+                        ad_unit_id:
+                          type:
+                            - string
+                            - "null"
+                          description: Only this ad unit. AdMob's callback sends the number after the slash (`5224354917`) and the SDK the full id (`ca-app-pub-…/5224354917`); either form matches. Null or empty matches every ad unit.
+                        reward_item:
+                          type:
+                            - string
+                            - "null"
+                          description: Only this AdMob reward item (`reward_item`, compared without case). Null or empty matches every item.
+                        kind:
+                          type: string
+                          enum:
+                            - virtual_currency
+                            - entitlement
+                          description: What the rule grants.
+                        currency_code:
+                          type:
+                            - string
+                            - "null"
+                          description: The in-app currency to credit (kind `virtual_currency`). It must exist in the project.
+                        amount:
+                          type:
+                            - integer
+                            - "null"
+                          description: A fixed amount per reward, 1 to 1,000,000,000 (kind `virtual_currency`).
+                        multiplier:
+                          type:
+                            - number
+                            - "null"
+                          description: "Instead of `amount`: the ad network's `reward_amount` times this, rounded, at least 1 (kind `virtual_currency`)."
+                        entitlement_id:
+                          type:
+                            - string
+                            - "null"
+                          description: The entitlement's lookup key (kind `entitlement`). It must exist in the project.
+                        duration_minutes:
+                          type:
+                            - integer
+                            - "null"
+                          description: How long the entitlement lasts, 1 to 525,600 minutes (kind `entitlement`).
+                        position:
+                          type: integer
+                          description: 0 is checked first.
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: Created. Epoch milliseconds.
+                        updated_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Last changed. Epoch milliseconds, or null.
+                      required:
+                        - object
+                        - id
+                        - name
+                        - enabled
+                        - position
+                        - kind
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/ads.ts
+      x-scopes:
+        - project_configuration:integrations:read
+      x-revenuedot-extension: true
+    post:
+      operationId: createAdRewardRule
+      tags:
+        - Ads
+      summary: Create a reward rule
+      description: The new rule goes last. A project has at most 200 rules. A currency rule needs `currency_code` and `amount` or `multiplier`; an entitlement rule needs `entitlement_id` and `duration_minutes`.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 120
+                enabled:
+                  type: boolean
+                  description: A disabled rule is skipped. Default true.
+                app_id:
+                  type:
+                    - string
+                    - "null"
+                  description: Only rewards from this app; null matches every app.
+                ad_unit_id:
+                  type:
+                    - string
+                    - "null"
+                  description: Only this ad unit. AdMob's callback sends the number after the slash (`5224354917`) and the SDK the full id (`ca-app-pub-…/5224354917`); either form matches. Null or empty matches every ad unit.
+                reward_item:
+                  type:
+                    - string
+                    - "null"
+                  description: Only this AdMob reward item (`reward_item`, compared without case). Null or empty matches every item.
+                kind:
+                  type: string
+                  enum:
+                    - virtual_currency
+                    - entitlement
+                  description: What the rule grants.
+                currency_code:
+                  type:
+                    - string
+                    - "null"
+                  description: The in-app currency to credit (kind `virtual_currency`). It must exist in the project.
+                amount:
+                  type:
+                    - integer
+                    - "null"
+                  description: A fixed amount per reward, 1 to 1,000,000,000 (kind `virtual_currency`).
+                multiplier:
+                  type:
+                    - number
+                    - "null"
+                  description: "Instead of `amount`: the ad network's `reward_amount` times this, rounded, at least 1 (kind `virtual_currency`)."
+                entitlement_id:
+                  type:
+                    - string
+                    - "null"
+                  description: The entitlement's lookup key (kind `entitlement`). It must exist in the project.
+                duration_minutes:
+                  type:
+                    - integer
+                    - "null"
+                  description: How long the entitlement lasts, 1 to 525,600 minutes (kind `entitlement`).
+              required:
+                - name
+                - kind
+            example:
+              name: Gems for level-end ads
+              ad_unit_id: ca-app-pub-3940256099942544/5224354917
+              kind: virtual_currency
+              currency_code: GEMS
+              amount: 10
+      responses:
+        "201":
+          description: The rule.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - ad_reward_rule
+                  id:
+                    type: string
+                    description: Starts with adrr_.
+                  name:
+                    type: string
+                    maxLength: 120
+                  enabled:
+                    type: boolean
+                    description: A disabled rule is skipped. Default true.
+                  app_id:
+                    type:
+                      - string
+                      - "null"
+                    description: Only rewards from this app; null matches every app.
+                  ad_unit_id:
+                    type:
+                      - string
+                      - "null"
+                    description: Only this ad unit. AdMob's callback sends the number after the slash (`5224354917`) and the SDK the full id (`ca-app-pub-…/5224354917`); either form matches. Null or empty matches every ad unit.
+                  reward_item:
+                    type:
+                      - string
+                      - "null"
+                    description: Only this AdMob reward item (`reward_item`, compared without case). Null or empty matches every item.
+                  kind:
+                    type: string
+                    enum:
+                      - virtual_currency
+                      - entitlement
+                    description: What the rule grants.
+                  currency_code:
+                    type:
+                      - string
+                      - "null"
+                    description: The in-app currency to credit (kind `virtual_currency`). It must exist in the project.
+                  amount:
+                    type:
+                      - integer
+                      - "null"
+                    description: A fixed amount per reward, 1 to 1,000,000,000 (kind `virtual_currency`).
+                  multiplier:
+                    type:
+                      - number
+                      - "null"
+                    description: "Instead of `amount`: the ad network's `reward_amount` times this, rounded, at least 1 (kind `virtual_currency`)."
+                  entitlement_id:
+                    type:
+                      - string
+                      - "null"
+                    description: The entitlement's lookup key (kind `entitlement`). It must exist in the project.
+                  duration_minutes:
+                    type:
+                      - integer
+                      - "null"
+                    description: How long the entitlement lasts, 1 to 525,600 minutes (kind `entitlement`).
+                  position:
+                    type: integer
+                    description: 0 is checked first.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  updated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last changed. Epoch milliseconds, or null.
+                required:
+                  - object
+                  - id
+                  - name
+                  - enabled
+                  - position
+                  - kind
+              example:
+                object: ad_reward_rule
+                id: adrr_4kq0x1m3zv7a2b
+                name: Gems for level-end ads
+                enabled: true
+                position: 0
+                app_id: null
+                ad_unit_id: ca-app-pub-3940256099942544/5224354917
+                reward_item: null
+                kind: virtual_currency
+                currency_code: GEMS
+                amount: 10
+                multiplier: null
+                entitlement_id: null
+                duration_minutes: null
+                created_at: 1790850000000
+                updated_at: null
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/ads.ts
+      x-scopes:
+        - project_configuration:integrations:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ads/reward_rules/actions/reorder:
+    post:
+      operationId: reorderAdRewardRules
+      tags:
+        - Ads
+      summary: Reorder reward rules
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rule_ids:
+                  type: array
+                  items:
+                    type: string
+                  description: Every rule id of the project exactly once, in the new order.
+              required:
+                - rule_ids
+            example:
+              rule_ids:
+                - adrr_8m2v0q1x4k7z3a
+                - adrr_4kq0x1m3zv7a2b
+      responses:
+        "200":
+          description: Every rule in the new order.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - ad_reward_rule
+                        id:
+                          type: string
+                          description: Starts with adrr_.
+                        name:
+                          type: string
+                          maxLength: 120
+                        enabled:
+                          type: boolean
+                          description: A disabled rule is skipped. Default true.
+                        app_id:
+                          type:
+                            - string
+                            - "null"
+                          description: Only rewards from this app; null matches every app.
+                        ad_unit_id:
+                          type:
+                            - string
+                            - "null"
+                          description: Only this ad unit. AdMob's callback sends the number after the slash (`5224354917`) and the SDK the full id (`ca-app-pub-…/5224354917`); either form matches. Null or empty matches every ad unit.
+                        reward_item:
+                          type:
+                            - string
+                            - "null"
+                          description: Only this AdMob reward item (`reward_item`, compared without case). Null or empty matches every item.
+                        kind:
+                          type: string
+                          enum:
+                            - virtual_currency
+                            - entitlement
+                          description: What the rule grants.
+                        currency_code:
+                          type:
+                            - string
+                            - "null"
+                          description: The in-app currency to credit (kind `virtual_currency`). It must exist in the project.
+                        amount:
+                          type:
+                            - integer
+                            - "null"
+                          description: A fixed amount per reward, 1 to 1,000,000,000 (kind `virtual_currency`).
+                        multiplier:
+                          type:
+                            - number
+                            - "null"
+                          description: "Instead of `amount`: the ad network's `reward_amount` times this, rounded, at least 1 (kind `virtual_currency`)."
+                        entitlement_id:
+                          type:
+                            - string
+                            - "null"
+                          description: The entitlement's lookup key (kind `entitlement`). It must exist in the project.
+                        duration_minutes:
+                          type:
+                            - integer
+                            - "null"
+                          description: How long the entitlement lasts, 1 to 525,600 minutes (kind `entitlement`).
+                        position:
+                          type: integer
+                          description: 0 is checked first.
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: Created. Epoch milliseconds.
+                        updated_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Last changed. Epoch milliseconds, or null.
+                      required:
+                        - object
+                        - id
+                        - name
+                        - enabled
+                        - position
+                        - kind
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/ads.ts
+      x-scopes:
+        - project_configuration:integrations:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ads/reward_rules/{rule_id}:
+    post:
+      operationId: updateAdRewardRule
+      tags:
+        - Ads
+      summary: Update, turn on or turn off a reward rule
+      description: Send only what changes. Switching `kind` clears the other kind's fields. Rewards already granted stay.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: rule_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Reward rule id (adrr_...).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 120
+                enabled:
+                  type: boolean
+                  description: A disabled rule is skipped. Default true.
+                app_id:
+                  type:
+                    - string
+                    - "null"
+                  description: Only rewards from this app; null matches every app.
+                ad_unit_id:
+                  type:
+                    - string
+                    - "null"
+                  description: Only this ad unit. AdMob's callback sends the number after the slash (`5224354917`) and the SDK the full id (`ca-app-pub-…/5224354917`); either form matches. Null or empty matches every ad unit.
+                reward_item:
+                  type:
+                    - string
+                    - "null"
+                  description: Only this AdMob reward item (`reward_item`, compared without case). Null or empty matches every item.
+                kind:
+                  type: string
+                  enum:
+                    - virtual_currency
+                    - entitlement
+                  description: What the rule grants.
+                currency_code:
+                  type:
+                    - string
+                    - "null"
+                  description: The in-app currency to credit (kind `virtual_currency`). It must exist in the project.
+                amount:
+                  type:
+                    - integer
+                    - "null"
+                  description: A fixed amount per reward, 1 to 1,000,000,000 (kind `virtual_currency`).
+                multiplier:
+                  type:
+                    - number
+                    - "null"
+                  description: "Instead of `amount`: the ad network's `reward_amount` times this, rounded, at least 1 (kind `virtual_currency`)."
+                entitlement_id:
+                  type:
+                    - string
+                    - "null"
+                  description: The entitlement's lookup key (kind `entitlement`). It must exist in the project.
+                duration_minutes:
+                  type:
+                    - integer
+                    - "null"
+                  description: How long the entitlement lasts, 1 to 525,600 minutes (kind `entitlement`).
+            example:
+              enabled: false
+      responses:
+        "200":
+          description: The rule.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - ad_reward_rule
+                  id:
+                    type: string
+                    description: Starts with adrr_.
+                  name:
+                    type: string
+                    maxLength: 120
+                  enabled:
+                    type: boolean
+                    description: A disabled rule is skipped. Default true.
+                  app_id:
+                    type:
+                      - string
+                      - "null"
+                    description: Only rewards from this app; null matches every app.
+                  ad_unit_id:
+                    type:
+                      - string
+                      - "null"
+                    description: Only this ad unit. AdMob's callback sends the number after the slash (`5224354917`) and the SDK the full id (`ca-app-pub-…/5224354917`); either form matches. Null or empty matches every ad unit.
+                  reward_item:
+                    type:
+                      - string
+                      - "null"
+                    description: Only this AdMob reward item (`reward_item`, compared without case). Null or empty matches every item.
+                  kind:
+                    type: string
+                    enum:
+                      - virtual_currency
+                      - entitlement
+                    description: What the rule grants.
+                  currency_code:
+                    type:
+                      - string
+                      - "null"
+                    description: The in-app currency to credit (kind `virtual_currency`). It must exist in the project.
+                  amount:
+                    type:
+                      - integer
+                      - "null"
+                    description: A fixed amount per reward, 1 to 1,000,000,000 (kind `virtual_currency`).
+                  multiplier:
+                    type:
+                      - number
+                      - "null"
+                    description: "Instead of `amount`: the ad network's `reward_amount` times this, rounded, at least 1 (kind `virtual_currency`)."
+                  entitlement_id:
+                    type:
+                      - string
+                      - "null"
+                    description: The entitlement's lookup key (kind `entitlement`). It must exist in the project.
+                  duration_minutes:
+                    type:
+                      - integer
+                      - "null"
+                    description: How long the entitlement lasts, 1 to 525,600 minutes (kind `entitlement`).
+                  position:
+                    type: integer
+                    description: 0 is checked first.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  updated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last changed. Epoch milliseconds, or null.
+                required:
+                  - object
+                  - id
+                  - name
+                  - enabled
+                  - position
+                  - kind
+              example:
+                object: ad_reward_rule
+                id: adrr_4kq0x1m3zv7a2b
+                name: Gems for level-end ads
+                enabled: false
+                position: 0
+                app_id: null
+                ad_unit_id: ca-app-pub-3940256099942544/5224354917
+                reward_item: null
+                kind: virtual_currency
+                currency_code: GEMS
+                amount: 10
+                multiplier: null
+                entitlement_id: null
+                duration_minutes: null
+                created_at: 1790850000000
+                updated_at: 1790853600000
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/ads.ts
+      x-scopes:
+        - project_configuration:integrations:read_write
+      x-revenuedot-extension: true
+    delete:
+      operationId: deleteAdRewardRule
+      tags:
+        - Ads
+      summary: Delete a reward rule
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: rule_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Reward rule id (adrr_...).
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - ad_reward_rule
+                  id:
+                    type: string
+                  deleted_at:
+                    type: integer
+                    format: int64
+                    description: When it was deleted. Epoch milliseconds.
+                required:
+                  - object
+                  - id
+                  - deleted_at
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/ads.ts
+      x-scopes:
+        - project_configuration:integrations:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ads/reward_verifications:
+    get:
+      operationId: listAdRewardVerifications
+      tags:
+        - Ads
+      summary: The rewards ledger
+      description: One row per verified callback (and per test reward), newest first, with what it granted.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - verified
+              - failed
+              - pending
+        - name: app_user_id
+          in: query
+          schema:
+            type: string
+          description: Only this customer's rewards.
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/StartingAfter"
+      responses:
+        "200":
+          description: Verifications.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - ad_reward_verification
+                        id:
+                          type: string
+                          description: Starts with adrw_.
+                        app_id:
+                          type:
+                            - string
+                            - "null"
+                        app_user_id:
+                          type: string
+                          description: The ad network's `user_id`.
+                        client_transaction_id:
+                          type: string
+                          description: From the SDK's reward verification token.
+                        network:
+                          type: string
+                          enum:
+                            - admob
+                            - test
+                        network_transaction_id:
+                          type: string
+                          description: AdMob's `transaction_id`.
+                        ad_unit_id:
+                          type:
+                            - string
+                            - "null"
+                        impression_id:
+                          type:
+                            - string
+                            - "null"
+                          description: From the SDK's token.
+                        reward_item:
+                          type:
+                            - string
+                            - "null"
+                          description: AdMob's `reward_item`.
+                        reward_amount:
+                          type:
+                            - integer
+                            - "null"
+                          description: AdMob's `reward_amount`.
+                        status:
+                          type: string
+                          enum:
+                            - pending
+                            - verified
+                            - failed
+                          description: "`pending` while the grant is being made."
+                        failure_reason:
+                          type:
+                            - string
+                            - "null"
+                          enum:
+                            - missing_user
+                            - grant_failed
+                            - null
+                          description: "`missing_user`: the callback had no user id. `grant_failed`: the rule names an in-app currency or entitlement that no longer exists."
+                        failure_message:
+                          type:
+                            - string
+                            - "null"
+                          description: The failure reason in words.
+                        rule_id:
+                          type:
+                            - string
+                            - "null"
+                          description: The rule that matched, or null when none did (verified with nothing granted).
+                        rewards:
+                          type: array
+                          items:
+                            oneOf:
+                              - type: object
+                                properties:
+                                  type:
+                                    type: string
+                                    enum:
+                                      - virtual_currency
+                                  code:
+                                    type: string
+                                    description: In-app currency code.
+                                  amount:
+                                    type: integer
+                                    description: Credited amount, more than 0.
+                                required:
+                                  - type
+                                  - code
+                                  - amount
+                              - type: object
+                                properties:
+                                  type:
+                                    type: string
+                                    enum:
+                                      - entitlement
+                                  identifier:
+                                    type: string
+                                    description: Entitlement lookup key.
+                                  expires_at:
+                                    type: string
+                                    description: When the access ends, ISO 8601.
+                                required:
+                                  - type
+                                  - identifier
+                                  - expires_at
+                          description: What was granted. Empty when no rule matched.
+                        is_sandbox:
+                          type: boolean
+                          description: Test rewards and Test Store apps are sandbox.
+                        occurred_at:
+                          type: integer
+                          format: int64
+                          description: When the network says the reward happened. Epoch milliseconds.
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: Recorded. Epoch milliseconds.
+                      required:
+                        - object
+                        - id
+                        - app_user_id
+                        - client_transaction_id
+                        - network
+                        - status
+                        - rewards
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+              example:
+                object: list
+                items:
+                  - object: ad_reward_verification
+                    id: adrw_9c2kd81mzq0x4v7a
+                    app_id: app1a2b3c4d
+                    app_user_id: user_42
+                    client_transaction_id: 5C1A4F0E-2B7D-4C11-9A3E-0F6B8D2E7A91
+                    network: admob
+                    network_transaction_id: 18fa792de1bca816048293fc71035638
+                    ad_unit_id: "5224354917"
+                    impression_id: imp_7f3a
+                    reward_item: coins
+                    reward_amount: 10
+                    status: verified
+                    failure_reason: null
+                    failure_message: null
+                    rule_id: adrr_4kq0x1m3zv7a2b
+                    rewards:
+                      - type: virtual_currency
+                        code: GEMS
+                        amount: 10
+                    is_sandbox: false
+                    occurred_at: 1790850000000
+                    created_at: 1790850000420
+                next_page: null
+                url: /v2/projects/proj1a2b3c4d/ads/reward_verifications
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/ads.ts
+      x-scopes:
+        - project_configuration:integrations:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ads/reward_verifications/test:
+    post:
+      operationId: testAdReward
+      tags:
+        - Ads
+      summary: Send a test reward
+      description: "Runs the same rules and grants as a verified AdMob callback, without an ad: network `test`, marked sandbox. The currency or access is granted for real, so the key also needs `customer_information:purchases:read_write`, like a balance adjustment. With `client_transaction_id`, the SDK's poll for that id answers with this reward."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                app_user_id:
+                  type: string
+                  description: The customer to reward.
+                app_id:
+                  type:
+                    - string
+                    - "null"
+                  description: Match rules for this app.
+                ad_unit_id:
+                  type:
+                    - string
+                    - "null"
+                reward_item:
+                  type:
+                    - string
+                    - "null"
+                reward_amount:
+                  type:
+                    - integer
+                    - "null"
+                  description: The network amount a multiplier rule multiplies.
+                client_transaction_id:
+                  type: string
+                  description: "Default: a new UUID."
+              required:
+                - app_user_id
+            example:
+              app_user_id: user_42
+              reward_item: coins
+              reward_amount: 5
+      responses:
+        "201":
+          description: The verification.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - ad_reward_verification
+                  id:
+                    type: string
+                    description: Starts with adrw_.
+                  app_id:
+                    type:
+                      - string
+                      - "null"
+                  app_user_id:
+                    type: string
+                    description: The ad network's `user_id`.
+                  client_transaction_id:
+                    type: string
+                    description: From the SDK's reward verification token.
+                  network:
+                    type: string
+                    enum:
+                      - admob
+                      - test
+                  network_transaction_id:
+                    type: string
+                    description: AdMob's `transaction_id`.
+                  ad_unit_id:
+                    type:
+                      - string
+                      - "null"
+                  impression_id:
+                    type:
+                      - string
+                      - "null"
+                    description: From the SDK's token.
+                  reward_item:
+                    type:
+                      - string
+                      - "null"
+                    description: AdMob's `reward_item`.
+                  reward_amount:
+                    type:
+                      - integer
+                      - "null"
+                    description: AdMob's `reward_amount`.
+                  status:
+                    type: string
+                    enum:
+                      - pending
+                      - verified
+                      - failed
+                    description: "`pending` while the grant is being made."
+                  failure_reason:
+                    type:
+                      - string
+                      - "null"
+                    enum:
+                      - missing_user
+                      - grant_failed
+                      - null
+                    description: "`missing_user`: the callback had no user id. `grant_failed`: the rule names an in-app currency or entitlement that no longer exists."
+                  failure_message:
+                    type:
+                      - string
+                      - "null"
+                    description: The failure reason in words.
+                  rule_id:
+                    type:
+                      - string
+                      - "null"
+                    description: The rule that matched, or null when none did (verified with nothing granted).
+                  rewards:
+                    type: array
+                    items:
+                      oneOf:
+                        - type: object
+                          properties:
+                            type:
+                              type: string
+                              enum:
+                                - virtual_currency
+                            code:
+                              type: string
+                              description: In-app currency code.
+                            amount:
+                              type: integer
+                              description: Credited amount, more than 0.
+                          required:
+                            - type
+                            - code
+                            - amount
+                        - type: object
+                          properties:
+                            type:
+                              type: string
+                              enum:
+                                - entitlement
+                            identifier:
+                              type: string
+                              description: Entitlement lookup key.
+                            expires_at:
+                              type: string
+                              description: When the access ends, ISO 8601.
+                          required:
+                            - type
+                            - identifier
+                            - expires_at
+                    description: What was granted. Empty when no rule matched.
+                  is_sandbox:
+                    type: boolean
+                    description: Test rewards and Test Store apps are sandbox.
+                  occurred_at:
+                    type: integer
+                    format: int64
+                    description: When the network says the reward happened. Epoch milliseconds.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Recorded. Epoch milliseconds.
+                required:
+                  - object
+                  - id
+                  - app_user_id
+                  - client_transaction_id
+                  - network
+                  - status
+                  - rewards
+              example:
+                object: ad_reward_verification
+                id: adrw_1x0q8m2v4k7z3abc
+                app_id: app1a2b3c4d
+                app_user_id: user_42
+                client_transaction_id: 5C1A4F0E-2B7D-4C11-9A3E-0F6B8D2E7A91
+                network: test
+                network_transaction_id: test_proj1a2b3c4d_8E2F…
+                ad_unit_id: null
+                impression_id: null
+                reward_item: coins
+                reward_amount: 5
+                status: verified
+                failure_reason: null
+                failure_message: null
+                rule_id: adrr_4kq0x1m3zv7a2b
+                rewards:
+                  - type: virtual_currency
+                    code: GEMS
+                    amount: 10
+                is_sandbox: true
+                occurred_at: 1790850000000
+                created_at: 1790850000420
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/ads.ts
+      x-scopes:
+        - project_configuration:integrations:read_write
+        - customer_information:purchases:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ads/admob:
+    get:
+      operationId: getAdMobConnection
+      tags:
+        - Ads
+      summary: AdMob connection, loaded ad units and the URLs to paste
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: The connection.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - admob_connection
+                  connected:
+                    type: boolean
+                    description: Whether a Google refresh token is saved.
+                  oauth_client:
+                    type:
+                      - string
+                      - "null"
+                    enum:
+                      - server
+                      - project
+                      - null
+                    description: "Which Google OAuth client is used: the server's (`REVENUEDOT_GOOGLE_OAUTH_CLIENT_ID` and `_SECRET`), the project's own, or none yet."
+                  client_id:
+                    type:
+                      - string
+                      - "null"
+                    description: The project's own OAuth client id, when it saved one.
+                  client_secret:
+                    type: object
+                    properties:
+                      configured:
+                        type: boolean
+                      hint:
+                        type:
+                          - string
+                          - "null"
+                        description: The last four characters.
+                    required:
+                      - configured
+                      - hint
+                  connected_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When Google sign-in finished. Epoch milliseconds, or null.
+                  accounts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          description: Publisher id (pub-…).
+                        currency:
+                          type:
+                            - string
+                            - "null"
+                          description: The account's reporting currency.
+                  last_sync_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last load of the ad units, successful or not. Epoch milliseconds, or null.
+                  last_sync_error:
+                    type:
+                      - string
+                      - "null"
+                    description: Why the last load failed.
+                  ad_units:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ad_unit_id:
+                          type: string
+                          description: ca-app-pub-…/…
+                        name:
+                          type: string
+                        format:
+                          type:
+                            - string
+                            - "null"
+                          description: AdMob's format, lower case (`rewarded`, `banner` ...).
+                        account_id:
+                          type: string
+                        app_id:
+                          type:
+                            - string
+                            - "null"
+                          description: The AdMob app id.
+                        updated_at:
+                          type: integer
+                          format: int64
+                          description: Loaded. Epoch milliseconds.
+                  redirect_uri:
+                    type: string
+                    description: "The redirect URI to add to the Google OAuth client: `<API origin>/v1/ads/admob/oauth/callback`."
+                  ssv_callback_url:
+                    type: string
+                    description: "The server-side verification callback URL to paste into each rewarded ad unit: `<API origin>/v1/ads/admob/ssv`."
+                required:
+                  - object
+                  - connected
+                  - ad_units
+                  - redirect_uri
+                  - ssv_callback_url
+              example:
+                object: admob_connection
+                connected: true
+                oauth_client: server
+                client_id: null
+                client_secret:
+                  configured: false
+                  hint: null
+                connected_at: 1790850000000
+                accounts:
+                  - id: pub-3940256099942544
+                    currency: USD
+                last_sync_at: 1790936400000
+                last_sync_error: null
+                ad_units:
+                  - ad_unit_id: ca-app-pub-3940256099942544/5224354917
+                    name: Level end rewarded
+                    format: rewarded
+                    account_id: pub-3940256099942544
+                    app_id: ca-app-pub-3940256099942544~1458002511
+                    updated_at: 1790936400000
+                redirect_uri: https://api.revenuedot.app/v1/ads/admob/oauth/callback
+                ssv_callback_url: https://api.revenuedot.app/v1/ads/admob/ssv
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/ads.ts
+      x-scopes:
+        - project_configuration:integrations:read
+      x-revenuedot-extension: true
+    delete:
+      operationId: disconnectAdMob
+      tags:
+        - Ads
+      summary: Disconnect AdMob
+      description: Deletes the Google tokens and the loaded ad units. Ad revenue from the SDK keeps working; rewarded-ad verification then accepts only the ad units named on reward rules.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: The connection, now empty.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - admob_connection
+                  connected:
+                    type: boolean
+                    description: Whether a Google refresh token is saved.
+                  oauth_client:
+                    type:
+                      - string
+                      - "null"
+                    enum:
+                      - server
+                      - project
+                      - null
+                    description: "Which Google OAuth client is used: the server's (`REVENUEDOT_GOOGLE_OAUTH_CLIENT_ID` and `_SECRET`), the project's own, or none yet."
+                  client_id:
+                    type:
+                      - string
+                      - "null"
+                    description: The project's own OAuth client id, when it saved one.
+                  client_secret:
+                    type: object
+                    properties:
+                      configured:
+                        type: boolean
+                      hint:
+                        type:
+                          - string
+                          - "null"
+                        description: The last four characters.
+                    required:
+                      - configured
+                      - hint
+                  connected_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When Google sign-in finished. Epoch milliseconds, or null.
+                  accounts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          description: Publisher id (pub-…).
+                        currency:
+                          type:
+                            - string
+                            - "null"
+                          description: The account's reporting currency.
+                  last_sync_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last load of the ad units, successful or not. Epoch milliseconds, or null.
+                  last_sync_error:
+                    type:
+                      - string
+                      - "null"
+                    description: Why the last load failed.
+                  ad_units:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ad_unit_id:
+                          type: string
+                          description: ca-app-pub-…/…
+                        name:
+                          type: string
+                        format:
+                          type:
+                            - string
+                            - "null"
+                          description: AdMob's format, lower case (`rewarded`, `banner` ...).
+                        account_id:
+                          type: string
+                        app_id:
+                          type:
+                            - string
+                            - "null"
+                          description: The AdMob app id.
+                        updated_at:
+                          type: integer
+                          format: int64
+                          description: Loaded. Epoch milliseconds.
+                  redirect_uri:
+                    type: string
+                    description: "The redirect URI to add to the Google OAuth client: `<API origin>/v1/ads/admob/oauth/callback`."
+                  ssv_callback_url:
+                    type: string
+                    description: "The server-side verification callback URL to paste into each rewarded ad unit: `<API origin>/v1/ads/admob/ssv`."
+                required:
+                  - object
+                  - connected
+                  - ad_units
+                  - redirect_uri
+                  - ssv_callback_url
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/ads.ts
+      x-scopes:
+        - project_configuration:integrations:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ads/admob/connect:
+    post:
+      operationId: connectAdMob
+      tags:
+        - Ads
+      summary: Start Google sign-in for AdMob
+      description: Returns Google's authorization URL (scope `https://www.googleapis.com/auth/admob.readonly`, offline access) and a `nonce`. Keep the nonce in the browser that opens the URL. Google redirects to `/v1/ads/admob/oauth/callback`, which sends the code on to the project's AdMob page in the URL fragment; that page finishes with `finishAdMobConnect` and the nonce. So a sign-in link someone else started cannot connect your Google account to their project. The link works once, for 10 minutes. Without a server OAuth client, send the project's own `client_id` and `client_secret` (422 otherwise).
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                client_id:
+                  type:
+                    - string
+                    - "null"
+                  description: A Google OAuth client id (…apps.googleusercontent.com). Null removes the project's own client.
+                client_secret:
+                  type:
+                    - string
+                    - "null"
+                  description: Its secret. Leave out to keep the saved one.
+            example: {}
+      responses:
+        "200":
+          description: Google's sign-in URL and the browser's nonce.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - admob_authorization
+                  url:
+                    type: string
+                  nonce:
+                    type: string
+                    description: Send it to `finishAdMobConnect` from the same browser.
+                required:
+                  - object
+                  - url
+                  - nonce
+              example:
+                object: admob_authorization
+                nonce: 4f1c…
+                url: https://accounts.google.com/o/oauth2/v2/auth?client_id=…&redirect_uri=https%3A%2F%2Fapi.revenuedot.app%2Fv1%2Fads%2Fadmob%2Foauth%2Fcallback&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fadmob.readonly&access_type=offline&prompt=consent&include_granted_scopes=true&state=…
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+        "502":
+          $ref: "#/components/responses/V2Error502"
+      x-source: routes/v2/ads.ts
+      x-scopes:
+        - project_configuration:integrations:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ads/admob/finish:
+    post:
+      operationId: finishAdMobConnect
+      tags:
+        - Ads
+      summary: Finish Google sign-in for AdMob
+      description: The AdMob page calls this with the `admob_code` and `admob_state` from its URL fragment and the `nonce` from `connectAdMob`. RevenueDot checks that the state is this project's pending sign-in (single use, 10 minutes) and that the nonce matches, exchanges the code for a refresh token (stored encrypted) and loads the ad units. 400 when the state or nonce is wrong, used or expired.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: "`admob_code` from the fragment."
+                state:
+                  type: string
+                  description: "`admob_state` from the fragment."
+                nonce:
+                  type: string
+                  description: From `connectAdMob`.
+              required:
+                - code
+                - state
+                - nonce
+            example:
+              code: 4/0Ab…
+              state: proj1a2b3c4d.9f2c…
+              nonce: 4f1c…
+      responses:
+        "200":
+          description: The connection.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - admob_connection
+                  connected:
+                    type: boolean
+                    description: Whether a Google refresh token is saved.
+                  oauth_client:
+                    type:
+                      - string
+                      - "null"
+                    enum:
+                      - server
+                      - project
+                      - null
+                    description: "Which Google OAuth client is used: the server's (`REVENUEDOT_GOOGLE_OAUTH_CLIENT_ID` and `_SECRET`), the project's own, or none yet."
+                  client_id:
+                    type:
+                      - string
+                      - "null"
+                    description: The project's own OAuth client id, when it saved one.
+                  client_secret:
+                    type: object
+                    properties:
+                      configured:
+                        type: boolean
+                      hint:
+                        type:
+                          - string
+                          - "null"
+                        description: The last four characters.
+                    required:
+                      - configured
+                      - hint
+                  connected_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When Google sign-in finished. Epoch milliseconds, or null.
+                  accounts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          description: Publisher id (pub-…).
+                        currency:
+                          type:
+                            - string
+                            - "null"
+                          description: The account's reporting currency.
+                  last_sync_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last load of the ad units, successful or not. Epoch milliseconds, or null.
+                  last_sync_error:
+                    type:
+                      - string
+                      - "null"
+                    description: Why the last load failed.
+                  ad_units:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ad_unit_id:
+                          type: string
+                          description: ca-app-pub-…/…
+                        name:
+                          type: string
+                        format:
+                          type:
+                            - string
+                            - "null"
+                          description: AdMob's format, lower case (`rewarded`, `banner` ...).
+                        account_id:
+                          type: string
+                        app_id:
+                          type:
+                            - string
+                            - "null"
+                          description: The AdMob app id.
+                        updated_at:
+                          type: integer
+                          format: int64
+                          description: Loaded. Epoch milliseconds.
+                  redirect_uri:
+                    type: string
+                    description: "The redirect URI to add to the Google OAuth client: `<API origin>/v1/ads/admob/oauth/callback`."
+                  ssv_callback_url:
+                    type: string
+                    description: "The server-side verification callback URL to paste into each rewarded ad unit: `<API origin>/v1/ads/admob/ssv`."
+                required:
+                  - object
+                  - connected
+                  - ad_units
+                  - redirect_uri
+                  - ssv_callback_url
+              example:
+                object: admob_connection
+                connected: true
+                oauth_client: server
+                client_id: null
+                client_secret:
+                  configured: false
+                  hint: null
+                connected_at: 1790850000000
+                accounts:
+                  - id: pub-3940256099942544
+                    currency: USD
+                last_sync_at: 1790936400000
+                last_sync_error: null
+                ad_units:
+                  - ad_unit_id: ca-app-pub-3940256099942544/5224354917
+                    name: Level end rewarded
+                    format: rewarded
+                    account_id: pub-3940256099942544
+                    app_id: ca-app-pub-3940256099942544~1458002511
+                    updated_at: 1790936400000
+                redirect_uri: https://api.revenuedot.app/v1/ads/admob/oauth/callback
+                ssv_callback_url: https://api.revenuedot.app/v1/ads/admob/ssv
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+        "502":
+          $ref: "#/components/responses/V2Error502"
+      x-source: routes/v2/ads.ts
+      x-scopes:
+        - project_configuration:integrations:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ads/admob/refresh:
+    post:
+      operationId: refreshAdMob
+      tags:
+        - Ads
+      summary: Load AdMob ad units now
+      description: Replaces the loaded ad units with the account's current list (up to 5,000). RevenueDot also does this once a day.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: The connection.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - admob_connection
+                  connected:
+                    type: boolean
+                    description: Whether a Google refresh token is saved.
+                  oauth_client:
+                    type:
+                      - string
+                      - "null"
+                    enum:
+                      - server
+                      - project
+                      - null
+                    description: "Which Google OAuth client is used: the server's (`REVENUEDOT_GOOGLE_OAUTH_CLIENT_ID` and `_SECRET`), the project's own, or none yet."
+                  client_id:
+                    type:
+                      - string
+                      - "null"
+                    description: The project's own OAuth client id, when it saved one.
+                  client_secret:
+                    type: object
+                    properties:
+                      configured:
+                        type: boolean
+                      hint:
+                        type:
+                          - string
+                          - "null"
+                        description: The last four characters.
+                    required:
+                      - configured
+                      - hint
+                  connected_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When Google sign-in finished. Epoch milliseconds, or null.
+                  accounts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          description: Publisher id (pub-…).
+                        currency:
+                          type:
+                            - string
+                            - "null"
+                          description: The account's reporting currency.
+                  last_sync_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last load of the ad units, successful or not. Epoch milliseconds, or null.
+                  last_sync_error:
+                    type:
+                      - string
+                      - "null"
+                    description: Why the last load failed.
+                  ad_units:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ad_unit_id:
+                          type: string
+                          description: ca-app-pub-…/…
+                        name:
+                          type: string
+                        format:
+                          type:
+                            - string
+                            - "null"
+                          description: AdMob's format, lower case (`rewarded`, `banner` ...).
+                        account_id:
+                          type: string
+                        app_id:
+                          type:
+                            - string
+                            - "null"
+                          description: The AdMob app id.
+                        updated_at:
+                          type: integer
+                          format: int64
+                          description: Loaded. Epoch milliseconds.
+                  redirect_uri:
+                    type: string
+                    description: "The redirect URI to add to the Google OAuth client: `<API origin>/v1/ads/admob/oauth/callback`."
+                  ssv_callback_url:
+                    type: string
+                    description: "The server-side verification callback URL to paste into each rewarded ad unit: `<API origin>/v1/ads/admob/ssv`."
+                required:
+                  - object
+                  - connected
+                  - ad_units
+                  - redirect_uri
+                  - ssv_callback_url
+              example:
+                object: admob_connection
+                connected: true
+                oauth_client: server
+                client_id: null
+                client_secret:
+                  configured: false
+                  hint: null
+                connected_at: 1790850000000
+                accounts:
+                  - id: pub-3940256099942544
+                    currency: USD
+                last_sync_at: 1790936400000
+                last_sync_error: null
+                ad_units:
+                  - ad_unit_id: ca-app-pub-3940256099942544/5224354917
+                    name: Level end rewarded
+                    format: rewarded
+                    account_id: pub-3940256099942544
+                    app_id: ca-app-pub-3940256099942544~1458002511
+                    updated_at: 1790936400000
+                redirect_uri: https://api.revenuedot.app/v1/ads/admob/oauth/callback
+                ssv_callback_url: https://api.revenuedot.app/v1/ads/admob/ssv
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "502":
+          $ref: "#/components/responses/V2Error502"
+      x-source: routes/v2/ads.ts
+      x-scopes:
+        - project_configuration:integrations:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ads/apple_search_ads/report:
+    get:
+      operationId: getAppleSearchAdsReport
+      tags:
+        - Ads
+      summary: Customers and revenue by Apple Search Ads campaign
+      description: Customers first seen in the period whose `$appleAdsCampaignId` is set (from the SDK's AdServices token), grouped by campaign, with paying customers and production revenue to date.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: range
+          in: query
+          schema:
+            type: string
+            enum:
+              - 7d
+              - 28d
+              - 90d
+              - 12m
+          description: Default 90d. Customers first seen in this period.
+      responses:
+        "200":
+          description: The report.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - apple_search_ads_report
+                  range:
+                    type: string
+                    enum:
+                      - 7d
+                      - 28d
+                      - 90d
+                      - 12m
+                  start_date:
+                    type: string
+                    description: First UTC day of the period.
+                  currency:
+                    type: string
+                    enum:
+                      - USD
+                  campaigns:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        campaign_id:
+                          type: string
+                          description: "`$appleAdsCampaignId`."
+                        name:
+                          type:
+                            - string
+                            - "null"
+                          description: The campaign name, once loaded with the sync.
+                        customers:
+                          type: integer
+                          description: Customers first seen in the period with this campaign.
+                        paying_customers:
+                          type: integer
+                          description: Of those, customers with revenue to date.
+                        revenue:
+                          type: number
+                          description: Their production revenue to date, US dollars, refunds negative.
+                        revenue_per_customer:
+                          type: number
+                    description: Highest revenue first.
+                  names_loaded:
+                    type: integer
+                    description: Campaign names loaded from Apple.
+                  last_sync_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last name sync. Epoch milliseconds, or null.
+                  last_sync_error:
+                    type:
+                      - string
+                      - "null"
+                    description: Why the last name sync failed.
+                required:
+                  - object
+                  - range
+                  - campaigns
+              example:
+                object: apple_search_ads_report
+                range: 90d
+                start_date: 2026-07-04
+                currency: USD
+                campaigns:
+                  - campaign_id: "1234567890"
+                    name: Brand US
+                    customers: 412
+                    paying_customers: 38
+                    revenue: 1204.55
+                    revenue_per_customer: 2.92
+                names_loaded: 12
+                last_sync_at: 1790850000000
+                last_sync_error: null
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/ads.ts
+      x-scopes:
+        - charts_metrics:overview:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ads/apple_search_ads/sync:
+    post:
+      operationId: syncAppleSearchAdsNames
+      tags:
+        - Ads
+      summary: Load campaign names from Apple Search Ads
+      description: Signs in as the Apple Search Ads API user saved on the project's `apple_search_ads` integration (organization ID, client ID, team ID, key ID, private key) and loads campaign and ad group names from the Campaign Management API v5 (up to 200 campaigns). 422 with Apple's message when the credentials are missing or refused.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: How many campaigns were named.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - apple_search_ads_sync
+                  campaigns:
+                    type: integer
+                required:
+                  - object
+                  - campaigns
+              example:
+                object: apple_search_ads_sync
+                campaigns: 12
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/ads.ts
+      x-scopes:
+        - project_configuration:integrations:read_write
+      x-revenuedot-extension: true
+  /v1/ads/admob/ssv:
+    get:
+      operationId: admobSsvCallback
+      tags:
+        - Ads
+      summary: AdMob server-side verification callback
+      description: |-
+        The URL to paste into each rewarded ad unit's server-side verification settings in AdMob. Google calls it with a signed query (`ad_network`, `ad_unit`, `custom_data`, `key_id`, `reward_amount`, `reward_item`, `signature`, `timestamp`, `transaction_id`, `user_id`; [AdMob SSV](https://developers.google.com/admob/android/ssv)); RevenueDot checks the ECDSA signature with Google's published keys, finds the project from the app key in `custom_data` (the SDK's reward verification token), checks that `ad_unit` is one of the project's ad units (loaded by the AdMob connection, or named on a reward rule), records the reward once per AdMob `transaction_id` and grants what the first matching reward rule says. Only the signed part of the query is read. Google signs every publisher's callbacks with the same keys, and the app key ships inside the app, so another AdMob account's callback with your app key is recorded as failed (`unknown_ad_unit`) and grants nothing.
+
+        - **200** `{"ok":true,"recorded":true}`: recorded (or already recorded). Also 200 with no parameters (AdMob's **Verify URL** button), and 200 `{"ok":true,"recorded":false,"reason":"invalid_custom_data"}` or `"unknown_api_key"` when `custom_data` is not a RevenueDot token, so Google stops retrying.
+        - **400:** the query does not end with `signature` and `key_id`, has anything after `key_id`, or repeats a parameter. **403:** the signature is not valid or the key id is unknown; nothing is recorded.
+        - **503:** Google's keys could not be fetched. Google retries callbacks that do not answer 200.
+      security: []
+      parameters:
+        - name: ad_unit
+          in: query
+          schema:
+            type: string
+        - name: custom_data
+          in: query
+          schema:
+            type: string
+        - name: key_id
+          in: query
+          schema:
+            type: string
+        - name: reward_amount
+          in: query
+          schema:
+            type: string
+        - name: reward_item
+          in: query
+          schema:
+            type: string
+        - name: signature
+          in: query
+          schema:
+            type: string
+        - name: timestamp
+          in: query
+          schema:
+            type: string
+        - name: transaction_id
+          in: query
+          schema:
+            type: string
+        - name: user_id
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Recorded, or nothing to record.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  recorded:
+                    type: boolean
+                  reason:
+                    type: string
+              example:
+                ok: true
+                recorded: true
+        "400":
+          description: Not an AdMob callback.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+              example:
+                error: Expected AdMob's signed callback (signature and key_id last).
+        "403":
+          description: Bad signature.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+              example:
+                error: The signature is not valid.
+        "503":
+          description: Google's keys are unavailable.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+              example:
+                error: Google's verifier keys are unavailable; retry later.
+      x-source: routes/ads-public.ts
+      x-revenuedot-extension: true
+  /v1/ads/admob/oauth/callback:
+    get:
+      operationId: admobOAuthCallback
+      tags:
+        - Ads
+      summary: Google's redirect after AdMob sign-in
+      description: Add `<API origin>/v1/ads/admob/oauth/callback` as an authorized redirect URI of the Google OAuth client. RevenueDot redirects to the project's AdMob page with the code and state in the URL fragment (`#admob_code=…&admob_state=…`, never sent to a server), and the page finishes with `finishAdMobConnect`. A cancelled sign-in redirects with `?admob_error=<message>`.
+      security: []
+      parameters:
+        - name: code
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+          description: From `connectAdMob`; single use, valid 10 minutes.
+        - name: error
+          in: query
+          schema:
+            type: string
+          description: "`access_denied` when the user cancelled."
+      responses:
+        "302":
+          description: To the dashboard's AdMob page.
+      x-source: routes/ads-public.ts
       x-revenuedot-extension: true
   /v2/projects/{project_id}/refund_control:
     get:
@@ -22085,6 +25110,150 @@ paths:
       x-source: routes/v2/support.ts
       x-scopes:
         - customer_information:customers:read
+      x-revenuedot-extension: true
+  /v1/support/intercom/{project_id}/canvas:
+    post:
+      operationId: intercomInboxCanvas
+      tags:
+        - Support
+      summary: "Intercom inbox app: the customer's subscription as Canvas Kit components"
+      description: |-
+        Set this URL as the **initialize** URL of an Intercom Canvas Kit app for the Inbox ([Canvas Kit](https://developers.intercom.com/docs/canvas-kit)). Intercom signs each request; RevenueDot checks the signature with the client secret saved on the project's `intercom_inbox` integration. The contact is found by `external_id` (your app user ID), then by email. The answer is a Canvas Kit canvas: status, entitlements, plan, store, renewal or expiry date, billing issue, total spent, customer since, app user ID, country, refund requests, open tickets and an **Open in RevenueDot** button.
+
+        - **401:** no signature, or it does not match. **404:** the Intercom inbox is not connected to this project (or turned off). **413:** the body is over 64,000 characters. **400:** the body is not JSON. See [Support](../docs/guides/support-integrations.md#intercom).
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: X-Body-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Intercom's hex HMAC-SHA256 of the raw body, keyed with the Intercom app's client secret.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                contact:
+                  type: object
+                  properties:
+                    external_id:
+                      type: string
+                      description: Your app user ID.
+                    email:
+                      type: string
+                  description: The conversation's contact, as Intercom sends it.
+            example:
+              contact:
+                external_id: user_42
+                email: wren@example.com
+      responses:
+        "200":
+          description: Canvas Kit components.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  canvas:
+                    type: object
+                    properties:
+                      content:
+                        type: object
+                        properties:
+                          components:
+                            type: array
+                            items:
+                              type: object
+              example:
+                canvas:
+                  content:
+                    components:
+                      - type: text
+                        text: RevenueDot
+                        style: header
+                      - type: data-table
+                        items:
+                          - type: field-value
+                            field: Status
+                            value: Active
+                          - type: field-value
+                            field: Entitlements
+                            value: pro
+                          - type: field-value
+                            field: Plan
+                            value: pro_monthly
+                          - type: field-value
+                            field: Store
+                            value: app_store
+                          - type: field-value
+                            field: Renews
+                            value: 2026-10-30
+                          - type: field-value
+                            field: Total spent
+                            value: $59.94
+                          - type: field-value
+                            field: Customer since
+                            value: 2026-04-02
+                          - type: field-value
+                            field: App user ID
+                            value: user_42
+                      - type: divider
+                      - type: button
+                        id: open-revenuedot
+                        label: Open in RevenueDot
+                        style: secondary
+                        action:
+                          type: url
+                          url: https://app.revenuedot.app/projects/proj1a2b3c4d/customers/user_42
+        "400":
+          description: Not JSON.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+              example:
+                error: The body is not JSON.
+        "401":
+          description: Missing or wrong signature.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+              example:
+                error: The signature is not valid.
+        "404":
+          description: Not connected.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+              example:
+                error: Intercom is not connected to this project.
+        "413":
+          description: Too large.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+              example:
+                error: The request is too large.
+      x-source: routes/support-apps.ts
       x-revenuedot-extension: true
   /v2/projects/{project_id}/winback_campaigns:
     get:
@@ -27125,6 +30294,10 @@ paths:
                   type: object
                   additionalProperties:
                     type: string
+                  description: "The page URL's query: its `utm_*` parameters and ad click ids (`fbclid`, `gclid`, `gbraid`, `wbraid`, `ttclid`, `msclkid`) are kept with the event."
+                page_url:
+                  type: string
+                  description: "The page's address without its query (http or https). Kept only while an integration asks for funnel events, for ad networks; the request's IP address and user agent only while that integration is Meta or Branch (deleted after 7 days). Nothing of this with `Sec-GPC: 1`."
               required:
                 - type
                 - funnel_id
@@ -27137,6 +30310,8 @@ paths:
               answer: Sleep better
               query:
                 utm_source: tiktok
+                fbclid: IwAR2xQ9kM
+              page_url: https://api.revenuedot.app/pay/scanner/sleep-quiz
       responses:
         "204":
           description: Accepted or ignored.
@@ -32914,7 +36089,7 @@ webhooks:
       tags:
         - Webhook events
       summary: VIRTUAL_CURRENCY_TRANSACTION
-      description: An in-app currency was credited because a purchase of a granting product was recorded. Not sent for adjustments made through the API.
+      description: "An in-app currency was credited because a purchase of a granting product was recorded (`source: in_app_purchase`), or because a rewarded ad was verified and a reward rule granted currency (`source: ad_reward`, a RevenueDot extension; `product_id` and `store` are null and `transaction_id` is the ad network's transaction id). Not sent for adjustments made through the API."
       parameters:
         - name: X-RevenueCat-Webhook-Signature
           in: header
@@ -32966,7 +36141,9 @@ webhooks:
                         type: string
                       description: Every app user id of the customer.
                     store:
-                      type: string
+                      type:
+                        - string
+                        - "null"
                       enum:
                         - APP_STORE
                         - MAC_APP_STORE
@@ -32979,6 +36156,8 @@ webhooks:
                         - PADDLE
                         - ROKU
                         - EXTERNAL
+                        - null
+                      description: Null for an ad reward.
                     adjustments:
                       type: array
                       items:
@@ -33005,11 +36184,15 @@ webhooks:
                           - amount
                           - currency
                     product_id:
-                      type: string
-                      description: Store product id. For PRODUCT_CHANGE, the product the customer changed from.
+                      type:
+                        - string
+                        - "null"
+                      description: The granting product, or null for an ad reward.
                     product_display_name:
-                      type: string
-                      description: The product's display name.
+                      type:
+                        - string
+                        - "null"
+                      description: The product's display name, or null for an ad reward.
                     purchase_environment:
                       type: string
                       enum:
@@ -33019,6 +36202,8 @@ webhooks:
                       type: string
                       enum:
                         - in_app_purchase
+                        - ad_reward
+                      description: "`ad_reward` is a RevenueDot extension: RevenueCat documents no source value for rewarded ads."
                     transaction_id:
                       type:
                         - string
@@ -33526,6 +36711,39 @@ webhooks:
                     subscriber_attributes:
                       type: object
                       description: Always empty.
+                    revenue_usd:
+                      type: number
+                      description: "FUNNEL_PURCHASE only: what the buyer paid, in US dollars."
+                    currency:
+                      type: string
+                      enum:
+                        - USD
+                      description: "FUNNEL_PURCHASE only: the currency of `revenue_usd`."
+                    click_ids:
+                      type: object
+                      properties:
+                        fbclid:
+                          type: string
+                        gclid:
+                          type: string
+                        gbraid:
+                          type: string
+                        wbraid:
+                          type: string
+                        ttclid:
+                          type: string
+                        msclkid:
+                          type: string
+                      description: The ad click ids from the landing page's URL, when it had any. Checkouts and purchases take them from the visit's first page view while an integration asks for funnel events.
+                    client_ip:
+                      type: string
+                      description: "The visitor's IP address, for Meta and Branch: only while one of them (enabled) has a funnel event type in its filter; otherwise no visitor IP is stored. Deleted after 7 days. Never for a visitor with Global Privacy Control on."
+                    client_user_agent:
+                      type: string
+                      description: The visitor's browser user agent. Same conditions as `client_ip`.
+                    page_url:
+                      type: string
+                      description: The funnel page's address, without its query. While any enabled integration (not a webhook) has a funnel event type in its filter; not for a visitor with Global Privacy Control on.
                   required:
                     - id
                     - type
@@ -33560,6 +36778,8 @@ webhooks:
                 utm_source: tiktok
                 utm_campaign: fall
                 subscriber_attributes: {}
+                click_ids:
+                  fbclid: IwAR2xQ9kM
       responses:
         "200":
           description: Only HTTP 200 counts as delivered. Anything else, or no answer within 60 seconds, is retried after 5, 10, 20, 40 and 80 minutes.
@@ -33678,6 +36898,39 @@ webhooks:
                     subscriber_attributes:
                       type: object
                       description: Always empty.
+                    revenue_usd:
+                      type: number
+                      description: "FUNNEL_PURCHASE only: what the buyer paid, in US dollars."
+                    currency:
+                      type: string
+                      enum:
+                        - USD
+                      description: "FUNNEL_PURCHASE only: the currency of `revenue_usd`."
+                    click_ids:
+                      type: object
+                      properties:
+                        fbclid:
+                          type: string
+                        gclid:
+                          type: string
+                        gbraid:
+                          type: string
+                        wbraid:
+                          type: string
+                        ttclid:
+                          type: string
+                        msclkid:
+                          type: string
+                      description: The ad click ids from the landing page's URL, when it had any. Checkouts and purchases take them from the visit's first page view while an integration asks for funnel events.
+                    client_ip:
+                      type: string
+                      description: "The visitor's IP address, for Meta and Branch: only while one of them (enabled) has a funnel event type in its filter; otherwise no visitor IP is stored. Deleted after 7 days. Never for a visitor with Global Privacy Control on."
+                    client_user_agent:
+                      type: string
+                      description: The visitor's browser user agent. Same conditions as `client_ip`.
+                    page_url:
+                      type: string
+                      description: The funnel page's address, without its query. While any enabled integration (not a webhook) has a funnel event type in its filter; not for a visitor with Global Privacy Control on.
                   required:
                     - id
                     - type
@@ -33830,6 +37083,39 @@ webhooks:
                     subscriber_attributes:
                       type: object
                       description: Always empty.
+                    revenue_usd:
+                      type: number
+                      description: "FUNNEL_PURCHASE only: what the buyer paid, in US dollars."
+                    currency:
+                      type: string
+                      enum:
+                        - USD
+                      description: "FUNNEL_PURCHASE only: the currency of `revenue_usd`."
+                    click_ids:
+                      type: object
+                      properties:
+                        fbclid:
+                          type: string
+                        gclid:
+                          type: string
+                        gbraid:
+                          type: string
+                        wbraid:
+                          type: string
+                        ttclid:
+                          type: string
+                        msclkid:
+                          type: string
+                      description: The ad click ids from the landing page's URL, when it had any. Checkouts and purchases take them from the visit's first page view while an integration asks for funnel events.
+                    client_ip:
+                      type: string
+                      description: "The visitor's IP address, for Meta and Branch: only while one of them (enabled) has a funnel event type in its filter; otherwise no visitor IP is stored. Deleted after 7 days. Never for a visitor with Global Privacy Control on."
+                    client_user_agent:
+                      type: string
+                      description: The visitor's browser user agent. Same conditions as `client_ip`.
+                    page_url:
+                      type: string
+                      description: The funnel page's address, without its query. While any enabled integration (not a webhook) has a funnel event type in its filter; not for a visitor with Global Privacy Control on.
                   required:
                     - id
                     - type
@@ -33864,6 +37150,8 @@ webhooks:
                 answer: null
                 product_id: price_1QxR3pKc8Hn4EfGh
                 subscriber_attributes: {}
+                revenue_usd: 39.99
+                currency: USD
       responses:
         "200":
           description: Only HTTP 200 counts as delivered. Anything else, or no answer within 60 seconds, is retried after 5, 10, 20, 40 and 80 minutes.
