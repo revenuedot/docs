@@ -13,8 +13,8 @@ One RevenueDot server answers every API below on one port. The reference is gene
 |---|---|---|---|---|
 | SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 47 | [SDK endpoints](sdk-endpoints.md) |
 | REST API v1 | `/v1/subscribers/...` | secret key | 10 | [REST API v1](rest-v1.md) |
-| REST API v2 | `/v2/projects/...` | secret key or dashboard session | 130 | [REST API v2](rest-v2.md) |
-| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...` | secret key, session or none | 49 | [Extensions](extensions.md) |
+| REST API v2 | `/v2/projects/...` | secret key or dashboard session | 132 | [REST API v2](rest-v2.md) |
+| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...` | secret key, session or none | 67 | [Extensions](extensions.md) |
 | Webhooks (sent by RevenueDot) | your URL | HMAC signature | 17 event types | [Webhook events](webhook-events.md) |
 
 ## Quick example

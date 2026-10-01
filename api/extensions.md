@@ -11,7 +11,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (49)
+## Operations on this page (67)
 
 - **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects), [Update account settings](#update-account-settings), [Email a password reset link](#email-a-password-reset-link), [Check a password reset link](#check-a-password-reset-link), [Set a new password from a reset link](#set-a-new-password-from-a-reset-link), [Confirm an email address](#confirm-an-email-address), [Send a new confirmation email](#send-a-new-confirmation-email), [Look up an invite](#look-up-an-invite), [Accept an invite](#accept-an-invite)
 - **Members and invites**: [List open invites](#list-open-invites), [Invite someone by email](#invite-someone-by-email), [Resend an invite](#resend-an-invite), [Revoke an invite](#revoke-an-invite), [Change a member's role](#change-a-members-role), [Remove a member, or leave the project](#remove-a-member-or-leave-the-project)
@@ -19,6 +19,8 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Store setup**: [Store setup state of an app](#store-setup-state-of-an-app), [Check store credentials with Apple, Google, Amazon or Stripe](#check-store-credentials-with-apple-google-amazon-or-stripe), [Extend every active App Store subscriber of a product](#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](#status-of-a-mass-extension), [Setup health](#setup-health)
 - **API keys**: [List secret keys](#list-secret-keys), [Create a secret key](#create-a-secret-key), [Delete a secret key](#delete-a-secret-key)
 - **Webhook deliveries**: [Send a TEST event to one webhook](#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](#whether-each-webhook-is-enabled), [Delivery log of a webhook](#delivery-log-of-a-webhook), [Retry a delivery now](#retry-a-delivery-now)
+- **Integrations**: [What each integration needs](#what-each-integration-needs), [List integrations](#list-integrations), [Connect an integration](#connect-an-integration), [Get an integration](#get-an-integration), [Update, enable or disable an integration](#update-enable-or-disable-an-integration), [Disconnect an integration](#disconnect-an-integration), [Send a TEST event to one integration](#send-a-test-event-to-one-integration), [Delivery log of an integration](#delivery-log-of-an-integration), [Retry a delivery now](#retry-a-delivery-now), [Queue failed or skipped deliveries again](#queue-failed-or-skipped-deliveries-again)
+- **Data exports**: [List scheduled data exports](#list-scheduled-data-exports), [Create a scheduled data export](#create-a-scheduled-data-export), [Get a data export](#get-a-data-export), [Update a data export](#update-a-data-export), [Delete a data export](#delete-a-data-export), [Run an export now](#run-an-export-now), [Check the bucket and credentials](#check-the-bucket-and-credentials), [Run history](#run-history)
 - **Event log**: [Event log](#event-log), [Transaction feed](#transaction-feed)
 - **Test Store**: [Simulate a Test Store purchase or lifecycle](#simulate-a-test-store-purchase-or-lifecycle)
 - **Dashboard data**: [Daily history of an overview metric](#daily-history-of-an-overview-metric), [Dashboard rows for customers](#dashboard-rows-for-customers)
@@ -1315,6 +1317,651 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID/de
 **Responses**
 
 - **200**: The delivery, queued. Returns [WebhookDelivery](#webhookdelivery).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+## Integrations
+
+Slack, Segment, Amplitude, Mixpanel, PostHog, Firebase, BigQuery, AppsFlyer, Adjust and Meta: connect, test, the delivery log, retry and replay.
+
+### What each integration needs
+
+`GET /v2/projects/{project_id}/integrations/catalog` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read`
+
+The fields each integration takes (keys, labels, types, options), its default environment and setup guide. The dashboard draws its forms from this.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/catalog" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Every integration type.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### List integrations
+
+`GET /v2/projects/{project_id}/integrations/partners` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `type` | `slack`, `segment`, `amplitude`, `mixpanel`, `posthog`, `firebase`, `bigquery`, `appsflyer`, `adjust`, `meta` | no |  |
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The project's integrations.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Connect an integration
+
+`POST /v2/projects/{project_id}/integrations/partners` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+Every event webhooks get is also sent to each enabled integration whose filters match, with the webhook retry schedule (5, 10, 20, 40, 80 minutes). Secrets are encrypted at rest and never returned.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `type` | `slack`, `segment`, `amplitude`, `mixpanel`, `posthog`, `firebase`, `bigquery`, `appsflyer`, `adjust`, `meta` | yes |  |
+| `name` | string | no |  |
+| `enabled` | boolean | no |  |
+| `environment` | `production`, `sandbox`, null | no |  |
+| `app_id` | string or null | no |  |
+| `event_types` | array of string | no |  |
+| `settings` | object | no | Every field of the integration's catalogue entry, secrets included. On update, a missing secret keeps its saved value; null removes it. |
+| `event_names` | object | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"type":"amplitude","environment":null,"settings":{"api_key":"<amplitude api key>","region":"us"}}'
+```
+
+**Responses**
+
+- **201**: The integration.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 201 response:
+
+```json
+{
+  "object": "integration",
+  "id": "intg_8f2kq0x1m3zv7a",
+  "project_id": "proj1a2b3c4d",
+  "type": "amplitude",
+  "name": "Amplitude",
+  "enabled": true,
+  "environment": null,
+  "app_id": null,
+  "event_types": [],
+  "settings": {
+    "region": "us"
+  },
+  "secrets": {
+    "api_key": {
+      "configured": true,
+      "hint": "••••9f3a"
+    },
+    "sandbox_api_key": {
+      "configured": false,
+      "hint": null
+    }
+  },
+  "event_names": {},
+  "status": {
+    "last_delivered_at": null,
+    "last_error": null,
+    "consecutive_failures": 0
+  },
+  "created_at": 1790850000000,
+  "updated_at": 1790850000000
+}
+```
+
+### Get an integration
+
+`GET /v2/projects/{project_id}/integrations/partners/{integration_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `integration_id` | string | yes | Integration id (intg_...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRATION_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The integration.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Update, enable or disable an integration
+
+`POST /v2/projects/{project_id}/integrations/partners/{integration_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+`enabled: false` stops new deliveries; failed ones wait until it is on again.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `integration_id` | string | yes | Integration id (intg_...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `type` | `slack`, `segment`, `amplitude`, `mixpanel`, `posthog`, `firebase`, `bigquery`, `appsflyer`, `adjust`, `meta` | no |  |
+| `name` | string | no |  |
+| `enabled` | boolean | no |  |
+| `environment` | `production`, `sandbox`, null | no |  |
+| `app_id` | string or null | no |  |
+| `event_types` | array of string | no |  |
+| `settings` | object | no | Every field of the integration's catalogue entry, secrets included. On update, a missing secret keeps its saved value; null removes it. |
+| `event_names` | object | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRATION_ID" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"enabled":false}'
+```
+
+**Responses**
+
+- **200**: The integration.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Disconnect an integration
+
+`DELETE /v2/projects/{project_id}/integrations/partners/{integration_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+Its delivery log goes with it.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `integration_id` | string | yes | Integration id (intg_...). |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRATION_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deleted.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Send a TEST event to one integration
+
+`POST /v2/projects/{project_id}/integrations/partners/{integration_id}/test` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+With `app_user_id`, the event carries that customer's attributes, so attribution partners (which need `$appsflyerId`, `$adjustId`, `$fbAnonId` ...) can be tested. A disabled integration answers 422.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `integration_id` | string | yes | Integration id (intg_...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `app_user_id` | string | no |  |
+| `environment` | `production`, `sandbox` | no |  |
+| `product_id` | string | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRATION_ID/test" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+**Responses**
+
+- **201**: The queued delivery.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### Delivery log of an integration
+
+`GET /v2/projects/{project_id}/integrations/partners/{integration_id}/deliveries` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read`
+
+Newest first.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `integration_id` | string | yes | Integration id (intg_...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `status` | `pending`, `delivered`, `failed`, `skipped` | no |  |
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRATION_ID/deliveries" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deliveries.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Retry a delivery now
+
+`POST /v2/projects/{project_id}/integrations/partners/{integration_id}/deliveries/{delivery_id}/retry` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+The request is built again, so keys and attributes saved since count.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `integration_id` | string | yes | Integration id (intg_...). |
+| `delivery_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRATION_ID/deliveries/$DELIVERY_ID/retry" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The delivery, queued.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Queue failed or skipped deliveries again
+
+`POST /v2/projects/{project_id}/integrations/partners/{integration_id}/actions/replay` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `integration_id` | string | yes | Integration id (intg_...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `status` | `failed`, `skipped`, `failed_and_skipped` | no | Default failed. |
+| `since` | integer | no | Queued at or after (epoch ms). |
+| `until` | integer | no | Queued at or before (epoch ms). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRATION_ID/actions/replay" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"status":"failed_and_skipped"}'
+```
+
+**Responses**
+
+- **200**: How many were queued.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+## Data exports
+
+Scheduled CSV or Parquet files of transactions, customers, subscriptions and events in Amazon S3, Cloudflare R2 or Google Cloud Storage.
+
+### List scheduled data exports
+
+`GET /v2/projects/{project_id}/integrations/exports` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The project's exports.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Create a scheduled data export
+
+`POST /v2/projects/{project_id}/integrations/exports` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+CSV or Parquet files of transactions, customers, subscriptions and events, written daily or weekly to Amazon S3 (or any S3-compatible storage), Cloudflare R2 or Google Cloud Storage under `<prefix>/<YYYY-MM-DD>/<table>_<YYYYMMDDTHHMMSSZ>.<ext>`. Incremental exports write rows that changed since the previous run; each table's first run is complete.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | no |  |
+| `enabled` | boolean | no |  |
+| `destination` | `s3`, `r2`, `gcs` | yes |  |
+| `config` | object | yes |  |
+| `config.bucket` | string | no |  |
+| `config.prefix` | string or null | no |  |
+| `config.region` | string or null | no | S3 region (default us-east-1). |
+| `config.endpoint` | string or null | no | S3-compatible endpoint (MinIO and the like). |
+| `config.account_id` | string or null | no | Cloudflare account id (R2). |
+| `config.access_key_id` | string or null | no | S3 or R2 access key id. |
+| `credentials` | object | no |  |
+| `credentials.secret_access_key` | string or null | no |  |
+| `credentials.service_account_json` | string or null | no | The service account's JSON key as a string. |
+| `format` | `csv`, `parquet` | no |  |
+| `compression` | `gzip`, `none` | no |  |
+| `schedule` | `daily`, `weekly` | no |  |
+| `hour_utc` | integer | no |  |
+| `weekday` | integer or null | no |  |
+| `mode` | `incremental`, `full` | no |  |
+| `tables` | array of `transactions`, `customers`, `subscriptions`, `events` | no |  |
+| `environment` | `production`, `sandbox`, null | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"name":"Warehouse","destination":"s3","config":{"bucket":"acme-exports","prefix":"revenuedot","region":"eu-west-1","access_key_id":"AKIA..."},"credentials":{"secret_access_key":"<secret>"},"format":"csv","schedule":"daily","hour_utc":3,"tables":["transactions"]}'
+```
+
+**Responses**
+
+- **201**: The export.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Get a data export
+
+`GET /v2/projects/{project_id}/integrations/exports/{export_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `export_id` | string | yes | Export id (export_...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$EXPORT_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The export.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Update a data export
+
+`POST /v2/projects/{project_id}/integrations/exports/{export_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `export_id` | string | yes | Export id (export_...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | no |  |
+| `enabled` | boolean | no |  |
+| `destination` | `s3`, `r2`, `gcs` | no |  |
+| `config` | object | no |  |
+| `config.bucket` | string | no |  |
+| `config.prefix` | string or null | no |  |
+| `config.region` | string or null | no | S3 region (default us-east-1). |
+| `config.endpoint` | string or null | no | S3-compatible endpoint (MinIO and the like). |
+| `config.account_id` | string or null | no | Cloudflare account id (R2). |
+| `config.access_key_id` | string or null | no | S3 or R2 access key id. |
+| `credentials` | object | no |  |
+| `credentials.secret_access_key` | string or null | no |  |
+| `credentials.service_account_json` | string or null | no | The service account's JSON key as a string. |
+| `format` | `csv`, `parquet` | no |  |
+| `compression` | `gzip`, `none` | no |  |
+| `schedule` | `daily`, `weekly` | no |  |
+| `hour_utc` | integer | no |  |
+| `weekday` | integer or null | no |  |
+| `mode` | `incremental`, `full` | no |  |
+| `tables` | array of `transactions`, `customers`, `subscriptions`, `events` | no |  |
+| `environment` | `production`, `sandbox`, null | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$EXPORT_ID" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"schedule":"weekly","weekday":1}'
+```
+
+**Responses**
+
+- **200**: The export.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Delete a data export
+
+`DELETE /v2/projects/{project_id}/integrations/exports/{export_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+Files already written stay in the bucket.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `export_id` | string | yes | Export id (export_...). |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$EXPORT_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deleted.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Run an export now
+
+`POST /v2/projects/{project_id}/integrations/exports/{export_id}/actions/run` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `export_id` | string | yes | Export id (export_...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `mode` | `incremental`, `full` | no | Default: the export's mode. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$EXPORT_ID/actions/run" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+**Responses**
+
+- **201**: The queued run.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
+
+### Check the bucket and credentials
+
+`POST /v2/projects/{project_id}/integrations/exports/{export_id}/actions/check` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+S3 and R2: HeadBucket. Google Cloud Storage: buckets.get.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `export_id` | string | yes | Export id (export_...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$EXPORT_ID/actions/check" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The result.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Run history
+
+`GET /v2/projects/{project_id}/integrations/exports/{export_id}/runs` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read`
+
+Newest first, with each file written.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `export_id` | string | yes | Export id (export_...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$EXPORT_ID/runs" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Runs.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).

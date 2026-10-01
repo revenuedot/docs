@@ -1772,12 +1772,12 @@ That chain is why the wrapper forks cannot be used before release: nothing in it
 - [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md)
 
 
-=== Guides: stores, webhooks, self-hosting ===
+=== Guides: stores, webhooks, integrations, self-hosting ===
 
 # Which guide do I need?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/README.md
-Description: Step-by-step guides for connecting the App Store, Google Play, the Amazon Appstore and Stripe, receiving webhooks, response signing, testing, inviting your team, alert emails, and running RevenueDot on your own servers.
+Description: Step-by-step guides for connecting the App Store, Google Play, the Amazon Appstore and Stripe, receiving webhooks, sending events to analytics and attribution tools, exporting data, response signing, testing, inviting your team, alert emails, and running RevenueDot on your own servers.
 
 Each guide is one task, start to finish. Connect a store first, then receive webhooks; run the server yourself with the self-hosting guides.
 
@@ -1788,6 +1788,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Accept Amazon Appstore purchases on Fire tablets and Fire TV | [Connect the Amazon Appstore](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md) |
 | Track subscriptions sold with my own Stripe account | [Connect Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md) |
 | Receive purchase events in my backend and verify them | [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md) |
+| Send purchase events to Slack, Segment, Amplitude, Mixpanel, PostHog, Firebase, BigQuery, AppsFlyer, Adjust or Meta, or export my data to S3, R2 or Google Cloud Storage | [Integrations and data exports](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md) |
 | Have the SDK verify that responses come from my server | [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md) |
 | Test purchases without any store account | [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md) |
 | Test with App Store sandbox, Xcode or Google Play testers | [Sandbox testing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/sandbox-testing.md) |
@@ -1798,6 +1799,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Invite teammates to a project and set their roles | [Invite your team](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/team.md) |
 | Build a paywall and show it in my app | [Paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md) |
 | Show different offerings to different customers, or A/B test two | [Targeting and experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/targeting-and-experiments.md) |
+| Read MRR, revenue, churn, conversion and LTV, and know how each is calculated | [Charts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md) |
 | Run RevenueDot from ChatGPT, Claude or Cursor | [Connect AI assistants](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/connect-ai-assistants.md) |
 | Get an email when store notifications, webhooks or store credentials fail | [Alert emails](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md) |
 
@@ -3054,6 +3056,648 @@ Enrolling sends an `EXPERIMENT_ENROLLMENT` webhook, and enrolled customers' purc
 
 Audiences: `/v2/projects/{project_id}/audiences`. Rules: `/v2/projects/{project_id}/targeting_rules`. Experiments: `/v2/projects/{project_id}/experiments` and `.../results`. See the [API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md).
 
+---
+
+# Charts
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md
+Description: Every built-in chart in RevenueDot, how each one is calculated from your purchases, the filters and segments, the API, and the SQL that reproduces the core numbers.
+
+RevenueDot has 42 charts in the dashboard under **Analytics > Charts**, with the same names, groups and definitions as RevenueCat's Charts v3 wherever RevenueDot holds the same data. The REST API serves the same numbers at `GET /v2/projects/{project_id}/charts/{chart_name}` with RevenueCat's parameters and response shape, so scripts written for RevenueCat's charts API keep working.
+
+## Rules every chart follows
+
+- **Sandbox purchases are excluded.** The **Sandbox data** switch (API: `environment=sandbox`) shows only sandbox and Test Store purchases instead. Customer counts do not depend on the switch.
+- **Granted access and Family Sharing are excluded** from every money and subscription number.
+- **Money is in USD at the exchange rate of the purchase date.** Another currency (`currency=EUR` and 13 others) converts that USD amount at the same date's rate, so a subscription's MRR keeps its purchase-date rate.
+- **Periods are UTC.** Days start at 00:00 UTC and weeks on Monday.
+- **Stock numbers are snapshots at the end of each period** (active subscriptions, active trials, MRR, ARR). The current period's snapshot is taken now.
+- **Refunds count on the refund date**, not the purchase date.
+- **A resubscription is a new subscription.** A customer who comes back after their subscription lapsed starts a new one; a renewal after a billing issue (billing recovery) continues the old one.
+- **A product change ends one subscription and starts another** at the moment of the change.
+- **Incomplete periods** (the current one, a partial first period, cohorts whose window is still open) are marked with `*` in the dashboard and `incomplete: true` in the API.
+
+## How each chart is calculated
+
+### Revenue
+
+| Chart | API name | Definition |
+|---|---|---|
+| <a id="revenue"></a>Revenue | `revenue` | Money received in each period: purchases, renewals and one-time purchases, plus ad revenue, minus refunds recorded in the period. **Transactions** counts paid purchases, renewals and one-time purchases; refunds do not reduce it. Selector `revenue_type`: `revenue` (gross), `revenue_net_of_taxes` (equal to gross, because the stores do not report tax per purchase) or `proceeds` (gross minus the store commission). |
+| <a id="arr"></a>ARR | `arr` | MRR at the end of each period times 12. |
+| <a id="mrr"></a>MRR | `mrr` | At the end of each period, every paid subscription with access contributes its price normalised to one month: 1 day ×30, 3 days ×10, 1 week ×4, 2 weeks ×2, 4 weeks ×1, 1 month ×1, 2 months ×½, 3 months ×⅓, 6 months ×⅙, 1 year ×1/12. Cancelled subscriptions count until they expire; trials count zero. |
+| <a id="mrr_movement"></a>MRR Movement | `mrr_movement` | New MRR (subscriptions that became paid), resubscription MRR, expansion MRR (a product change or renewal at a higher monthly value), churned MRR (subscriptions that lost paid access, net of billing recoveries) and contraction MRR. Churned and contraction are negative; the movement is their sum and equals MRR at the end of the period minus MRR at its start. |
+| <a id="non-subscription_purchases"></a>Non-subscription Purchases | `non-subscription_purchases` | One-time purchases (consumables, non-consumables, lifetime unlocks) per period. |
+| <a id="ad_revenue"></a>Ad Revenue | `ad_revenue` | Ad revenue the SDK reported (`rc_ads_ad_revenue` events), converted to USD at the date of each ad. |
+
+### Subscriptions
+
+| Chart | API name | Definition |
+|---|---|---|
+| <a id="actives"></a>Active Subscriptions | `actives` | Paid subscriptions with access at the end of each period: cancelled ones count until they expire, ones in a grace period count, refunded ones stop at the refund. Trials do not count. |
+| <a id="actives_movement"></a>Active Subscriptions Movement | `actives_movement` | New actives + resubscription actives − churned actives (net of billing recoveries). A product change from one paid product to another counts in neither. |
+| <a id="actives_new"></a>Paid Subscriptions | `actives_new` | Subscriptions whose first paid period started in the period, split into trial conversions, direct purchases, product changes and resubscriptions. Paid introductory offers count as direct purchases. |
+| <a id="subscription_retention"></a>Subscription Retention | `subscription_retention` | Paid subscriptions cohorted by their first paid date (a trial conversion on its conversion date). Period *n* is the share of the cohort that reached its *n*-th paid period, among subscriptions that have had time to reach it. Selector `retention_scale`: `relative` (%) or `absolute` (#). |
+| <a id="subscription_status"></a>Subscription Status | `subscription_status` | Active subscriptions (or active trials, MRR, ARR: selector `status_measure`) at the end of each period, split by each subscription's renewal state as known today: set to renew (it renewed or changed product since, or will renew), set to cancel, billing issue. |
+
+### Ads
+
+| Chart | API name | Definition |
+|---|---|---|
+| <a id="ad_rpm"></a>eCPM | `ad_rpm` | Ad revenue per thousand impressions. |
+| <a id="ad_impressions"></a>Impressions | `ad_impressions` | Ads displayed (`rc_ads_ad_displayed`). |
+| <a id="ad_fill_rate"></a>Fill Rate | `ad_fill_rate` | Ads loaded ÷ (ads loaded + ads that failed to load). |
+| <a id="ad_monetized_customers"></a>Ad Monetized Customers | `ad_monetized_customers` | Customers with at least one ad revenue event per day, averaged over the days of the period. |
+| <a id="ad_clicks"></a>Clicks | `ad_clicks` | Ads opened (`rc_ads_ad_opened`). |
+| <a id="ad_ctr"></a>CTR | `ad_ctr` | Clicks ÷ impressions. |
+| <a id="ad_arpdau"></a>ARPDAU (Ad Users) | `ad_arpdau` | Ad revenue ÷ the sum, over the period's days, of that day's ad-monetized customers. |
+
+### LTV
+
+| Chart | API name | Definition |
+|---|---|---|
+| <a id="cohort_explorer"></a>Cohort Explorer | `cohort_explorer` | Customers grouped by `cohorting_date` (`new_customers`: first seen; `initial_conversions`: first purchase or trial; `new_paying_customers`: first payment), measured month by month of each customer's own age with `cohort_measure`: revenue, revenue net of taxes, proceeds, realized LTV (cumulative), realized LTV per customer, retained subscriptions (paid access at the end of the month) or subscriptions set to renew. |
+| <a id="ltv_per_customer"></a>Realized LTV per Customer | `ltv_per_customer` | Revenue of each period's new customers from day 0 through day *N* of their life (selector `customer_lifetime`), minus refunds inside that window, ÷ new customers. |
+| <a id="ltv_per_paying_customer"></a>Realized LTV per Paying Customer | `ltv_per_paying_customer` | The same revenue ÷ the new customers whose first payment fell inside the window and was not refunded inside it. |
+| <a id="prediction_explorer"></a>Prediction Explorer | `prediction_explorer` | Realized LTV per customer by cohort; months a cohort has not reached yet are predicted with the chain-ladder method: each month grows by the average growth older cohorts showed between the same two months. Predicted values carry `predicted: true`. Up to 24 months. |
+
+### Customers
+
+| Chart | API name | Definition |
+|---|---|---|
+| <a id="customers_new"></a>New Customers | `customers_new` | Customers whose cohort date (the earlier of first seen and first purchase) falls in the period. Aliases of one customer count once. |
+| <a id="customers_active"></a>Active Customers | `customers_active` | Customers whose app called RevenueDot on at least one day of the period, counted once. |
+
+### Conversion
+
+| Chart | API name | Definition |
+|---|---|---|
+| <a id="initial_conversion"></a>Initial Conversion | `initial_conversion` | Share of each period's new customers who started a trial or bought anything within the conversion timeframe (selector `conversion_timeframe`: day 0, 3, 7, 14 or 30 days, or unbounded; day 0 is the cohort date). |
+| <a id="trial_conversion"></a>Trial Conversion Funnel | `trial_conversion` | Each period's new customers, how many started a trial, and where each customer's trial ended up, counted once at the best outcome: converted, set to convert, set to cancel, billing issue, abandoned. |
+| <a id="trial_conversion_rate"></a>Trial Conversion Rate | `trial_conversion_rate` | Customers who started a trial in the period (once each), how many converted to paid, and how many are still in their trial. |
+| <a id="conversion_to_paying"></a>Conversion to Paying | `conversion_to_paying` | Share of each period's new customers whose first payment fell within the conversion timeframe and was not refunded within it. |
+
+### Paywalls
+
+| Chart | API name | Definition |
+|---|---|---|
+| <a id="paywall_encounter"></a>Paywall Encounter | `paywall_encounter` | Share of each period's new customers who saw a paywall (`paywall_impression`) on day 0, and by day 1, 3, 7 and 14. |
+| <a id="paywall_conversion"></a>Paywall Conversion | `paywall_conversion` | Customer–paywall pairs by first impression. Initial conversions are trials or purchases on calendar days 0 to 3; paid conversions, trial starts and trial conversions follow from them. |
+| <a id="paywall_ltv"></a>Paywall LTV | `paywall_ltv` | Revenue, within the lifetime window, of customers whose initial conversion followed a paywall, per paywall viewer and per conversion. |
+| <a id="paywall_abandonment"></a>Paywall Abandonment | `paywall_abandonment` | Pairs with no initial conversion on days 0 to 3: bounces (no purchase started) and purchase cancellations (a purchase started, none completed). |
+
+### Trials
+
+| Chart | API name | Definition |
+|---|---|---|
+| <a id="trials"></a>Active Trials | `trials` | Free trials with access at the end of each period, whatever their auto-renew state. |
+| <a id="trials_movement"></a>Active Trials Movement | `trials_movement` | New trials − trials that converted − trials that ended without converting. |
+| <a id="trials_new"></a>New Trials | `trials_new` | Free trials started in each period. |
+| <a id="trial_cancellation"></a>Trial Cancellation Rate | `trial_cancellation` | Customers who started a trial in the period. A trial is cancelled when it ended without converting and the customer's last opt-out during the trial fell within the selected time from its start (selector `cancellation_timeframe`: 1, 2, 5 or 7 days, or unbounded). The other non-converting trials ended with a billing issue or just elapsed. |
+
+### Churn and refunds
+
+| Chart | API name | Definition |
+|---|---|---|
+| <a id="churn"></a>Churn | `churn` | Paid subscriptions that ended in the period (product-change replacements included, billing recoveries subtracted) ÷ paid subscriptions active when the period started. It can be negative or above 100%. |
+| <a id="refund_rate"></a>Refund Rate | `refund_rate` | Paid transactions of each period and the share that has been refunded since. |
+| <a id="refunds"></a>Refunds | `refunds` | Money refunded and refunded transactions by refund date, net of reversed refunds. |
+| <a id="refund_request"></a>Refund Request Outcomes | `refund_request` | App Store refund requests (`CONSUMPTION_REQUEST` notifications) received in the period, by outcome: granted, declined, reversed, or no resolution yet. A request with no grant after 2 days counts as declined. |
+| <a id="play_store_cancel_reasons"></a>Play Store Cancel Reasons | `play_store_cancel_reasons` | Google Play subscriptions cancelled in the period, by the customer's answer to Google's cancel survey. RevenueDot name; RevenueCat shows this chart only in its dashboard. |
+| <a id="customer_center_survey_responses"></a>Customer Center Survey Responses | `customer_center_survey_responses` | Customer Center survey answers (`customer_center_survey_option_chosen`) per option. RevenueDot name; RevenueCat shows this chart only in its dashboard. |
+
+### Retention
+
+| Chart | API name | Definition |
+|---|---|---|
+| <a id="app_store_save_outcomes"></a>App Store Save Outcomes | `app_store_save_outcomes` | Saves after Apple retention messages, by outcome. Always zero: RevenueDot does not use Apple's Retention Messaging API yet. Listed in the API, not in the dashboard rail. |
+
+## Filters and segments
+
+Filter and segment by app, store, product, product duration, offering, country (the purchase's storefront, else the customer's last country), platform and app version; paywall charts also by paywall, and the Customer Center chart by survey option. A filter on a purchase dimension (store, product …) does not change the new-customer counts that conversion charts divide by. A segmented chart shows the five largest values, then "Other" and the total.
+
+## Use the API
+
+```bash
+curl -H "Authorization: Bearer $REVENUEDOT_SECRET_KEY" \
+  "https://api.revenuedot.app/v2/projects/$PROJECT_ID/charts/mrr?resolution=month&start_date=2026-01-01&end_date=2026-06-30"
+```
+
+- `resolution`: `0`–`4` or `day`, `week`, `month`, `quarter`, `year`.
+- `filters`: `[{"name":"store","values":["app_store"]}]`; `segment` and `limit_num_segments`; `selectors`: `{"revenue_type":"proceeds"}`.
+- `GET .../charts/{chart_name}/options` lists the resolutions, segments, filters with the values in your data, and the selectors.
+- Time series return `values` as `{cohort, measure, value, incomplete}` with `cohort` the period start in Unix seconds; cohort tables return `{cohort, period, value}` with `periods[0]` the cohort size. Reference: [Charts API](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#charts).
+
+The key needs the `charts_metrics:charts:read` permission.
+
+## SQL for the core charts
+
+RevenueDot computes charts from its own tables. These PostgreSQL queries reproduce the core charts from the same tables, and RevenueDot's tests check that they return the API's numbers. Run one against your database with psql variables (`end_date` is exclusive):
+
+```bash
+psql "$DATABASE_URL" -v project_id=proj_123 -v resolution=month -v start_date=2026-01-01 \
+  -v end_date=2026-07-01 -v now="$(date -u +%FT%TZ)" -f mrr.sql
+```
+
+### Revenue and transactions query
+
+```sql
+-- Revenue: purchases, renewals and one-time purchases, minus refunds on the refund date, plus ad revenue reported in USD.
+-- Transactions: paid purchases, renewals and one-time purchases (refunds do not reduce it).
+WITH periods AS (
+  SELECT p AS period, LEAST(p + ('1 ' || :'resolution')::interval, :'end_date'::timestamptz AT TIME ZONE 'UTC', :'now'::timestamptz AT TIME ZONE 'UTC') AS period_end
+  FROM generate_series(date_trunc(:'resolution', :'start_date'::timestamptz AT TIME ZONE 'UTC'),
+                       (:'end_date'::timestamptz AT TIME ZONE 'UTC') - interval '1 microsecond',
+                       ('1 ' || :'resolution')::interval) AS p
+),
+ledger AS (
+  SELECT t.*, t.purchased_at AT TIME ZONE 'UTC' AS at
+  FROM transactions t
+  WHERE t.project_id = :'project_id' AND NOT t.is_sandbox AND t.store <> 'promotional'
+    AND NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.customer_id = t.customer_id AND s.store = t.store
+                    AND s.product_identifier = t.product_identifier AND s.ownership_type = 'FAMILY_SHARED')
+),
+money AS (
+  SELECT at, revenue_usd AS usd, kind IN ('purchase', 'renewal', 'one_time') AS is_tx FROM ledger WHERE kind <> 'trial'
+  UNION ALL
+  SELECT occurred_at AT TIME ZONE 'UTC', (payload->>'revenue_micros')::numeric / 1000000, false FROM sdk_events
+  WHERE project_id = :'project_id' AND NOT is_sandbox AND type = 'rc_ads_ad_revenue' AND coalesce(payload->>'currency', 'USD') = 'USD'
+)
+SELECT pe.period, round(coalesce(sum(m.usd), 0)::numeric, 2) AS revenue, count(m.*) FILTER (WHERE m.is_tx) AS transactions
+FROM periods pe
+LEFT JOIN money m ON m.at >= GREATEST(pe.period, :'start_date'::timestamptz AT TIME ZONE 'UTC') AND m.at < pe.period_end
+GROUP BY pe.period ORDER BY pe.period;
+```
+
+### Non-subscription purchases query
+
+```sql
+-- One-time purchases (consumables, non-consumables, lifetime) per period.
+WITH periods AS (
+  SELECT p AS period, LEAST(p + ('1 ' || :'resolution')::interval, :'end_date'::timestamptz AT TIME ZONE 'UTC', :'now'::timestamptz AT TIME ZONE 'UTC') AS period_end
+  FROM generate_series(date_trunc(:'resolution', :'start_date'::timestamptz AT TIME ZONE 'UTC'),
+                       (:'end_date'::timestamptz AT TIME ZONE 'UTC') - interval '1 microsecond',
+                       ('1 ' || :'resolution')::interval) AS p
+),
+ledger AS (
+  SELECT t.*, t.purchased_at AT TIME ZONE 'UTC' AS at
+  FROM transactions t
+  WHERE t.project_id = :'project_id' AND NOT t.is_sandbox AND t.store <> 'promotional'
+    AND NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.customer_id = t.customer_id AND s.store = t.store
+                    AND s.product_identifier = t.product_identifier AND s.ownership_type = 'FAMILY_SHARED')
+)
+SELECT pe.period, count(l.*) AS purchases
+FROM periods pe
+LEFT JOIN ledger l ON l.kind = 'one_time' AND l.at >= GREATEST(pe.period, :'start_date'::timestamptz AT TIME ZONE 'UTC') AND l.at < pe.period_end
+GROUP BY pe.period ORDER BY pe.period;
+```
+
+### Refunds query
+
+```sql
+-- Money refunded and refunded transactions by refund date, net of reversed refunds.
+WITH periods AS (
+  SELECT p AS period, LEAST(p + ('1 ' || :'resolution')::interval, :'end_date'::timestamptz AT TIME ZONE 'UTC', :'now'::timestamptz AT TIME ZONE 'UTC') AS period_end
+  FROM generate_series(date_trunc(:'resolution', :'start_date'::timestamptz AT TIME ZONE 'UTC'),
+                       (:'end_date'::timestamptz AT TIME ZONE 'UTC') - interval '1 microsecond',
+                       ('1 ' || :'resolution')::interval) AS p
+),
+ledger AS (
+  SELECT t.*, t.purchased_at AT TIME ZONE 'UTC' AS at
+  FROM transactions t
+  WHERE t.project_id = :'project_id' AND NOT t.is_sandbox AND t.store <> 'promotional'
+    AND NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.customer_id = t.customer_id AND s.store = t.store
+                    AND s.product_identifier = t.product_identifier AND s.ownership_type = 'FAMILY_SHARED')
+)
+SELECT pe.period,
+       round(coalesce(-sum(l.revenue_usd), 0)::numeric, 2) AS refunded_revenue,
+       count(l.*) FILTER (WHERE l.kind = 'refund') - count(l.*) FILTER (WHERE l.kind = 'refund_reversal') AS refunded_transactions
+FROM periods pe
+LEFT JOIN ledger l ON l.kind IN ('refund', 'refund_reversal') AND l.at >= GREATEST(pe.period, :'start_date'::timestamptz AT TIME ZONE 'UTC') AND l.at < pe.period_end
+GROUP BY pe.period ORDER BY pe.period;
+```
+
+### New trials query
+
+```sql
+-- Free trials started per period.
+WITH periods AS (
+  SELECT p AS period, LEAST(p + ('1 ' || :'resolution')::interval, :'end_date'::timestamptz AT TIME ZONE 'UTC', :'now'::timestamptz AT TIME ZONE 'UTC') AS period_end
+  FROM generate_series(date_trunc(:'resolution', :'start_date'::timestamptz AT TIME ZONE 'UTC'),
+                       (:'end_date'::timestamptz AT TIME ZONE 'UTC') - interval '1 microsecond',
+                       ('1 ' || :'resolution')::interval) AS p
+),
+ledger AS (
+  SELECT t.*, t.purchased_at AT TIME ZONE 'UTC' AS at
+  FROM transactions t
+  WHERE t.project_id = :'project_id' AND NOT t.is_sandbox AND t.store <> 'promotional'
+    AND NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.customer_id = t.customer_id AND s.store = t.store
+                    AND s.product_identifier = t.product_identifier AND s.ownership_type = 'FAMILY_SHARED')
+)
+SELECT pe.period, count(l.*) AS new_trials
+FROM periods pe
+LEFT JOIN ledger l ON l.kind = 'trial' AND l.at >= GREATEST(pe.period, :'start_date'::timestamptz AT TIME ZONE 'UTC') AND l.at < pe.period_end
+GROUP BY pe.period ORDER BY pe.period;
+```
+
+### New customers query
+
+```sql
+-- Customers whose cohort date (the earlier of first seen and first purchase) falls in the period.
+WITH periods AS (
+  SELECT p AS period, LEAST(p + ('1 ' || :'resolution')::interval, :'end_date'::timestamptz AT TIME ZONE 'UTC', :'now'::timestamptz AT TIME ZONE 'UTC') AS period_end
+  FROM generate_series(date_trunc(:'resolution', :'start_date'::timestamptz AT TIME ZONE 'UTC'),
+                       (:'end_date'::timestamptz AT TIME ZONE 'UTC') - interval '1 microsecond',
+                       ('1 ' || :'resolution')::interval) AS p
+),
+ledger AS (
+  SELECT t.*, t.purchased_at AT TIME ZONE 'UTC' AS at
+  FROM transactions t
+  WHERE t.project_id = :'project_id' AND NOT t.is_sandbox AND t.store <> 'promotional'
+    AND NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.customer_id = t.customer_id AND s.store = t.store
+                    AND s.product_identifier = t.product_identifier AND s.ownership_type = 'FAMILY_SHARED')
+),
+cohorts AS (
+  SELECT c.id, LEAST(c.first_seen, (SELECT min(purchased_at) FROM ledger l WHERE l.customer_id = c.id)) AT TIME ZONE 'UTC' AS cohort_at
+  FROM customers c WHERE c.project_id = :'project_id'
+)
+SELECT pe.period, count(c.*) AS new_customers
+FROM periods pe
+LEFT JOIN cohorts c ON c.cohort_at >= GREATEST(pe.period, :'start_date'::timestamptz AT TIME ZONE 'UTC') AND c.cohort_at < pe.period_end
+GROUP BY pe.period ORDER BY pe.period;
+```
+
+### Active subscriptions query
+
+```sql
+-- Paid subscriptions with access at the end of each period (cancelled ones count until they expire).
+WITH periods AS (
+  SELECT p AS period, LEAST(p + ('1 ' || :'resolution')::interval, :'end_date'::timestamptz AT TIME ZONE 'UTC', :'now'::timestamptz AT TIME ZONE 'UTC') AS period_end
+  FROM generate_series(date_trunc(:'resolution', :'start_date'::timestamptz AT TIME ZONE 'UTC'),
+                       (:'end_date'::timestamptz AT TIME ZONE 'UTC') - interval '1 microsecond',
+                       ('1 ' || :'resolution')::interval) AS p
+),
+ledger AS (
+  SELECT t.*, t.purchased_at AT TIME ZONE 'UTC' AS at
+  FROM transactions t
+  WHERE t.project_id = :'project_id' AND NOT t.is_sandbox AND t.store <> 'promotional'
+    AND NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.customer_id = t.customer_id AND s.store = t.store
+                    AND s.product_identifier = t.product_identifier AND s.ownership_type = 'FAMILY_SHARED')
+),
+refunds AS (
+  SELECT store, store_transaction_id, max(purchased_at) AS refunded_at
+  FROM ledger WHERE kind IN ('refund', 'refund_reversal')
+  GROUP BY store, store_transaction_id
+  HAVING count(*) FILTER (WHERE kind = 'refund') > count(*) FILTER (WHERE kind = 'refund_reversal')
+),
+sub_periods AS (
+  SELECT l.customer_id, l.store, coalesce(l.app_id, '') AS app_id, l.product_identifier, l.kind, l.purchased_at AS starts_at,
+         LEAST(GREATEST(coalesce(l.expires_at, 'infinity'),
+                        CASE WHEN s.billing_issues_detected_at IS NOT NULL AND l.expires_at >= s.expires_date - interval '1 hour'
+                             THEN s.grace_period_expires_date END),
+               coalesce(r.refunded_at, 'infinity')) AS ends_at,
+         l.revenue_usd,
+         coalesce(
+           CASE
+             WHEN p.duration ~ '^P\d+Y$' THEN 1.0 / (12 * substring(p.duration from '\d+')::numeric)
+             WHEN p.duration ~ '^P\d+M$' THEN 1.0 / substring(p.duration from '\d+')::numeric
+             WHEN p.duration ~ '^P\d+W$' THEN 4.0 / substring(p.duration from '\d+')::numeric
+             WHEN p.duration ~ '^P\d+D$' THEN 30.0 / substring(p.duration from '\d+')::numeric
+           END,
+           30.0 / GREATEST(1, extract(epoch FROM l.expires_at - l.purchased_at) / 86400)) AS monthly_factor
+  FROM ledger l
+  LEFT JOIN refunds r ON r.store = l.store AND r.store_transaction_id = l.store_transaction_id
+  LEFT JOIN subscriptions s ON s.customer_id = l.customer_id AND s.store = l.store AND s.product_identifier = l.product_identifier
+  LEFT JOIN LATERAL (
+    SELECT duration FROM products p WHERE p.project_id = l.project_id
+      AND (p.store_identifier = l.product_identifier OR split_part(p.store_identifier, ':', 1) = l.product_identifier)
+    ORDER BY (p.app_id = l.app_id) DESC, (p.store_identifier = l.product_identifier) DESC LIMIT 1
+  ) p ON true
+  WHERE l.kind IN ('trial', 'purchase', 'renewal')
+),
+snapshot AS (
+  SELECT DISTINCT ON (pe.period, sp.customer_id, sp.store, sp.app_id) pe.period, sp.kind, sp.revenue_usd * sp.monthly_factor AS mrr
+  FROM periods pe
+  JOIN sub_periods sp ON sp.starts_at <= (pe.period_end - interval '1 millisecond') AT TIME ZONE 'UTC'
+                     AND sp.ends_at > (pe.period_end - interval '1 millisecond') AT TIME ZONE 'UTC'
+  ORDER BY pe.period, sp.customer_id, sp.store, sp.app_id, sp.starts_at DESC
+)
+SELECT pe.period, count(s.*) FILTER (WHERE s.kind <> 'trial') AS actives
+FROM periods pe LEFT JOIN snapshot s ON s.period = pe.period
+GROUP BY pe.period ORDER BY pe.period;
+```
+
+### Active trials query
+
+```sql
+-- Free trials with access at the end of each period.
+WITH periods AS (
+  SELECT p AS period, LEAST(p + ('1 ' || :'resolution')::interval, :'end_date'::timestamptz AT TIME ZONE 'UTC', :'now'::timestamptz AT TIME ZONE 'UTC') AS period_end
+  FROM generate_series(date_trunc(:'resolution', :'start_date'::timestamptz AT TIME ZONE 'UTC'),
+                       (:'end_date'::timestamptz AT TIME ZONE 'UTC') - interval '1 microsecond',
+                       ('1 ' || :'resolution')::interval) AS p
+),
+ledger AS (
+  SELECT t.*, t.purchased_at AT TIME ZONE 'UTC' AS at
+  FROM transactions t
+  WHERE t.project_id = :'project_id' AND NOT t.is_sandbox AND t.store <> 'promotional'
+    AND NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.customer_id = t.customer_id AND s.store = t.store
+                    AND s.product_identifier = t.product_identifier AND s.ownership_type = 'FAMILY_SHARED')
+),
+refunds AS (
+  SELECT store, store_transaction_id, max(purchased_at) AS refunded_at
+  FROM ledger WHERE kind IN ('refund', 'refund_reversal')
+  GROUP BY store, store_transaction_id
+  HAVING count(*) FILTER (WHERE kind = 'refund') > count(*) FILTER (WHERE kind = 'refund_reversal')
+),
+sub_periods AS (
+  SELECT l.customer_id, l.store, coalesce(l.app_id, '') AS app_id, l.product_identifier, l.kind, l.purchased_at AS starts_at,
+         LEAST(GREATEST(coalesce(l.expires_at, 'infinity'),
+                        CASE WHEN s.billing_issues_detected_at IS NOT NULL AND l.expires_at >= s.expires_date - interval '1 hour'
+                             THEN s.grace_period_expires_date END),
+               coalesce(r.refunded_at, 'infinity')) AS ends_at,
+         l.revenue_usd,
+         coalesce(
+           CASE
+             WHEN p.duration ~ '^P\d+Y$' THEN 1.0 / (12 * substring(p.duration from '\d+')::numeric)
+             WHEN p.duration ~ '^P\d+M$' THEN 1.0 / substring(p.duration from '\d+')::numeric
+             WHEN p.duration ~ '^P\d+W$' THEN 4.0 / substring(p.duration from '\d+')::numeric
+             WHEN p.duration ~ '^P\d+D$' THEN 30.0 / substring(p.duration from '\d+')::numeric
+           END,
+           30.0 / GREATEST(1, extract(epoch FROM l.expires_at - l.purchased_at) / 86400)) AS monthly_factor
+  FROM ledger l
+  LEFT JOIN refunds r ON r.store = l.store AND r.store_transaction_id = l.store_transaction_id
+  LEFT JOIN subscriptions s ON s.customer_id = l.customer_id AND s.store = l.store AND s.product_identifier = l.product_identifier
+  LEFT JOIN LATERAL (
+    SELECT duration FROM products p WHERE p.project_id = l.project_id
+      AND (p.store_identifier = l.product_identifier OR split_part(p.store_identifier, ':', 1) = l.product_identifier)
+    ORDER BY (p.app_id = l.app_id) DESC, (p.store_identifier = l.product_identifier) DESC LIMIT 1
+  ) p ON true
+  WHERE l.kind IN ('trial', 'purchase', 'renewal')
+),
+snapshot AS (
+  SELECT DISTINCT ON (pe.period, sp.customer_id, sp.store, sp.app_id) pe.period, sp.kind, sp.revenue_usd * sp.monthly_factor AS mrr
+  FROM periods pe
+  JOIN sub_periods sp ON sp.starts_at <= (pe.period_end - interval '1 millisecond') AT TIME ZONE 'UTC'
+                     AND sp.ends_at > (pe.period_end - interval '1 millisecond') AT TIME ZONE 'UTC'
+  ORDER BY pe.period, sp.customer_id, sp.store, sp.app_id, sp.starts_at DESC
+)
+SELECT pe.period, count(s.*) FILTER (WHERE s.kind = 'trial') AS trials
+FROM periods pe LEFT JOIN snapshot s ON s.period = pe.period
+GROUP BY pe.period ORDER BY pe.period;
+```
+
+### MRR query
+
+```sql
+-- Monthly recurring revenue at the end of each period: each active paid subscription's USD price times its
+-- duration's factor (1 day ×30, 1 week ×4, 1 month ×1, 3 months ×1/3, 1 year ×1/12 …).
+WITH periods AS (
+  SELECT p AS period, LEAST(p + ('1 ' || :'resolution')::interval, :'end_date'::timestamptz AT TIME ZONE 'UTC', :'now'::timestamptz AT TIME ZONE 'UTC') AS period_end
+  FROM generate_series(date_trunc(:'resolution', :'start_date'::timestamptz AT TIME ZONE 'UTC'),
+                       (:'end_date'::timestamptz AT TIME ZONE 'UTC') - interval '1 microsecond',
+                       ('1 ' || :'resolution')::interval) AS p
+),
+ledger AS (
+  SELECT t.*, t.purchased_at AT TIME ZONE 'UTC' AS at
+  FROM transactions t
+  WHERE t.project_id = :'project_id' AND NOT t.is_sandbox AND t.store <> 'promotional'
+    AND NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.customer_id = t.customer_id AND s.store = t.store
+                    AND s.product_identifier = t.product_identifier AND s.ownership_type = 'FAMILY_SHARED')
+),
+refunds AS (
+  SELECT store, store_transaction_id, max(purchased_at) AS refunded_at
+  FROM ledger WHERE kind IN ('refund', 'refund_reversal')
+  GROUP BY store, store_transaction_id
+  HAVING count(*) FILTER (WHERE kind = 'refund') > count(*) FILTER (WHERE kind = 'refund_reversal')
+),
+sub_periods AS (
+  SELECT l.customer_id, l.store, coalesce(l.app_id, '') AS app_id, l.product_identifier, l.kind, l.purchased_at AS starts_at,
+         LEAST(GREATEST(coalesce(l.expires_at, 'infinity'),
+                        CASE WHEN s.billing_issues_detected_at IS NOT NULL AND l.expires_at >= s.expires_date - interval '1 hour'
+                             THEN s.grace_period_expires_date END),
+               coalesce(r.refunded_at, 'infinity')) AS ends_at,
+         l.revenue_usd,
+         coalesce(
+           CASE
+             WHEN p.duration ~ '^P\d+Y$' THEN 1.0 / (12 * substring(p.duration from '\d+')::numeric)
+             WHEN p.duration ~ '^P\d+M$' THEN 1.0 / substring(p.duration from '\d+')::numeric
+             WHEN p.duration ~ '^P\d+W$' THEN 4.0 / substring(p.duration from '\d+')::numeric
+             WHEN p.duration ~ '^P\d+D$' THEN 30.0 / substring(p.duration from '\d+')::numeric
+           END,
+           30.0 / GREATEST(1, extract(epoch FROM l.expires_at - l.purchased_at) / 86400)) AS monthly_factor
+  FROM ledger l
+  LEFT JOIN refunds r ON r.store = l.store AND r.store_transaction_id = l.store_transaction_id
+  LEFT JOIN subscriptions s ON s.customer_id = l.customer_id AND s.store = l.store AND s.product_identifier = l.product_identifier
+  LEFT JOIN LATERAL (
+    SELECT duration FROM products p WHERE p.project_id = l.project_id
+      AND (p.store_identifier = l.product_identifier OR split_part(p.store_identifier, ':', 1) = l.product_identifier)
+    ORDER BY (p.app_id = l.app_id) DESC, (p.store_identifier = l.product_identifier) DESC LIMIT 1
+  ) p ON true
+  WHERE l.kind IN ('trial', 'purchase', 'renewal')
+),
+snapshot AS (
+  SELECT DISTINCT ON (pe.period, sp.customer_id, sp.store, sp.app_id) pe.period, sp.kind, sp.revenue_usd * sp.monthly_factor AS mrr
+  FROM periods pe
+  JOIN sub_periods sp ON sp.starts_at <= (pe.period_end - interval '1 millisecond') AT TIME ZONE 'UTC'
+                     AND sp.ends_at > (pe.period_end - interval '1 millisecond') AT TIME ZONE 'UTC'
+  ORDER BY pe.period, sp.customer_id, sp.store, sp.app_id, sp.starts_at DESC
+)
+SELECT pe.period, round(coalesce(sum(s.mrr) FILTER (WHERE s.kind <> 'trial'), 0)::numeric, 2) AS mrr
+FROM periods pe LEFT JOIN snapshot s ON s.period = pe.period
+GROUP BY pe.period ORDER BY pe.period;
+```
+
+## Differences from RevenueCat
+
+- **Taxes:** the stores do not report tax per purchase, so "revenue net of taxes" equals revenue and proceeds subtract only the store commission. RevenueCat estimates tax per country ([Taxes and commissions](https://www.revenuecat.com/docs/dashboard-and-metrics/taxes-and-commissions)).
+- **Exchange rates:** RevenueDot uses the ECB's daily rates, so converted amounts can differ by a few cents.
+- **Paid introductory offers** are counted as direct purchases in Paid Subscriptions.
+- **Dimensions** RevenueCat also offers (renewal cycle, offer type, first purchase month, attribution, custom attributes) are not available yet; platform and app version are the customer's latest, not their first.
+- **Prediction Explorer** projects from your own cohorts, not from a model trained on many apps.
+- **App Store Save Outcomes** is always zero, and refund requests cover the App Store only.
+- **Active Customers** counts days of SDK activity from the update that added it; earlier days only know each customer's first and last visit.
+
+---
+
+# How do I send purchase events to Slack, Segment, Amplitude, Mixpanel, PostHog, Firebase, BigQuery, AppsFlyer, Adjust or Meta, and export my data?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md
+Description: Connect an integration with its API key, and every purchase, trial, renewal, cancellation and refund is sent to it with RevenueCat's event names, retried on failure and logged. Scheduled exports write CSV or Parquet files to S3, R2 or Google Cloud Storage every day.
+
+Open **Integrations** in the dashboard, pick the tool, paste its key and click **Connect**. From then on, every event your webhooks would get also goes to that tool: purchases, trials, conversions, renewals, cancellations, refunds, billing issues and more. Event names and reserved attributes match [RevenueCat's integrations](https://www.revenuecat.com/docs/integrations/third-party-integrations/amplitude), so charts and funnels built on `rc_initial_purchase_event` keep working after you switch. Failed sends retry after 5, 10, 20, 40 and 80 minutes, and each integration has a delivery log with the request, the answer and **Retry**.
+
+For your own warehouse, a **scheduled data export** writes CSV or Parquet files of transactions, customers, subscriptions and events to Amazon S3, Cloudflare R2 or Google Cloud Storage every day or week.
+
+## How every integration behaves
+- **Which events:** each integration gets the events webhooks get, filtered by environment (production, sandbox or both), app and event type, the same filters as [webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md). Events a tool never takes (Slack gets no expirations, Meta no cancellations) are not queued.
+- **Trials apart from purchases:** an `INITIAL_PURCHASE` with `period_type` `TRIAL` is sent as a trial start, a `RENEWAL` with `is_trial_conversion` as a trial conversion, and a `CANCELLATION` during a trial as a trial cancellation.
+- **Revenue:** US dollars, either what the customer paid (**Gross revenue**) or what is left after the store's commission and taxes (**After store commission and taxes**). Refunds are negative where the tool accepts it.
+- **Keys stay secret:** API keys and tokens are encrypted on the server and never shown again; the dashboard shows their last four characters.
+- **Retries:** timeouts, rate limits (429) and server errors (5xx) retry on the webhook schedule. Any other 4xx fails at once, because sending the same request again cannot work: fix the setting, then click **Replay failed**.
+- **Skipped:** when there is nothing to send, the delivery is marked **skipped** with the reason, for example "The customer has no $adjustId attribute". Attributes set after the purchase count: once the app sends the id, **Retry** sends the event.
+- **Test:** **Send test event** sends a `TEST` event to that integration only. Attribution tools need the customer's device ids, so give the app user id of a customer whose attributes include them.
+
+### Event names
+| What happened | Segment, Amplitude, Mixpanel, PostHog, AppsFlyer | Firebase | Meta |
+|---|---|---|---|
+| Purchase | `rc_initial_purchase_event` | `purchase` | `Subscribe` |
+| Free trial starts | `rc_trial_started_event` | `rc_trial_start` | `StartTrial` |
+| Trial converts to paid | `rc_trial_converted_event` | `purchase` | `Subscribe` |
+| Renewal | `rc_renewal_event` | `purchase` | `Subscribe` |
+| Trial cancelled | `rc_trial_cancelled_event` | `rc_cancellation` | |
+| Cancellation or refund | `rc_cancellation_event` | `rc_cancellation` | |
+| Auto-renew turned back on | `rc_uncancellation_event` | `rc_uncancellation` | |
+| One-time purchase | `rc_non_subscription_purchase_event` | `purchase` | `fb_mobile_purchase` |
+| Paused (Google Play) | `rc_subscription_paused_event` | `rc_subscription_paused` | |
+| Expiration | `rc_expiration_event` | `rc_expiration` | |
+| Billing issue | `rc_billing_issue_event` | `rc_billing_issue` | |
+| Product change | `rc_product_change_event` | `rc_product_change` | |
+
+Rename any of them under **Event names** on the integration's page, or with `event_names` in the API. Each event also sets the customer's `rc_subscription_status` (`active`, `trial`, `cancelled`, `cancelled_trial`, `grace_period`, `expired`, `paused` ...) where the tool has profiles.
+
+### Reserved attributes your app sets
+Set these with the SDK's attribute calls (`Purchases.shared.attribution.setAppsflyerID(...)`, `setAttributes(["$amplitudeDeviceId": ...])`, `collectDeviceIdentifiers()`). They are the same keys RevenueCat reads.
+
+| Attribute | Used by |
+|---|---|
+| `$amplitudeUserId`, `$amplitudeDeviceId` | Amplitude's user and device id |
+| `$mixpanelDistinctId` | Mixpanel's `distinct_id` |
+| `$posthogUserId` | PostHog's `distinct_id` |
+| `$firebaseAppInstanceId` | Firebase (required) |
+| `$appsflyerId`, `$appsflyerSharingFilter` | AppsFlyer (the id is required) |
+| `$adjustId` | Adjust (required) |
+| `$fbAnonId`, `$attConsentStatus` | Meta |
+| `$idfa`, `$idfv`, `$gpsAdId`, `$amazonAdId`, `$ip`, `$email`, `$phoneNumber` | AppsFlyer, Adjust, Meta (email and phone are SHA-256 hashed for Meta) |
+
+## Connect with the API
+Every dashboard action is an API call under `/v2/projects/{project_id}/integrations/partners` with a secret key that has `project_configuration:integrations:read_write`. `GET .../integrations/catalog` lists the fields each tool takes.
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"type":"amplitude","environment":null,"settings":{"api_key":"'"$AMPLITUDE_KEY"'","region":"us"},"event_names":{"initial_purchase":"Subscribed"}}'
+```
+```json
+{"object":"integration","id":"intg_8f2kq0x1m3zv7a","type":"amplitude","name":"Amplitude","enabled":true,"environment":null,"app_id":null,"event_types":[],"settings":{"region":"us"},"secrets":{"api_key":{"configured":true,"hint":"••••9f3a"},"sandbox_api_key":{"configured":false,"hint":null}},"event_names":{"initial_purchase":"Subscribed"},"status":{"last_delivered_at":null,"last_error":null,"consecutive_failures":0},"created_at":1790850000000,"updated_at":1790850000000}
+```
+
+- `settings` takes every field of the tool, secrets included. On update, a secret you leave out keeps its saved value and `null` removes it.
+- `POST .../partners/{id}` with `{"enabled":false}` pauses it; failed deliveries wait until it is on again.
+- `POST .../partners/{id}/test` sends a test event (`{"app_user_id":"user_42"}` to use that customer's attributes).
+- `GET .../partners/{id}/deliveries?status=failed` is the delivery log; `POST .../deliveries/{delivery_id}/retry` resends one; `POST .../actions/replay` with `{"status":"failed_and_skipped","since":1790000000000}` resends many.
+
+The full reference is in the [API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md).
+
+## Slack
+1. In Slack, create an app, turn on **Incoming Webhooks**, and add a webhook to the channel you want ([Slack's guide](https://api.slack.com/messaging/webhooks)).
+2. In RevenueDot, open **Integrations → Slack**, paste the webhook URL and click **Connect Slack**.
+
+Each purchase, trial start, trial conversion and cancellation, renewal, cancellation, refund, one-time purchase, billing issue and product change posts one message with the customer (linked to their page in the dashboard), the product, the revenue, the store and the country. Sandbox events are labelled; set **Environment** to **Production** to leave them out.
+
+## Segment
+1. In Segment, add an **HTTP API** source and copy its write key.
+2. In RevenueDot, open **Integrations → Segment**, paste the write key, pick the region (US or EU) and click **Connect Segment**.
+
+Each event is a `track` call (`event` is the event name, `properties` has revenue, currency, product, store, entitlements, dates, transaction ids, the customer's ids and attributes) plus an `identify` call with `rc_subscription_status`. `messageId` is the event id, so Segment drops duplicates. `context.environment` is `production` or `sandbox`. Turn on **Send anonymous app user ids as anonymousId** to send `$RCAnonymousID:` customers as `anonymousId`.
+
+## Amplitude
+1. In Amplitude, copy the project's API key (and, for sandbox events, the key of a second project).
+2. In RevenueDot, open **Integrations → Amplitude**, paste the key(s), pick US or EU and click **Connect Amplitude**.
+
+Events go through Amplitude's [HTTP V2 API](https://amplitude.com/docs/apis/analytics/http-v2) with `insert_id` = the event id. The user is `$amplitudeUserId` and `$amplitudeDeviceId` when your app set them, otherwise the app user id. Money events carry `revenue`, `price`, `quantity`, `productId` and `revenueType` (`purchase`, `renewal` or `refund`), so they show in Amplitude's revenue charts. Without a sandbox key, sandbox events are skipped.
+
+## Mixpanel
+1. In Mixpanel, copy the project token from **Project settings** (and a second project's token for sandbox events). Optionally copy the **API secret** too.
+2. In RevenueDot, open **Integrations → Mixpanel**, paste them, pick the data residency (US, EU or India) and click **Connect Mixpanel**.
+
+Each event is tracked with `distinct_id` = `$mixpanelDistinctId` or the app user id, and `$insert_id` from the event id. The profile gets `rc_subscription_status` and, for money, an entry in `$transactions` so Mixpanel's revenue reports work. With the API secret, events go through `/import`, which accepts events of any age (needed to replay old events); without it, Mixpanel only accepts events from the last 5 days.
+
+## PostHog
+1. In PostHog, copy the **Project API key** (`phc_...`), and a second project's key for sandbox events.
+2. In RevenueDot, open **Integrations → PostHog**, paste the key(s), pick US, EU or **Self-hosted** (then enter your PostHog URL) and click **Connect PostHog**.
+
+Events go to PostHog's capture endpoint with `distinct_id` = `$posthogUserId` or the app user id, and `uuid` = the event id so PostHog drops duplicates. `rc_subscription_status` is set on the person.
+
+## Firebase
+1. In Firebase, open **Google Analytics → Admin → Data streams**, pick the iOS or Android app stream, copy its **Firebase App ID** and create a **Measurement Protocol API secret**.
+2. In your app, set `$firebaseAppInstanceId` to Firebase Analytics' app instance id: `Purchases.shared.attribution.setFirebaseAppInstanceID(Analytics.appInstanceID())`.
+3. In RevenueDot, open **Integrations → Firebase**, enter the app ID and secret for iOS, Android or both, and click **Connect Firebase**.
+
+Purchases, trial conversions, renewals and one-time purchases arrive as GA's `purchase` event (with `value`, `currency`, `items`, `is_renewal` and `is_trial_conversion`), the rest as `rc_*` events, through the [Measurement Protocol](https://developers.google.com/analytics/devguides/collection/protocol/ga4). Choose whether `value` is in US dollars or the customer's currency. Sandbox events are sent with `environment: SANDBOX`. Google accepts every Measurement Protocol request without checking it, so a wrong app ID or secret still shows as delivered: check GA's Realtime report after the test event.
+
+## BigQuery
+1. In Google Cloud, create a service account with the **BigQuery Data Editor** role on a dataset, and download its JSON key.
+2. In RevenueDot, open **Integrations → BigQuery**, paste the JSON key, enter the dataset (and the table, default `revenuedot_events`) and click **Connect BigQuery**.
+
+Every event, sandbox included, is streamed into the table as one row with `insertId` = the event id. If the table does not exist, RevenueDot creates it, partitioned by day on `event_timestamp`, with these columns: `id`, `type`, `event_timestamp`, `app_user_id`, `original_app_user_id`, `aliases`, `app_id`, `environment`, `store`, `product_id`, `new_product_id`, `period_type`, `purchased_at`, `expiration_at`, `entitlement_ids`, `presented_offering_id`, `transaction_id`, `original_transaction_id`, `country_code`, `currency`, `price_in_purchased_currency`, `price_usd`, `revenue_usd`, `is_trial_conversion`, `cancel_reason`, `expiration_reason` and `payload` (the whole event as JSON).
+
+```sql
+SELECT DATE(event_timestamp) AS day, SUM(revenue_usd) AS revenue
+FROM `my-project.revenue.revenuedot_events`
+WHERE environment = 'PRODUCTION' AND type IN ('INITIAL_PURCHASE', 'RENEWAL', 'NON_RENEWING_PURCHASE', 'CANCELLATION')
+GROUP BY day ORDER BY day DESC;
+```
+
+## AppsFlyer
+1. In AppsFlyer, copy the **dev key** (or an S2S token) and your app IDs (`id123456789` for iOS, the package name for Android).
+2. In your app, set `$appsflyerId` to the AppsFlyer SDK's id and call `collectDeviceIdentifiers()`, before the first purchase.
+3. In RevenueDot, open **Integrations → AppsFlyer**, enter the key and app IDs (tick **The key is an S2S token** if it is one) and click **Connect AppsFlyer**.
+
+Events go through AppsFlyer's server-to-server API with `eventValue` holding `af_revenue`, `af_price`, `af_content_id`, `renewal` and `af_currency` (`USD`). Refunds carry negative revenue. Events of customers without `$appsflyerId` are skipped. Sandbox events need the **Sandbox developer key**. Turn off purchase tracking in the AppsFlyer SDK so purchases are not counted twice.
+
+## Adjust
+1. In Adjust, copy each app's **app token** and create one **event token** per step you want (purchase, trial started, renewal ...).
+2. In your app, set `$adjustId` to the Adjust SDK's `adid` and call `collectDeviceIdentifiers()`.
+3. In RevenueDot, open **Integrations → Adjust**, enter the app tokens and the event tokens, plus the **S2S auth token** if S2S security is on in Adjust, and click **Connect Adjust**.
+
+Events go to Adjust's S2S endpoint with the customer's `adid`, device ids and `environment` (`production` or `sandbox`). Adjust rejects amounts below 0.001, so trials and refunds are sent without revenue. Steps without an event token, and customers without `$adjustId`, are skipped.
+
+## Meta
+1. In Meta Events Manager, open the dataset (pixel) linked to your app, copy the **Dataset ID** and generate a **Conversions API access token**.
+2. In your app, call `collectDeviceIdentifiers()` and set `$fbAnonId` with the Meta SDK's anonymous id.
+3. In RevenueDot, open **Integrations → Meta**, enter the dataset ID and token and click **Connect Meta**. A **Test event code** sends events to Events Manager's Test Events tab.
+
+Trial starts arrive as `StartTrial`, purchases, conversions and renewals as `Subscribe`, one-time purchases as `fb_mobile_purchase`, through the [Conversions API for app events](https://developers.facebook.com/docs/marketing-api/conversions-api/app-events) with `action_source: app`. Meta matches on `$fbAnonId` or the advertising id; the app user id, email and phone number are sent SHA-256 hashed. On iOS, events are sent only when `$attConsentStatus` is `authorized`, unless you turn on **Send iOS events without ATT consent**. Meta takes no negative revenue, so refunds are not sent. Turn off automatic purchase logging in the Meta SDK to avoid counting purchases twice.
+
+## Scheduled data exports
+1. Create a bucket and credentials:
+   - **Amazon S3:** an IAM user with `s3:PutObject` on `arn:aws:s3:::<bucket>/*` and `s3:ListBucket` on `arn:aws:s3:::<bucket>`, and its access key.
+   - **Cloudflare R2:** an R2 API token with **Object Read & Write** on the bucket; use its access key ID and secret, and your account ID.
+   - **Google Cloud Storage:** a service account with **Storage Object Creator** and **Storage Legacy Bucket Reader** on the bucket, and its JSON key.
+   - **Other S3-compatible storage** (MinIO and the like): choose Amazon S3 and fill in **Endpoint**.
+2. In RevenueDot, open **Integrations → Scheduled Data Exports → New export**, fill in the bucket and credentials, pick the tables, format and schedule, and click **Create export**.
+3. Click **Check bucket**, then **Run now** for the first export. Later runs follow the schedule.
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"Warehouse","destination":"r2","config":{"bucket":"revenue-exports","prefix":"revenuedot","account_id":"'"$CF_ACCOUNT_ID"'","access_key_id":"'"$R2_KEY_ID"'"},"credentials":{"secret_access_key":"'"$R2_SECRET"'"},"format":"parquet","schedule":"daily","hour_utc":3,"tables":["transactions","events"]}'
+```
+
+- **Files:** `<prefix>/<YYYY-MM-DD>/<table>_<YYYYMMDDTHHMMSSZ>.csv.gz` (or `.csv`, `.parquet`), split into `_part2`, `_part3` ... above 10,000 rows. The date is the end of the window the file covers.
+- **Formats:** CSV (comma-separated, header row, gzip by default, times in UTC as `YYYY-MM-DD HH:MM:SS`) or Parquet (Snappy, typed columns: timestamps, integers, decimals, booleans and JSON).
+- **Schedule:** every day at an hour you pick (UTC), or every week on a day you pick. **Run now** queues one at once.
+- **New and changed only** (default): each run exports what changed since the previous successful run of that table. The first run of a table is always complete. A refunded transaction is exported again with `price_in_usd` 0 and `refunded_at` set, so keep the latest row per `store_transaction_id` by `updated_at`. **Everything, every time** writes full tables.
+- **Failures:** a run that hits a temporary error retries after 10 and 30 minutes; files are overwritten, so a retry never duplicates. The run history shows each file, its rows and size, and any error.
+
+### Tables
+- **transactions:** one row per purchase, trial and renewal, with the column names of RevenueCat's transactions export: `rc_original_app_user_id`, `rc_last_seen_app_user_id_alias`, `country`, `country_source`, `product_identifier`, `product_display_name`, `product_duration`, `start_time`, `end_time`, `grace_period_end_time`, `effective_end_time`, `store`, `is_auto_renewable`, `is_trial_period`, `is_in_intro_offer_period`, `is_sandbox`, `price_in_usd`, `purchase_price_in_usd`, `takehome_percentage`, `tax_percentage`, `commission_percentage`, `store_transaction_id`, `original_store_transaction_id`, `refunded_at`, `unsubscribe_detected_at`, `billing_issues_detected_at`, `purchased_currency`, `price_in_purchased_currency`, `purchase_price_in_purchased_currency`, `entitlement_identifiers`, `renewal_number`, `is_trial_conversion`, `presented_offering`, `ownership_type`, `reserved_subscriber_attributes`, `custom_subscriber_attributes`, `platform`, `updated_at`, `offer`, `offer_type`, `first_seen_time`, `auto_resume_time`, `app_id`.
+- **customers:** `rc_original_app_user_id`, `rc_last_seen_app_user_id_alias`, `aliases`, `first_seen_time`, `last_seen_time`, `platform`, `app_version`, `country`, `sdk_version`, `original_purchase_time`, the two attribute columns, `updated_at`.
+- **subscriptions:** the current state of each subscription: store, product, dates, period type, cancellation, billing issue, refund, price, country, presented offering, `updated_at`.
+- **events:** every event webhooks receive: `event_id`, `type`, `event_time`, `recorded_at`, `environment`, `app_id`, the customer's ids, product, store, price, and `payload` (the webhook body as JSON).
+
+```sql
+-- Monthly revenue from the transactions files, net of refunds.
+SELECT DATE_TRUNC('month', start_time) AS month, SUM(price_in_usd) AS revenue
+FROM transactions WHERE NOT is_sandbox GROUP BY 1 ORDER BY 1;
+```
+
+## Self-hosting notes
+- Set `REVENUEDOT_ENCRYPTION_KEY` (`openssl rand -base64 32`) in `.env` so integration keys are encrypted at rest. Without it the key is derived from `REVENUEDOT_SIGNING_KEY`; with neither, they are stored unencrypted (never shown by the API). Changing the key means entering the integrations' keys again.
+- Deliveries and exports run in the server's background job, every 30 seconds on Node and every minute on RevenueDot Cloud.
+- Parquet works on both, since the writer is plain JavaScript.
+
 
 === Migrate from RevenueCat ===
 
@@ -3117,22 +3761,25 @@ The import records **no events and sends no webhooks**, so your backend does not
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md
 Description: revenuedot import copies apps, SDK keys, catalog, customers, subscriptions and purchases from RevenueCat's API v2 into RevenueDot. It resumes after a stop and is safe to run again.
 
-Run `revenuedot import --from-revenuecat` with a RevenueCat v2 secret key and a RevenueDot secret key. It reads your RevenueCat project through RevenueCat's REST API v2 and writes it into RevenueDot: apps, public SDK keys, products, entitlements, offerings, packages, customers, aliases, attributes, subscriptions and one-time purchases. It sends no webhooks, resumes where it stopped, and a second run changes nothing that is already right.
+Run `revenuedot import --from-revenuecat` in a terminal: it asks for a RevenueCat v2 secret key and a RevenueDot secret key, and hides what you type. It reads your RevenueCat project through RevenueCat's REST API v2 and writes it into RevenueDot: apps, public SDK keys, products, entitlements, offerings, packages, customers, aliases, attributes, subscriptions and one-time purchases. It sends no webhooks, resumes where it stopped, and a second run changes nothing that is already right.
 
 **The CLI is on npm as [`revenuedot`](https://www.npmjs.com/package/revenuedot)** (Node.js 18.17 or newer), so `npx revenuedot` runs the latest release.
 
 ## Run it
 ```bash
-npx revenuedot import --from-revenuecat --rc-key sk_... --rc-project proj... \
-  --to https://revenuedot.example.com --to-key sk_...
+npx revenuedot import --from-revenuecat --rc-project proj... --to https://revenuedot.example.com
+```
+
+It asks for the two secret keys it needs. Nothing you type or paste is shown, and the keys never go in a command, so they stay out of your shell history:
+```text
+RevenueCat secret API key (v2, sk_...):
+RevenueDot secret API key for the target project:
 ```
 
 From source instead (needs pnpm):
 ```bash
 git clone https://github.com/revenuedot/revenuedot && cd revenuedot && pnpm install
-pnpm --filter revenuedot cli import --from-revenuecat \
-  --rc-key sk_... --rc-project proj... \
-  --to https://revenuedot.example.com --to-key sk_...
+pnpm --filter revenuedot cli import --from-revenuecat --rc-project proj... --to https://revenuedot.example.com
 ```
 
 You need:
@@ -3143,17 +3790,15 @@ You need:
 ## Commands
 | Command | What it does | Needs |
 |---|---|---|
-| `revenuedot import --from-revenuecat` | Imports the catalog, then customers page by page | `--rc-key`, `--rc-project`, `--to`, `--to-key` |
-| `revenuedot import verify` | Compares every customer's active entitlements between RevenueCat and RevenueDot | `--rc-key`, `--rc-project`, `--to`, `--to-key` |
-| `revenuedot import plan` | Prints the cutover steps with your app ids and URLs filled in | `--to`, `--to-key` (`--rc-project` optional) |
+| `revenuedot import --from-revenuecat` | Imports the catalog, then customers page by page | `--rc-project`, `--to`; asks for both keys |
+| `revenuedot import verify` | Compares every customer's active entitlements between RevenueCat and RevenueDot | `--rc-project`, `--to`; asks for both keys |
+| `revenuedot import plan` | Prints the cutover steps with your app ids and URLs filled in | `--to` (`--rc-project` optional); asks for the RevenueDot key |
 
 ## Flags
 | Flag | Meaning | Default |
 |---|---|---|
-| `--rc-key <key>` | RevenueCat secret key, v2 (`sk_...`) or OAuth token (`atk_...`) | `REVENUECAT_API_KEY` |
 | `--rc-project <id>` | RevenueCat project id | `REVENUECAT_PROJECT_ID` |
 | `--to <url>` | Your RevenueDot server, e.g. `http://localhost:8787` | `REVENUEDOT_URL` |
-| `--to-key <key>` | RevenueDot secret key of the target project | `REVENUEDOT_API_KEY` |
 | `--to-project <id>` | RevenueDot project id | the key's project |
 | `--state <file>` | State file for resuming | `./revenuedot-import-<rc project>.json` |
 | `--dry-run` | Read everything and report what would change; write nothing | off |
@@ -3168,16 +3813,22 @@ You need:
 
 Two more flags exist for testing and are not in `--help`: `--rc-url <url>` (RevenueCat's API base, default `https://api.revenuecat.com`) and `--page-size <n>` (customers per RevenueCat page, default 100). `--from-revenuecat` names the source; it is accepted but not required.
 
-**Environment variables** keep keys out of your shell history: `REVENUECAT_API_KEY`, `REVENUECAT_PROJECT_ID`, `REVENUEDOT_URL`, `REVENUEDOT_API_KEY`. A flag wins over its variable.
+**Keys.** In a terminal, the CLI asks for each missing key with hidden input. It accepts a RevenueCat secret key (`sk_...`) or OAuth token (`atk_...`) and asks again when you paste a public SDK key. Without a terminal (CI, piped input), nothing can be typed, so set the keys from your secret store:
 
-**Exit codes:** `0` success; `1` failure, or differences found by `import verify`; `2` wrong usage, such as a missing flag or a public key passed as `--rc-key`.
+| Variable | Key | Flag (also works) |
+|---|---|---|
+| `REVENUECAT_API_KEY` | RevenueCat secret key, v2 (`sk_...`) or OAuth token (`atk_...`) | `--rc-key <key>` |
+| `REVENUEDOT_API_KEY` | RevenueDot secret key of the target project | `--to-key <key>` |
+
+A key passed as `--rc-key` or `--to-key` stays in your shell history, so prefer the prompt or the variable. A flag wins over its variable, and either one skips the prompt. `REVENUECAT_PROJECT_ID` and `REVENUEDOT_URL` work the same way for `--rc-project` and `--to`.
+
+**Exit codes:** `0` success; `1` failure, or differences found by `import verify`; `2` wrong usage, such as a missing flag, a missing key without a terminal, or a public key passed as `--rc-key`; `130` cancelled with Ctrl+C at a key prompt.
 
 Source: [`packages/importer/src/cli.ts`](https://github.com/revenuedot/revenuedot/blob/main/packages/importer/src/cli.ts).
 
 ## Start with a dry run
 ```bash
-npx revenuedot import --from-revenuecat --rc-key sk_... --rc-project proj... \
-  --to http://localhost:8787 --to-key sk_... --dry-run
+npx revenuedot import --from-revenuecat --rc-project proj... --to http://localhost:8787 --dry-run
 ```
 A dry run reads the whole RevenueCat project and prints what it would create. It writes nothing to RevenueDot and does not save a state file. Add `--limit 50` to try the real import on 50 customers first.
 
@@ -3220,16 +3871,15 @@ That is how RevenueDot recognises the imported subscription when the store or th
 
 ## Check the result with import verify
 ```bash
-npx revenuedot import verify --rc-key sk_... --rc-project proj... \
-  --to https://revenuedot.example.com --to-key sk_...
+npx revenuedot import verify --rc-project proj... --to https://revenuedot.example.com
 ```
 For every customer it compares the active entitlements (by identifier), their expiry dates, and how many subscriptions give access. It prints totals for customers, active subscriptions and active entitlements on both sides, then each difference, and exits with `1` when there is one. Purchases made since the last import show up as differences: run the import again, then verify again. `--limit` and `--concurrency` work here too.
 
 ## Print the cutover plan
 ```bash
-npx revenuedot import plan --to https://revenuedot.example.com --to-key sk_... --rc-project proj...
+npx revenuedot import plan --to https://revenuedot.example.com --rc-project proj...
 ```
-It prints numbered steps for your project: import status, which apps still need store credentials, the notification URL of each app and the forwarding call, the SDK change, the daily re-import, and the final cutover. The same steps are in the [cutover checklist](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/cutover-checklist.md).
+It asks only for the RevenueDot key, then prints numbered steps for your project: import status, which apps still need store credentials, the notification URL of each app and the forwarding call, the SDK change, the daily re-import, and the final cutover. The same steps are in the [cutover checklist](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/cutover-checklist.md).
 
 ## Google Play purchase tokens
 RevenueCat's [API v2](https://www.revenuecat.com/docs/api-v2) gives Google Play order ids, not purchase tokens, and Google's API needs the token. RevenueDot gets tokens in four ways:
@@ -3396,11 +4046,10 @@ Webhook setup, signature checks and retries: [Webhooks](https://raw.githubuserco
 ## Re-import and compare
 Re-run the import while old app versions still call RevenueCat. It is idempotent, so a daily run is safe:
 ```bash
-npx revenuedot import --from-revenuecat --rc-key sk_... --rc-project proj... \
-  --to https://revenuedot.example.com --to-key sk_...
-npx revenuedot import verify --rc-key sk_... --rc-project proj... \
-  --to https://revenuedot.example.com --to-key sk_...
+npx revenuedot import --from-revenuecat --rc-project proj... --to https://revenuedot.example.com
+npx revenuedot import verify --rc-project proj... --to https://revenuedot.example.com
 ```
+Each command asks for the RevenueCat and RevenueDot secret keys and hides what you type. For a scheduled job, set `REVENUECAT_API_KEY` and `REVENUEDOT_API_KEY` from your secret store instead.
 `import verify` compares each customer's active entitlements, their expiry dates and how many subscriptions give access. It exits with `1` when anything differs. A difference that remains after a fresh import points to data the import could not bring over; the details are in [The importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md#check-the-result-with-import-verify).
 
 ## Related
@@ -3632,7 +4281,7 @@ Work through these steps in order. RevenueCat keeps running until the last secti
 - [ ] Optional: set `REVENUEDOT_SIGNING_KEY` if you plan to use fork builds with your own key. See [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md).
 
 ## 2. Import
-- [ ] Dry run: `npx revenuedot import --from-revenuecat --rc-key sk_... --rc-project proj... --to https://revenuedot.example.com --to-key sk_... --dry-run`. Until the CLI is on npm, run it from source; see [The importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md#run-it).
+- [ ] Dry run: `npx revenuedot import --from-revenuecat --rc-project proj... --to https://revenuedot.example.com --dry-run`. It asks for both secret keys. Until the CLI is on npm, run it from source; see [The importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md#run-it).
 - [ ] Import: the same command without `--dry-run`. Re-run it until the report says the pass is complete.
 - [ ] Add each app's store credentials in the dashboard: the App Store in-app purchase key, and the Google Play service account with "View financial data". See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md) and [Connect Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md).
 - [ ] Click **Check credentials** on each app page, so Apple and Google confirm the credentials work.
@@ -3807,8 +4456,8 @@ One RevenueDot server answers every API below on one port. The reference is gene
 |---|---|---|---|---|
 | SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 47 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
 | REST API v1 | `/v1/subscribers/...` | secret key | 10 | [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md) |
-| REST API v2 | `/v2/projects/...` | secret key or dashboard session | 130 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
-| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...` | secret key, session or none | 49 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
+| REST API v2 | `/v2/projects/...` | secret key or dashboard session | 132 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
+| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...` | secret key, session or none | 67 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
 | Webhooks (sent by RevenueDot) | your URL | HMAC signature | 17 event types | [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md) |
 
 ## Quick example
@@ -3900,6 +4549,7 @@ Permissions the operations use:
 
 - `audiences:audiences:read`
 - `audiences:audiences:read_write`
+- `charts_metrics:charts:read`
 - `charts_metrics:overview:read`
 - `customer_information:customers:read`
 - `customer_information:customers:read_write`
@@ -4070,7 +4720,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Offerings (SDK)**: [Get offerings](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#get-offerings), [Get offerings without a user](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#get-offerings-without-a-user), [Test Store product details](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#test-store-product-details)
 - **Identity**: [Log in (identify)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#log-in-identify), [Alias two app user ids](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#alias-two-app-user-ids)
 - **Attributes**: [Set customer attributes](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#set-customer-attributes)
-- **SDK support**: [Intro offer eligibility (StoreKit 1)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#intro-offer-eligibility-storekit-1), [Sign a promotional offer (iOS)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sign-a-promotional-offer-ios), [Attribution data (deprecated iOS call)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#attribution-data-deprecated-ios-call), [Apple AdServices token](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#apple-adservices-token), [SDK health report availability](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-health-report-availability), [SDK health report](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-health-report), [Product to entitlement mapping (offline entitlements)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#product-to-entitlement-mapping-offline-entitlements), [Customer Center configuration](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-configuration), [Customer Center support ticket (not built)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-support-ticket-not-built), [Virtual currency balances](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#virtual-currency-balances), [Redeem a web purchase (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#redeem-a-web-purchase-not-available), [Register an Apple external purchase token (iOS)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#register-an-apple-external-purchase-token-ios), [Rewarded ad verification (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#rewarded-ad-verification-not-available), [Amazon receipt details](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#amazon-receipt-details), [Paywall workflows (web SDK)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#paywall-workflows-web-sdk), [One paywall workflow (web SDK)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#one-paywall-workflow-web-sdk), [Restore eligibility (StoreKit 2)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#restore-eligibility-storekit-2), [Remote config fallback (none)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#remote-config-fallback-none), [Remote config: paywalls and UI settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#remote-config-paywalls-and-ui-settings), [Download a remote-config blob](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#download-a-remote-config-blob), [SDK paywall and feature events (accepted, not stored)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-paywall-and-feature-events-accepted-not-stored), [SDK diagnostics (accepted, not stored)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-diagnostics-accepted-not-stored)
+- **SDK support**: [Intro offer eligibility (StoreKit 1)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#intro-offer-eligibility-storekit-1), [Sign a promotional offer (iOS)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sign-a-promotional-offer-ios), [Attribution data (deprecated iOS call)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#attribution-data-deprecated-ios-call), [Apple AdServices token](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#apple-adservices-token), [SDK health report availability](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-health-report-availability), [SDK health report](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-health-report), [Product to entitlement mapping (offline entitlements)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#product-to-entitlement-mapping-offline-entitlements), [Customer Center configuration](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-configuration), [Customer Center support ticket (not built)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-support-ticket-not-built), [Virtual currency balances](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#virtual-currency-balances), [Redeem a web purchase (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#redeem-a-web-purchase-not-available), [Register an Apple external purchase token (iOS)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#register-an-apple-external-purchase-token-ios), [Rewarded ad verification (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#rewarded-ad-verification-not-available), [Amazon receipt details](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#amazon-receipt-details), [Paywall workflows (web SDK)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#paywall-workflows-web-sdk), [One paywall workflow (web SDK)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#one-paywall-workflow-web-sdk), [Restore eligibility (StoreKit 2)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#restore-eligibility-storekit-2), [Remote config fallback (none)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#remote-config-fallback-none), [Remote config: paywalls and UI settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#remote-config-paywalls-and-ui-settings), [Download a remote-config blob](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#download-a-remote-config-blob), [SDK paywall, Customer Center and ad events](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-paywall-customer-center-and-ad-events), [SDK diagnostics (accepted, not stored)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-diagnostics-accepted-not-stored)
 - **Web Billing**: [Web offering products](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-offering-products), [Start a hosted web checkout (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#start-a-hosted-web-checkout-not-available), [Web Billing purchase (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-billing-purchase-not-available), [Prepare a Web Billing checkout (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#prepare-a-web-billing-checkout-not-available), [Start a Web Billing checkout (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#start-a-web-billing-checkout-not-available), [Web Billing checkout status](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-billing-checkout-status), [Refresh Web Billing checkout pricing](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#refresh-web-billing-checkout-pricing), [Complete a Web Billing checkout](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#complete-a-web-billing-checkout), [Web checkout branding](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-checkout-branding)
 - **Store notifications**: [App Store Server Notifications v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#app-store-server-notifications-v2), [Google Play real-time developer notifications (Pub/Sub push)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#google-play-real-time-developer-notifications-pubsub-push), [Amazon Appstore Real-time Notifications (SNS)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#amazon-appstore-real-time-notifications-sns), [Stripe webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#stripe-webhooks)
 - **Response signing**: [Public key for response signatures](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#public-key-for-response-signatures)
@@ -5345,11 +5995,11 @@ curl -s "$REVENUEDOT_URL/blobs/$BLOB_REF"
 - **200**: The blob (JSON).
 - **404**: Unknown blob.
 
-### SDK paywall and feature events (accepted, not stored)
+### SDK paywall, Customer Center and ad events
 
 `POST /v1/events` · Auth: public app key
 
-Accepted so the SDK does not resend them forever.
+Stored for the paywall, ad and Customer Center charts (each SDK event id once). A malformed batch is still answered 200 so the SDK does not resend it forever.
 
 **Example request**
 
@@ -6836,7 +7486,7 @@ RevenueDot-only endpoints are on [Extensions](https://raw.githubusercontent.com/
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (130)
+## Operations on this page (132)
 
 - **Projects**: [List projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-projects), [Create a project](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-project)
 - **Apps**: [List apps](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-apps), [Create an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-app), [Get an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-app), [Update an app and its store credentials](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-app-and-its-store-credentials), [Delete an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-app), [Get an app's public SDK key](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-apps-public-sdk-key), [Get a StoreKit configuration file](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-storekit-configuration-file)
@@ -6848,6 +7498,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Subscriptions**: [Find subscriptions by store id](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#find-subscriptions-by-store-id), [Get a subscription](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-subscription), [List the entitlements a subscription unlocks](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-the-entitlements-a-subscription-unlocks), [List a subscription's payments](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-subscriptions-payments), [Cancel a subscription (Google Play)](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#cancel-a-subscription-google-play), [Refund and revoke a subscription (Google Play)](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#refund-and-revoke-a-subscription-google-play), [Extend a subscription](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#extend-a-subscription), [Refund one payment of a subscription (Google Play)](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#refund-one-payment-of-a-subscription-google-play), [Get where the customer manages a subscription](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-where-the-customer-manages-a-subscription)
 - **Purchases**: [Find one-time purchases by store id](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#find-one-time-purchases-by-store-id), [Get a one-time purchase](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-one-time-purchase), [List the entitlements a purchase unlocks](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-the-entitlements-a-purchase-unlocks), [Refund a one-time purchase (Google Play)](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#refund-a-one-time-purchase-google-play)
 - **Metrics**: [Overview metrics](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#overview-metrics), [Revenue over a date range](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#revenue-over-a-date-range)
+- **Charts**: [Get chart data](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-chart-data), [Get available options for a chart](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-available-options-for-a-chart)
 - **In-app currencies**: [List in-app currencies](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-in-app-currencies), [Create an in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-in-app-currency), [Get an in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-in-app-currency), [Update an in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-in-app-currency), [Delete an in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-in-app-currency), [Archive an in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#archive-an-in-app-currency), [Unarchive an in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#unarchive-an-in-app-currency), [List a customer's balances](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-balances), [Credit or spend in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#credit-or-spend-in-app-currency), [Change a balance without a ledger entry](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#change-a-balance-without-a-ledger-entry)
 - **Audit log**: [List audit log entries](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-audit-log-entries)
 - **Targeting**: [List audiences](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-audiences), [Create an audience](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-audience), [Preview who matches](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#preview-who-matches), [Known values for attribution and custom-attribute fields](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#known-values-for-attribution-and-custom-attribute-fields), [Get an audience](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-audience), [Update an audience](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-audience), [Delete an unused audience](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-unused-audience), [List targeting rules in order](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-targeting-rules-in-order), [Create a targeting rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-targeting-rule), [Set the evaluation order](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#set-the-evaluation-order), [Get a targeting rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-targeting-rule), [Update a targeting rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-targeting-rule), [Delete a targeting rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-targeting-rule)
@@ -9462,6 +10113,89 @@ Example 200 response:
 }
 ```
 
+## Charts
+
+Every built-in chart (revenue, MRR, subscriptions, trials, conversion, LTV, churn, refunds, paywalls, ads) with RevenueCat's definitions.
+
+### Get chart data
+
+`GET /v2/projects/{project_id}/charts/{chart_name}` · Auth: secret key or dashboard session · Permissions: `charts_metrics:charts:read`
+
+Time series or cohort table for one chart, computed from the project's purchases when asked. Definitions, filters and SQL: https://revenuedot.app/docs/guides/charts.
+
+Sandbox purchases, granted access and Family Sharing are excluded; money is USD at the purchase-date rate (or `currency` at the same date); periods are UTC.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `chart_name` | `actives`, `actives_movement`, `actives_new`, `arr`, `churn`, `cohort_explorer`, `conversion_to_paying`, `customers_new`, `initial_conversion`, `ltv_per_customer`, `ltv_per_paying_customer`, `mrr`, `mrr_movement`, `prediction_explorer`, `refund_rate`, `refund_request`, `refunds`, `revenue`, `subscription_retention`, `subscription_status`, `trials`, `trials_movement`, `trials_new`, `customers_active`, `trial_conversion`, `trial_conversion_rate`, `trial_cancellation`, `non-subscription_purchases`, `ad_revenue`, `ad_impressions`, `ad_clicks`, `ad_monetized_customers`, `ad_arpdau`, `ad_rpm`, `ad_fill_rate`, `ad_ctr`, `paywall_encounter`, `paywall_conversion`, `paywall_ltv`, `paywall_abandonment`, `app_store_save_outcomes`, `play_store_cancel_reasons`, `customer_center_survey_responses` | yes | The chart. `play_store_cancel_reasons` and `customer_center_survey_responses` are RevenueDot names for charts RevenueCat shows only in its dashboard. Definitions: https://revenuedot.app/docs/guides/charts |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `resolution` | string | no | `0`–`4` or `day`, `week`, `month`, `quarter`, `year`. Default `day` (`month` for cohort tables). At most 1,000 periods. |
+| `start_date` | string | no | First day (YYYY-MM-DD). Default: 30 days ago, or 12 months for cohort tables. |
+| `end_date` | string | no | Last day, inclusive. Default: today. |
+| `expand_periods` | boolean | no | Count the whole first period of flow charts. Default false. |
+| `filters` | string | no | JSON array `[{"name":"country","values":["US"]}]`. Names come from `/options`. |
+| `selectors` | string | no | JSON object, e.g. `{"revenue_type":"proceeds"}`. |
+| `segment` | string | no | One dimension from `/options`. |
+| `limit_num_segments` | integer | no | Top N segments by the first measure; the rest become "Other". |
+| `aggregate` | string | no | `average`, `total` or both, comma separated: `values` is empty and `summary` holds only these. |
+| `currency` | `USD`, `EUR`, `GBP`, `AUD`, `CAD`, `JPY`, `BRL`, `KRW`, `CNY`, `MXN`, `SEK`, `PLN`, `NZD`, `CHF` | no |  |
+| `include_annotations` | boolean | no |  |
+| `realtime` | boolean | no | Accepted for compatibility; every chart uses the real-time (v3) definitions. |
+| `environment` | `production`, `sandbox` | no | RevenueDot extension. `sandbox` shows only sandbox and Test Store purchases. Default `production`. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/charts/$CHART_NAME" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The chart.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Get available options for a chart
+
+`GET /v2/projects/{project_id}/charts/{chart_name}/options` · Auth: secret key or dashboard session · Permissions: `charts_metrics:charts:read`
+
+Resolutions, segments, filters with the values present in the project's data, and the chart's selectors.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `chart_name` | `actives`, `actives_movement`, `actives_new`, `arr`, `churn`, `cohort_explorer`, `conversion_to_paying`, `customers_new`, `initial_conversion`, `ltv_per_customer`, `ltv_per_paying_customer`, `mrr`, `mrr_movement`, `prediction_explorer`, `refund_rate`, `refund_request`, `refunds`, `revenue`, `subscription_retention`, `subscription_status`, `trials`, `trials_movement`, `trials_new`, `customers_active`, `trial_conversion`, `trial_conversion_rate`, `trial_cancellation`, `non-subscription_purchases`, `ad_revenue`, `ad_impressions`, `ad_clicks`, `ad_monetized_customers`, `ad_arpdau`, `ad_rpm`, `ad_fill_rate`, `ad_ctr`, `paywall_encounter`, `paywall_conversion`, `paywall_ltv`, `paywall_abandonment`, `app_store_save_outcomes`, `play_store_cancel_reasons`, `customer_center_survey_responses` | yes | The chart. `play_store_cancel_reasons` and `customer_center_survey_responses` are RevenueDot names for charts RevenueCat shows only in its dashboard. Definitions: https://revenuedot.app/docs/guides/charts |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `environment` | `production`, `sandbox` | no | RevenueDot extension. `sandbox` shows only sandbox and Test Store purchases. Default `production`. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/charts/$CHART_NAME/options" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The options.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
 ## In-app currencies
 
 Currencies your app sells or rewards, their product grants and each customer's balance.
@@ -12043,7 +12777,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (49)
+## Operations on this page (67)
 
 - **Dashboard auth**: [Whether sign-up is open](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-sign-up-is-open), [Create a dashboard account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-dashboard-account), [Sign in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-in), [Sign out](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out), [The signed-in user and their projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-signed-in-user-and-their-projects), [Update account settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-account-settings), [Email a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#email-a-password-reset-link), [Check a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-a-password-reset-link), [Set a new password from a reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-a-new-password-from-a-reset-link), [Confirm an email address](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#confirm-an-email-address), [Send a new confirmation email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-new-confirmation-email), [Look up an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#look-up-an-invite), [Accept an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#accept-an-invite)
 - **Members and invites**: [List open invites](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-open-invites), [Invite someone by email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#invite-someone-by-email), [Resend an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#resend-an-invite), [Revoke an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#revoke-an-invite), [Change a member's role](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-a-members-role), [Remove a member, or leave the project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#remove-a-member-or-leave-the-project)
@@ -12051,6 +12785,8 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Store setup**: [Store setup state of an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#store-setup-state-of-an-app), [Check store credentials with Apple, Google, Amazon or Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-store-credentials-with-apple-google-amazon-or-stripe), [Extend every active App Store subscriber of a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#status-of-a-mass-extension), [Setup health](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#setup-health)
 - **API keys**: [List secret keys](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-secret-keys), [Create a secret key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-secret-key), [Delete a secret key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-secret-key)
 - **Webhook deliveries**: [Send a TEST event to one webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-each-webhook-is-enabled), [Delivery log of a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delivery-log-of-a-webhook), [Retry a delivery now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#retry-a-delivery-now)
+- **Integrations**: [What each integration needs](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#what-each-integration-needs), [List integrations](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-integrations), [Connect an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#connect-an-integration), [Get an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-an-integration), [Update, enable or disable an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-enable-or-disable-an-integration), [Disconnect an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#disconnect-an-integration), [Send a TEST event to one integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-test-event-to-one-integration), [Delivery log of an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delivery-log-of-an-integration), [Retry a delivery now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#retry-a-delivery-now), [Queue failed or skipped deliveries again](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#queue-failed-or-skipped-deliveries-again)
+- **Data exports**: [List scheduled data exports](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-scheduled-data-exports), [Create a scheduled data export](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-scheduled-data-export), [Get a data export](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-data-export), [Update a data export](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-a-data-export), [Delete a data export](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-data-export), [Run an export now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#run-an-export-now), [Check the bucket and credentials](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-the-bucket-and-credentials), [Run history](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#run-history)
 - **Event log**: [Event log](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#event-log), [Transaction feed](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#transaction-feed)
 - **Test Store**: [Simulate a Test Store purchase or lifecycle](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#simulate-a-test-store-purchase-or-lifecycle)
 - **Dashboard data**: [Daily history of an overview metric](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#daily-history-of-an-overview-metric), [Dashboard rows for customers](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#dashboard-rows-for-customers)
@@ -13347,6 +14083,651 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID/de
 **Responses**
 
 - **200**: The delivery, queued. Returns [WebhookDelivery](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#webhookdelivery).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+## Integrations
+
+Slack, Segment, Amplitude, Mixpanel, PostHog, Firebase, BigQuery, AppsFlyer, Adjust and Meta: connect, test, the delivery log, retry and replay.
+
+### What each integration needs
+
+`GET /v2/projects/{project_id}/integrations/catalog` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read`
+
+The fields each integration takes (keys, labels, types, options), its default environment and setup guide. The dashboard draws its forms from this.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/catalog" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Every integration type.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### List integrations
+
+`GET /v2/projects/{project_id}/integrations/partners` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `type` | `slack`, `segment`, `amplitude`, `mixpanel`, `posthog`, `firebase`, `bigquery`, `appsflyer`, `adjust`, `meta` | no |  |
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The project's integrations.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Connect an integration
+
+`POST /v2/projects/{project_id}/integrations/partners` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+Every event webhooks get is also sent to each enabled integration whose filters match, with the webhook retry schedule (5, 10, 20, 40, 80 minutes). Secrets are encrypted at rest and never returned.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `type` | `slack`, `segment`, `amplitude`, `mixpanel`, `posthog`, `firebase`, `bigquery`, `appsflyer`, `adjust`, `meta` | yes |  |
+| `name` | string | no |  |
+| `enabled` | boolean | no |  |
+| `environment` | `production`, `sandbox`, null | no |  |
+| `app_id` | string or null | no |  |
+| `event_types` | array of string | no |  |
+| `settings` | object | no | Every field of the integration's catalogue entry, secrets included. On update, a missing secret keeps its saved value; null removes it. |
+| `event_names` | object | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"type":"amplitude","environment":null,"settings":{"api_key":"<amplitude api key>","region":"us"}}'
+```
+
+**Responses**
+
+- **201**: The integration.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 201 response:
+
+```json
+{
+  "object": "integration",
+  "id": "intg_8f2kq0x1m3zv7a",
+  "project_id": "proj1a2b3c4d",
+  "type": "amplitude",
+  "name": "Amplitude",
+  "enabled": true,
+  "environment": null,
+  "app_id": null,
+  "event_types": [],
+  "settings": {
+    "region": "us"
+  },
+  "secrets": {
+    "api_key": {
+      "configured": true,
+      "hint": "••••9f3a"
+    },
+    "sandbox_api_key": {
+      "configured": false,
+      "hint": null
+    }
+  },
+  "event_names": {},
+  "status": {
+    "last_delivered_at": null,
+    "last_error": null,
+    "consecutive_failures": 0
+  },
+  "created_at": 1790850000000,
+  "updated_at": 1790850000000
+}
+```
+
+### Get an integration
+
+`GET /v2/projects/{project_id}/integrations/partners/{integration_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `integration_id` | string | yes | Integration id (intg_...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRATION_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The integration.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Update, enable or disable an integration
+
+`POST /v2/projects/{project_id}/integrations/partners/{integration_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+`enabled: false` stops new deliveries; failed ones wait until it is on again.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `integration_id` | string | yes | Integration id (intg_...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `type` | `slack`, `segment`, `amplitude`, `mixpanel`, `posthog`, `firebase`, `bigquery`, `appsflyer`, `adjust`, `meta` | no |  |
+| `name` | string | no |  |
+| `enabled` | boolean | no |  |
+| `environment` | `production`, `sandbox`, null | no |  |
+| `app_id` | string or null | no |  |
+| `event_types` | array of string | no |  |
+| `settings` | object | no | Every field of the integration's catalogue entry, secrets included. On update, a missing secret keeps its saved value; null removes it. |
+| `event_names` | object | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRATION_ID" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"enabled":false}'
+```
+
+**Responses**
+
+- **200**: The integration.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Disconnect an integration
+
+`DELETE /v2/projects/{project_id}/integrations/partners/{integration_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+Its delivery log goes with it.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `integration_id` | string | yes | Integration id (intg_...). |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRATION_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deleted.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Send a TEST event to one integration
+
+`POST /v2/projects/{project_id}/integrations/partners/{integration_id}/test` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+With `app_user_id`, the event carries that customer's attributes, so attribution partners (which need `$appsflyerId`, `$adjustId`, `$fbAnonId` ...) can be tested. A disabled integration answers 422.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `integration_id` | string | yes | Integration id (intg_...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `app_user_id` | string | no |  |
+| `environment` | `production`, `sandbox` | no |  |
+| `product_id` | string | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRATION_ID/test" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+**Responses**
+
+- **201**: The queued delivery.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Delivery log of an integration
+
+`GET /v2/projects/{project_id}/integrations/partners/{integration_id}/deliveries` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read`
+
+Newest first.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `integration_id` | string | yes | Integration id (intg_...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `status` | `pending`, `delivered`, `failed`, `skipped` | no |  |
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRATION_ID/deliveries" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deliveries.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Retry a delivery now
+
+`POST /v2/projects/{project_id}/integrations/partners/{integration_id}/deliveries/{delivery_id}/retry` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+The request is built again, so keys and attributes saved since count.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `integration_id` | string | yes | Integration id (intg_...). |
+| `delivery_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRATION_ID/deliveries/$DELIVERY_ID/retry" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The delivery, queued.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Queue failed or skipped deliveries again
+
+`POST /v2/projects/{project_id}/integrations/partners/{integration_id}/actions/replay` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `integration_id` | string | yes | Integration id (intg_...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `status` | `failed`, `skipped`, `failed_and_skipped` | no | Default failed. |
+| `since` | integer | no | Queued at or after (epoch ms). |
+| `until` | integer | no | Queued at or before (epoch ms). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRATION_ID/actions/replay" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"status":"failed_and_skipped"}'
+```
+
+**Responses**
+
+- **200**: How many were queued.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+## Data exports
+
+Scheduled CSV or Parquet files of transactions, customers, subscriptions and events in Amazon S3, Cloudflare R2 or Google Cloud Storage.
+
+### List scheduled data exports
+
+`GET /v2/projects/{project_id}/integrations/exports` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The project's exports.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Create a scheduled data export
+
+`POST /v2/projects/{project_id}/integrations/exports` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+CSV or Parquet files of transactions, customers, subscriptions and events, written daily or weekly to Amazon S3 (or any S3-compatible storage), Cloudflare R2 or Google Cloud Storage under `<prefix>/<YYYY-MM-DD>/<table>_<YYYYMMDDTHHMMSSZ>.<ext>`. Incremental exports write rows that changed since the previous run; each table's first run is complete.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | no |  |
+| `enabled` | boolean | no |  |
+| `destination` | `s3`, `r2`, `gcs` | yes |  |
+| `config` | object | yes |  |
+| `config.bucket` | string | no |  |
+| `config.prefix` | string or null | no |  |
+| `config.region` | string or null | no | S3 region (default us-east-1). |
+| `config.endpoint` | string or null | no | S3-compatible endpoint (MinIO and the like). |
+| `config.account_id` | string or null | no | Cloudflare account id (R2). |
+| `config.access_key_id` | string or null | no | S3 or R2 access key id. |
+| `credentials` | object | no |  |
+| `credentials.secret_access_key` | string or null | no |  |
+| `credentials.service_account_json` | string or null | no | The service account's JSON key as a string. |
+| `format` | `csv`, `parquet` | no |  |
+| `compression` | `gzip`, `none` | no |  |
+| `schedule` | `daily`, `weekly` | no |  |
+| `hour_utc` | integer | no |  |
+| `weekday` | integer or null | no |  |
+| `mode` | `incremental`, `full` | no |  |
+| `tables` | array of `transactions`, `customers`, `subscriptions`, `events` | no |  |
+| `environment` | `production`, `sandbox`, null | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"name":"Warehouse","destination":"s3","config":{"bucket":"acme-exports","prefix":"revenuedot","region":"eu-west-1","access_key_id":"AKIA..."},"credentials":{"secret_access_key":"<secret>"},"format":"csv","schedule":"daily","hour_utc":3,"tables":["transactions"]}'
+```
+
+**Responses**
+
+- **201**: The export.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Get a data export
+
+`GET /v2/projects/{project_id}/integrations/exports/{export_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `export_id` | string | yes | Export id (export_...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$EXPORT_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The export.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Update a data export
+
+`POST /v2/projects/{project_id}/integrations/exports/{export_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `export_id` | string | yes | Export id (export_...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | no |  |
+| `enabled` | boolean | no |  |
+| `destination` | `s3`, `r2`, `gcs` | no |  |
+| `config` | object | no |  |
+| `config.bucket` | string | no |  |
+| `config.prefix` | string or null | no |  |
+| `config.region` | string or null | no | S3 region (default us-east-1). |
+| `config.endpoint` | string or null | no | S3-compatible endpoint (MinIO and the like). |
+| `config.account_id` | string or null | no | Cloudflare account id (R2). |
+| `config.access_key_id` | string or null | no | S3 or R2 access key id. |
+| `credentials` | object | no |  |
+| `credentials.secret_access_key` | string or null | no |  |
+| `credentials.service_account_json` | string or null | no | The service account's JSON key as a string. |
+| `format` | `csv`, `parquet` | no |  |
+| `compression` | `gzip`, `none` | no |  |
+| `schedule` | `daily`, `weekly` | no |  |
+| `hour_utc` | integer | no |  |
+| `weekday` | integer or null | no |  |
+| `mode` | `incremental`, `full` | no |  |
+| `tables` | array of `transactions`, `customers`, `subscriptions`, `events` | no |  |
+| `environment` | `production`, `sandbox`, null | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$EXPORT_ID" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"schedule":"weekly","weekday":1}'
+```
+
+**Responses**
+
+- **200**: The export.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Delete a data export
+
+`DELETE /v2/projects/{project_id}/integrations/exports/{export_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+Files already written stay in the bucket.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `export_id` | string | yes | Export id (export_...). |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$EXPORT_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deleted.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Run an export now
+
+`POST /v2/projects/{project_id}/integrations/exports/{export_id}/actions/run` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `export_id` | string | yes | Export id (export_...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `mode` | `incremental`, `full` | no | Default: the export's mode. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$EXPORT_ID/actions/run" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+**Responses**
+
+- **201**: The queued run.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Check the bucket and credentials
+
+`POST /v2/projects/{project_id}/integrations/exports/{export_id}/actions/check` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+S3 and R2: HeadBucket. Google Cloud Storage: buckets.get.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `export_id` | string | yes | Export id (export_...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$EXPORT_ID/actions/check" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The result.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Run history
+
+`GET /v2/projects/{project_id}/integrations/exports/{export_id}/runs` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read`
+
+Newest first, with each file written.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `export_id` | string | yes | Export id (export_...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$EXPORT_ID/runs" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Runs.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).

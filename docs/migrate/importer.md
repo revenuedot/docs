@@ -5,22 +5,25 @@ description: "revenuedot import copies apps, SDK keys, catalog, customers, subsc
 
 # How do I import a RevenueCat project with the revenuedot CLI?
 
-Run `revenuedot import --from-revenuecat` with a RevenueCat v2 secret key and a RevenueDot secret key. It reads your RevenueCat project through RevenueCat's REST API v2 and writes it into RevenueDot: apps, public SDK keys, products, entitlements, offerings, packages, customers, aliases, attributes, subscriptions and one-time purchases. It sends no webhooks, resumes where it stopped, and a second run changes nothing that is already right.
+Run `revenuedot import --from-revenuecat` in a terminal: it asks for a RevenueCat v2 secret key and a RevenueDot secret key, and hides what you type. It reads your RevenueCat project through RevenueCat's REST API v2 and writes it into RevenueDot: apps, public SDK keys, products, entitlements, offerings, packages, customers, aliases, attributes, subscriptions and one-time purchases. It sends no webhooks, resumes where it stopped, and a second run changes nothing that is already right.
 
 **The CLI is on npm as [`revenuedot`](https://www.npmjs.com/package/revenuedot)** (Node.js 18.17 or newer), so `npx revenuedot` runs the latest release.
 
 ## Run it
 ```bash
-npx revenuedot import --from-revenuecat --rc-key sk_... --rc-project proj... \
-  --to https://revenuedot.example.com --to-key sk_...
+npx revenuedot import --from-revenuecat --rc-project proj... --to https://revenuedot.example.com
+```
+
+It asks for the two secret keys it needs. Nothing you type or paste is shown, and the keys never go in a command, so they stay out of your shell history:
+```text
+RevenueCat secret API key (v2, sk_...):
+RevenueDot secret API key for the target project:
 ```
 
 From source instead (needs pnpm):
 ```bash
 git clone https://github.com/revenuedot/revenuedot && cd revenuedot && pnpm install
-pnpm --filter revenuedot cli import --from-revenuecat \
-  --rc-key sk_... --rc-project proj... \
-  --to https://revenuedot.example.com --to-key sk_...
+pnpm --filter revenuedot cli import --from-revenuecat --rc-project proj... --to https://revenuedot.example.com
 ```
 
 You need:
@@ -31,17 +34,15 @@ You need:
 ## Commands
 | Command | What it does | Needs |
 |---|---|---|
-| `revenuedot import --from-revenuecat` | Imports the catalog, then customers page by page | `--rc-key`, `--rc-project`, `--to`, `--to-key` |
-| `revenuedot import verify` | Compares every customer's active entitlements between RevenueCat and RevenueDot | `--rc-key`, `--rc-project`, `--to`, `--to-key` |
-| `revenuedot import plan` | Prints the cutover steps with your app ids and URLs filled in | `--to`, `--to-key` (`--rc-project` optional) |
+| `revenuedot import --from-revenuecat` | Imports the catalog, then customers page by page | `--rc-project`, `--to`; asks for both keys |
+| `revenuedot import verify` | Compares every customer's active entitlements between RevenueCat and RevenueDot | `--rc-project`, `--to`; asks for both keys |
+| `revenuedot import plan` | Prints the cutover steps with your app ids and URLs filled in | `--to` (`--rc-project` optional); asks for the RevenueDot key |
 
 ## Flags
 | Flag | Meaning | Default |
 |---|---|---|
-| `--rc-key <key>` | RevenueCat secret key, v2 (`sk_...`) or OAuth token (`atk_...`) | `REVENUECAT_API_KEY` |
 | `--rc-project <id>` | RevenueCat project id | `REVENUECAT_PROJECT_ID` |
 | `--to <url>` | Your RevenueDot server, e.g. `http://localhost:8787` | `REVENUEDOT_URL` |
-| `--to-key <key>` | RevenueDot secret key of the target project | `REVENUEDOT_API_KEY` |
 | `--to-project <id>` | RevenueDot project id | the key's project |
 | `--state <file>` | State file for resuming | `./revenuedot-import-<rc project>.json` |
 | `--dry-run` | Read everything and report what would change; write nothing | off |
@@ -56,16 +57,22 @@ You need:
 
 Two more flags exist for testing and are not in `--help`: `--rc-url <url>` (RevenueCat's API base, default `https://api.revenuecat.com`) and `--page-size <n>` (customers per RevenueCat page, default 100). `--from-revenuecat` names the source; it is accepted but not required.
 
-**Environment variables** keep keys out of your shell history: `REVENUECAT_API_KEY`, `REVENUECAT_PROJECT_ID`, `REVENUEDOT_URL`, `REVENUEDOT_API_KEY`. A flag wins over its variable.
+**Keys.** In a terminal, the CLI asks for each missing key with hidden input. It accepts a RevenueCat secret key (`sk_...`) or OAuth token (`atk_...`) and asks again when you paste a public SDK key. Without a terminal (CI, piped input), nothing can be typed, so set the keys from your secret store:
 
-**Exit codes:** `0` success; `1` failure, or differences found by `import verify`; `2` wrong usage, such as a missing flag or a public key passed as `--rc-key`.
+| Variable | Key | Flag (also works) |
+|---|---|---|
+| `REVENUECAT_API_KEY` | RevenueCat secret key, v2 (`sk_...`) or OAuth token (`atk_...`) | `--rc-key <key>` |
+| `REVENUEDOT_API_KEY` | RevenueDot secret key of the target project | `--to-key <key>` |
+
+A key passed as `--rc-key` or `--to-key` stays in your shell history, so prefer the prompt or the variable. A flag wins over its variable, and either one skips the prompt. `REVENUECAT_PROJECT_ID` and `REVENUEDOT_URL` work the same way for `--rc-project` and `--to`.
+
+**Exit codes:** `0` success; `1` failure, or differences found by `import verify`; `2` wrong usage, such as a missing flag, a missing key without a terminal, or a public key passed as `--rc-key`; `130` cancelled with Ctrl+C at a key prompt.
 
 Source: [`packages/importer/src/cli.ts`](https://github.com/revenuedot/revenuedot/blob/main/packages/importer/src/cli.ts).
 
 ## Start with a dry run
 ```bash
-npx revenuedot import --from-revenuecat --rc-key sk_... --rc-project proj... \
-  --to http://localhost:8787 --to-key sk_... --dry-run
+npx revenuedot import --from-revenuecat --rc-project proj... --to http://localhost:8787 --dry-run
 ```
 A dry run reads the whole RevenueCat project and prints what it would create. It writes nothing to RevenueDot and does not save a state file. Add `--limit 50` to try the real import on 50 customers first.
 
@@ -108,16 +115,15 @@ That is how RevenueDot recognises the imported subscription when the store or th
 
 ## Check the result with import verify
 ```bash
-npx revenuedot import verify --rc-key sk_... --rc-project proj... \
-  --to https://revenuedot.example.com --to-key sk_...
+npx revenuedot import verify --rc-project proj... --to https://revenuedot.example.com
 ```
 For every customer it compares the active entitlements (by identifier), their expiry dates, and how many subscriptions give access. It prints totals for customers, active subscriptions and active entitlements on both sides, then each difference, and exits with `1` when there is one. Purchases made since the last import show up as differences: run the import again, then verify again. `--limit` and `--concurrency` work here too.
 
 ## Print the cutover plan
 ```bash
-npx revenuedot import plan --to https://revenuedot.example.com --to-key sk_... --rc-project proj...
+npx revenuedot import plan --to https://revenuedot.example.com --rc-project proj...
 ```
-It prints numbered steps for your project: import status, which apps still need store credentials, the notification URL of each app and the forwarding call, the SDK change, the daily re-import, and the final cutover. The same steps are in the [cutover checklist](cutover-checklist.md).
+It asks only for the RevenueDot key, then prints numbered steps for your project: import status, which apps still need store credentials, the notification URL of each app and the forwarding call, the SDK change, the daily re-import, and the final cutover. The same steps are in the [cutover checklist](cutover-checklist.md).
 
 ## Google Play purchase tokens
 RevenueCat's [API v2](https://www.revenuecat.com/docs/api-v2) gives Google Play order ids, not purchase tokens, and Google's API needs the token. RevenueDot gets tokens in four ways:

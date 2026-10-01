@@ -258,8 +258,8 @@ published paywall, keyed by workflow id, with \`offering_identifier\`). The othe
       responses: { 200: ok("The blob (JSON).", { type: "object", additionalProperties: true }), 404: ok("Unknown blob.", obj({ object: str(), type: str(), message: str() })) } }),
   },
   "/v1/events": {
-    post: op({ id: "postEvents", tag: "SDK support", summary: "SDK paywall and feature events (accepted, not stored)", security: PUBLIC, source: SDK,
-      description: "Accepted so the SDK does not resend them forever.", responses: { 200: empty() } }),
+    post: op({ id: "postEvents", tag: "SDK support", summary: "SDK paywall, Customer Center and ad events", security: PUBLIC, source: SDK,
+      description: "Stored for the paywall, ad and Customer Center charts (each SDK event id once). A malformed batch is still answered 200 so the SDK does not resend it forever.", responses: { 200: empty() } }),
   },
   "/v1/diagnostics": {
     post: op({ id: "postDiagnostics", tag: "SDK support", summary: "SDK diagnostics (accepted, not stored)", security: PUBLIC, source: SDK, responses: { 200: empty() } }),
