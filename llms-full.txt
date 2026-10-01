@@ -2590,7 +2590,7 @@ The page records what each visitor does, once per page session:
 |---|---|
 | `funnel_viewed` | The visitor opens the funnel |
 | `step_viewed` | A step appears |
-| `step_completed` | The visitor finishes a step. A question carries the answer; a paywall the package; an email step only `provided`, never the address |
+| `step_completed` | The visitor finishes a step. A question carries the answer; a paywall the package; an email step only `provided` or `skipped`, never the address |
 | `checkout_started` | The paywall starts a Stripe Checkout (recorded by the server) |
 | `purchase` | The checkout is paid (recorded by the server) |
 
@@ -2611,7 +2611,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/webhooks" 
   -d '{"name":"Funnels","url":"https://api.example.com/webhooks/funnels","event_types":["funnel_viewed","funnel_step_completed","funnel_purchase","initial_purchase"]}'
 ```
 
-Each event carries `funnel_id`, `funnel_name`, `funnel_slug`, `session_id`, `step_id`, `step_type`, `step_index`, `answer`, the page's `utm_*` parameters, `store: STRIPE` and the environment. `FUNNEL_PURCHASE` adds `product_id` and the buyer's `app_user_id`. Visitors who have not paid have no app user id, so `app_user_id` is null on the first two types unless the page URL had `?app_user_id=`. Use `session_id` to join one visit's events. Full fields: [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#funnel_step_completed).
+Each event carries `funnel_id`, `funnel_name`, `funnel_slug`, `session_id`, `step_id`, `step_type`, `step_index`, `answer`, the page's `utm_*` parameters, `store: STRIPE` and the environment. `FUNNEL_PURCHASE` adds `product_id` and the buyer's `app_user_id`. Each visitor gets an anonymous app user id (`$RCAnonymousID:…`) when the page loads, unless the URL had `?app_user_id=`. Their events and their purchase use the same id, so analytics tools see one user from the first view to the purchase. `session_id` also joins one visit's events. Full fields: [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#funnel_step_completed).
 
 ## Analytics
 The **Analytics** tab, or the API, shows the last 7, 30 or more days:
@@ -2814,16 +2814,16 @@ The SDK calls `POST /v1/subscribers/redeem_purchase` with `{ "app_user_id", "red
 | SDK result | Server answer | What happened |
 |---|---|---|
 | `success` | 200, customer info | The purchase is on the app's user. A second redeem by the same customer also succeeds, so a retry is safe |
-| `invalidToken` | 400, code 7849 | The token is unknown, malformed, from another project, or replaced by a newer link |
+| `invalidToken` | 400, code 7849 | The token is unknown, malformed or from another project |
 | `purchaseBelongsToOtherUser` | 400, code 7852 | Another customer already redeemed it. The https link page says "Already unlocked" |
-| `expired` | 400, code 7853 | The link is older than `redemption_link_hours`. RevenueDot emails a new link and answers the address in a hidden form, such as `t***@e*****e.com` |
+| `expired` | 400, code 7853 | The link is older than `redemption_link_hours`, or a newer link replaced it. RevenueDot emails a new link and answers the address in a hidden form, such as `t***@e*****e.com` |
 | `error` | 401, 5xx, no network | Show an error and let the buyer try again |
 
 ```json
 {"code":7853,"message":"The link has expired.","purchase_redemption_error_info":{"obfuscated_email":"t***@e*****e.com"}}
 ```
 
-**About expired links.** The first redeem of an expired link emails a fresh link and answers `expired`. The fresh link replaces the old one, so the old link then answers `invalidToken`. A new email goes out at most once an hour per purchase. If the buyer gave no email, the answer has no `purchase_redemption_error_info` and no email is sent; ask them to contact support.
+**About expired links.** Redeeming an expired link emails a fresh link and answers `expired`. The old link keeps answering `expired`, so the app can always tell the buyer to check their email. A new email goes out at most once an hour per purchase. If the buyer gave no email, the answer has no `purchase_redemption_error_info` and no email is sent; ask them to contact support.
 
 ## What redeeming does
 The anonymous customer who paid on the web (`$RCAnonymousID:…`) is merged into the app's user, the same way `logIn` merges an anonymous customer. Purchases and attributes move over, including `$email` and the answers from a [funnel](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md). If the app's user already has purchases, it keeps them and gains the web purchase. The SDK gets the updated customer info, so the entitlement is active at once.

@@ -93,7 +93,7 @@ The page records what each visitor does, once per page session:
 |---|---|
 | `funnel_viewed` | The visitor opens the funnel |
 | `step_viewed` | A step appears |
-| `step_completed` | The visitor finishes a step. A question carries the answer; a paywall the package; an email step only `provided`, never the address |
+| `step_completed` | The visitor finishes a step. A question carries the answer; a paywall the package; an email step only `provided` or `skipped`, never the address |
 | `checkout_started` | The paywall starts a Stripe Checkout (recorded by the server) |
 | `purchase` | The checkout is paid (recorded by the server) |
 
@@ -114,7 +114,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/webhooks" 
   -d '{"name":"Funnels","url":"https://api.example.com/webhooks/funnels","event_types":["funnel_viewed","funnel_step_completed","funnel_purchase","initial_purchase"]}'
 ```
 
-Each event carries `funnel_id`, `funnel_name`, `funnel_slug`, `session_id`, `step_id`, `step_type`, `step_index`, `answer`, the page's `utm_*` parameters, `store: STRIPE` and the environment. `FUNNEL_PURCHASE` adds `product_id` and the buyer's `app_user_id`. Visitors who have not paid have no app user id, so `app_user_id` is null on the first two types unless the page URL had `?app_user_id=`. Use `session_id` to join one visit's events. Full fields: [Webhook events](../../api/webhook-events.md#funnel_step_completed).
+Each event carries `funnel_id`, `funnel_name`, `funnel_slug`, `session_id`, `step_id`, `step_type`, `step_index`, `answer`, the page's `utm_*` parameters, `store: STRIPE` and the environment. `FUNNEL_PURCHASE` adds `product_id` and the buyer's `app_user_id`. Each visitor gets an anonymous app user id (`$RCAnonymousID:…`) when the page loads, unless the URL had `?app_user_id=`. Their events and their purchase use the same id, so analytics tools see one user from the first view to the purchase. `session_id` also joins one visit's events. Full fields: [Webhook events](../../api/webhook-events.md#funnel_step_completed).
 
 ## Analytics
 The **Analytics** tab, or the API, shows the last 7, 30 or more days:

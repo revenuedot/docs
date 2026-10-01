@@ -139,16 +139,16 @@ The SDK calls `POST /v1/subscribers/redeem_purchase` with `{ "app_user_id", "red
 | SDK result | Server answer | What happened |
 |---|---|---|
 | `success` | 200, customer info | The purchase is on the app's user. A second redeem by the same customer also succeeds, so a retry is safe |
-| `invalidToken` | 400, code 7849 | The token is unknown, malformed, from another project, or replaced by a newer link |
+| `invalidToken` | 400, code 7849 | The token is unknown, malformed or from another project |
 | `purchaseBelongsToOtherUser` | 400, code 7852 | Another customer already redeemed it. The https link page says "Already unlocked" |
-| `expired` | 400, code 7853 | The link is older than `redemption_link_hours`. RevenueDot emails a new link and answers the address in a hidden form, such as `t***@e*****e.com` |
+| `expired` | 400, code 7853 | The link is older than `redemption_link_hours`, or a newer link replaced it. RevenueDot emails a new link and answers the address in a hidden form, such as `t***@e*****e.com` |
 | `error` | 401, 5xx, no network | Show an error and let the buyer try again |
 
 ```json
 {"code":7853,"message":"The link has expired.","purchase_redemption_error_info":{"obfuscated_email":"t***@e*****e.com"}}
 ```
 
-**About expired links.** The first redeem of an expired link emails a fresh link and answers `expired`. The fresh link replaces the old one, so the old link then answers `invalidToken`. A new email goes out at most once an hour per purchase. If the buyer gave no email, the answer has no `purchase_redemption_error_info` and no email is sent; ask them to contact support.
+**About expired links.** Redeeming an expired link emails a fresh link and answers `expired`. The old link keeps answering `expired`, so the app can always tell the buyer to check their email. A new email goes out at most once an hour per purchase. If the buyer gave no email, the answer has no `purchase_redemption_error_info` and no email is sent; ask them to contact support.
 
 ## What redeeming does
 The anonymous customer who paid on the web (`$RCAnonymousID:…`) is merged into the app's user, the same way `logIn` merges an anonymous customer. Purchases and attributes move over, including `$email` and the answers from a [funnel](funnels.md). If the app's user already has purchases, it keeps them and gains the web purchase. The SDK gets the updated customer info, so the entitlement is active at once.
