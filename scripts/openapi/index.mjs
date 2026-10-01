@@ -7,6 +7,7 @@ import { extensionPaths, v2Paths } from "./v2.mjs";
 import { v2MorePaths } from "./v2-more.mjs";
 import { paywallPaths } from "./paywalls.mjs";
 import { targetingPaths } from "./targeting.mjs";
+import { chartPaths } from "./charts.mjs";
 import { webhooks } from "./webhooks.mjs";
 
 /**
@@ -37,6 +38,7 @@ export const TAGS = [
   ["Subscriptions", "rest-v2", "Subscriptions across customers, and store actions on them."],
   ["Purchases", "rest-v2", "One-time purchases across customers."],
   ["Metrics", "rest-v2", "The dashboard overview numbers and revenue totals."],
+  ["Charts", "rest-v2", "Every built-in chart (revenue, MRR, subscriptions, trials, conversion, LTV, churn, refunds, paywalls, ads) with RevenueCat's definitions."],
   ["In-app currencies", "rest-v2", "Currencies your app sells or rewards, their product grants and each customer's balance."],
   ["Audit log", "rest-v2", "Who changed what in a project."],
   ["Targeting", "rest-v2", "Audiences, and rules that pick the offering and placement offerings for each customer."],
@@ -82,7 +84,7 @@ export function buildDocument() {
       { url: "https://{host}", description: "Your self-hosted RevenueDot", variables: { host: { default: "revenuedot.example.com" } } },
     ],
     tags: tags(),
-    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...paywallPaths, ...targetingPaths, ...extensionPaths },
+    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...extensionPaths },
     webhooks,
     components: { schemas, parameters, responses, securitySchemes },
     security: [{ secretApiKey: [] }],

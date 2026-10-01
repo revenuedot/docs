@@ -102,6 +102,9 @@ tags:
   - name: Metrics
     description: The dashboard overview numbers and revenue totals.
     x-page: rest-v2
+  - name: Charts
+    description: Every built-in chart (revenue, MRR, subscriptions, trials, conversion, LTV, churn, refunds, paywalls, ads) with RevenueCat's definitions.
+    x-page: rest-v2
   - name: In-app currencies
     description: Currencies your app sells or rewards, their product grants and each customer's balance.
     x-page: rest-v2
@@ -1621,8 +1624,8 @@ paths:
       operationId: postEvents
       tags:
         - SDK support
-      summary: SDK paywall and feature events (accepted, not stored)
-      description: Accepted so the SDK does not resend them forever.
+      summary: SDK paywall, Customer Center and ad events
+      description: Stored for the paywall, ad and Customer Center charts (each SDK event id once). A malformed batch is still answered 200 so the SDK does not resend it forever.
       security:
         - publicApiKey: []
       responses:
@@ -13564,6 +13567,591 @@ paths:
       x-scopes:
         - project_configuration:offerings:read
       x-revenuedot-extension: true
+  /v2/projects/{project_id}/charts/{chart_name}:
+    get:
+      operationId: getChartData
+      tags:
+        - Charts
+      summary: Get chart data
+      description: |-
+        Time series or cohort table for one chart, computed from the project's purchases when asked. Definitions, filters and SQL: https://revenuedot.app/docs/guides/charts.
+
+        Sandbox purchases, granted access and Family Sharing are excluded; money is USD at the purchase-date rate (or `currency` at the same date); periods are UTC.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: chart_name
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - actives
+              - actives_movement
+              - actives_new
+              - arr
+              - churn
+              - cohort_explorer
+              - conversion_to_paying
+              - customers_new
+              - initial_conversion
+              - ltv_per_customer
+              - ltv_per_paying_customer
+              - mrr
+              - mrr_movement
+              - prediction_explorer
+              - refund_rate
+              - refund_request
+              - refunds
+              - revenue
+              - subscription_retention
+              - subscription_status
+              - trials
+              - trials_movement
+              - trials_new
+              - customers_active
+              - trial_conversion
+              - trial_conversion_rate
+              - trial_cancellation
+              - non-subscription_purchases
+              - ad_revenue
+              - ad_impressions
+              - ad_clicks
+              - ad_monetized_customers
+              - ad_arpdau
+              - ad_rpm
+              - ad_fill_rate
+              - ad_ctr
+              - paywall_encounter
+              - paywall_conversion
+              - paywall_ltv
+              - paywall_abandonment
+              - app_store_save_outcomes
+              - play_store_cancel_reasons
+              - customer_center_survey_responses
+          description: "The chart. `play_store_cancel_reasons` and `customer_center_survey_responses` are RevenueDot names for charts RevenueCat shows only in its dashboard. Definitions: https://revenuedot.app/docs/guides/charts"
+        - name: resolution
+          in: query
+          schema:
+            type: string
+          description: "`0`–`4` or `day`, `week`, `month`, `quarter`, `year`. Default `day` (`month` for cohort tables). At most 1,000 periods."
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: "First day (YYYY-MM-DD). Default: 30 days ago, or 12 months for cohort tables."
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: "Last day, inclusive. Default: today."
+        - name: expand_periods
+          in: query
+          schema:
+            type: boolean
+          description: Count the whole first period of flow charts. Default false.
+        - name: filters
+          in: query
+          schema:
+            type: string
+          description: JSON array `[{"name":"country","values":["US"]}]`. Names come from `/options`.
+        - name: selectors
+          in: query
+          schema:
+            type: string
+          description: JSON object, e.g. `{"revenue_type":"proceeds"}`.
+        - name: segment
+          in: query
+          schema:
+            type: string
+          description: One dimension from `/options`.
+        - name: limit_num_segments
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+          description: Top N segments by the first measure; the rest become "Other".
+        - name: aggregate
+          in: query
+          schema:
+            type: string
+          description: "`average`, `total` or both, comma separated: `values` is empty and `summary` holds only these."
+        - name: currency
+          in: query
+          schema:
+            type: string
+            enum:
+              - USD
+              - EUR
+              - GBP
+              - AUD
+              - CAD
+              - JPY
+              - BRL
+              - KRW
+              - CNY
+              - MXN
+              - SEK
+              - PLN
+              - NZD
+              - CHF
+        - name: include_annotations
+          in: query
+          schema:
+            type: boolean
+        - name: realtime
+          in: query
+          schema:
+            type: boolean
+          description: Accepted for compatibility; every chart uses the real-time (v3) definitions.
+        - name: environment
+          in: query
+          schema:
+            type: string
+            enum:
+              - production
+              - sandbox
+          description: RevenueDot extension. `sandbox` shows only sandbox and Test Store purchases. Default `production`.
+      responses:
+        "200":
+          description: The chart.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - chart_data
+                  category:
+                    type: string
+                    description: "The chart's group: revenue, subscriptions, ads, ltv, customers, conversion, paywalls, trials, churn, retention."
+                  display_type:
+                    type: string
+                    enum:
+                      - line
+                      - bar
+                      - stacked_bar
+                      - cohort
+                  display_name:
+                    type: string
+                  description:
+                    type: string
+                  documentation_link:
+                    type:
+                      - string
+                      - "null"
+                  last_computed_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When the numbers were computed (on request). Epoch milliseconds, or null.
+                  start_date:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: First day of the range. Epoch milliseconds, or null.
+                  end_date:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last day of the range. Epoch milliseconds, or null.
+                  yaxis_currency:
+                    type: string
+                  filtering_allowed:
+                    type: boolean
+                  segmenting_allowed:
+                    type: boolean
+                  resolution:
+                    type: string
+                    enum:
+                      - day
+                      - week
+                      - month
+                      - quarter
+                      - year
+                  values:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        cohort:
+                          type: integer
+                          description: "Start of the period (a cohort chart: of the cohort) in Unix seconds."
+                        measure:
+                          type: integer
+                          description: Index into `measures` (time series).
+                        segment:
+                          type: integer
+                          description: Index into `segments` (segmented charts).
+                        period:
+                          type: integer
+                          description: Index into `periods` (cohort tables). `periods[0]` is the cohort size.
+                        value:
+                          type:
+                            - number
+                            - "null"
+                        incomplete:
+                          type: boolean
+                          description: "The period is not over, or the cohort has not finished it: the value can still change."
+                        predicted:
+                          type: boolean
+                          description: "Prediction Explorer: a predicted value."
+                      required:
+                        - cohort
+                        - value
+                    description: Empty when `aggregate` is set.
+                  summary:
+                    type:
+                      - object
+                      - "null"
+                    description: "`{ average: {<measure>: number}, total: {<measure>: number} }` keyed by measure display name; totals only for flow measures."
+                  yaxis:
+                    type: string
+                    description: Unit of the first measure.
+                  segments:
+                    type:
+                      - array
+                      - "null"
+                    items:
+                      type: object
+                      properties:
+                        display_name:
+                          type: string
+                        description:
+                          type:
+                            - string
+                            - "null"
+                        unit:
+                          type: string
+                          description: "`$`, `#` or `%`."
+                        decimal_precision:
+                          type: integer
+                        scale:
+                          type: string
+                          enum:
+                            - absolute
+                            - relative
+                        chartable:
+                          type: boolean
+                        tabulable:
+                          type: boolean
+                        is_total:
+                          type: boolean
+                        is_other:
+                          type: boolean
+                          description: The segments past `limit_num_segments`, together.
+                        id:
+                          type: string
+                          description: "Segments: the dimension value (empty for unknown)."
+                        nested_measures:
+                          type:
+                            - array
+                            - "null"
+                          items:
+                            type: object
+                          description: Per-measure metadata of a segment when the chart has several measures.
+                      required:
+                        - display_name
+                    description: One entry per segment value, then "Other" and the total.
+                  segments_limit:
+                    type:
+                      - integer
+                      - "null"
+                  periods:
+                    type:
+                      - array
+                      - "null"
+                    items:
+                      type: object
+                      properties:
+                        display_name:
+                          type: string
+                        description:
+                          type:
+                            - string
+                            - "null"
+                        unit:
+                          type: string
+                          description: "`$`, `#` or `%`."
+                        decimal_precision:
+                          type: integer
+                        scale:
+                          type: string
+                          enum:
+                            - absolute
+                            - relative
+                        chartable:
+                          type: boolean
+                        tabulable:
+                          type: boolean
+                        is_total:
+                          type: boolean
+                        is_other:
+                          type: boolean
+                          description: The segments past `limit_num_segments`, together.
+                        id:
+                          type: string
+                          description: "Segments: the dimension value (empty for unknown)."
+                        nested_measures:
+                          type:
+                            - array
+                            - "null"
+                          items:
+                            type: object
+                          description: Per-measure metadata of a segment when the chart has several measures.
+                      required:
+                        - display_name
+                    description: "Cohort tables: column metadata, `periods[0]` the cohort size."
+                  measures:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        display_name:
+                          type: string
+                        description:
+                          type: string
+                        unit:
+                          type: string
+                          description: "`$`, `#` or `%`."
+                        decimal_precision:
+                          type: integer
+                        chartable:
+                          type: boolean
+                          description: Meaningful to plot.
+                        tabulable:
+                          type: boolean
+                  user_selectors:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties:
+                      type: string
+                    description: The selectors applied, defaults included.
+                  annotations:
+                    type: array
+                    items:
+                      type: object
+                    description: With `include_annotations=true`. RevenueDot has no annotations yet, so always empty.
+                required:
+                  - object
+                  - category
+                  - display_type
+                  - display_name
+                  - description
+                  - resolution
+                  - values
+                  - yaxis
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/charts.ts
+      x-scopes:
+        - charts_metrics:charts:read
+  /v2/projects/{project_id}/charts/{chart_name}/options:
+    get:
+      operationId: getChartOptions
+      tags:
+        - Charts
+      summary: Get available options for a chart
+      description: Resolutions, segments, filters with the values present in the project's data, and the chart's selectors.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: chart_name
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - actives
+              - actives_movement
+              - actives_new
+              - arr
+              - churn
+              - cohort_explorer
+              - conversion_to_paying
+              - customers_new
+              - initial_conversion
+              - ltv_per_customer
+              - ltv_per_paying_customer
+              - mrr
+              - mrr_movement
+              - prediction_explorer
+              - refund_rate
+              - refund_request
+              - refunds
+              - revenue
+              - subscription_retention
+              - subscription_status
+              - trials
+              - trials_movement
+              - trials_new
+              - customers_active
+              - trial_conversion
+              - trial_conversion_rate
+              - trial_cancellation
+              - non-subscription_purchases
+              - ad_revenue
+              - ad_impressions
+              - ad_clicks
+              - ad_monetized_customers
+              - ad_arpdau
+              - ad_rpm
+              - ad_fill_rate
+              - ad_ctr
+              - paywall_encounter
+              - paywall_conversion
+              - paywall_ltv
+              - paywall_abandonment
+              - app_store_save_outcomes
+              - play_store_cancel_reasons
+              - customer_center_survey_responses
+          description: "The chart. `play_store_cancel_reasons` and `customer_center_survey_responses` are RevenueDot names for charts RevenueCat shows only in its dashboard. Definitions: https://revenuedot.app/docs/guides/charts"
+        - name: environment
+          in: query
+          schema:
+            type: string
+            enum:
+              - production
+              - sandbox
+          description: RevenueDot extension. `sandbox` shows only sandbox and Test Store purchases. Default `production`.
+      responses:
+        "200":
+          description: The options.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - chart_options
+                  resolutions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        display_name:
+                          type: string
+                      required:
+                        - id
+                        - display_name
+                    description: "`0` day, `1` week, `2` month, `3` quarter, `4` year."
+                  segments:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - chart_segment_option
+                        id:
+                          type: string
+                        display_name:
+                          type: string
+                        group_display_name:
+                          type:
+                            - string
+                            - "null"
+                      required:
+                        - object
+                        - id
+                        - display_name
+                  filters:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - chart_filter_option
+                        id:
+                          type: string
+                        display_name:
+                          type: string
+                        group_display_name:
+                          type:
+                            - string
+                            - "null"
+                        options:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              display_name:
+                                type: string
+                            required:
+                              - id
+                              - display_name
+                          description: Values present in the project's data, most frequent first (at most 200).
+                      required:
+                        - object
+                        - id
+                        - display_name
+                        - options
+                  user_selectors:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties:
+                      type: object
+                      properties:
+                        default:
+                          type: string
+                        display_name:
+                          type: string
+                        options:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              display_name:
+                                type: string
+                            required:
+                              - id
+                              - display_name
+                required:
+                  - object
+                  - resolutions
+                  - segments
+                  - filters
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/charts.ts
+      x-scopes:
+        - charts_metrics:charts:read
   /auth/config:
     get:
       operationId: authConfig
