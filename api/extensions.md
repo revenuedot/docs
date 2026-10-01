@@ -11,7 +11,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (175)
+## Operations on this page (192)
 
 - **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects), [Update account settings](#update-account-settings), [Email a password reset link](#email-a-password-reset-link), [Check a password reset link](#check-a-password-reset-link), [Set a new password from a reset link](#set-a-new-password-from-a-reset-link), [Confirm an email address](#confirm-an-email-address), [Send a new confirmation email](#send-a-new-confirmation-email), [Look up an invite](#look-up-an-invite), [Accept an invite](#accept-an-invite)
 - **Members and invites**: [List open invites](#list-open-invites), [Invite someone by email](#invite-someone-by-email), [Resend an invite](#resend-an-invite), [Revoke an invite](#revoke-an-invite), [Change a member's role](#change-a-members-role), [Remove a member, or leave the project](#remove-a-member-or-leave-the-project)
@@ -39,6 +39,8 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Purchase links**: [List purchase links](#list-purchase-links), [Create a purchase link](#create-a-purchase-link), [Get a purchase link](#get-a-purchase-link), [Update a purchase link](#update-a-purchase-link), [Delete a purchase link](#delete-a-purchase-link)
 - **Funnels**: [List funnels](#list-funnels), [Create a funnel](#create-a-funnel), [Is Build with AI available?](#is-build-with-ai-available), [Build a funnel with AI](#build-a-funnel-with-ai), [Get a funnel](#get-a-funnel), [Update a funnel's draft](#update-a-funnels-draft), [Delete a funnel](#delete-a-funnel), [Publish a funnel](#publish-a-funnel), [Unpublish a funnel](#unpublish-a-funnel), [Get a funnel's analytics](#get-a-funnels-analytics), [Get what the builder's preview needs](#get-what-the-builders-preview-needs)
 - **Hosted pages**: [A purchase link or a published funnel](#a-purchase-link-or-a-published-funnel), [The success page after Stripe Checkout](#the-success-page-after-stripe-checkout), [The success page of the iOS SDK's hosted checkout](#the-success-page-of-the-ios-sdks-hosted-checkout), [The cancel page of the iOS SDK's hosted checkout](#the-cancel-page-of-the-ios-sdks-hosted-checkout), [A redemption link page](#a-redemption-link-page), [Start a checkout from a page](#start-a-checkout-from-a-page), [Check a discount code from a page](#check-a-discount-code-from-a-page), [Record a funnel event from a page](#record-a-funnel-event-from-a-page)
+- **RevenueDot AI**: [What RevenueDot AI can do here](#what-revenuedot-ai-can-do-here), [Set what RevenueDot AI may do in the project](#set-what-revenuedot-ai-may-do-in-the-project), [List your conversations, newest first](#list-your-conversations-newest-first), [Start a conversation](#start-a-conversation), [Get a conversation with its messages](#get-a-conversation-with-its-messages), [Rename a conversation](#rename-a-conversation), [Delete a conversation](#delete-a-conversation), [Send a message and stream the answer (self-host)](#send-a-message-and-stream-the-answer-self-host), [Resume the answer being written](#resume-the-answer-being-written), [Stop the answer being written](#stop-the-answer-being-written), [Attach an image or a .storekit file](#attach-an-image-or-a-storekit-file), [Read an attachment back](#read-an-attachment-back), [Read a .storekit file](#read-a-storekit-file), [Suggestions for @ mentions](#suggestions-for--mentions), [The project's first-sale card](#the-projects-first-sale-card), [Hide the first-sale card on the Overview](#hide-the-first-sale-card-on-the-overview)
+- **Share cards**: [Public first-sale page or image](#public-first-sale-page-or-image)
 - **OAuth for MCP clients**: [OAuth authorization server metadata](#oauth-authorization-server-metadata), [Register an OAuth client](#register-an-oauth-client), [Consent screen](#consent-screen), [Submit the consent decision](#submit-the-consent-decision), [Exchange a code for an access token](#exchange-a-code-for-an-access-token)
 
 ## Dashboard auth
@@ -8007,6 +8009,514 @@ curl -s -X POST "$REVENUEDOT_URL/pay/api/events" \
 
 - **204**: Accepted or ignored.
 - **429**: Too many events from this address.
+
+## RevenueDot AI
+
+The in-app assistant: conversations, streaming answers, attachments (screenshots and .storekit files), @ mentions, what the assistant may do in the project, and the first-sale card. See [RevenueDot AI](../docs/guides/revenuedot-ai.md).
+
+### What RevenueDot AI can do here
+
+`GET /v2/projects/{project_id}/ai` · Auth: secret key or dashboard session · RevenueDot extension
+
+The model, the runtime, the project's AI setting, the caller's role and what follows from them, and today's usage against the caps.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Status.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Set what RevenueDot AI may do in the project
+
+`POST /v2/projects/{project_id}/ai/settings` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+`read_write`: reads, and writes after the user approves each one in the chat. `read_only`: no write tools. `disabled`: no assistant. Dashboard users must be admins.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `access` | `read_write`, `read_only`, `disabled` | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/settings" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"access":"read_only"}'
+```
+
+**Responses**
+
+- **200**: Saved.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### List your conversations, newest first
+
+`GET /v2/projects/{project_id}/ai/conversations` · Auth: dashboard session · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `q` | string | no |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/conversations"
+```
+
+**Responses**
+
+- **200**: Conversations.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Start a conversation
+
+`POST /v2/projects/{project_id}/ai/conversations` · Auth: dashboard session · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `title` | string or null | no | Optional; the first question becomes the title otherwise. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/conversations" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+**Responses**
+
+- **201**: The conversation.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](#v2error).
+
+### Get a conversation with its messages
+
+`GET /v2/projects/{project_id}/ai/conversations/{conversation_id}` · Auth: dashboard session · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `conversation_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/conversations/$CONVERSATION_ID"
+```
+
+**Responses**
+
+- **200**: The conversation.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Rename a conversation
+
+`POST /v2/projects/{project_id}/ai/conversations/{conversation_id}` · Auth: dashboard session · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `conversation_id` | string | yes |  |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `title` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/conversations/$CONVERSATION_ID" \
+  -H "Content-Type: application/json" -d '{"title":"September churn"}'
+```
+
+**Responses**
+
+- **200**: The conversation.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Delete a conversation
+
+`DELETE /v2/projects/{project_id}/ai/conversations/{conversation_id}` · Auth: dashboard session · RevenueDot extension
+
+Deletes the conversation and its messages (on Cloud, its Durable Object). Changes the assistant made stay, and stay in the audit log.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `conversation_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/conversations/$CONVERSATION_ID"
+```
+
+**Responses**
+
+- **200**: Deleted.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Send a message and stream the answer (self-host)
+
+`POST /v2/projects/{project_id}/ai/conversations/{conversation_id}/chat` · Auth: dashboard session · RevenueDot extension
+
+Self-host runtime. Send a user message, or the last assistant message back with approval decisions on its `tool-<name>` parts (`approval: { id, approved }`): only the decisions are taken, everything else comes from the stored transcript.
+
+`trigger: regenerate-message` drops the last answer and asks again. Write tools always stop at `tool-approval-request` until the user approves, and each approval runs its write once: sending it again, or from two tabs at once, does not repeat the change. A refused turn (caps, AI setting) answers a stream with one `error` chunk.
+
+Writes with the session cookie must come from the dashboard's own origin; a request a browser marks `Sec-Fetch-Site: cross-site` or `same-site` is refused with 403.
+
+On RevenueDot Cloud conversations run in Durable Objects instead: connect a WebSocket to `/agents/assistant-agent/{conversation_id}` (Cloudflare Agents `useAgentChat`).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `conversation_id` | string | yes |  |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `trigger` | `submit-message`, `regenerate-message` | no |  |
+| `messageId` | string | no |  |
+| `message` | object | no |  |
+| `message.id` | string | yes |  |
+| `message.role` | `user`, `assistant` | yes |  |
+| `message.parts` | array of object | yes |  |
+| `message.metadata` | object | no |  |
+| `message.metadata.mentions` | array of object | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/conversations/$CONVERSATION_ID/chat" \
+  -H "Content-Type: application/json" -d '{"trigger":"submit-message","message":{"id":"u1","role":"user","parts":[{"type":"text","text":"How is revenue doing this month?"}],"metadata":{"mentions":[{"type":"chart","id":"mrr","label":"MRR"}]}}}'
+```
+
+**Responses**
+
+- **200**: The answer, streamed.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **423**: An answer is still being written in this conversation. Returns [V2Error](#v2error).
+- **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](#v2error).
+
+### Resume the answer being written
+
+`GET /v2/projects/{project_id}/ai/conversations/{conversation_id}/stream` · Auth: dashboard session · RevenueDot extension
+
+Replays the answer's chunks stored so far, then follows it to the end. A stream with no new chunk for 60 seconds is marked interrupted.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `conversation_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/conversations/$CONVERSATION_ID/stream"
+```
+
+**Responses**
+
+- **200**: The answer from its first chunk.
+- **204**: Nothing is being written.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Stop the answer being written
+
+`POST /v2/projects/{project_id}/ai/conversations/{conversation_id}/stop` · Auth: dashboard session · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `conversation_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/conversations/$CONVERSATION_ID/stop"
+```
+
+**Responses**
+
+- **200**: Stopped.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Attach an image or a .storekit file
+
+`POST /v2/projects/{project_id}/ai/files` · Auth: dashboard session · RevenueDot extension
+
+The raw file is the body. PNG, JPEG, WebP or GIF up to 5 MB (`Content-Type` names the type and the bytes must be that type), or a .storekit file up to 1 MB (at most 500 products are read). 60 uploads an hour per person. Reference it in a message as a `file` part with the returned `url`; at most 4 files per message.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | no |  |
+
+**Request body** (`image/png`)
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/files"
+```
+
+**Responses**
+
+- **201**: The file.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **429**: Too many requests. Retry later. Returns [V2Error](#v2error).
+- **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](#v2error).
+
+### Read an attachment back
+
+`GET /v2/projects/{project_id}/ai/files/{file_id}` · Auth: dashboard session · RevenueDot extension
+
+Any member of the project (and the assistant, for an attached .storekit file). Secret API keys get 403.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `file_id` | string | yes |  |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `format` | `text`, `storekit` | no |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/files/$FILE_ID"
+```
+
+**Responses**
+
+- **200**: The image bytes, or JSON for `format`.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Read a .storekit file
+
+`POST /v2/projects/{project_id}/ai/storekit` · Auth: dashboard session · RevenueDot extension
+
+Parses a StoreKit configuration file (Xcode's JSON, format versions 1 to 4) and returns its products without saving anything.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/storekit"
+```
+
+**Responses**
+
+- **200**: What the file holds.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Suggestions for @ mentions
+
+`GET /v2/projects/{project_id}/ai/mentions` · Auth: dashboard session · RevenueDot extension
+
+Up to five customers (app user ids starting with `q`), offerings and charts, each limited to what the caller's role can read.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `q` | string | no |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/mentions"
+```
+
+**Responses**
+
+- **200**: Suggestions.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### The project's first-sale card
+
+`GET /v2/projects/{project_id}/ai/first_sale` · Auth: secret key or dashboard session · RevenueDot extension
+
+Made when the project's first paid production purchase arrives (within 14 days of it; older projects get none). The card holds no personal data.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/first_sale" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The card, or `card: null`.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Hide the first-sale card on the Overview
+
+`POST /v2/projects/{project_id}/ai/first_sale/dismiss` · Auth: dashboard session · RevenueDot extension
+
+Hides it for everyone in the project, so admins and developers only.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/first_sale/dismiss"
+```
+
+**Responses**
+
+- **200**: Hidden.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+## Share cards
+
+Public pages and images RevenueDot makes for sharing, such as the first-sale card. No API key; the token in the URL is the only key.
+
+### Public first-sale page or image
+
+`GET /share/first-sale/{token}` · Auth: none · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/share/first-sale/$TOKEN"
+```
+
+**Responses**
+
+- **200**: An HTML page with Open Graph tags, or the SVG card.
+- **404**: Unknown card.
 
 ## OAuth for MCP clients
 

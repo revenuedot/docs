@@ -19,6 +19,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Unlock a web purchase in my app | [Redemption links](redemption-links.md) |
 | Give a discount or a code at web checkout | [Web discounts](web-discounts.md) |
 | Put my purchase links and funnels on my own domain | [Custom domains](custom-domains.md) |
+| Ask questions about my revenue and customers, and make small changes from a chat | [RevenueDot AI](revenuedot-ai.md) |
 | Receive purchase events in my backend and verify them | [Webhooks](webhooks.md) |
 | Send purchase events to any of RevenueCat's 37 integrations (Segment, Amplitude, AppsFlyer, Braze, Branch, Statsig, Superwall ...) or BigQuery, or export my data to S3, R2 or Google Cloud Storage | [Integrations and data exports](integrations.md) |
 | See ad revenue next to subscription revenue, verify rewarded ads on the server, or connect AdMob | [Ads](ads.md) |

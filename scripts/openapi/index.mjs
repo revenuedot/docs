@@ -15,6 +15,7 @@ import { lifecyclePaths } from "./lifecycle.mjs";
 import { webPaths, webSchemas } from "./web.mjs";
 import { adsPaths } from "./ads.mjs";
 import { settingsPathsAll } from "./settings.mjs";
+import { assistantPaths } from "./assistant.mjs";
 
 /**
  * Tags in reading order. `x-page` is the generated Markdown page (api/<page>.md) the tag's operations go to.
@@ -82,6 +83,8 @@ export const TAGS = [
   ["Purchase links", "extensions", "A hosted checkout page for one offering. See [Purchase links](../docs/guides/purchase-links.md)."],
   ["Funnels", "extensions", "Multi-step web-to-app funnels: quiz, info, email, paywall and success steps, publishing, analytics and Build with AI. See [Funnels](../docs/guides/funnels.md)."],
   ["Hosted pages", "extensions", "The public pages RevenueDot serves for purchase links, funnels and redemption links, and the three calls those pages make. No API key. They live under `/pay` on the API host, at the root of `REVENUEDOT_PAY_URL` when it is a host of its own, and at the root of a verified custom domain."],
+  ["RevenueDot AI", "extensions", "The in-app assistant: conversations, streaming answers, attachments (screenshots and .storekit files), @ mentions, what the assistant may do in the project, and the first-sale card. See [RevenueDot AI](../docs/guides/revenuedot-ai.md)."],
+  ["Share cards", "extensions", "Public pages and images RevenueDot makes for sharing, such as the first-sale card. No API key; the token in the URL is the only key."],
   ["OAuth for MCP clients", "extensions", "OAuth 2.1 with PKCE so MCP clients can connect to one project without copying a key."],
   ["Webhook events", "webhook-events", "What RevenueDot POSTs to your webhook URL."],
 ];
@@ -110,7 +113,7 @@ export function buildDocument() {
       { url: "https://{host}", description: "Your self-hosted RevenueDot", variables: { host: { default: "revenuedot.example.com" } } },
     ],
     tags: tags(),
-    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...adsPaths, ...lifecyclePaths, ...webPaths, ...settingsPathsAll, ...extensionPaths },
+    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...adsPaths, ...lifecyclePaths, ...webPaths, ...assistantPaths, ...settingsPathsAll, ...extensionPaths },
     webhooks,
     components: { schemas: { ...schemas, ...webSchemas }, parameters, responses, securitySchemes },
     security: [{ secretApiKey: [] }],
