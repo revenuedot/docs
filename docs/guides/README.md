@@ -1,6 +1,6 @@
 ---
 title: Which guide do I need?
-description: Step-by-step guides for connecting the App Store and Google Play, receiving webhooks, response signing, testing, inviting your team, alert emails, and running RevenueDot on your own servers.
+description: Step-by-step guides for connecting the App Store and Google Play, receiving webhooks, sending events to analytics and attribution tools, exporting data, response signing, testing, inviting your team, alert emails, and running RevenueDot on your own servers.
 ---
 
 # Which guide do I need?
@@ -12,6 +12,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Accept App Store purchases and get Apple's notifications | [Connect the App Store](app-store.md) |
 | Accept Google Play purchases and get real-time notifications | [Connect Google Play](google-play.md) |
 | Receive purchase events in my backend and verify them | [Webhooks](webhooks.md) |
+| Send purchase events to Slack, Segment, Amplitude, Mixpanel, PostHog, Firebase, BigQuery, AppsFlyer, Adjust or Meta, or export my data to S3, R2 or Google Cloud Storage | [Integrations and data exports](integrations.md) |
 | Have the SDK verify that responses come from my server | [Trusted Entitlements](trusted-entitlements.md) |
 | Test purchases without any store account | [Test Store](test-store.md) |
 | Test with App Store sandbox, Xcode or Google Play testers | [Sandbox testing](sandbox-testing.md) |
