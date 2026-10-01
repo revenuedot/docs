@@ -14,7 +14,7 @@ Open **Lifecycle > Support > Customer Center**.
 2. Turn on **Let customers create tickets** and choose who may (customers with an active subscription, without one, or everyone).
 3. Choose which details the email includes: app user ID, active entitlements, total spent, customer since, last opened, app version, country, device and more.
 
-The SDK reads these settings with the rest of the Customer Center configuration. A customer can send up to 5 tickets an hour. If tickets are off, the SDK offers its email link instead.
+The SDK reads these settings with the rest of the Customer Center configuration. A customer can send up to 5 tickets an hour, one device (IP address) up to 20, and the whole project receives up to 100 an hour, so a leaked SDK key cannot flood your inbox. The customer's email must be one plain address, and the message is cut at 5,000 characters. If tickets are off, the SDK offers its email link instead.
 
 ## Show subscription data in Intercom or Zendesk
 Help desks know the customer's email. Call the support summary with a secret API key that has `customer_information:customers:read`:

@@ -21612,6 +21612,77 @@ paths:
         - customer_information:customers:read
       x-revenuedot-extension: true
   /v2/projects/{project_id}/support_tickets/{ticket_id}:
+    get:
+      operationId: getSupportTicket
+      tags:
+        - Support
+      summary: Get a ticket
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: ticket_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The ticket.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - support_ticket
+                  id:
+                    type: string
+                  app_id:
+                    type:
+                      - string
+                      - "null"
+                  app_user_id:
+                    type: string
+                  customer_email:
+                    type: string
+                  description:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - open
+                      - closed
+                  emailed_to:
+                    type:
+                      - string
+                      - "null"
+                    description: The support address the ticket was emailed to.
+                  emailed:
+                    type: boolean
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  closed_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Closed. Epoch milliseconds, or null.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/support.ts
+      x-scopes:
+        - customer_information:customers:read
+      x-revenuedot-extension: true
     post:
       operationId: updateSupportTicket
       tags:

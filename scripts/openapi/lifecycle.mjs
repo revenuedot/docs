@@ -157,6 +157,7 @@ export const lifecyclePaths = {
       parameters: [project, { name: "status", in: "query", schema: en(["open", "closed", "all"]) }, ...page], responses: { 200: ok("Tickets.", listOf(ticket)), ...v2Errors(400, 401, 403, 404) } }),
   },
   [`${P}/support_tickets/{ticket_id}`]: {
+    get: op({ ...x, id: "getSupportTicket", tag: "Support", summary: "Get a ticket", source: SU, scopes: CR, parameters: [project, id("ticket_id")], responses: { 200: ok("The ticket.", ticket), ...E(404) } }),
     post: op({ ...x, id: "updateSupportTicket", tag: "Support", summary: "Close or reopen a ticket", source: SU, scopes: CW, parameters: [project, id("ticket_id")],
       requestBody: body(obj({ status: en(["open", "closed"]) }, ["status"]), { status: "closed" }), responses: { 200: ok("The ticket.", ticket), ...v2Errors(400, 401, 403, 404) } }),
   },

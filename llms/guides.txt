@@ -2268,7 +2268,7 @@ Apple calls your server in real time when a customer is about to cancel, and sho
 4. Add **real-time rules**: for a product, or any product, which message to answer with.
 5. Select **Sync to Apple (sandbox)**. RevenueDot uploads the messages, sets the defaults and registers its real-time URL, `https://<your server>/v1/retention/apple/<app id>`. For production, pass Apple's performance test first, then select **Sync to Apple (production)**.
 
-RevenueDot checks Apple's signature and app ID on every call and answers within Apple's 700 ms limit. A promotional offer answer is signed with your In-App Purchase key. Apple approves each message before it shows it; an uploaded message cannot change, so add a new one to change the text.
+RevenueDot checks Apple's signature and app ID on every call, refuses a request signed more than 5 minutes earlier (a replay), and answers within Apple's 700 ms limit. Production requests are answered only once the app's Apple ID is set. If a promotional offer cannot be signed (for example a broken key), RevenueDot answers with no message and Apple shows your default. A promotional offer answer is signed with your In-App Purchase key. Apple approves each message before it shows it; an uploaded message cannot change, so add a new one to change the text.
 
 ---
 
@@ -2288,14 +2288,14 @@ A win-back campaign emails customers whose subscription ended, with a button tha
 Open **Lifecycle > Win-back** and select **Create campaign**.
 
 1. **Audience.** Customers whose last subscription ended between N and M days ago and who have no active subscription. Narrow it to products, stores or a saved audience. **Preview** shows how many would get the email today, and who.
-2. **Email.** Subject, heading, body and button label. The email speaks for your app: your project's name on top, your text, one button and an unsubscribe link.
+2. **Email.** Subject, heading, body and button label. The email speaks for your app: the sender name (or your project's name) is the From name and sits on top, then your text, one button and an unsubscribe link. Replies go to your Customer Center support email.
 3. **Offer.** Where the button goes:
    - **Store**: App Store customers go to their Apple account's subscriptions page, where Apple lists the [win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md) they are eligible for and the Resubscribe button. Google Play customers go to the Play Store page of their subscription.
    - **Your link**: any https URL, for example your own web checkout.
-4. **Schedule.** Active campaigns send once a day at the hour you choose (UTC), to at most 500 customers per run. **Send now** runs it at once; **Send test** sends you a sample.
+4. **Schedule.** Active campaigns send once a day at the hour you choose (UTC), to at most 500 customers a day. A large run goes out over a few minutes, 100 emails a minute across all campaigns. All of a project's campaigns together send at most 2,000 emails in 24 hours. **Send now** runs it at once; **Send test** sends you a sample (10 an hour).
 5. Select **Start**.
 
-Each customer gets a campaign's email once. Sandbox purchases never count.
+Each customer gets a campaign's email once. Sandbox purchases never count. A customer is emailed only when their `$email` attribute is one plain address.
 
 ## Results
 Each campaign shows:
@@ -2304,7 +2304,7 @@ Each campaign shows:
 - **Reactivated**: customers who bought or started a trial within 30 days of the email, and the revenue from them.
 
 ## Unsubscribes
-Every email has an unsubscribe link and, where the mail server supports it, a one-click `List-Unsubscribe` header. An address that unsubscribes never gets another win-back email from the project.
+Every email has an unsubscribe link. When your server's public URL is https, the email also carries one-click `List-Unsubscribe` and `List-Unsubscribe-Post` headers ([RFC 8058](https://www.rfc-editor.org/rfc/rfc8058)), which Gmail and Yahoo require from bulk senders. Opening the link only asks; the button (or the mail app's one-click unsubscribe) unsubscribes. An address that unsubscribes never gets another win-back email from the project.
 
 ---
 
@@ -2322,7 +2322,7 @@ Open **Lifecycle > Support > Customer Center**.
 2. Turn on **Let customers create tickets** and choose who may (customers with an active subscription, without one, or everyone).
 3. Choose which details the email includes: app user ID, active entitlements, total spent, customer since, last opened, app version, country, device and more.
 
-The SDK reads these settings with the rest of the Customer Center configuration. A customer can send up to 5 tickets an hour. If tickets are off, the SDK offers its email link instead.
+The SDK reads these settings with the rest of the Customer Center configuration. A customer can send up to 5 tickets an hour, one device (IP address) up to 20, and the whole project receives up to 100 an hour, so a leaked SDK key cannot flood your inbox. The customer's email must be one plain address, and the message is cut at 5,000 characters. If tickets are off, the SDK offers its email link instead.
 
 ## Show subscription data in Intercom or Zendesk
 Help desks know the customer's email. Call the support summary with a secret API key that has `customer_information:customers:read`:

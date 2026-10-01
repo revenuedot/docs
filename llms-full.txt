@@ -4035,7 +4035,7 @@ Apple calls your server in real time when a customer is about to cancel, and sho
 4. Add **real-time rules**: for a product, or any product, which message to answer with.
 5. Select **Sync to Apple (sandbox)**. RevenueDot uploads the messages, sets the defaults and registers its real-time URL, `https://<your server>/v1/retention/apple/<app id>`. For production, pass Apple's performance test first, then select **Sync to Apple (production)**.
 
-RevenueDot checks Apple's signature and app ID on every call and answers within Apple's 700 ms limit. A promotional offer answer is signed with your In-App Purchase key. Apple approves each message before it shows it; an uploaded message cannot change, so add a new one to change the text.
+RevenueDot checks Apple's signature and app ID on every call, refuses a request signed more than 5 minutes earlier (a replay), and answers within Apple's 700 ms limit. Production requests are answered only once the app's Apple ID is set. If a promotional offer cannot be signed (for example a broken key), RevenueDot answers with no message and Apple shows your default. A promotional offer answer is signed with your In-App Purchase key. Apple approves each message before it shows it; an uploaded message cannot change, so add a new one to change the text.
 
 ---
 
@@ -4055,14 +4055,14 @@ A win-back campaign emails customers whose subscription ended, with a button tha
 Open **Lifecycle > Win-back** and select **Create campaign**.
 
 1. **Audience.** Customers whose last subscription ended between N and M days ago and who have no active subscription. Narrow it to products, stores or a saved audience. **Preview** shows how many would get the email today, and who.
-2. **Email.** Subject, heading, body and button label. The email speaks for your app: your project's name on top, your text, one button and an unsubscribe link.
+2. **Email.** Subject, heading, body and button label. The email speaks for your app: the sender name (or your project's name) is the From name and sits on top, then your text, one button and an unsubscribe link. Replies go to your Customer Center support email.
 3. **Offer.** Where the button goes:
    - **Store**: App Store customers go to their Apple account's subscriptions page, where Apple lists the [win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md) they are eligible for and the Resubscribe button. Google Play customers go to the Play Store page of their subscription.
    - **Your link**: any https URL, for example your own web checkout.
-4. **Schedule.** Active campaigns send once a day at the hour you choose (UTC), to at most 500 customers per run. **Send now** runs it at once; **Send test** sends you a sample.
+4. **Schedule.** Active campaigns send once a day at the hour you choose (UTC), to at most 500 customers a day. A large run goes out over a few minutes, 100 emails a minute across all campaigns. All of a project's campaigns together send at most 2,000 emails in 24 hours. **Send now** runs it at once; **Send test** sends you a sample (10 an hour).
 5. Select **Start**.
 
-Each customer gets a campaign's email once. Sandbox purchases never count.
+Each customer gets a campaign's email once. Sandbox purchases never count. A customer is emailed only when their `$email` attribute is one plain address.
 
 ## Results
 Each campaign shows:
@@ -4071,7 +4071,7 @@ Each campaign shows:
 - **Reactivated**: customers who bought or started a trial within 30 days of the email, and the revenue from them.
 
 ## Unsubscribes
-Every email has an unsubscribe link and, where the mail server supports it, a one-click `List-Unsubscribe` header. An address that unsubscribes never gets another win-back email from the project.
+Every email has an unsubscribe link. When your server's public URL is https, the email also carries one-click `List-Unsubscribe` and `List-Unsubscribe-Post` headers ([RFC 8058](https://www.rfc-editor.org/rfc/rfc8058)), which Gmail and Yahoo require from bulk senders. Opening the link only asks; the button (or the mail app's one-click unsubscribe) unsubscribes. An address that unsubscribes never gets another win-back email from the project.
 
 ---
 
@@ -4089,7 +4089,7 @@ Open **Lifecycle > Support > Customer Center**.
 2. Turn on **Let customers create tickets** and choose who may (customers with an active subscription, without one, or everyone).
 3. Choose which details the email includes: app user ID, active entitlements, total spent, customer since, last opened, app version, country, device and more.
 
-The SDK reads these settings with the rest of the Customer Center configuration. A customer can send up to 5 tickets an hour. If tickets are off, the SDK offers its email link instead.
+The SDK reads these settings with the rest of the Customer Center configuration. A customer can send up to 5 tickets an hour, one device (IP address) up to 20, and the whole project receives up to 100 an hour, so a leaked SDK key cannot flood your inbox. The customer's email must be one plain address, and the message is cut at 5,000 characters. If tickets are off, the SDK offers its email link instead.
 
 ## Show subscription data in Intercom or Zendesk
 Help desks know the customer's email. Call the support summary with a secret API key that has `customer_information:customers:read`:
@@ -4891,7 +4891,7 @@ One RevenueDot server answers every API below on one port. The reference is gene
 | SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 62 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
 | REST API v1 | `/v1/subscribers/...` | secret key | 10 | [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md) |
 | REST API v2 | `/v2/projects/...` | secret key or dashboard session | 160 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
-| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...` | secret key, session or none | 97 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
+| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...` | secret key, session or none | 98 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
 | Webhooks (sent by RevenueDot) | your URL | HMAC signature | 18 event types | [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md) |
 
 ## Quick example
@@ -14734,7 +14734,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (97)
+## Operations on this page (98)
 
 - **Dashboard auth**: [Whether sign-up is open](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-sign-up-is-open), [Create a dashboard account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-dashboard-account), [Sign in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-in), [Sign out](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out), [The signed-in user and their projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-signed-in-user-and-their-projects), [Update account settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-account-settings), [Email a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#email-a-password-reset-link), [Check a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-a-password-reset-link), [Set a new password from a reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-a-new-password-from-a-reset-link), [Confirm an email address](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#confirm-an-email-address), [Send a new confirmation email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-new-confirmation-email), [Look up an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#look-up-an-invite), [Accept an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#accept-an-invite)
 - **Members and invites**: [List open invites](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-open-invites), [Invite someone by email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#invite-someone-by-email), [Resend an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#resend-an-invite), [Revoke an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#revoke-an-invite), [Change a member's role](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-a-members-role), [Remove a member, or leave the project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#remove-a-member-or-leave-the-project)
@@ -14746,7 +14746,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Data exports**: [List scheduled data exports](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-scheduled-data-exports), [Create a scheduled data export](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-scheduled-data-export), [Get a data export](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-data-export), [Update a data export](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-a-data-export), [Delete a data export](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-data-export), [Run an export now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#run-an-export-now), [Check the bucket and credentials](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-the-bucket-and-credentials), [Run history](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#run-history)
 - **Refund Control**: [Get policies and settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-policies-and-settings), [Save settings and the ordered policies](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#save-settings-and-the-ordered-policies), [Refund rate, amounts and counts](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#refund-rate-amounts-and-counts), [List refund requests, newest first](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-refund-requests-newest-first)
 - **Retention**: [List Customer Center retention offers](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-customer-center-retention-offers), [Create a retention offer](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-retention-offer), [Update a retention offer](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-a-retention-offer), [Delete a retention offer](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-retention-offer), [Get Apple Retention Messaging settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-apple-retention-messaging-settings), [Save messages, defaults and real-time rules](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#save-messages-defaults-and-real-time-rules), [Upload to Apple and register the real-time URL](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#upload-to-apple-and-register-the-real-time-url), [Apple's real-time Get Retention Message call](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#apples-real-time-get-retention-message-call)
-- **Support**: [List Customer Center tickets, newest first](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-customer-center-tickets-newest-first), [Close or reopen a ticket](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#close-or-reopen-a-ticket), [What a help desk sidebar shows about a customer](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#what-a-help-desk-sidebar-shows-about-a-customer), [Look customers up by email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#look-customers-up-by-email)
+- **Support**: [List Customer Center tickets, newest first](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-customer-center-tickets-newest-first), [Get a ticket](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-ticket), [Close or reopen a ticket](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#close-or-reopen-a-ticket), [What a help desk sidebar shows about a customer](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#what-a-help-desk-sidebar-shows-about-a-customer), [Look customers up by email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#look-customers-up-by-email)
 - **Win-back**: [List win-back campaigns](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-win-back-campaigns), [Create a win-back campaign](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-win-back-campaign), [Get a campaign with stats and recent emails](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-campaign-with-stats-and-recent-emails), [Update, start or pause a campaign](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-start-or-pause-a-campaign), [Delete a campaign](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-campaign), [Who would get the email now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#who-would-get-the-email-now), [Send a test email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-test-email), [Send now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-now), [Email button: records the click and redirects to the offer](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#email-button-records-the-click-and-redirects-to-the-offer), [Open-tracking image (campaigns with track_opens)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#open-tracking-image-campaigns-with-track_opens), [Unsubscribe page (asks first)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unsubscribe-page-asks-first), [Unsubscribe (also RFC 8058 one-click)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unsubscribe-also-rfc-8058-one-click)
 - **Customer lists**: [Customers in a list, with the summary cards](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#customers-in-a-list-with-the-summary-cards), [Export a list as CSV](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#export-a-list-as-csv)
 - **Event log**: [Event log](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#event-log), [Transaction feed](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#transaction-feed)
@@ -17137,6 +17137,30 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/support_tickets" -H "Authorizat
 
 - **200**: Tickets.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Get a ticket
+
+`GET /v2/projects/{project_id}/support_tickets/{ticket_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `ticket_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/support_tickets/$TICKET_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The ticket.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).

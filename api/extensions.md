@@ -11,7 +11,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (97)
+## Operations on this page (98)
 
 - **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects), [Update account settings](#update-account-settings), [Email a password reset link](#email-a-password-reset-link), [Check a password reset link](#check-a-password-reset-link), [Set a new password from a reset link](#set-a-new-password-from-a-reset-link), [Confirm an email address](#confirm-an-email-address), [Send a new confirmation email](#send-a-new-confirmation-email), [Look up an invite](#look-up-an-invite), [Accept an invite](#accept-an-invite)
 - **Members and invites**: [List open invites](#list-open-invites), [Invite someone by email](#invite-someone-by-email), [Resend an invite](#resend-an-invite), [Revoke an invite](#revoke-an-invite), [Change a member's role](#change-a-members-role), [Remove a member, or leave the project](#remove-a-member-or-leave-the-project)
@@ -23,7 +23,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Data exports**: [List scheduled data exports](#list-scheduled-data-exports), [Create a scheduled data export](#create-a-scheduled-data-export), [Get a data export](#get-a-data-export), [Update a data export](#update-a-data-export), [Delete a data export](#delete-a-data-export), [Run an export now](#run-an-export-now), [Check the bucket and credentials](#check-the-bucket-and-credentials), [Run history](#run-history)
 - **Refund Control**: [Get policies and settings](#get-policies-and-settings), [Save settings and the ordered policies](#save-settings-and-the-ordered-policies), [Refund rate, amounts and counts](#refund-rate-amounts-and-counts), [List refund requests, newest first](#list-refund-requests-newest-first)
 - **Retention**: [List Customer Center retention offers](#list-customer-center-retention-offers), [Create a retention offer](#create-a-retention-offer), [Update a retention offer](#update-a-retention-offer), [Delete a retention offer](#delete-a-retention-offer), [Get Apple Retention Messaging settings](#get-apple-retention-messaging-settings), [Save messages, defaults and real-time rules](#save-messages-defaults-and-real-time-rules), [Upload to Apple and register the real-time URL](#upload-to-apple-and-register-the-real-time-url), [Apple's real-time Get Retention Message call](#apples-real-time-get-retention-message-call)
-- **Support**: [List Customer Center tickets, newest first](#list-customer-center-tickets-newest-first), [Close or reopen a ticket](#close-or-reopen-a-ticket), [What a help desk sidebar shows about a customer](#what-a-help-desk-sidebar-shows-about-a-customer), [Look customers up by email](#look-customers-up-by-email)
+- **Support**: [List Customer Center tickets, newest first](#list-customer-center-tickets-newest-first), [Get a ticket](#get-a-ticket), [Close or reopen a ticket](#close-or-reopen-a-ticket), [What a help desk sidebar shows about a customer](#what-a-help-desk-sidebar-shows-about-a-customer), [Look customers up by email](#look-customers-up-by-email)
 - **Win-back**: [List win-back campaigns](#list-win-back-campaigns), [Create a win-back campaign](#create-a-win-back-campaign), [Get a campaign with stats and recent emails](#get-a-campaign-with-stats-and-recent-emails), [Update, start or pause a campaign](#update-start-or-pause-a-campaign), [Delete a campaign](#delete-a-campaign), [Who would get the email now](#who-would-get-the-email-now), [Send a test email](#send-a-test-email), [Send now](#send-now), [Email button: records the click and redirects to the offer](#email-button-records-the-click-and-redirects-to-the-offer), [Open-tracking image (campaigns with track_opens)](#open-tracking-image-campaigns-with-track_opens), [Unsubscribe page (asks first)](#unsubscribe-page-asks-first), [Unsubscribe (also RFC 8058 one-click)](#unsubscribe-also-rfc-8058-one-click)
 - **Customer lists**: [Customers in a list, with the summary cards](#customers-in-a-list-with-the-summary-cards), [Export a list as CSV](#export-a-list-as-csv)
 - **Event log**: [Event log](#event-log), [Transaction feed](#transaction-feed)
@@ -2414,6 +2414,30 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/support_tickets" -H "Authorizat
 
 - **200**: Tickets.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Get a ticket
+
+`GET /v2/projects/{project_id}/support_tickets/{ticket_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `ticket_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/support_tickets/$TICKET_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The ticket.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
