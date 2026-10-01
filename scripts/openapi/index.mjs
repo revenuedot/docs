@@ -11,6 +11,7 @@ import { chartPaths } from "./charts.mjs";
 import { integrationPaths } from "./integrations.mjs";
 import { webhooks } from "./webhooks.mjs";
 import { v2RestPaths } from "./v2-rest.mjs";
+import { lifecyclePaths } from "./lifecycle.mjs";
 
 /**
  * Tags in reading order. `x-page` is the generated Markdown page (api/<page>.md) the tag's operations go to.
@@ -58,6 +59,11 @@ export const TAGS = [
   ["Webhook deliveries", "extensions", "Delivery log, manual retry and test events."],
   ["Integrations", "extensions", "Slack, Segment, Amplitude, Mixpanel, PostHog, Firebase, BigQuery, AppsFlyer, Adjust and Meta: connect, test, the delivery log, retry and replay."],
   ["Data exports", "extensions", "Scheduled CSV or Parquet files of transactions, customers, subscriptions and events in Amazon S3, Cloudflare R2 or Google Cloud Storage."],
+  ["Refund Control", "extensions", "Policies that answer Apple's refund requests with consumption information, the refund request log and its cards."],
+  ["Retention", "extensions", "Customer Center cancel and refund offers, and Apple's Retention Messaging API (messages, defaults, the real-time call)."],
+  ["Support", "extensions", "Customer Center tickets and the customer summary for help desk sidebars (Intercom, Zendesk)."],
+  ["Win-back", "extensions", "Campaigns that email churned subscribers an offer, with tracked links and one-click unsubscribe."],
+  ["Customer lists", "extensions", "Built-in customer lists, saved audiences, filters, summary cards and CSV export."],
   ["Event log", "extensions", "Every recorded event and money movement."],
   ["Test Store", "extensions", "Simulated purchases and lifecycles for development."],
   ["Dashboard data", "extensions", "Series and rows the dashboard shows."],
@@ -90,7 +96,7 @@ export function buildDocument() {
       { url: "https://{host}", description: "Your self-hosted RevenueDot", variables: { host: { default: "revenuedot.example.com" } } },
     ],
     tags: tags(),
-    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...extensionPaths },
+    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...lifecyclePaths, ...extensionPaths },
     webhooks,
     components: { schemas, parameters, responses, securitySchemes },
     security: [{ secretApiKey: [] }],

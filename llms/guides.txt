@@ -10,7 +10,7 @@ Generated from https://github.com/revenuedot/docs by scripts/gen-llms.mjs. Index
 # Which guide do I need?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/README.md
-Description: Step-by-step guides for connecting the App Store, Google Play, the Amazon Appstore and Stripe, receiving webhooks, sending events to analytics and attribution tools, exporting data, response signing, testing, inviting your team, alert emails, and running RevenueDot on your own servers.
+Description: Step-by-step guides for connecting stores, webhooks, integrations and data exports, refund requests, retention and win-back, support, customer lists, testing, your team, alert emails, and running RevenueDot on your own servers.
 
 Each guide is one task, start to finish. Connect a store first, then receive webhooks; run the server yourself with the self-hosting guides.
 
@@ -37,6 +37,11 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Get an email when store notifications, webhooks or store credentials fail | [Alert emails](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md) |
 | Win back lapsed App Store subscribers with Apple's win-back offers | [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md) |
 | Know what happens to customers' access when the server is down | [Offline entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/offline-entitlements.md) |
+| Answer Apple refund requests automatically and see my refund rate | [Refund Control](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/refund-control.md) |
+| Offer a discount when customers cancel, in my app or on Apple's cancel screen | [Retention offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/retention.md) |
+| Email churned subscribers an offer to come back | [Win-back campaigns](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-campaigns.md) |
+| Get Customer Center support requests by email, or show subscriptions in Intercom or Zendesk | [Support](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/support-integrations.md) |
+| Filter, save and export lists of customers | [Customer lists](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/customer-lists.md) |
 
 Moving from RevenueCat? Start with [Migrate from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md). Looking for a specific endpoint? See the [API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/README.md).
 
@@ -2172,3 +2177,191 @@ These limits are the SDKs' own:
 - [Concepts: subscriptions and events](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/subscriptions-and-events.md)
 - [Going to production](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/going-to-production.md)
 - [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md)
+
+---
+
+# How do I answer Apple refund requests with Refund Control?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/refund-control.md
+Description: Refund Control answers Apple's CONSUMPTION_REQUEST within 12 hours with consumption information and your refund preference, chosen by ordered policies on customer conditions. It also records Google Play refunds and chargebacks and shows refund rate, amounts and counts.
+
+When a customer asks Apple for a refund, Apple sends your server a `CONSUMPTION_REQUEST` notification and gives you 12 hours to answer with **consumption information**: how long the customer has used the app, how much they spent, whether they used what they bought, and whether you prefer Apple to grant the refund. Apple uses the answer when it decides. **Refund Control sends that answer for you**, using rules you set once.
+
+## Before you start
+1. Connect the App Store with the app's **In-App Purchase key** and turn on **App Store Server Notifications** (version 2). See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md). RevenueDot sends the answer with the same key.
+2. Make sure your terms or privacy policy tell customers that you share this data with Apple. Apple requires the customer's consent ([Send Consumption Information](https://developer.apple.com/documentation/appstoreserverapi/send-consumption-information-v1)), and RevenueDot sends nothing until you confirm it.
+
+## Set the policies
+Open **Lifecycle > Refund control**.
+
+1. Tick **Customers agreed to share consumption data with Apple**.
+2. Add policies from the four templates:
+   - **First purchase date**: customers whose first purchase was recent, for example within 7 days.
+   - **Platform**: customers on a platform, for example iOS.
+   - **Recent renewal**: customers who renewed or converted from a free trial in the last 24 hours. Many accidental renewals are refunded; this is where you usually prefer a refund.
+   - **Create your own**: any condition the audience builder knows (country, app user ID, email, media source, campaign, spend, custom attributes and more), in groups.
+3. Pick each policy's **refund preference**:
+
+| Preference | What Apple gets |
+|---|---|
+| Prefer full refund | Consumption information with `refundPreference` 1 |
+| Prefer no refund | Consumption information with `refundPreference` 2 |
+| Send consumption data only | Consumption information with no preference (`refundPreference` 0) |
+| Do not respond | Nothing |
+
+4. Drag the policies into order. The first policy whose conditions match the customer decides; the **default policy** covers everyone else. Each card shows how many of your customers it would decide for.
+5. Select **Save**. **Cancel** throws your changes away.
+
+## What RevenueDot sends
+For each request RevenueDot builds Apple's `ConsumptionRequestV1` from its own records:
+
+| Field | How it is set |
+|---|---|
+| `customerConsented` | `true` (only sent after you confirm consent) |
+| `consumptionStatus` | Subscriptions: 3 when the period is over, 2 when the customer opened the app after buying, 1 when they never did. Lifetime purchases: 2 or 1 the same way. Consumables that grant an in-app currency: 3 when the balance is spent, 2 when part is spent, 1 when none is. Other consumables: 0 |
+| `platform` | 1 for Apple platforms, 2 for others, from the customer's last seen platform |
+| `sampleContentProvided` | `true` when the customer had a free trial of the product |
+| `deliveryStatus` | 0: RevenueDot granted the purchase |
+| `appAccountToken` | From the transaction, or empty |
+| `accountTenure` | Days since the customer was first seen, in Apple's buckets |
+| `playTime` | 0, unless your app sets the custom attribute `rd_play_time_minutes` |
+| `lifetimeDollarsPurchased`, `lifetimeDollarsRefunded` | The customer's USD purchases and refunds, in Apple's buckets |
+| `userStatus` | 1 for a known customer; set the custom attribute `rd_user_status` to `suspended`, `terminated` or `limited` to say otherwise |
+| `refundPreference` | From the policy |
+
+If Apple's API fails, RevenueDot retries after 5 minutes, 15 minutes and then every hour, and stops 5 minutes before the 12-hour deadline. A repeated notification for the same purchase is never answered twice.
+
+## Outcomes and the cards
+Apple tells you the result: `REFUND` when it refunds, `REFUND_DECLINED` when it does not. The cards at the top show the last 28 days:
+- **Refund rate**: approved requests divided by decided requests.
+- **Refund request amount** and **Refund requests**, each switchable between declined and approved.
+
+The table below lists each request with the policy used, whether the answer went out, and the outcome. The same data is in the API: `GET /v2/projects/{project_id}/refund_requests` and `GET /v2/projects/{project_id}/refund_control/stats` ([API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#refund-control)).
+
+## Google Play, Stripe and Amazon
+Google Play has no consumption API: a customer's refund or a chargeback arrives as a voided purchase, and there is nothing to answer. RevenueDot records it as an approved refund request (with the policy that would have applied), so the cards cover every store. Stripe and Amazon refunds are recorded the same way.
+
+---
+
+# How do I show retention offers when customers cancel?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/retention.md
+Description: Offer a discount in the in-app Customer Center when a customer cancels or asks for a refund, and show a message, a cheaper plan or a promotional offer on Apple's own cancel screen with the Retention Messaging API.
+
+**Lifecycle > Retention** has two tabs. **Customer Center** puts an offer in front of customers who cancel or ask for a refund inside your app. **Apple Retention Messaging API** puts a message or an offer on Apple's own Confirm Cancellation screen, which customers see when they cancel from their Apple account.
+
+## Customer Center offers
+The Customer Center is the subscription screen the RevenueCat SDK shows in your app (`CustomerCenterView` on iOS, `CustomerCenter` on Android). Its configuration comes from your RevenueDot server.
+
+1. Create a promotional offer in App Store Connect (or a developer-determined offer in Google Play Console) on each subscription you want to discount.
+2. Open **Lifecycle > Retention > Customer Center** and select **New offer** under **Cancellation Retention Discount** or **Refunds Retention Discount**.
+3. Name it, write the title and subtitle the customer sees, pick the store, and link each product to its offer id.
+
+RevenueDot adds the offer to the Customer Center's cancel or refund path. The SDK shows it before the customer finishes; on iOS it asks your server to sign the promotional offer, which RevenueDot already does with the app's In-App Purchase key.
+
+## Apple Retention Messaging API
+Apple calls your server in real time when a customer is about to cancel, and shows the message you pick ([Apple's documentation](https://developer.apple.com/documentation/retentionmessaging)). **Apple grants access to this API on request**: ask for it at [Request access to the Retention Messaging API](https://developer.apple.com/contact/request/retention-messaging-api/) first.
+
+1. Open **Lifecycle > Retention > Apple Retention Messaging API** and pick the App Store app. The app needs its In-App Purchase key (see [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md)) and its Apple ID, the number in its App Store URL; enter the Apple ID on this tab if it is missing.
+2. Add messages. Each has a header (up to 66 characters) and a body (up to 144). A message can also suggest another plan (switch plan) or carry a promotional offer.
+3. Set a **default message** for each product and locale. Apple shows it when the real-time call fails. Defaults must be plain messages.
+4. Add **real-time rules**: for a product, or any product, which message to answer with.
+5. Select **Sync to Apple (sandbox)**. RevenueDot uploads the messages, sets the defaults and registers its real-time URL, `https://<your server>/v1/retention/apple/<app id>`. For production, pass Apple's performance test first, then select **Sync to Apple (production)**.
+
+RevenueDot checks Apple's signature and app ID on every call and answers within Apple's 700 ms limit. A promotional offer answer is signed with your In-App Purchase key. Apple approves each message before it shows it; an uploaded message cannot change, so add a new one to change the text.
+
+---
+
+# How do I email churned subscribers a win-back offer?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-campaigns.md
+Description: Win-back campaigns email subscribers whose subscription ended a link back to the store, once per customer, with click tracking, optional open tracking, one-click unsubscribe and a count of customers who came back.
+
+A win-back campaign emails customers whose subscription ended, with a button that takes them back to resubscribe. RevenueDot picks the customers, sends the email, tracks clicks and counts who came back.
+
+## Before you start
+- Customers need an email address in the `$email` attribute. Set it from your app with `Purchases.shared.attribution.setEmail(_:)` or through the API.
+- Set the Customer Center support email (**Lifecycle > Support > Customer Center**). Replies to win-back emails go there.
+- On a self-hosted server, set up email (`REVENUEDOT_SMTP_URL`) and `REVENUEDOT_PUBLIC_URL`, so links in the email point at your server. See [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md).
+
+## Create a campaign
+Open **Lifecycle > Win-back** and select **Create campaign**.
+
+1. **Audience.** Customers whose last subscription ended between N and M days ago and who have no active subscription. Narrow it to products, stores or a saved audience. **Preview** shows how many would get the email today, and who.
+2. **Email.** Subject, heading, body and button label. The email speaks for your app: your project's name on top, your text, one button and an unsubscribe link.
+3. **Offer.** Where the button goes:
+   - **Store**: App Store customers go to their Apple account's subscriptions page, where Apple lists the [win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md) they are eligible for and the Resubscribe button. Google Play customers go to the Play Store page of their subscription.
+   - **Your link**: any https URL, for example your own web checkout.
+4. **Schedule.** Active campaigns send once a day at the hour you choose (UTC), to at most 500 customers per run. **Send now** runs it at once; **Send test** sends you a sample.
+5. Select **Start**.
+
+Each customer gets a campaign's email once. Sandbox purchases never count.
+
+## Results
+Each campaign shows:
+- **Sent**, **clicked** and **unsubscribed**.
+- **Opened**, only when **Track opens** is on: it adds a 1×1 image to the email.
+- **Reactivated**: customers who bought or started a trial within 30 days of the email, and the revenue from them.
+
+## Unsubscribes
+Every email has an unsubscribe link and, where the mail server supports it, a one-click `List-Unsubscribe` header. An address that unsubscribes never gets another win-back email from the project.
+
+---
+
+# How do I handle support requests from the Customer Center?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/support-integrations.md
+Description: Customer Center tickets reach your support inbox with the customer's subscription details, and Intercom or Zendesk sidebars can show a customer's subscription state from RevenueDot's support summary endpoint.
+
+The RevenueCat SDK's Customer Center can let customers write to you from inside your app. RevenueDot stores each request, emails it to your support address and lists it under **Lifecycle > Support > Tickets**. Your help desk can also show the customer's subscription next to the conversation.
+
+## Turn on tickets
+Open **Lifecycle > Support > Customer Center**.
+
+1. Enter the **support email**. Tickets are sent there, with Reply-To set to the customer's address, so you answer from your inbox.
+2. Turn on **Let customers create tickets** and choose who may (customers with an active subscription, without one, or everyone).
+3. Choose which details the email includes: app user ID, active entitlements, total spent, customer since, last opened, app version, country, device and more.
+
+The SDK reads these settings with the rest of the Customer Center configuration. A customer can send up to 5 tickets an hour. If tickets are off, the SDK offers its email link instead.
+
+## Show subscription data in Intercom or Zendesk
+Help desks know the customer's email. Call the support summary with a secret API key that has `customer_information:customers:read`:
+
+```bash
+curl "https://api.revenuedot.app/v2/projects/$PROJECT_ID/support_summaries?email=wren@example.com" \
+  -H "Authorization: Bearer $REVENUEDOT_SECRET_KEY"
+```
+
+or, when you know the app user ID, `GET /v2/projects/{project_id}/customers/{app_user_id}/support_summary`. The answer has the customer's status, active entitlements, each subscription with its store, auto-renew state and expiry, total spent, refund requests, open tickets and a link to the customer in the dashboard ([API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#support)).
+
+Use it from an Intercom Canvas Kit app or a Zendesk sidebar app: your app's backend calls RevenueDot with the secret key (never put the key in the help desk's browser code) and renders the fields you want.
+
+---
+
+# How do I filter, save and export customer lists?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/customer-lists.md
+Description: The Customers page has built-in lists (all, active subscribers, sandbox, non-subscription, expired), saved audiences, filters from the audience condition builder, four summary cards and CSV export.
+
+Open **Customers**. The rail on the left holds the lists:
+
+| List | Who is in it |
+|---|---|
+| All customers | Everyone the SDK or a store notification has told RevenueDot about |
+| Active subscribers | Customers with an active production subscription, trials included |
+| Sandbox | Customers with a sandbox purchase |
+| Non-subscription | Customers with a production one-time purchase |
+| Expired | Subscribers whose production subscriptions have all ended |
+| Your audiences | Audiences you saved here or under Targeting |
+
+Four cards sum up the list: customers, trialing subscribers, paid subscribers and total revenue (production, in USD).
+
+## Filter and save
+Select **Filter** and add conditions: country, platform, app version, subscription status, entitlements, total spent, first or last seen, first purchase, last renewal, email, attribution or any custom attribute. Conditions in a group must all match; groups are alternatives. **Search** matches part of an app user ID or email.
+
+**Save audience** keeps the filter as an audience. It appears in the rail, and you can use it in targeting rules, experiments, refund policies and win-back campaigns.
+
+## Export
+**Export all** downloads the list as CSV: app user ID, email, subscription status, auto-renewal status, first and last seen, spent, latest product, store and purchase date, country and platform. Through the API: `GET /v2/projects/{project_id}/customer_lists/export?list=active` ([API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#customer-lists)).
+
+Lists look at the 10,000 most recently seen customers. On a larger project the cards say so; use [data exports](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md) for everything.

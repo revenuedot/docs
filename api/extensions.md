@@ -11,7 +11,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (67)
+## Operations on this page (97)
 
 - **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects), [Update account settings](#update-account-settings), [Email a password reset link](#email-a-password-reset-link), [Check a password reset link](#check-a-password-reset-link), [Set a new password from a reset link](#set-a-new-password-from-a-reset-link), [Confirm an email address](#confirm-an-email-address), [Send a new confirmation email](#send-a-new-confirmation-email), [Look up an invite](#look-up-an-invite), [Accept an invite](#accept-an-invite)
 - **Members and invites**: [List open invites](#list-open-invites), [Invite someone by email](#invite-someone-by-email), [Resend an invite](#resend-an-invite), [Revoke an invite](#revoke-an-invite), [Change a member's role](#change-a-members-role), [Remove a member, or leave the project](#remove-a-member-or-leave-the-project)
@@ -21,6 +21,11 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Webhook deliveries**: [Send a TEST event to one webhook](#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](#whether-each-webhook-is-enabled), [Delivery log of a webhook](#delivery-log-of-a-webhook), [Retry a delivery now](#retry-a-delivery-now)
 - **Integrations**: [What each integration needs](#what-each-integration-needs), [List integrations](#list-integrations), [Connect an integration](#connect-an-integration), [Get an integration](#get-an-integration), [Update, enable or disable an integration](#update-enable-or-disable-an-integration), [Disconnect an integration](#disconnect-an-integration), [Send a TEST event to one integration](#send-a-test-event-to-one-integration), [Delivery log of an integration](#delivery-log-of-an-integration), [Retry a delivery now](#retry-a-delivery-now), [Queue failed or skipped deliveries again](#queue-failed-or-skipped-deliveries-again)
 - **Data exports**: [List scheduled data exports](#list-scheduled-data-exports), [Create a scheduled data export](#create-a-scheduled-data-export), [Get a data export](#get-a-data-export), [Update a data export](#update-a-data-export), [Delete a data export](#delete-a-data-export), [Run an export now](#run-an-export-now), [Check the bucket and credentials](#check-the-bucket-and-credentials), [Run history](#run-history)
+- **Refund Control**: [Get policies and settings](#get-policies-and-settings), [Save settings and the ordered policies](#save-settings-and-the-ordered-policies), [Refund rate, amounts and counts](#refund-rate-amounts-and-counts), [List refund requests, newest first](#list-refund-requests-newest-first)
+- **Retention**: [List Customer Center retention offers](#list-customer-center-retention-offers), [Create a retention offer](#create-a-retention-offer), [Update a retention offer](#update-a-retention-offer), [Delete a retention offer](#delete-a-retention-offer), [Get Apple Retention Messaging settings](#get-apple-retention-messaging-settings), [Save messages, defaults and real-time rules](#save-messages-defaults-and-real-time-rules), [Upload to Apple and register the real-time URL](#upload-to-apple-and-register-the-real-time-url), [Apple's real-time Get Retention Message call](#apples-real-time-get-retention-message-call)
+- **Support**: [List Customer Center tickets, newest first](#list-customer-center-tickets-newest-first), [Close or reopen a ticket](#close-or-reopen-a-ticket), [What a help desk sidebar shows about a customer](#what-a-help-desk-sidebar-shows-about-a-customer), [Look customers up by email](#look-customers-up-by-email)
+- **Win-back**: [List win-back campaigns](#list-win-back-campaigns), [Create a win-back campaign](#create-a-win-back-campaign), [Get a campaign with stats and recent emails](#get-a-campaign-with-stats-and-recent-emails), [Update, start or pause a campaign](#update-start-or-pause-a-campaign), [Delete a campaign](#delete-a-campaign), [Who would get the email now](#who-would-get-the-email-now), [Send a test email](#send-a-test-email), [Send now](#send-now), [Email button: records the click and redirects to the offer](#email-button-records-the-click-and-redirects-to-the-offer), [Open-tracking image (campaigns with track_opens)](#open-tracking-image-campaigns-with-track_opens), [Unsubscribe page (asks first)](#unsubscribe-page-asks-first), [Unsubscribe (also RFC 8058 one-click)](#unsubscribe-also-rfc-8058-one-click)
+- **Customer lists**: [Customers in a list, with the summary cards](#customers-in-a-list-with-the-summary-cards), [Export a list as CSV](#export-a-list-as-csv)
 - **Event log**: [Event log](#event-log), [Transaction feed](#transaction-feed)
 - **Test Store**: [Simulate a Test Store purchase or lifecycle](#simulate-a-test-store-purchase-or-lifecycle)
 - **Dashboard data**: [Daily history of an overview metric](#daily-history-of-an-overview-metric), [Dashboard rows for customers](#dashboard-rows-for-customers)
@@ -1961,6 +1966,954 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$EXPORT_ID
 **Responses**
 
 - **200**: Runs.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+## Refund Control
+
+Policies that answer Apple's refund requests with consumption information, the refund request log and its cards.
+
+### Get policies and settings
+
+`GET /v2/projects/{project_id}/refund_control` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/refund_control" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Refund Control.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Save settings and the ordered policies
+
+`POST /v2/projects/{project_id}/refund_control` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Replaces the settings you send and, when `policies` is present, the whole ordered list: the array order is the evaluation order; policies with an `id` are kept, the others created, the missing ones deleted.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `settings` | object | no |  |
+| `settings.default_preference` | `prefer_refund`, `prefer_no_refund`, `consumption_only`, `do_not_respond` | no | `prefer_refund` sends refundPreference 1, `prefer_no_refund` 2, `consumption_only` 0 (undeclared), `do_not_respond` sends nothing. |
+| `settings.customer_consented` | boolean | no | You confirm customers agreed to share consumption data. Apple requires it; without it nothing is sent. |
+| `policies` | array of object | no |  |
+| `policies[].id` | string | no |  |
+| `policies[].name` | string | yes |  |
+| `policies[].template` | string | no |  |
+| `policies[].rules` | object | yes |  |
+| `policies[].rules.groups` | array of object | yes | Groups are OR-ed; conditions in a group are AND-ed. No groups matches everyone. |
+| `policies[].preference` | `prefer_refund`, `prefer_no_refund`, `consumption_only`, `do_not_respond` | yes | `prefer_refund` sends refundPreference 1, `prefer_no_refund` 2, `consumption_only` 0 (undeclared), `do_not_respond` sends nothing. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/refund_control" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"settings":{"customer_consented":true,"default_preference":"consumption_only"},"policies":[{"name":"Recent renewals","template":"recent_renewal","rules":{"groups":[{"conditions":[{"field":"lastRenewalAt","operator":"within","value":"24h"}]}]},"preference":"prefer_no_refund"}]}'
+```
+
+**Responses**
+
+- **200**: Refund Control.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Refund rate, amounts and counts
+
+`GET /v2/projects/{project_id}/refund_control/stats` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `days` | integer | no |  |
+| `environment` | `production`, `sandbox` | no |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/refund_control/stats" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The cards.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### List refund requests, newest first
+
+`GET /v2/projects/{project_id}/refund_requests` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read`
+
+Apple CONSUMPTION_REQUEST notifications with the consumption information sent, and refunds learned of without a request (Apple REFUND or REFUND_DECLINED, Google voided purchases and chargebacks, Stripe and Amazon refunds).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/refund_requests" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Requests.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+## Retention
+
+Customer Center cancel and refund offers, and Apple's Retention Messaging API (messages, defaults, the real-time call).
+
+### List Customer Center retention offers
+
+`GET /v2/projects/{project_id}/retention_offers` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/retention_offers" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Offers.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Create a retention offer
+
+`POST /v2/projects/{project_id}/retention_offers` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Active `cancel` offers are added as `promotional_offer` to the Customer Center's CANCEL paths, `refund` offers to its REFUND_REQUEST paths.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `trigger` | `cancel`, `refund` | yes |  |
+| `name` | string | yes |  |
+| `title` | string | yes |  |
+| `subtitle` | string | no |  |
+| `store` | `app_store`, `play_store` | yes |  |
+| `product_mapping` | object | yes |  |
+| `active` | boolean | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/retention_offers" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"trigger":"cancel","name":"Cancellation discount","title":"Stay for 50% off","subtitle":"Three months at half price","store":"app_store","product_mapping":{"pro_monthly":"stay_50"}}'
+```
+
+**Responses**
+
+- **201**: The offer.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Update a retention offer
+
+`POST /v2/projects/{project_id}/retention_offers/{offer_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `offer_id` | string | yes |  |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `trigger` | `cancel`, `refund` | no |  |
+| `name` | string | no |  |
+| `title` | string | no |  |
+| `subtitle` | string | no |  |
+| `store` | `app_store`, `play_store` | no |  |
+| `product_mapping` | object | no |  |
+| `active` | boolean | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/retention_offers/$OFFER_ID" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"active":false}'
+```
+
+**Responses**
+
+- **200**: The offer.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Delete a retention offer
+
+`DELETE /v2/projects/{project_id}/retention_offers/{offer_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `offer_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/retention_offers/$OFFER_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deleted. Returns [Deleted](#deleted).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Get Apple Retention Messaging settings
+
+`GET /v2/projects/{project_id}/apps/{app_id}/retention_messaging` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/retention_messaging" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The settings.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Save messages, defaults and real-time rules
+
+`POST /v2/projects/{project_id}/apps/{app_id}/retention_messaging` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read_write`
+
+Messages follow Apple's limits (header 66, body 144 characters). Default messages must be text messages. A message already uploaded to Apple cannot change: add a new one.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes |  |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `enabled` | boolean | no |  |
+| `messages` | array of object | no |  |
+| `messages[].id` | string | yes | A UUID: Apple's messageIdentifier. |
+| `messages[].kind` | `text`, `switch_plan`, `promotional_offer` | yes |  |
+| `messages[].header` | string | yes | Up to 66 characters. |
+| `messages[].body` | string | yes | Up to 144 characters. |
+| `messages[].alternate_product_id` | string or null | no | switch_plan: the product to suggest. |
+| `messages[].promotional_offer_id` | string or null | no | promotional_offer: the App Store promotional offer id. |
+| `messages[].uploaded` | array of `sandbox`, `production` | no | Environments Apple accepted the upload in. |
+| `messages[].error` | string or null | no |  |
+| `defaults` | array of object | no |  |
+| `defaults[].product_id` | string | no |  |
+| `defaults[].locale` | string | no |  |
+| `defaults[].message_id` | string | no |  |
+| `rules` | array of object | no |  |
+| `rules[].product_id` | string or null | no |  |
+| `rules[].message_id` | string | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/retention_messaging" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"enabled":true,"messages":[{"id":"11111111-2222-4333-8444-555555555555","kind":"text","header":"Your scans stay unlimited","body":"Keep unlimited scans and cloud backup."}],"defaults":[{"product_id":"pro_monthly","locale":"en-US","message_id":"11111111-2222-4333-8444-555555555555"}],"rules":[{"product_id":null,"message_id":"11111111-2222-4333-8444-555555555555"}]}'
+```
+
+**Responses**
+
+- **200**: The settings.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Upload to Apple and register the real-time URL
+
+`POST /v2/projects/{project_id}/apps/{app_id}/retention_messaging/actions/sync` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read_write`
+
+Calls Apple's Upload Message for messages not yet in the environment, Configure Default Message for each default, and Configure Realtime URL with this server's `/v1/retention/apple/{app_id}`, using the app's In-App Purchase key. Apple grants access to the Retention Messaging API on request; production also needs Apple's performance test.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes |  |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `environment` | `sandbox`, `production` | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/retention_messaging/actions/sync" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"environment":"sandbox"}'
+```
+
+**Responses**
+
+- **200**: The settings and per-step errors.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### Apple's real-time Get Retention Message call
+
+`POST /v1/retention/apple/{app_id}` · Auth: none · RevenueDot extension
+
+Apple posts `{ signedPayload }` when a customer is about to cancel. RevenueDot verifies Apple's signature and the app's Apple ID, then answers from the real-time rules: `message`, `alternateProduct` or `promotionalOffer` (signed with promotionalOfferSignatureV1), or `{}` so Apple shows the default message.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `app_id` | string | yes |  |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `signedPayload` | string | yes | JWS signed by the App Store. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/retention/apple/$APP_ID"
+```
+
+**Responses**
+
+- **200**: The chosen message.
+- **400**: Not signed by Apple, or for another app.
+- **404**: Unknown App Store app.
+
+Example 200 response:
+
+```json
+{
+  "message": {
+    "messageIdentifier": "11111111-2222-4333-8444-555555555555"
+  }
+}
+```
+
+## Support
+
+Customer Center tickets and the customer summary for help desk sidebars (Intercom, Zendesk).
+
+### List Customer Center tickets, newest first
+
+`GET /v2/projects/{project_id}/support_tickets` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `status` | `open`, `closed`, `all` | no |  |
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/support_tickets" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Tickets.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Close or reopen a ticket
+
+`POST /v2/projects/{project_id}/support_tickets/{ticket_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `ticket_id` | string | yes |  |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `status` | `open`, `closed` | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/support_tickets/$TICKET_ID" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"status":"closed"}'
+```
+
+**Responses**
+
+- **200**: The ticket.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### What a help desk sidebar shows about a customer
+
+`GET /v2/projects/{project_id}/customers/{customer_id}/support_summary` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read`
+
+For an Intercom or Zendesk sidebar app: status, entitlements, subscriptions with auto-renew and store, total spent, refund requests, open tickets and a dashboard link.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `customer_id` | string | yes | Any app user id of the customer. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/support_summary" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The summary.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Look customers up by email
+
+`GET /v2/projects/{project_id}/support_summaries` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `email` | string | yes | Matched case-insensitively against the `$email` attribute. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/support_summaries" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Up to 10 summaries.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+## Win-back
+
+Campaigns that email churned subscribers an offer, with tracked links and one-click unsubscribe.
+
+### List win-back campaigns
+
+`GET /v2/projects/{project_id}/winback_campaigns` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/winback_campaigns" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Campaigns with stats.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Create a win-back campaign
+
+`POST /v2/projects/{project_id}/winback_campaigns` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | yes |  |
+| `status` | `draft`, `active`, `paused` | no |  |
+| `audience` | object | no |  |
+| `audience.churned_min_days` | integer | yes |  |
+| `audience.churned_max_days` | integer | yes |  |
+| `audience.product_ids` | array of string | no |  |
+| `audience.stores` | array of string | no |  |
+| `audience.audience_id` | string or null | no | A saved audience to narrow to. |
+| `email` | object | yes |  |
+| `email.subject` | string | yes |  |
+| `email.heading` | string | yes |  |
+| `email.body` | string | yes | Plain text; a blank line starts a paragraph. |
+| `email.button_label` | string | yes |  |
+| `email.sender_name` | string or null | no | Defaults to the project name. |
+| `offer` | object | yes |  |
+| `offer.type` | `store`, `url` | yes | `store`: the App Store's subscriptions page or the Play Store page of the customer's product. `url`: your own https link. |
+| `offer.url` | string or null | no |  |
+| `send_hour_utc` | integer | no |  |
+| `track_opens` | boolean | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/winback_campaigns" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"name":"Come back in September","status":"active","audience":{"churned_min_days":3,"churned_max_days":60,"product_ids":[],"stores":[],"audience_id":null},"email":{"subject":"We saved your scans","heading":"Your scans are waiting","body":"Come back to Scanner Pro.","button_label":"Resubscribe"},"offer":{"type":"store"},"send_hour_utc":16,"track_opens":false}'
+```
+
+**Responses**
+
+- **201**: The campaign.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Get a campaign with stats and recent emails
+
+`GET /v2/projects/{project_id}/winback_campaigns/{campaign_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `campaign_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/winback_campaigns/$CAMPAIGN_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The campaign.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Update, start or pause a campaign
+
+`POST /v2/projects/{project_id}/winback_campaigns/{campaign_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `campaign_id` | string | yes |  |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | no |  |
+| `status` | `draft`, `active`, `paused` | no |  |
+| `audience` | object | no |  |
+| `audience.churned_min_days` | integer | yes |  |
+| `audience.churned_max_days` | integer | yes |  |
+| `audience.product_ids` | array of string | no |  |
+| `audience.stores` | array of string | no |  |
+| `audience.audience_id` | string or null | no | A saved audience to narrow to. |
+| `email` | object | no |  |
+| `email.subject` | string | yes |  |
+| `email.heading` | string | yes |  |
+| `email.body` | string | yes | Plain text; a blank line starts a paragraph. |
+| `email.button_label` | string | yes |  |
+| `email.sender_name` | string or null | no | Defaults to the project name. |
+| `offer` | object | no |  |
+| `offer.type` | `store`, `url` | yes | `store`: the App Store's subscriptions page or the Play Store page of the customer's product. `url`: your own https link. |
+| `offer.url` | string or null | no |  |
+| `send_hour_utc` | integer | no |  |
+| `track_opens` | boolean | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/winback_campaigns/$CAMPAIGN_ID" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"status":"paused"}'
+```
+
+**Responses**
+
+- **200**: The campaign.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Delete a campaign
+
+`DELETE /v2/projects/{project_id}/winback_campaigns/{campaign_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `campaign_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/winback_campaigns/$CAMPAIGN_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deleted. Returns [Deleted](#deleted).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Who would get the email now
+
+`POST /v2/projects/{project_id}/winback_campaigns/{campaign_id}/actions/preview` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `campaign_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/winback_campaigns/$CAMPAIGN_ID/actions/preview" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Count and sample.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Send a test email
+
+`POST /v2/projects/{project_id}/winback_campaigns/{campaign_id}/actions/send_test` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `campaign_id` | string | yes |  |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `email` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/winback_campaigns/$CAMPAIGN_ID/actions/send_test" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"email":"me@example.com"}'
+```
+
+**Responses**
+
+- **200**: Sent.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](#v2error).
+
+### Send now
+
+`POST /v2/projects/{project_id}/winback_campaigns/{campaign_id}/actions/run` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Emails up to 500 eligible customers now. Each customer gets a campaign's email at most once. Active campaigns also send daily at `send_hour_utc`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `campaign_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/winback_campaigns/$CAMPAIGN_ID/actions/run" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Counts.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### Email button: records the click and redirects to the offer
+
+`GET /v1/winback/c/{token}` · Auth: none · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/winback/c/$TOKEN"
+```
+
+**Responses**
+
+- **302**: To the offer.
+- **404**: Unknown link.
+
+### Open-tracking image (campaigns with track_opens)
+
+`GET /v1/winback/o/{token}` · Auth: none · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/winback/o/$TOKEN"
+```
+
+**Responses**
+
+- **200**: A 1×1 GIF.
+
+### Unsubscribe page (asks first)
+
+`GET /v1/winback/u/{token}` · Auth: none · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/winback/u/$TOKEN"
+```
+
+**Responses**
+
+- **200**: HTML.
+- **404**: Unknown link.
+
+### Unsubscribe (also RFC 8058 one-click)
+
+`POST /v1/winback/u/{token}` · Auth: none · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/winback/u/$TOKEN"
+```
+
+**Responses**
+
+- **200**: HTML confirmation.
+- **404**: Unknown link.
+
+## Customer lists
+
+Built-in customer lists, saved audiences, filters, summary cards and CSV export.
+
+### Customers in a list, with the summary cards
+
+`GET /v2/projects/{project_id}/customer_lists` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read`
+
+Built-in lists or a saved audience, optionally filtered by audience rules and a search. Looks at the 10,000 most recently seen customers (`summary.is_approximate` when there are more).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `list` | string | no | `all` (default), `active`, `sandbox`, `non_subscription`, `expired`, or a saved audience id. |
+| `rules` | string | no | Extra filter: audience rules as JSON. |
+| `search` | string | no | Part of an app user id or email. |
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_lists" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Rows and the summary.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Export a list as CSV
+
+`GET /v2/projects/{project_id}/customer_lists/export` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `list` | string | no | `all` (default), `active`, `sandbox`, `non_subscription`, `expired`, or a saved audience id. |
+| `rules` | string | no | Extra filter: audience rules as JSON. |
+| `search` | string | no | Part of an app user id or email. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_lists/export" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: CSV with a header row: app_user_id, email, subscription_status, auto_renewal_status, first_seen_at, last_seen_at, spent_in_usd, latest_product_id, latest_store, latest_purchase_at, country, platform.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).

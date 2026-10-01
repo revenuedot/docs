@@ -1,6 +1,6 @@
 ---
 title: Which guide do I need?
-description: Step-by-step guides for connecting the App Store, Google Play, the Amazon Appstore and Stripe, receiving webhooks, sending events to analytics and attribution tools, exporting data, response signing, testing, inviting your team, alert emails, and running RevenueDot on your own servers.
+description: Step-by-step guides for connecting stores, webhooks, integrations and data exports, refund requests, retention and win-back, support, customer lists, testing, your team, alert emails, and running RevenueDot on your own servers.
 ---
 
 # Which guide do I need?
@@ -30,5 +30,10 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Get an email when store notifications, webhooks or store credentials fail | [Alert emails](alerts.md) |
 | Win back lapsed App Store subscribers with Apple's win-back offers | [Win-back offers](win-back-offers.md) |
 | Know what happens to customers' access when the server is down | [Offline entitlements](offline-entitlements.md) |
+| Answer Apple refund requests automatically and see my refund rate | [Refund Control](refund-control.md) |
+| Offer a discount when customers cancel, in my app or on Apple's cancel screen | [Retention offers](retention.md) |
+| Email churned subscribers an offer to come back | [Win-back campaigns](win-back-campaigns.md) |
+| Get Customer Center support requests by email, or show subscriptions in Intercom or Zendesk | [Support](support-integrations.md) |
+| Filter, save and export lists of customers | [Customer lists](customer-lists.md) |
 
 Moving from RevenueCat? Start with [Migrate from RevenueCat](../migrate/README.md). Looking for a specific endpoint? See the [API reference](../../api/README.md).

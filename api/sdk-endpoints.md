@@ -21,9 +21,9 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Offerings (SDK)**: [Get offerings](#get-offerings), [Get offerings without a user](#get-offerings-without-a-user), [Test Store product details](#test-store-product-details)
 - **Identity**: [Log in (identify)](#log-in-identify), [Alias two app user ids](#alias-two-app-user-ids)
 - **Attributes**: [Set customer attributes](#set-customer-attributes)
-- **SDK support**: [Intro offer eligibility (StoreKit 1)](#intro-offer-eligibility-storekit-1), [Sign a promotional offer (iOS)](#sign-a-promotional-offer-ios), [Attribution data (deprecated iOS call)](#attribution-data-deprecated-ios-call), [Apple AdServices token](#apple-adservices-token), [SDK health report availability](#sdk-health-report-availability), [SDK health report](#sdk-health-report), [Product to entitlement mapping (offline entitlements)](#product-to-entitlement-mapping-offline-entitlements), [Customer Center configuration](#customer-center-configuration), [Customer Center support ticket (not built)](#customer-center-support-ticket-not-built), [Virtual currency balances](#virtual-currency-balances), [Redeem a web purchase (not available)](#redeem-a-web-purchase-not-available), [Register an Apple external purchase token (iOS)](#register-an-apple-external-purchase-token-ios), [Rewarded ad verification (not available)](#rewarded-ad-verification-not-available), [Amazon receipt details](#amazon-receipt-details), [Paywall workflows (web SDK)](#paywall-workflows-web-sdk), [One paywall workflow (web SDK)](#one-paywall-workflow-web-sdk), [Restore eligibility (StoreKit 2)](#restore-eligibility-storekit-2), [Remote config fallback (none)](#remote-config-fallback-none), [Remote config: paywalls and UI settings](#remote-config-paywalls-and-ui-settings), [Download a remote-config blob](#download-a-remote-config-blob), [SDK paywall, Customer Center and ad events](#sdk-paywall-customer-center-and-ad-events), [SDK diagnostics (accepted, not stored)](#sdk-diagnostics-accepted-not-stored)
+- **SDK support**: [Intro offer eligibility (StoreKit 1)](#intro-offer-eligibility-storekit-1), [Sign a promotional offer (iOS)](#sign-a-promotional-offer-ios), [Attribution data (deprecated iOS call)](#attribution-data-deprecated-ios-call), [Apple AdServices token](#apple-adservices-token), [SDK health report availability](#sdk-health-report-availability), [SDK health report](#sdk-health-report), [Product to entitlement mapping (offline entitlements)](#product-to-entitlement-mapping-offline-entitlements), [Customer Center configuration](#customer-center-configuration), [Customer Center support ticket](#customer-center-support-ticket), [Virtual currency balances](#virtual-currency-balances), [Redeem a web purchase (not available)](#redeem-a-web-purchase-not-available), [Register an Apple external purchase token (iOS)](#register-an-apple-external-purchase-token-ios), [Rewarded ad verification (not available)](#rewarded-ad-verification-not-available), [Amazon receipt details](#amazon-receipt-details), [Paywall workflows (web SDK)](#paywall-workflows-web-sdk), [One paywall workflow (web SDK)](#one-paywall-workflow-web-sdk), [Restore eligibility (StoreKit 2)](#restore-eligibility-storekit-2), [Remote config fallback (none)](#remote-config-fallback-none), [Remote config: paywalls and UI settings](#remote-config-paywalls-and-ui-settings), [Download a remote-config blob](#download-a-remote-config-blob), [SDK paywall, Customer Center and ad events](#sdk-paywall-customer-center-and-ad-events), [SDK diagnostics (accepted, not stored)](#sdk-diagnostics-accepted-not-stored)
 - **Web Billing**: [Web offering products](#web-offering-products), [Start a hosted web checkout (not available)](#start-a-hosted-web-checkout-not-available), [Web Billing purchase (not available)](#web-billing-purchase-not-available), [Prepare a Web Billing checkout (not available)](#prepare-a-web-billing-checkout-not-available), [Start a Web Billing checkout (not available)](#start-a-web-billing-checkout-not-available), [Web Billing checkout status](#web-billing-checkout-status), [Refresh Web Billing checkout pricing](#refresh-web-billing-checkout-pricing), [Complete a Web Billing checkout](#complete-a-web-billing-checkout), [Web checkout branding](#web-checkout-branding)
-- **Subscriber tokens**: [Get customer info (subscriber token)](#get-customer-info-subscriber-token), [Get offerings (subscriber token)](#get-offerings-subscriber-token), [Intro offer eligibility (StoreKit 1) (subscriber token)](#intro-offer-eligibility-storekit-1-subscriber-token), [Attribution data (deprecated iOS call) (subscriber token)](#attribution-data-deprecated-ios-call-subscriber-token), [Set customer attributes (subscriber token)](#set-customer-attributes-subscriber-token), [Apple AdServices token (subscriber token)](#apple-adservices-token-subscriber-token), [SDK health report (subscriber token)](#sdk-health-report-subscriber-token), [Customer Center configuration (subscriber token)](#customer-center-configuration-subscriber-token), [Customer Center support ticket (not built) (subscriber token)](#customer-center-support-ticket-not-built-subscriber-token), [Virtual currency balances (subscriber token)](#virtual-currency-balances-subscriber-token), [Restore eligibility (StoreKit 2) (subscriber token)](#restore-eligibility-storekit-2-subscriber-token), [Rewarded ad verification (not available) (subscriber token)](#rewarded-ad-verification-not-available-subscriber-token), [Web offering products (subscriber token)](#web-offering-products-subscriber-token), [Test Store product details (subscriber token)](#test-store-product-details-subscriber-token), [Spend in-app currency as the subscriber](#spend-in-app-currency-as-the-subscriber)
+- **Subscriber tokens**: [Get customer info (subscriber token)](#get-customer-info-subscriber-token), [Get offerings (subscriber token)](#get-offerings-subscriber-token), [Intro offer eligibility (StoreKit 1) (subscriber token)](#intro-offer-eligibility-storekit-1-subscriber-token), [Attribution data (deprecated iOS call) (subscriber token)](#attribution-data-deprecated-ios-call-subscriber-token), [Set customer attributes (subscriber token)](#set-customer-attributes-subscriber-token), [Apple AdServices token (subscriber token)](#apple-adservices-token-subscriber-token), [SDK health report (subscriber token)](#sdk-health-report-subscriber-token), [Customer Center configuration (subscriber token)](#customer-center-configuration-subscriber-token), [Customer Center support ticket (subscriber token)](#customer-center-support-ticket-subscriber-token), [Virtual currency balances (subscriber token)](#virtual-currency-balances-subscriber-token), [Restore eligibility (StoreKit 2) (subscriber token)](#restore-eligibility-storekit-2-subscriber-token), [Rewarded ad verification (not available) (subscriber token)](#rewarded-ad-verification-not-available-subscriber-token), [Web offering products (subscriber token)](#web-offering-products-subscriber-token), [Test Store product details (subscriber token)](#test-store-product-details-subscriber-token), [Spend in-app currency as the subscriber](#spend-in-app-currency-as-the-subscriber)
 - **Store notifications**: [App Store Server Notifications v2](#app-store-server-notifications-v2), [Google Play real-time developer notifications (Pub/Sub push)](#google-play-real-time-developer-notifications-pubsub-push), [Amazon Appstore Real-time Notifications (SNS)](#amazon-appstore-real-time-notifications-sns), [Stripe webhooks](#stripe-webhooks)
 - **Response signing**: [Public key for response signatures](#public-key-for-response-signatures)
 
@@ -930,25 +930,36 @@ Example 200 response:
 }
 ```
 
-### Customer Center support ticket (not built)
+### Customer Center support ticket
 
 `POST /v1/customercenter/support/create-ticket` · Auth: public app key
+
+Stores the ticket, emails the Customer Center support address (Reply-To the customer) and lists it under Lifecycle > Support. `sent` is false when ticket creation is off (`support.support_tickets.allow_creation`), a field is missing or invalid, or the customer sent more than 5 tickets in an hour; the SDK then offers its email link.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `app_user_id` | string | yes |  |
+| `customer_email` | string | yes |  |
+| `issue_description` | string | yes |  |
 
 **Example request**
 
 ```bash
-curl -s -X POST "$REVENUEDOT_URL/v1/customercenter/support/create-ticket" -H "Authorization: Bearer $PUBLIC_KEY"
+curl -s -X POST "$REVENUEDOT_URL/v1/customercenter/support/create-ticket" -H "Authorization: Bearer $PUBLIC_KEY" \
+  -H "Content-Type: application/json" -d '{"app_user_id":"user_1234","customer_email":"wren@example.com","issue_description":"My scans are not syncing."}'
 ```
 
 **Responses**
 
-- **200**: Not sent.
+- **200**: Whether the ticket was taken.
 
 Example 200 response:
 
 ```json
 {
-  "sent": false
+  "sent": true
 }
 ```
 
@@ -1854,28 +1865,37 @@ Example 200 response:
 }
 ```
 
-### Customer Center support ticket (not built) (subscriber token)
+### Customer Center support ticket (subscriber token)
 
 `POST /v1/customer/customercenter/support/create-ticket` · Auth: none
 
 The subscriber-token form of `POST /v1/customercenter/support/create-ticket`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
 
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `app_user_id` | string | yes |  |
+| `customer_email` | string | yes |  |
+| `issue_description` | string | yes |  |
+
 **Example request**
 
 ```bash
-curl -s -X POST "$REVENUEDOT_URL/v1/customer/customercenter/support/create-ticket"
+curl -s -X POST "$REVENUEDOT_URL/v1/customer/customercenter/support/create-ticket" \
+  -H "Content-Type: application/json" -d '{"app_user_id":"user_1234","customer_email":"wren@example.com","issue_description":"My scans are not syncing."}'
 ```
 
 **Responses**
 
-- **200**: Not sent.
+- **200**: Whether the ticket was taken.
 - **401**: Unknown API key. Returns [V1Error](#v1error).
 
 Example 200 response:
 
 ```json
 {
-  "sent": false
+  "sent": true
 }
 ```
 

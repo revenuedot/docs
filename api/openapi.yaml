@@ -156,6 +156,21 @@ tags:
   - name: Data exports
     description: Scheduled CSV or Parquet files of transactions, customers, subscriptions and events in Amazon S3, Cloudflare R2 or Google Cloud Storage.
     x-page: extensions
+  - name: Refund Control
+    description: Policies that answer Apple's refund requests with consumption information, the refund request log and its cards.
+    x-page: extensions
+  - name: Retention
+    description: Customer Center cancel and refund offers, and Apple's Retention Messaging API (messages, defaults, the real-time call).
+    x-page: extensions
+  - name: Support
+    description: Customer Center tickets and the customer summary for help desk sidebars (Intercom, Zendesk).
+    x-page: extensions
+  - name: Win-back
+    description: Campaigns that email churned subscribers an offer, with tracked links and one-click unsubscribe.
+    x-page: extensions
+  - name: Customer lists
+    description: Built-in customer lists, saved audiences, filters, summary cards and CSV export.
+    x-page: extensions
   - name: Event log
     description: Every recorded event and money movement.
     x-page: extensions
@@ -1227,12 +1242,34 @@ paths:
       operationId: customerCenterTicket
       tags:
         - SDK support
-      summary: Customer Center support ticket (not built)
+      summary: Customer Center support ticket
+      description: Stores the ticket, emails the Customer Center support address (Reply-To the customer) and lists it under Lifecycle > Support. `sent` is false when ticket creation is off (`support.support_tickets.allow_creation`), a field is missing or invalid, or the customer sent more than 5 tickets in an hour; the SDK then offers its email link.
       security:
         - publicApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                app_user_id:
+                  type: string
+                customer_email:
+                  type: string
+                issue_description:
+                  type: string
+              required:
+                - app_user_id
+                - customer_email
+                - issue_description
+            example:
+              app_user_id: user_1234
+              customer_email: wren@example.com
+              issue_description: My scans are not syncing.
       responses:
         "200":
-          description: Not sent.
+          description: Whether the ticket was taken.
           content:
             application/json:
               schema:
@@ -1241,7 +1278,7 @@ paths:
                   sent:
                     type: boolean
               example:
-                sent: false
+                sent: true
       x-source: routes/sdk.ts
   /v1/subscribers/{app_user_id}/virtual_currencies:
     get:
@@ -3451,12 +3488,34 @@ paths:
       operationId: createSupportTicketWithToken
       tags:
         - Subscriber tokens
-      summary: Customer Center support ticket (not built) (subscriber token)
+      summary: Customer Center support ticket (subscriber token)
+      description: "The subscriber-token form of `POST /v1/customercenter/support/create-ticket`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224."
       security:
         - subscriberToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                app_user_id:
+                  type: string
+                customer_email:
+                  type: string
+                issue_description:
+                  type: string
+              required:
+                - app_user_id
+                - customer_email
+                - issue_description
+            example:
+              app_user_id: user_1234
+              customer_email: wren@example.com
+              issue_description: My scans are not syncing.
       responses:
         "200":
-          description: Not sent.
+          description: Whether the ticket was taken.
           content:
             application/json:
               schema:
@@ -3465,11 +3524,10 @@ paths:
                   sent:
                     type: boolean
               example:
-                sent: false
+                sent: true
         "401":
           $ref: "#/components/responses/V1Error401"
       x-source: routes/sdk.ts
-      description: "The subscriber-token form of `POST /v1/customercenter/support/create-ticket`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224."
   /v1/customer/virtual_currencies:
     get:
       operationId: virtualCurrenciesWithToken
@@ -19821,6 +19879,3668 @@ paths:
       x-source: routes/v2/data-exports.ts
       x-scopes:
         - project_configuration:integrations:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/refund_control:
+    get:
+      operationId: getRefundControl
+      tags:
+        - Refund Control
+      summary: Get policies and settings
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: Refund Control.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - refund_control
+                  settings:
+                    type: object
+                    properties:
+                      default_preference:
+                        type: string
+                        enum:
+                          - prefer_refund
+                          - prefer_no_refund
+                          - consumption_only
+                          - do_not_respond
+                        description: "`prefer_refund` sends refundPreference 1, `prefer_no_refund` 2, `consumption_only` 0 (undeclared), `do_not_respond` sends nothing."
+                      customer_consented:
+                        type: boolean
+                        description: You confirm customers agreed to share consumption data. Apple requires it; without it nothing is sent.
+                  default_policy:
+                    type: object
+                    properties:
+                      customer_count:
+                        type: integer
+                  policies:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - refund_policy
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        template:
+                          type: string
+                          enum:
+                            - first_purchase_date
+                            - platform
+                            - recent_renewal
+                            - custom
+                        rules:
+                          type: object
+                          properties:
+                            groups:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  conditions:
+                                    type: array
+                                    items:
+                                      type: object
+                                      properties:
+                                        field:
+                                          type: string
+                                          description: A customer field, as in audiences (`country`, `platform`, `firstPurchaseAt`, `lastRenewalAt`, `customAttribute:<key>` ...).
+                                        operator:
+                                          type: string
+                                        value:
+                                          type: string
+                                      required:
+                                        - field
+                                        - operator
+                                required:
+                                  - conditions
+                              description: Groups are OR-ed; conditions in a group are AND-ed. No groups matches everyone.
+                          required:
+                            - groups
+                        preference:
+                          type: string
+                          enum:
+                            - prefer_refund
+                            - prefer_no_refund
+                            - consumption_only
+                            - do_not_respond
+                          description: "`prefer_refund` sends refundPreference 1, `prefer_no_refund` 2, `consumption_only` 0 (undeclared), `do_not_respond` sends nothing."
+                        position:
+                          type: integer
+                          description: 0 is evaluated first.
+                        customer_count:
+                          type: integer
+                          description: Customers this policy decides for (first match wins), among the 10,000 most recently seen.
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: Created. Epoch milliseconds.
+                        updated_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Updated. Epoch milliseconds, or null.
+                  templates:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        groups:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              conditions:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    field:
+                                      type: string
+                                      description: A customer field, as in audiences (`country`, `platform`, `firstPurchaseAt`, `lastRenewalAt`, `customAttribute:<key>` ...).
+                                    operator:
+                                      type: string
+                                    value:
+                                      type: string
+                                  required:
+                                    - field
+                                    - operator
+                            required:
+                              - conditions
+                          description: Groups are OR-ed; conditions in a group are AND-ed. No groups matches everyone.
+                      required:
+                        - groups
+                    description: The conditions each template starts with.
+                  counts_are_approximate:
+                    type: boolean
+                required:
+                  - object
+                  - settings
+                  - policies
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/refund-control.ts
+      x-scopes:
+        - project_configuration:projects:read
+      x-revenuedot-extension: true
+    post:
+      operationId: saveRefundControl
+      tags:
+        - Refund Control
+      summary: Save settings and the ordered policies
+      description: "Replaces the settings you send and, when `policies` is present, the whole ordered list: the array order is the evaluation order; policies with an `id` are kept, the others created, the missing ones deleted."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                settings:
+                  type: object
+                  properties:
+                    default_preference:
+                      type: string
+                      enum:
+                        - prefer_refund
+                        - prefer_no_refund
+                        - consumption_only
+                        - do_not_respond
+                      description: "`prefer_refund` sends refundPreference 1, `prefer_no_refund` 2, `consumption_only` 0 (undeclared), `do_not_respond` sends nothing."
+                    customer_consented:
+                      type: boolean
+                      description: You confirm customers agreed to share consumption data. Apple requires it; without it nothing is sent.
+                policies:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                      template:
+                        type: string
+                      rules:
+                        type: object
+                        properties:
+                          groups:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                conditions:
+                                  type: array
+                                  items:
+                                    type: object
+                                    properties:
+                                      field:
+                                        type: string
+                                        description: A customer field, as in audiences (`country`, `platform`, `firstPurchaseAt`, `lastRenewalAt`, `customAttribute:<key>` ...).
+                                      operator:
+                                        type: string
+                                      value:
+                                        type: string
+                                    required:
+                                      - field
+                                      - operator
+                              required:
+                                - conditions
+                            description: Groups are OR-ed; conditions in a group are AND-ed. No groups matches everyone.
+                        required:
+                          - groups
+                      preference:
+                        type: string
+                        enum:
+                          - prefer_refund
+                          - prefer_no_refund
+                          - consumption_only
+                          - do_not_respond
+                        description: "`prefer_refund` sends refundPreference 1, `prefer_no_refund` 2, `consumption_only` 0 (undeclared), `do_not_respond` sends nothing."
+                    required:
+                      - name
+                      - rules
+                      - preference
+            example:
+              settings:
+                customer_consented: true
+                default_preference: consumption_only
+              policies:
+                - name: Recent renewals
+                  template: recent_renewal
+                  rules:
+                    groups:
+                      - conditions:
+                          - field: lastRenewalAt
+                            operator: within
+                            value: 24h
+                  preference: prefer_no_refund
+      responses:
+        "200":
+          description: Refund Control.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - refund_control
+                  settings:
+                    type: object
+                    properties:
+                      default_preference:
+                        type: string
+                        enum:
+                          - prefer_refund
+                          - prefer_no_refund
+                          - consumption_only
+                          - do_not_respond
+                        description: "`prefer_refund` sends refundPreference 1, `prefer_no_refund` 2, `consumption_only` 0 (undeclared), `do_not_respond` sends nothing."
+                      customer_consented:
+                        type: boolean
+                        description: You confirm customers agreed to share consumption data. Apple requires it; without it nothing is sent.
+                  default_policy:
+                    type: object
+                    properties:
+                      customer_count:
+                        type: integer
+                  policies:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - refund_policy
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        template:
+                          type: string
+                          enum:
+                            - first_purchase_date
+                            - platform
+                            - recent_renewal
+                            - custom
+                        rules:
+                          type: object
+                          properties:
+                            groups:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  conditions:
+                                    type: array
+                                    items:
+                                      type: object
+                                      properties:
+                                        field:
+                                          type: string
+                                          description: A customer field, as in audiences (`country`, `platform`, `firstPurchaseAt`, `lastRenewalAt`, `customAttribute:<key>` ...).
+                                        operator:
+                                          type: string
+                                        value:
+                                          type: string
+                                      required:
+                                        - field
+                                        - operator
+                                required:
+                                  - conditions
+                              description: Groups are OR-ed; conditions in a group are AND-ed. No groups matches everyone.
+                          required:
+                            - groups
+                        preference:
+                          type: string
+                          enum:
+                            - prefer_refund
+                            - prefer_no_refund
+                            - consumption_only
+                            - do_not_respond
+                          description: "`prefer_refund` sends refundPreference 1, `prefer_no_refund` 2, `consumption_only` 0 (undeclared), `do_not_respond` sends nothing."
+                        position:
+                          type: integer
+                          description: 0 is evaluated first.
+                        customer_count:
+                          type: integer
+                          description: Customers this policy decides for (first match wins), among the 10,000 most recently seen.
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: Created. Epoch milliseconds.
+                        updated_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Updated. Epoch milliseconds, or null.
+                  templates:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        groups:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              conditions:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    field:
+                                      type: string
+                                      description: A customer field, as in audiences (`country`, `platform`, `firstPurchaseAt`, `lastRenewalAt`, `customAttribute:<key>` ...).
+                                    operator:
+                                      type: string
+                                    value:
+                                      type: string
+                                  required:
+                                    - field
+                                    - operator
+                            required:
+                              - conditions
+                          description: Groups are OR-ed; conditions in a group are AND-ed. No groups matches everyone.
+                      required:
+                        - groups
+                    description: The conditions each template starts with.
+                  counts_are_approximate:
+                    type: boolean
+                required:
+                  - object
+                  - settings
+                  - policies
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/refund-control.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/refund_control/stats:
+    get:
+      operationId: getRefundControlStats
+      tags:
+        - Refund Control
+      summary: Refund rate, amounts and counts
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: days
+          in: query
+          schema:
+            type: integer
+            default: 28
+        - name: environment
+          in: query
+          schema:
+            type: string
+            enum:
+              - production
+              - sandbox
+      responses:
+        "200":
+          description: The cards.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - refund_control_stats
+                  days:
+                    type: integer
+                  environment:
+                    type: string
+                    enum:
+                      - production
+                      - sandbox
+                  refund_rate:
+                    type:
+                      - number
+                      - "null"
+                    description: Approved ÷ (approved + declined).
+                  requests:
+                    type: object
+                    properties:
+                      approved:
+                        type: integer
+                      declined:
+                        type: integer
+                      pending:
+                        type: integer
+                      total:
+                        type: integer
+                  amount_in_usd:
+                    type: object
+                    properties:
+                      approved:
+                        type: number
+                      declined:
+                        type: number
+                      pending:
+                        type: number
+                  consumption:
+                    type: object
+                    additionalProperties:
+                      type: integer
+                    description: Requests per answer status.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/refund-control.ts
+      x-scopes:
+        - customer_information:customers:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/refund_requests:
+    get:
+      operationId: listRefundRequests
+      tags:
+        - Refund Control
+      summary: List refund requests, newest first
+      description: Apple CONSUMPTION_REQUEST notifications with the consumption information sent, and refunds learned of without a request (Apple REFUND or REFUND_DECLINED, Google voided purchases and chargebacks, Stripe and Amazon refunds).
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/StartingAfter"
+      responses:
+        "200":
+          description: Requests.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - refund_request
+                        id:
+                          type: string
+                        app_id:
+                          type:
+                            - string
+                            - "null"
+                        app_user_id:
+                          type:
+                            - string
+                            - "null"
+                        store:
+                          type: string
+                        environment:
+                          type: string
+                          enum:
+                            - production
+                            - sandbox
+                        transaction_id:
+                          type: string
+                        original_transaction_id:
+                          type:
+                            - string
+                            - "null"
+                        product_id:
+                          type:
+                            - string
+                            - "null"
+                        amount_in_usd:
+                          type:
+                            - number
+                            - "null"
+                        reason:
+                          type:
+                            - string
+                            - "null"
+                          description: Apple's consumptionRequestReason, or how a refund arrived.
+                        requested_at:
+                          type: integer
+                          format: int64
+                          description: Requested. Epoch milliseconds.
+                        deadline_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Apple's 12-hour deadline. Epoch milliseconds, or null.
+                        policy_id:
+                          type:
+                            - string
+                            - "null"
+                        policy_name:
+                          type:
+                            - string
+                            - "null"
+                        preference:
+                          type:
+                            - string
+                            - "null"
+                        consumption_status:
+                          type: string
+                          enum:
+                            - pending
+                            - sent
+                            - skipped
+                            - failed
+                            - expired
+                            - not_requested
+                            - not_applicable
+                        consumption:
+                          type:
+                            - object
+                            - "null"
+                          properties:
+                            accountTenure:
+                              type: integer
+                            appAccountToken:
+                              type: string
+                            consumptionStatus:
+                              type: integer
+                            customerConsented:
+                              type: boolean
+                            deliveryStatus:
+                              type: integer
+                            lifetimeDollarsPurchased:
+                              type: integer
+                            lifetimeDollarsRefunded:
+                              type: integer
+                            platform:
+                              type: integer
+                            playTime:
+                              type: integer
+                            refundPreference:
+                              type: integer
+                            sampleContentProvided:
+                              type: boolean
+                            userStatus:
+                              type: integer
+                          description: Apple's ConsumptionRequestV1 exactly as sent.
+                        attempts:
+                          type: integer
+                        last_error:
+                          type:
+                            - string
+                            - "null"
+                        sent_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Sent to Apple. Epoch milliseconds, or null.
+                        outcome:
+                          type: string
+                          enum:
+                            - pending
+                            - approved
+                            - declined
+                        outcome_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Decided. Epoch milliseconds, or null.
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/refund-control.ts
+      x-scopes:
+        - customer_information:customers:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/retention_offers:
+    get:
+      operationId: listRetentionOffers
+      tags:
+        - Retention
+      summary: List Customer Center retention offers
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: Offers.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - retention_offer
+                        id:
+                          type: string
+                        trigger:
+                          type: string
+                          enum:
+                            - cancel
+                            - refund
+                        name:
+                          type: string
+                        title:
+                          type: string
+                        subtitle:
+                          type: string
+                        store:
+                          type: string
+                          enum:
+                            - app_store
+                            - play_store
+                        product_mapping:
+                          type: object
+                          additionalProperties:
+                            type: string
+                          description: Store product id → store offer id.
+                        active:
+                          type: boolean
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: Created. Epoch milliseconds.
+                        updated_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Updated. Epoch milliseconds, or null.
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/retention.ts
+      x-scopes:
+        - project_configuration:projects:read
+      x-revenuedot-extension: true
+    post:
+      operationId: createRetentionOffer
+      tags:
+        - Retention
+      summary: Create a retention offer
+      description: Active `cancel` offers are added as `promotional_offer` to the Customer Center's CANCEL paths, `refund` offers to its REFUND_REQUEST paths.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                trigger:
+                  type: string
+                  enum:
+                    - cancel
+                    - refund
+                name:
+                  type: string
+                title:
+                  type: string
+                subtitle:
+                  type: string
+                store:
+                  type: string
+                  enum:
+                    - app_store
+                    - play_store
+                product_mapping:
+                  type: object
+                  additionalProperties:
+                    type: string
+                active:
+                  type: boolean
+              required:
+                - trigger
+                - name
+                - title
+                - store
+                - product_mapping
+            example:
+              trigger: cancel
+              name: Cancellation discount
+              title: Stay for 50% off
+              subtitle: Three months at half price
+              store: app_store
+              product_mapping:
+                pro_monthly: stay_50
+      responses:
+        "201":
+          description: The offer.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - retention_offer
+                  id:
+                    type: string
+                  trigger:
+                    type: string
+                    enum:
+                      - cancel
+                      - refund
+                  name:
+                    type: string
+                  title:
+                    type: string
+                  subtitle:
+                    type: string
+                  store:
+                    type: string
+                    enum:
+                      - app_store
+                      - play_store
+                  product_mapping:
+                    type: object
+                    additionalProperties:
+                      type: string
+                    description: Store product id → store offer id.
+                  active:
+                    type: boolean
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  updated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Updated. Epoch milliseconds, or null.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/retention.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/retention_offers/{offer_id}:
+    post:
+      operationId: updateRetentionOffer
+      tags:
+        - Retention
+      summary: Update a retention offer
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: offer_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                trigger:
+                  type: string
+                  enum:
+                    - cancel
+                    - refund
+                name:
+                  type: string
+                title:
+                  type: string
+                subtitle:
+                  type: string
+                store:
+                  type: string
+                  enum:
+                    - app_store
+                    - play_store
+                product_mapping:
+                  type: object
+                  additionalProperties:
+                    type: string
+                active:
+                  type: boolean
+            example:
+              active: false
+      responses:
+        "200":
+          description: The offer.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - retention_offer
+                  id:
+                    type: string
+                  trigger:
+                    type: string
+                    enum:
+                      - cancel
+                      - refund
+                  name:
+                    type: string
+                  title:
+                    type: string
+                  subtitle:
+                    type: string
+                  store:
+                    type: string
+                    enum:
+                      - app_store
+                      - play_store
+                  product_mapping:
+                    type: object
+                    additionalProperties:
+                      type: string
+                    description: Store product id → store offer id.
+                  active:
+                    type: boolean
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  updated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Updated. Epoch milliseconds, or null.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/retention.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+    delete:
+      operationId: deleteRetentionOffer
+      tags:
+        - Retention
+      summary: Delete a retention offer
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: offer_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deleted"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/retention.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/apps/{app_id}/retention_messaging:
+    get:
+      operationId: getRetentionMessaging
+      tags:
+        - Retention
+      summary: Get Apple Retention Messaging settings
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: app_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The settings.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - retention_messaging
+                  app_id:
+                    type: string
+                  enabled:
+                    type: boolean
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          description: "A UUID: Apple's messageIdentifier."
+                        kind:
+                          type: string
+                          enum:
+                            - text
+                            - switch_plan
+                            - promotional_offer
+                        header:
+                          type: string
+                          description: Up to 66 characters.
+                        body:
+                          type: string
+                          description: Up to 144 characters.
+                        alternate_product_id:
+                          type:
+                            - string
+                            - "null"
+                          description: "switch_plan: the product to suggest."
+                        promotional_offer_id:
+                          type:
+                            - string
+                            - "null"
+                          description: "promotional_offer: the App Store promotional offer id."
+                        uploaded:
+                          type: array
+                          items:
+                            type: string
+                            enum:
+                              - sandbox
+                              - production
+                          description: Environments Apple accepted the upload in.
+                        error:
+                          type:
+                            - string
+                            - "null"
+                      required:
+                        - id
+                        - kind
+                        - header
+                        - body
+                  defaults:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        product_id:
+                          type: string
+                        locale:
+                          type: string
+                        message_id:
+                          type: string
+                        configured:
+                          type: array
+                          items:
+                            type: string
+                  rules:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        product_id:
+                          type:
+                            - string
+                            - "null"
+                          description: Null matches any product.
+                        message_id:
+                          type: string
+                  realtime_url:
+                    type: string
+                    description: Register this as the Get Retention Message URL (Sync does it).
+                  realtime_url_configured:
+                    type: object
+                    additionalProperties:
+                      type: integer
+                  stats:
+                    type: object
+                    properties:
+                      requests:
+                        type: integer
+                      answered:
+                        type: integer
+                      last_request_at:
+                        type:
+                          - integer
+                          - "null"
+                      last_environment:
+                        type:
+                          - string
+                          - "null"
+                  app_apple_id:
+                    type:
+                      - string
+                      - "null"
+                  has_in_app_purchase_key:
+                    type: boolean
+                  sync:
+                    type: object
+                    properties:
+                      environment:
+                        type: string
+                      errors:
+                        type: array
+                        items:
+                          type: string
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/retention.ts
+      x-scopes:
+        - project_configuration:apps:read
+      x-revenuedot-extension: true
+    post:
+      operationId: saveRetentionMessaging
+      tags:
+        - Retention
+      summary: Save messages, defaults and real-time rules
+      description: "Messages follow Apple's limits (header 66, body 144 characters). Default messages must be text messages. A message already uploaded to Apple cannot change: add a new one."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: app_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                messages:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: "A UUID: Apple's messageIdentifier."
+                      kind:
+                        type: string
+                        enum:
+                          - text
+                          - switch_plan
+                          - promotional_offer
+                      header:
+                        type: string
+                        description: Up to 66 characters.
+                      body:
+                        type: string
+                        description: Up to 144 characters.
+                      alternate_product_id:
+                        type:
+                          - string
+                          - "null"
+                        description: "switch_plan: the product to suggest."
+                      promotional_offer_id:
+                        type:
+                          - string
+                          - "null"
+                        description: "promotional_offer: the App Store promotional offer id."
+                      uploaded:
+                        type: array
+                        items:
+                          type: string
+                          enum:
+                            - sandbox
+                            - production
+                        description: Environments Apple accepted the upload in.
+                      error:
+                        type:
+                          - string
+                          - "null"
+                    required:
+                      - id
+                      - kind
+                      - header
+                      - body
+                defaults:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      product_id:
+                        type: string
+                      locale:
+                        type: string
+                      message_id:
+                        type: string
+                rules:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      product_id:
+                        type:
+                          - string
+                          - "null"
+                      message_id:
+                        type: string
+            example:
+              enabled: true
+              messages:
+                - id: 11111111-2222-4333-8444-555555555555
+                  kind: text
+                  header: Your scans stay unlimited
+                  body: Keep unlimited scans and cloud backup.
+              defaults:
+                - product_id: pro_monthly
+                  locale: en-US
+                  message_id: 11111111-2222-4333-8444-555555555555
+              rules:
+                - product_id: null
+                  message_id: 11111111-2222-4333-8444-555555555555
+      responses:
+        "200":
+          description: The settings.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - retention_messaging
+                  app_id:
+                    type: string
+                  enabled:
+                    type: boolean
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          description: "A UUID: Apple's messageIdentifier."
+                        kind:
+                          type: string
+                          enum:
+                            - text
+                            - switch_plan
+                            - promotional_offer
+                        header:
+                          type: string
+                          description: Up to 66 characters.
+                        body:
+                          type: string
+                          description: Up to 144 characters.
+                        alternate_product_id:
+                          type:
+                            - string
+                            - "null"
+                          description: "switch_plan: the product to suggest."
+                        promotional_offer_id:
+                          type:
+                            - string
+                            - "null"
+                          description: "promotional_offer: the App Store promotional offer id."
+                        uploaded:
+                          type: array
+                          items:
+                            type: string
+                            enum:
+                              - sandbox
+                              - production
+                          description: Environments Apple accepted the upload in.
+                        error:
+                          type:
+                            - string
+                            - "null"
+                      required:
+                        - id
+                        - kind
+                        - header
+                        - body
+                  defaults:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        product_id:
+                          type: string
+                        locale:
+                          type: string
+                        message_id:
+                          type: string
+                        configured:
+                          type: array
+                          items:
+                            type: string
+                  rules:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        product_id:
+                          type:
+                            - string
+                            - "null"
+                          description: Null matches any product.
+                        message_id:
+                          type: string
+                  realtime_url:
+                    type: string
+                    description: Register this as the Get Retention Message URL (Sync does it).
+                  realtime_url_configured:
+                    type: object
+                    additionalProperties:
+                      type: integer
+                  stats:
+                    type: object
+                    properties:
+                      requests:
+                        type: integer
+                      answered:
+                        type: integer
+                      last_request_at:
+                        type:
+                          - integer
+                          - "null"
+                      last_environment:
+                        type:
+                          - string
+                          - "null"
+                  app_apple_id:
+                    type:
+                      - string
+                      - "null"
+                  has_in_app_purchase_key:
+                    type: boolean
+                  sync:
+                    type: object
+                    properties:
+                      environment:
+                        type: string
+                      errors:
+                        type: array
+                        items:
+                          type: string
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/retention.ts
+      x-scopes:
+        - project_configuration:apps:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/apps/{app_id}/retention_messaging/actions/sync:
+    post:
+      operationId: syncRetentionMessaging
+      tags:
+        - Retention
+      summary: Upload to Apple and register the real-time URL
+      description: Calls Apple's Upload Message for messages not yet in the environment, Configure Default Message for each default, and Configure Realtime URL with this server's `/v1/retention/apple/{app_id}`, using the app's In-App Purchase key. Apple grants access to the Retention Messaging API on request; production also needs Apple's performance test.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: app_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                environment:
+                  type: string
+                  enum:
+                    - sandbox
+                    - production
+            example:
+              environment: sandbox
+      responses:
+        "200":
+          description: The settings and per-step errors.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - retention_messaging
+                  app_id:
+                    type: string
+                  enabled:
+                    type: boolean
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          description: "A UUID: Apple's messageIdentifier."
+                        kind:
+                          type: string
+                          enum:
+                            - text
+                            - switch_plan
+                            - promotional_offer
+                        header:
+                          type: string
+                          description: Up to 66 characters.
+                        body:
+                          type: string
+                          description: Up to 144 characters.
+                        alternate_product_id:
+                          type:
+                            - string
+                            - "null"
+                          description: "switch_plan: the product to suggest."
+                        promotional_offer_id:
+                          type:
+                            - string
+                            - "null"
+                          description: "promotional_offer: the App Store promotional offer id."
+                        uploaded:
+                          type: array
+                          items:
+                            type: string
+                            enum:
+                              - sandbox
+                              - production
+                          description: Environments Apple accepted the upload in.
+                        error:
+                          type:
+                            - string
+                            - "null"
+                      required:
+                        - id
+                        - kind
+                        - header
+                        - body
+                  defaults:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        product_id:
+                          type: string
+                        locale:
+                          type: string
+                        message_id:
+                          type: string
+                        configured:
+                          type: array
+                          items:
+                            type: string
+                  rules:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        product_id:
+                          type:
+                            - string
+                            - "null"
+                          description: Null matches any product.
+                        message_id:
+                          type: string
+                  realtime_url:
+                    type: string
+                    description: Register this as the Get Retention Message URL (Sync does it).
+                  realtime_url_configured:
+                    type: object
+                    additionalProperties:
+                      type: integer
+                  stats:
+                    type: object
+                    properties:
+                      requests:
+                        type: integer
+                      answered:
+                        type: integer
+                      last_request_at:
+                        type:
+                          - integer
+                          - "null"
+                      last_environment:
+                        type:
+                          - string
+                          - "null"
+                  app_apple_id:
+                    type:
+                      - string
+                      - "null"
+                  has_in_app_purchase_key:
+                    type: boolean
+                  sync:
+                    type: object
+                    properties:
+                      environment:
+                        type: string
+                      errors:
+                        type: array
+                        items:
+                          type: string
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/retention.ts
+      x-scopes:
+        - project_configuration:apps:read_write
+      x-revenuedot-extension: true
+  /v1/retention/apple/{app_id}:
+    post:
+      operationId: getRetentionMessage
+      tags:
+        - Retention
+      summary: Apple's real-time Get Retention Message call
+      description: "Apple posts `{ signedPayload }` when a customer is about to cancel. RevenueDot verifies Apple's signature and the app's Apple ID, then answers from the real-time rules: `message`, `alternateProduct` or `promotionalOffer` (signed with promotionalOfferSignatureV1), or `{}` so Apple shows the default message."
+      security: []
+      parameters:
+        - name: app_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                signedPayload:
+                  type: string
+                  description: JWS signed by the App Store.
+              required:
+                - signedPayload
+      responses:
+        "200":
+          description: The chosen message.
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                message:
+                  messageIdentifier: 11111111-2222-4333-8444-555555555555
+        "400":
+          description: Not signed by Apple, or for another app.
+        "404":
+          description: Unknown App Store app.
+      x-source: routes/lifecycle-public.ts
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/support_tickets:
+    get:
+      operationId: listSupportTickets
+      tags:
+        - Support
+      summary: List Customer Center tickets, newest first
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - open
+              - closed
+              - all
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/StartingAfter"
+      responses:
+        "200":
+          description: Tickets.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - support_ticket
+                        id:
+                          type: string
+                        app_id:
+                          type:
+                            - string
+                            - "null"
+                        app_user_id:
+                          type: string
+                        customer_email:
+                          type: string
+                        description:
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                            - open
+                            - closed
+                        emailed_to:
+                          type:
+                            - string
+                            - "null"
+                          description: The support address the ticket was emailed to.
+                        emailed:
+                          type: boolean
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: Created. Epoch milliseconds.
+                        closed_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Closed. Epoch milliseconds, or null.
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/support.ts
+      x-scopes:
+        - customer_information:customers:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/support_tickets/{ticket_id}:
+    post:
+      operationId: updateSupportTicket
+      tags:
+        - Support
+      summary: Close or reopen a ticket
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: ticket_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - open
+                    - closed
+              required:
+                - status
+            example:
+              status: closed
+      responses:
+        "200":
+          description: The ticket.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - support_ticket
+                  id:
+                    type: string
+                  app_id:
+                    type:
+                      - string
+                      - "null"
+                  app_user_id:
+                    type: string
+                  customer_email:
+                    type: string
+                  description:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - open
+                      - closed
+                  emailed_to:
+                    type:
+                      - string
+                      - "null"
+                    description: The support address the ticket was emailed to.
+                  emailed:
+                    type: boolean
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  closed_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Closed. Epoch milliseconds, or null.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/support.ts
+      x-scopes:
+        - customer_information:customers:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/customers/{customer_id}/support_summary:
+    get:
+      operationId: getSupportSummary
+      tags:
+        - Support
+      summary: What a help desk sidebar shows about a customer
+      description: "For an Intercom or Zendesk sidebar app: status, entitlements, subscriptions with auto-renew and store, total spent, refund requests, open tickets and a dashboard link."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/CustomerId"
+      responses:
+        "200":
+          description: The summary.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - support_summary
+                  app_user_id:
+                    type: string
+                  original_app_user_id:
+                    type: string
+                  aliases:
+                    type: array
+                    items:
+                      type: string
+                  email:
+                    type:
+                      - string
+                      - "null"
+                  display_name:
+                    type:
+                      - string
+                      - "null"
+                  status:
+                    type: string
+                    enum:
+                      - active
+                      - trialing
+                      - expired
+                      - never
+                  active_entitlements:
+                    type: array
+                    items:
+                      type: string
+                  subscriptions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        product_id:
+                          type: string
+                        store:
+                          type: string
+                        environment:
+                          type: string
+                        active:
+                          type: boolean
+                        period_type:
+                          type: string
+                        auto_renew:
+                          type: boolean
+                        billing_issue:
+                          type: boolean
+                        purchased_at:
+                          type: integer
+                          format: int64
+                          description: Current period start. Epoch milliseconds.
+                        expires_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Ends. Epoch milliseconds, or null.
+                        refunded_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Refunded. Epoch milliseconds, or null.
+                  purchases:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        product_id:
+                          type: string
+                        store:
+                          type: string
+                        purchased_at:
+                          type: integer
+                          format: int64
+                          description: Bought. Epoch milliseconds.
+                        refunded_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Refunded. Epoch milliseconds, or null.
+                  total_spent_in_usd:
+                    type: number
+                  sandbox_spent_in_usd:
+                    type: number
+                  first_seen_at:
+                    type: integer
+                    format: int64
+                    description: First seen. Epoch milliseconds.
+                  last_seen_at:
+                    type: integer
+                    format: int64
+                    description: Last seen. Epoch milliseconds.
+                  country:
+                    type:
+                      - string
+                      - "null"
+                  platform:
+                    type:
+                      - string
+                      - "null"
+                  app_version:
+                    type:
+                      - string
+                      - "null"
+                  refund_requests:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        product_id:
+                          type:
+                            - string
+                            - "null"
+                        store:
+                          type: string
+                        outcome:
+                          type: string
+                        requested_at:
+                          type: integer
+                          format: int64
+                          description: Requested. Epoch milliseconds.
+                  open_tickets:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - support_ticket
+                        id:
+                          type: string
+                        app_id:
+                          type:
+                            - string
+                            - "null"
+                        app_user_id:
+                          type: string
+                        customer_email:
+                          type: string
+                        description:
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                            - open
+                            - closed
+                        emailed_to:
+                          type:
+                            - string
+                            - "null"
+                          description: The support address the ticket was emailed to.
+                        emailed:
+                          type: boolean
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: Created. Epoch milliseconds.
+                        closed_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Closed. Epoch milliseconds, or null.
+                  dashboard_url:
+                    type: string
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/support.ts
+      x-scopes:
+        - customer_information:customers:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/support_summaries:
+    get:
+      operationId: findSupportSummaries
+      tags:
+        - Support
+      summary: Look customers up by email
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Matched case-insensitively against the `$email` attribute.
+      responses:
+        "200":
+          description: Up to 10 summaries.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - support_summary
+                        app_user_id:
+                          type: string
+                        original_app_user_id:
+                          type: string
+                        aliases:
+                          type: array
+                          items:
+                            type: string
+                        email:
+                          type:
+                            - string
+                            - "null"
+                        display_name:
+                          type:
+                            - string
+                            - "null"
+                        status:
+                          type: string
+                          enum:
+                            - active
+                            - trialing
+                            - expired
+                            - never
+                        active_entitlements:
+                          type: array
+                          items:
+                            type: string
+                        subscriptions:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              product_id:
+                                type: string
+                              store:
+                                type: string
+                              environment:
+                                type: string
+                              active:
+                                type: boolean
+                              period_type:
+                                type: string
+                              auto_renew:
+                                type: boolean
+                              billing_issue:
+                                type: boolean
+                              purchased_at:
+                                type: integer
+                                format: int64
+                                description: Current period start. Epoch milliseconds.
+                              expires_at:
+                                type:
+                                  - integer
+                                  - "null"
+                                format: int64
+                                description: Ends. Epoch milliseconds, or null.
+                              refunded_at:
+                                type:
+                                  - integer
+                                  - "null"
+                                format: int64
+                                description: Refunded. Epoch milliseconds, or null.
+                        purchases:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              product_id:
+                                type: string
+                              store:
+                                type: string
+                              purchased_at:
+                                type: integer
+                                format: int64
+                                description: Bought. Epoch milliseconds.
+                              refunded_at:
+                                type:
+                                  - integer
+                                  - "null"
+                                format: int64
+                                description: Refunded. Epoch milliseconds, or null.
+                        total_spent_in_usd:
+                          type: number
+                        sandbox_spent_in_usd:
+                          type: number
+                        first_seen_at:
+                          type: integer
+                          format: int64
+                          description: First seen. Epoch milliseconds.
+                        last_seen_at:
+                          type: integer
+                          format: int64
+                          description: Last seen. Epoch milliseconds.
+                        country:
+                          type:
+                            - string
+                            - "null"
+                        platform:
+                          type:
+                            - string
+                            - "null"
+                        app_version:
+                          type:
+                            - string
+                            - "null"
+                        refund_requests:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              product_id:
+                                type:
+                                  - string
+                                  - "null"
+                              store:
+                                type: string
+                              outcome:
+                                type: string
+                              requested_at:
+                                type: integer
+                                format: int64
+                                description: Requested. Epoch milliseconds.
+                        open_tickets:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              object:
+                                type: string
+                                enum:
+                                  - support_ticket
+                              id:
+                                type: string
+                              app_id:
+                                type:
+                                  - string
+                                  - "null"
+                              app_user_id:
+                                type: string
+                              customer_email:
+                                type: string
+                              description:
+                                type: string
+                              status:
+                                type: string
+                                enum:
+                                  - open
+                                  - closed
+                              emailed_to:
+                                type:
+                                  - string
+                                  - "null"
+                                description: The support address the ticket was emailed to.
+                              emailed:
+                                type: boolean
+                              created_at:
+                                type: integer
+                                format: int64
+                                description: Created. Epoch milliseconds.
+                              closed_at:
+                                type:
+                                  - integer
+                                  - "null"
+                                format: int64
+                                description: Closed. Epoch milliseconds, or null.
+                        dashboard_url:
+                          type: string
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/support.ts
+      x-scopes:
+        - customer_information:customers:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/winback_campaigns:
+    get:
+      operationId: listWinbackCampaigns
+      tags:
+        - Win-back
+      summary: List win-back campaigns
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: Campaigns with stats.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - winback_campaign
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                            - draft
+                            - active
+                            - paused
+                        audience:
+                          type: object
+                          properties:
+                            churned_min_days:
+                              type: integer
+                            churned_max_days:
+                              type: integer
+                            product_ids:
+                              type: array
+                              items:
+                                type: string
+                            stores:
+                              type: array
+                              items:
+                                type: string
+                            audience_id:
+                              type:
+                                - string
+                                - "null"
+                              description: A saved audience to narrow to.
+                          required:
+                            - churned_min_days
+                            - churned_max_days
+                        email:
+                          type: object
+                          properties:
+                            subject:
+                              type: string
+                            heading:
+                              type: string
+                            body:
+                              type: string
+                              description: Plain text; a blank line starts a paragraph.
+                            button_label:
+                              type: string
+                            sender_name:
+                              type:
+                                - string
+                                - "null"
+                              description: Defaults to the project name.
+                          required:
+                            - subject
+                            - heading
+                            - body
+                            - button_label
+                        offer:
+                          type: object
+                          properties:
+                            type:
+                              type: string
+                              enum:
+                                - store
+                                - url
+                              description: "`store`: the App Store's subscriptions page or the Play Store page of the customer's product. `url`: your own https link."
+                            url:
+                              type:
+                                - string
+                                - "null"
+                          required:
+                            - type
+                        send_hour_utc:
+                          type: integer
+                        track_opens:
+                          type: boolean
+                        last_run_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Last sent. Epoch milliseconds, or null.
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: Created. Epoch milliseconds.
+                        updated_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Updated. Epoch milliseconds, or null.
+                        stats:
+                          type: object
+                          properties:
+                            sent:
+                              type: integer
+                            failed:
+                              type: integer
+                            opened:
+                              type: integer
+                              description: Only counted with track_opens, and on clicks.
+                            clicked:
+                              type: integer
+                            unsubscribed:
+                              type: integer
+                            reactivated:
+                              type: integer
+                              description: Bought again within 30 days of the email.
+                            reactivated_revenue_in_usd:
+                              type: number
+                        recent_sends:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              object:
+                                type: string
+                              id:
+                                type: string
+                              email:
+                                type: string
+                              sent_at:
+                                type: integer
+                                format: int64
+                                description: Sent. Epoch milliseconds.
+                              opened_at:
+                                type:
+                                  - integer
+                                  - "null"
+                                format: int64
+                                description: Opened. Epoch milliseconds, or null.
+                              clicked_at:
+                                type:
+                                  - integer
+                                  - "null"
+                                format: int64
+                                description: Clicked. Epoch milliseconds, or null.
+                              unsubscribed_at:
+                                type:
+                                  - integer
+                                  - "null"
+                                format: int64
+                                description: Unsubscribed. Epoch milliseconds, or null.
+                              error:
+                                type:
+                                  - string
+                                  - "null"
+                          description: On the single campaign only.
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/winback.ts
+      x-scopes:
+        - project_configuration:projects:read
+      x-revenuedot-extension: true
+    post:
+      operationId: createWinbackCampaign
+      tags:
+        - Win-back
+      summary: Create a win-back campaign
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                status:
+                  type: string
+                  enum:
+                    - draft
+                    - active
+                    - paused
+                audience:
+                  type: object
+                  properties:
+                    churned_min_days:
+                      type: integer
+                    churned_max_days:
+                      type: integer
+                    product_ids:
+                      type: array
+                      items:
+                        type: string
+                    stores:
+                      type: array
+                      items:
+                        type: string
+                    audience_id:
+                      type:
+                        - string
+                        - "null"
+                      description: A saved audience to narrow to.
+                  required:
+                    - churned_min_days
+                    - churned_max_days
+                email:
+                  type: object
+                  properties:
+                    subject:
+                      type: string
+                    heading:
+                      type: string
+                    body:
+                      type: string
+                      description: Plain text; a blank line starts a paragraph.
+                    button_label:
+                      type: string
+                    sender_name:
+                      type:
+                        - string
+                        - "null"
+                      description: Defaults to the project name.
+                  required:
+                    - subject
+                    - heading
+                    - body
+                    - button_label
+                offer:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                      enum:
+                        - store
+                        - url
+                      description: "`store`: the App Store's subscriptions page or the Play Store page of the customer's product. `url`: your own https link."
+                    url:
+                      type:
+                        - string
+                        - "null"
+                  required:
+                    - type
+                send_hour_utc:
+                  type: integer
+                  minimum: 0
+                  maximum: 23
+                track_opens:
+                  type: boolean
+              required:
+                - name
+                - email
+                - offer
+            example:
+              name: Come back in September
+              status: active
+              audience:
+                churned_min_days: 3
+                churned_max_days: 60
+                product_ids: []
+                stores: []
+                audience_id: null
+              email:
+                subject: We saved your scans
+                heading: Your scans are waiting
+                body: Come back to Scanner Pro.
+                button_label: Resubscribe
+              offer:
+                type: store
+              send_hour_utc: 16
+              track_opens: false
+      responses:
+        "201":
+          description: The campaign.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - winback_campaign
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - draft
+                      - active
+                      - paused
+                  audience:
+                    type: object
+                    properties:
+                      churned_min_days:
+                        type: integer
+                      churned_max_days:
+                        type: integer
+                      product_ids:
+                        type: array
+                        items:
+                          type: string
+                      stores:
+                        type: array
+                        items:
+                          type: string
+                      audience_id:
+                        type:
+                          - string
+                          - "null"
+                        description: A saved audience to narrow to.
+                    required:
+                      - churned_min_days
+                      - churned_max_days
+                  email:
+                    type: object
+                    properties:
+                      subject:
+                        type: string
+                      heading:
+                        type: string
+                      body:
+                        type: string
+                        description: Plain text; a blank line starts a paragraph.
+                      button_label:
+                        type: string
+                      sender_name:
+                        type:
+                          - string
+                          - "null"
+                        description: Defaults to the project name.
+                    required:
+                      - subject
+                      - heading
+                      - body
+                      - button_label
+                  offer:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        enum:
+                          - store
+                          - url
+                        description: "`store`: the App Store's subscriptions page or the Play Store page of the customer's product. `url`: your own https link."
+                      url:
+                        type:
+                          - string
+                          - "null"
+                    required:
+                      - type
+                  send_hour_utc:
+                    type: integer
+                  track_opens:
+                    type: boolean
+                  last_run_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last sent. Epoch milliseconds, or null.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  updated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Updated. Epoch milliseconds, or null.
+                  stats:
+                    type: object
+                    properties:
+                      sent:
+                        type: integer
+                      failed:
+                        type: integer
+                      opened:
+                        type: integer
+                        description: Only counted with track_opens, and on clicks.
+                      clicked:
+                        type: integer
+                      unsubscribed:
+                        type: integer
+                      reactivated:
+                        type: integer
+                        description: Bought again within 30 days of the email.
+                      reactivated_revenue_in_usd:
+                        type: number
+                  recent_sends:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                        id:
+                          type: string
+                        email:
+                          type: string
+                        sent_at:
+                          type: integer
+                          format: int64
+                          description: Sent. Epoch milliseconds.
+                        opened_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Opened. Epoch milliseconds, or null.
+                        clicked_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Clicked. Epoch milliseconds, or null.
+                        unsubscribed_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Unsubscribed. Epoch milliseconds, or null.
+                        error:
+                          type:
+                            - string
+                            - "null"
+                    description: On the single campaign only.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/winback.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/winback_campaigns/{campaign_id}:
+    get:
+      operationId: getWinbackCampaign
+      tags:
+        - Win-back
+      summary: Get a campaign with stats and recent emails
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: campaign_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The campaign.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - winback_campaign
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - draft
+                      - active
+                      - paused
+                  audience:
+                    type: object
+                    properties:
+                      churned_min_days:
+                        type: integer
+                      churned_max_days:
+                        type: integer
+                      product_ids:
+                        type: array
+                        items:
+                          type: string
+                      stores:
+                        type: array
+                        items:
+                          type: string
+                      audience_id:
+                        type:
+                          - string
+                          - "null"
+                        description: A saved audience to narrow to.
+                    required:
+                      - churned_min_days
+                      - churned_max_days
+                  email:
+                    type: object
+                    properties:
+                      subject:
+                        type: string
+                      heading:
+                        type: string
+                      body:
+                        type: string
+                        description: Plain text; a blank line starts a paragraph.
+                      button_label:
+                        type: string
+                      sender_name:
+                        type:
+                          - string
+                          - "null"
+                        description: Defaults to the project name.
+                    required:
+                      - subject
+                      - heading
+                      - body
+                      - button_label
+                  offer:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        enum:
+                          - store
+                          - url
+                        description: "`store`: the App Store's subscriptions page or the Play Store page of the customer's product. `url`: your own https link."
+                      url:
+                        type:
+                          - string
+                          - "null"
+                    required:
+                      - type
+                  send_hour_utc:
+                    type: integer
+                  track_opens:
+                    type: boolean
+                  last_run_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last sent. Epoch milliseconds, or null.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  updated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Updated. Epoch milliseconds, or null.
+                  stats:
+                    type: object
+                    properties:
+                      sent:
+                        type: integer
+                      failed:
+                        type: integer
+                      opened:
+                        type: integer
+                        description: Only counted with track_opens, and on clicks.
+                      clicked:
+                        type: integer
+                      unsubscribed:
+                        type: integer
+                      reactivated:
+                        type: integer
+                        description: Bought again within 30 days of the email.
+                      reactivated_revenue_in_usd:
+                        type: number
+                  recent_sends:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                        id:
+                          type: string
+                        email:
+                          type: string
+                        sent_at:
+                          type: integer
+                          format: int64
+                          description: Sent. Epoch milliseconds.
+                        opened_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Opened. Epoch milliseconds, or null.
+                        clicked_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Clicked. Epoch milliseconds, or null.
+                        unsubscribed_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Unsubscribed. Epoch milliseconds, or null.
+                        error:
+                          type:
+                            - string
+                            - "null"
+                    description: On the single campaign only.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/winback.ts
+      x-scopes:
+        - project_configuration:projects:read
+      x-revenuedot-extension: true
+    post:
+      operationId: updateWinbackCampaign
+      tags:
+        - Win-back
+      summary: Update, start or pause a campaign
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: campaign_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                status:
+                  type: string
+                  enum:
+                    - draft
+                    - active
+                    - paused
+                audience:
+                  type: object
+                  properties:
+                    churned_min_days:
+                      type: integer
+                    churned_max_days:
+                      type: integer
+                    product_ids:
+                      type: array
+                      items:
+                        type: string
+                    stores:
+                      type: array
+                      items:
+                        type: string
+                    audience_id:
+                      type:
+                        - string
+                        - "null"
+                      description: A saved audience to narrow to.
+                  required:
+                    - churned_min_days
+                    - churned_max_days
+                email:
+                  type: object
+                  properties:
+                    subject:
+                      type: string
+                    heading:
+                      type: string
+                    body:
+                      type: string
+                      description: Plain text; a blank line starts a paragraph.
+                    button_label:
+                      type: string
+                    sender_name:
+                      type:
+                        - string
+                        - "null"
+                      description: Defaults to the project name.
+                  required:
+                    - subject
+                    - heading
+                    - body
+                    - button_label
+                offer:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                      enum:
+                        - store
+                        - url
+                      description: "`store`: the App Store's subscriptions page or the Play Store page of the customer's product. `url`: your own https link."
+                    url:
+                      type:
+                        - string
+                        - "null"
+                  required:
+                    - type
+                send_hour_utc:
+                  type: integer
+                  minimum: 0
+                  maximum: 23
+                track_opens:
+                  type: boolean
+            example:
+              status: paused
+      responses:
+        "200":
+          description: The campaign.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - winback_campaign
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - draft
+                      - active
+                      - paused
+                  audience:
+                    type: object
+                    properties:
+                      churned_min_days:
+                        type: integer
+                      churned_max_days:
+                        type: integer
+                      product_ids:
+                        type: array
+                        items:
+                          type: string
+                      stores:
+                        type: array
+                        items:
+                          type: string
+                      audience_id:
+                        type:
+                          - string
+                          - "null"
+                        description: A saved audience to narrow to.
+                    required:
+                      - churned_min_days
+                      - churned_max_days
+                  email:
+                    type: object
+                    properties:
+                      subject:
+                        type: string
+                      heading:
+                        type: string
+                      body:
+                        type: string
+                        description: Plain text; a blank line starts a paragraph.
+                      button_label:
+                        type: string
+                      sender_name:
+                        type:
+                          - string
+                          - "null"
+                        description: Defaults to the project name.
+                    required:
+                      - subject
+                      - heading
+                      - body
+                      - button_label
+                  offer:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        enum:
+                          - store
+                          - url
+                        description: "`store`: the App Store's subscriptions page or the Play Store page of the customer's product. `url`: your own https link."
+                      url:
+                        type:
+                          - string
+                          - "null"
+                    required:
+                      - type
+                  send_hour_utc:
+                    type: integer
+                  track_opens:
+                    type: boolean
+                  last_run_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last sent. Epoch milliseconds, or null.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  updated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Updated. Epoch milliseconds, or null.
+                  stats:
+                    type: object
+                    properties:
+                      sent:
+                        type: integer
+                      failed:
+                        type: integer
+                      opened:
+                        type: integer
+                        description: Only counted with track_opens, and on clicks.
+                      clicked:
+                        type: integer
+                      unsubscribed:
+                        type: integer
+                      reactivated:
+                        type: integer
+                        description: Bought again within 30 days of the email.
+                      reactivated_revenue_in_usd:
+                        type: number
+                  recent_sends:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                        id:
+                          type: string
+                        email:
+                          type: string
+                        sent_at:
+                          type: integer
+                          format: int64
+                          description: Sent. Epoch milliseconds.
+                        opened_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Opened. Epoch milliseconds, or null.
+                        clicked_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Clicked. Epoch milliseconds, or null.
+                        unsubscribed_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Unsubscribed. Epoch milliseconds, or null.
+                        error:
+                          type:
+                            - string
+                            - "null"
+                    description: On the single campaign only.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/winback.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+    delete:
+      operationId: deleteWinbackCampaign
+      tags:
+        - Win-back
+      summary: Delete a campaign
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: campaign_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deleted"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/winback.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/winback_campaigns/{campaign_id}/actions/preview:
+    post:
+      operationId: previewWinbackCampaign
+      tags:
+        - Win-back
+      summary: Who would get the email now
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: campaign_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Count and sample.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - winback_preview
+                  eligible:
+                    type: integer
+                  is_approximate:
+                    type: boolean
+                  sample:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        app_user_id:
+                          type: string
+                        email:
+                          type: string
+                        churned_at:
+                          type: integer
+                          format: int64
+                          description: Access ended. Epoch milliseconds.
+                        product_id:
+                          type: string
+                        store:
+                          type: string
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/winback.ts
+      x-scopes:
+        - project_configuration:projects:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/winback_campaigns/{campaign_id}/actions/send_test:
+    post:
+      operationId: sendWinbackTest
+      tags:
+        - Win-back
+      summary: Send a test email
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: campaign_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+              required:
+                - email
+            example:
+              email: me@example.com
+      responses:
+        "200":
+          description: Sent.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - winback_test
+                  sent_to:
+                    type: string
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "503":
+          $ref: "#/components/responses/V2Error503"
+      x-source: routes/v2/winback.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/winback_campaigns/{campaign_id}/actions/run:
+    post:
+      operationId: runWinbackCampaign
+      tags:
+        - Win-back
+      summary: Send now
+      description: Emails up to 500 eligible customers now. Each customer gets a campaign's email at most once. Active campaigns also send daily at `send_hour_utc`.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: campaign_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Counts.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - winback_run
+                  sent:
+                    type: integer
+                  failed:
+                    type: integer
+                  skipped:
+                    type: integer
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/winback.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v1/winback/c/{token}:
+    get:
+      operationId: winbackClick
+      tags:
+        - Win-back
+      summary: "Email button: records the click and redirects to the offer"
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "302":
+          description: To the offer.
+        "404":
+          description: Unknown link.
+      x-source: routes/lifecycle-public.ts
+      x-revenuedot-extension: true
+  /v1/winback/o/{token}:
+    get:
+      operationId: winbackOpen
+      tags:
+        - Win-back
+      summary: Open-tracking image (campaigns with track_opens)
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A 1×1 GIF.
+          content:
+            image/gif: {}
+      x-source: routes/lifecycle-public.ts
+      x-revenuedot-extension: true
+  /v1/winback/u/{token}:
+    get:
+      operationId: winbackUnsubscribePage
+      tags:
+        - Win-back
+      summary: Unsubscribe page (asks first)
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: HTML.
+          content:
+            text/html: {}
+        "404":
+          description: Unknown link.
+      x-source: routes/lifecycle-public.ts
+      x-revenuedot-extension: true
+    post:
+      operationId: winbackUnsubscribe
+      tags:
+        - Win-back
+      summary: Unsubscribe (also RFC 8058 one-click)
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: HTML confirmation.
+          content:
+            text/html: {}
+        "404":
+          description: Unknown link.
+      x-source: routes/lifecycle-public.ts
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/customer_lists:
+    get:
+      operationId: listCustomerList
+      tags:
+        - Customer lists
+      summary: Customers in a list, with the summary cards
+      description: Built-in lists or a saved audience, optionally filtered by audience rules and a search. Looks at the 10,000 most recently seen customers (`summary.is_approximate` when there are more).
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: list
+          in: query
+          schema:
+            type: string
+          description: "`all` (default), `active`, `sandbox`, `non_subscription`, `expired`, or a saved audience id."
+        - name: rules
+          in: query
+          schema:
+            type: string
+          description: "Extra filter: audience rules as JSON."
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Part of an app user id or email.
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/StartingAfter"
+      responses:
+        "200":
+          description: Rows and the summary.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - customer_list_row
+                        id:
+                          type: string
+                          description: App user ID.
+                        customer_uuid:
+                          type: string
+                        email:
+                          type:
+                            - string
+                            - "null"
+                        subscription_status:
+                          type: string
+                          enum:
+                            - active
+                            - trialing
+                            - grace_period
+                            - billing_issue
+                            - expired
+                            - none
+                        auto_renewal_status:
+                          type:
+                            - string
+                            - "null"
+                          enum:
+                            - on
+                            - off
+                            - null
+                        first_seen_at:
+                          type: integer
+                          format: int64
+                          description: First seen. Epoch milliseconds.
+                        last_seen_at:
+                          type: integer
+                          format: int64
+                          description: Last seen. Epoch milliseconds.
+                        spent_in_usd:
+                          type: number
+                        latest_purchase:
+                          type:
+                            - object
+                            - "null"
+                          properties:
+                            product_id:
+                              type: string
+                            store:
+                              type: string
+                            purchased_at:
+                              type: integer
+                              format: int64
+                              description: Bought. Epoch milliseconds.
+                            environment:
+                              type: string
+                        country:
+                          type:
+                            - string
+                            - "null"
+                        platform:
+                          type:
+                            - string
+                            - "null"
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+                  summary:
+                    type: object
+                    properties:
+                      object:
+                        type: string
+                      customers:
+                        type: integer
+                      trialing_subscribers:
+                        type: integer
+                      paid_subscribers:
+                        type: integer
+                      total_revenue_in_usd:
+                        type: number
+                      is_approximate:
+                        type: boolean
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/customer-lists.ts
+      x-scopes:
+        - customer_information:customers:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/customer_lists/export:
+    get:
+      operationId: exportCustomerList
+      tags:
+        - Customer lists
+      summary: Export a list as CSV
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: list
+          in: query
+          schema:
+            type: string
+          description: "`all` (default), `active`, `sandbox`, `non_subscription`, `expired`, or a saved audience id."
+        - name: rules
+          in: query
+          schema:
+            type: string
+          description: "Extra filter: audience rules as JSON."
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Part of an app user id or email.
+      responses:
+        "200":
+          description: "CSV with a header row: app_user_id, email, subscription_status, auto_renewal_status, first_seen_at, last_seen_at, spent_in_usd, latest_product_id, latest_store, latest_purchase_at, country, platform."
+          content:
+            text/csv:
+              schema:
+                type: string
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/customer-lists.ts
+      x-scopes:
+        - customer_information:customers:read
       x-revenuedot-extension: true
   /auth/config:
     get:
