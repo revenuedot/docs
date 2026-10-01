@@ -21,8 +21,8 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Offerings (SDK)**: [Get offerings](#get-offerings), [Get offerings without a user](#get-offerings-without-a-user), [Test Store product details](#test-store-product-details)
 - **Identity**: [Log in (identify)](#log-in-identify), [Alias two app user ids](#alias-two-app-user-ids)
 - **Attributes**: [Set customer attributes](#set-customer-attributes)
-- **SDK support**: [Intro offer eligibility (StoreKit 1)](#intro-offer-eligibility-storekit-1), [Sign a promotional offer (iOS)](#sign-a-promotional-offer-ios), [Attribution data (deprecated iOS call)](#attribution-data-deprecated-ios-call), [Apple AdServices token](#apple-adservices-token), [SDK health report availability](#sdk-health-report-availability), [SDK health report](#sdk-health-report), [Product to entitlement mapping (offline entitlements)](#product-to-entitlement-mapping-offline-entitlements), [Customer Center configuration](#customer-center-configuration), [Customer Center support ticket](#customer-center-support-ticket), [Virtual currency balances](#virtual-currency-balances), [Redeem a web purchase (not available)](#redeem-a-web-purchase-not-available), [Register an Apple external purchase token (iOS)](#register-an-apple-external-purchase-token-ios), [Rewarded ad verification (not available)](#rewarded-ad-verification-not-available), [Amazon receipt details](#amazon-receipt-details), [Paywall workflows (web SDK)](#paywall-workflows-web-sdk), [One paywall workflow (web SDK)](#one-paywall-workflow-web-sdk), [Restore eligibility (StoreKit 2)](#restore-eligibility-storekit-2), [Remote config fallback (none)](#remote-config-fallback-none), [Remote config: paywalls and UI settings](#remote-config-paywalls-and-ui-settings), [Download a remote-config blob](#download-a-remote-config-blob), [SDK paywall, Customer Center and ad events](#sdk-paywall-customer-center-and-ad-events), [SDK diagnostics (accepted, not stored)](#sdk-diagnostics-accepted-not-stored)
-- **Web Billing**: [Web offering products](#web-offering-products), [Start a hosted web checkout (not available)](#start-a-hosted-web-checkout-not-available), [Web Billing purchase (not available)](#web-billing-purchase-not-available), [Prepare a Web Billing checkout (not available)](#prepare-a-web-billing-checkout-not-available), [Start a Web Billing checkout (not available)](#start-a-web-billing-checkout-not-available), [Web Billing checkout status](#web-billing-checkout-status), [Refresh Web Billing checkout pricing](#refresh-web-billing-checkout-pricing), [Complete a Web Billing checkout](#complete-a-web-billing-checkout), [Web checkout branding](#web-checkout-branding)
+- **SDK support**: [Intro offer eligibility (StoreKit 1)](#intro-offer-eligibility-storekit-1), [Sign a promotional offer (iOS)](#sign-a-promotional-offer-ios), [Attribution data (deprecated iOS call)](#attribution-data-deprecated-ios-call), [Apple AdServices token](#apple-adservices-token), [SDK health report availability](#sdk-health-report-availability), [SDK health report](#sdk-health-report), [Product to entitlement mapping (offline entitlements)](#product-to-entitlement-mapping-offline-entitlements), [Customer Center configuration](#customer-center-configuration), [Customer Center support ticket](#customer-center-support-ticket), [Virtual currency balances](#virtual-currency-balances), [Redeem a web purchase](#redeem-a-web-purchase), [Register an Apple external purchase token (iOS)](#register-an-apple-external-purchase-token-ios), [Rewarded ad verification (not available)](#rewarded-ad-verification-not-available), [Amazon receipt details](#amazon-receipt-details), [Paywall workflows (web SDK)](#paywall-workflows-web-sdk), [One paywall workflow (web SDK)](#one-paywall-workflow-web-sdk), [Restore eligibility (StoreKit 2)](#restore-eligibility-storekit-2), [Remote config fallback (none)](#remote-config-fallback-none), [Remote config: paywalls and UI settings](#remote-config-paywalls-and-ui-settings), [Download a remote-config blob](#download-a-remote-config-blob), [SDK paywall, Customer Center and ad events](#sdk-paywall-customer-center-and-ad-events), [SDK diagnostics (accepted, not stored)](#sdk-diagnostics-accepted-not-stored)
+- **Web Billing**: [Web offering products](#web-offering-products), [Start a hosted web checkout](#start-a-hosted-web-checkout), [Web Billing purchase (not available)](#web-billing-purchase-not-available), [Prepare a Web Billing checkout (not available)](#prepare-a-web-billing-checkout-not-available), [Start a Web Billing checkout (not available)](#start-a-web-billing-checkout-not-available), [Web Billing checkout status](#web-billing-checkout-status), [Refresh Web Billing checkout pricing](#refresh-web-billing-checkout-pricing), [Complete a Web Billing checkout](#complete-a-web-billing-checkout), [Web checkout branding](#web-checkout-branding)
 - **Subscriber tokens**: [Get customer info (subscriber token)](#get-customer-info-subscriber-token), [Get offerings (subscriber token)](#get-offerings-subscriber-token), [Intro offer eligibility (StoreKit 1) (subscriber token)](#intro-offer-eligibility-storekit-1-subscriber-token), [Attribution data (deprecated iOS call) (subscriber token)](#attribution-data-deprecated-ios-call-subscriber-token), [Set customer attributes (subscriber token)](#set-customer-attributes-subscriber-token), [Apple AdServices token (subscriber token)](#apple-adservices-token-subscriber-token), [SDK health report (subscriber token)](#sdk-health-report-subscriber-token), [Customer Center configuration (subscriber token)](#customer-center-configuration-subscriber-token), [Customer Center support ticket (subscriber token)](#customer-center-support-ticket-subscriber-token), [Virtual currency balances (subscriber token)](#virtual-currency-balances-subscriber-token), [Restore eligibility (StoreKit 2) (subscriber token)](#restore-eligibility-storekit-2-subscriber-token), [Rewarded ad verification (not available) (subscriber token)](#rewarded-ad-verification-not-available-subscriber-token), [Web offering products (subscriber token)](#web-offering-products-subscriber-token), [Test Store product details (subscriber token)](#test-store-product-details-subscriber-token), [Spend in-app currency as the subscriber](#spend-in-app-currency-as-the-subscriber)
 - **Store notifications**: [App Store Server Notifications v2](#app-store-server-notifications-v2), [Google Play real-time developer notifications (Pub/Sub push)](#google-play-real-time-developer-notifications-pubsub-push), [Amazon Appstore Real-time Notifications (SNS)](#amazon-appstore-real-time-notifications-sns), [Stripe webhooks](#stripe-webhooks)
 - **Response signing**: [Public key for response signatures](#public-key-for-response-signatures)
@@ -1000,28 +1000,98 @@ Example 200 response:
 }
 ```
 
-### Redeem a web purchase (not available)
+### Redeem a web purchase
 
 `POST /v1/subscribers/redeem_purchase` · Auth: public app key
 
-What `Purchases.redeemWebPurchase()` calls with the `redemption_token` from a redemption deep link. RevenueDot takes no web payments, so no token is valid: 400 with code 7849, which the SDKs return as the `invalidToken` result.
+What `Purchases.redeemWebPurchase()` calls with the `redemption_token` from a redemption link (`<scheme>://redeem_web_purchase?redemption_token=rdrt_...`). The anonymous customer who paid on RevenueDot's web checkout is merged into this app user id, like `logIn`: their purchases and attributes move over. The answer is the customer info, and `PURCHASE_REDEEMED` is sent once. See [Redemption links](../docs/guides/redemption-links.md).
+
+- **200:** redeemed, or already redeemed by this customer (a retry is safe).
+- **400 · 7849:** the token is unknown, malformed or from another project. The SDK returns `invalidToken`.
+- **400 · 7852:** another customer redeemed it. The SDK returns `purchaseBelongsToOtherUser`.
+- **400 · 7853:** the link expired (after the web config's `redemption_link_hours`, default 24). `purchase_redemption_error_info.obfuscated_email` says where a new link goes; it is emailed at most once an hour. The SDK returns `expired` with that email.
+
+**Headers**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `X-Platform` | string | no | SDK platform (ios, android, macos, web ...). With a secret key it picks the project's app for that platform. |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `app_user_id` | string | yes | The app user id that gets the purchase. |
+| `redemption_token` | string | yes | From the redemption link. |
 
 **Example request**
 
 ```bash
-curl -s -X POST "$REVENUEDOT_URL/v1/subscribers/redeem_purchase" -H "Authorization: Bearer $PUBLIC_KEY"
+curl -s -X POST "$REVENUEDOT_URL/v1/subscribers/redeem_purchase" -H "Authorization: Bearer $PUBLIC_KEY" \
+  -H "Content-Type: application/json" -d '{"app_user_id":"user_1","redemption_token":"rdrt_q8Xc2kP0vN5mZ7tL1sW9hB3yR6dF4gJ2aE0uI8oK1nM"}'
 ```
 
 **Responses**
 
-- **400**: Invalid token. Returns [V1Error](#v1error).
+- **200**: Customer info with the web purchase. Returns [CustomerInfo](#customerinfo).
+- **400**: The token cannot be redeemed.
 - **401**: Unknown API key. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "request_date": "2026-09-30T20:41:54Z",
+  "request_date_ms": 1790800914034,
+  "subscriber": {
+    "entitlements": {
+      "pro": {
+        "expires_date": "2026-10-30T20:41:54Z",
+        "grace_period_expires_date": null,
+        "product_identifier": "pro_monthly",
+        "purchase_date": "2026-09-30T20:41:54Z"
+      }
+    },
+    "first_seen": "2026-09-30T20:41:54Z",
+    "last_seen": "2026-09-30T20:41:54Z",
+    "management_url": null,
+    "non_subscriptions": {},
+    "original_app_user_id": "user_1",
+    "original_application_version": null,
+    "original_purchase_date": "2026-09-30T20:41:54Z",
+    "other_purchases": {},
+    "subscriptions": {
+      "pro_monthly": {
+        "auto_resume_date": null,
+        "billing_issues_detected_at": null,
+        "display_name": null,
+        "expires_date": "2026-10-30T20:41:54Z",
+        "grace_period_expires_date": null,
+        "is_sandbox": true,
+        "management_url": null,
+        "original_purchase_date": "2026-09-30T20:41:54Z",
+        "ownership_type": "PURCHASED",
+        "period_type": "normal",
+        "purchase_date": "2026-09-30T20:41:54Z",
+        "refunded_at": null,
+        "store": "test_store",
+        "store_transaction_id": "test_1790800914000_quickstart",
+        "unsubscribe_detected_at": null,
+        "price": {
+          "amount": 9.99,
+          "currency": "USD"
+        }
+      }
+    }
+  }
+}
+```
 
 ### Register an Apple external purchase token (iOS)
 
 `POST /v1/external_purchase_tokens` · Auth: public app key
 
-Part of Apple's external purchase and link-out flows, before a web checkout. The token is acknowledged with an id, which is all the SDK reads; the web checkout that follows is not available (see `/rcbilling/v1/hosted-checkout`).
+Part of Apple's external purchase and link-out flows, before a web checkout. The token is acknowledged with an id, which is all the SDK reads. The web checkout that follows is `/rcbilling/v1/hosted-checkout`.
 
 **Request body** (`application/json`)
 
@@ -1353,7 +1423,7 @@ Example 200 response:
 
 ## Web Billing
 
-Web checkout calls from the iOS SDK and purchases-js. RevenueDot takes no web payments, so a checkout answers an error the SDK shows as a failed purchase.
+Web checkout calls from the iOS SDK and purchases-js. The iOS SDK's paywall web checkout opens a Stripe Checkout on your own Stripe account ([web billing](../docs/guides/web-billing.md)). The purchases-js checkout for RevenueCat Billing (`rcb_` keys, Stripe Elements inside the SDK) is not available and answers an error the SDK shows as a failed purchase.
 
 ### Web offering products
 
@@ -1386,22 +1456,47 @@ Example 200 response:
 }
 ```
 
-### Start a hosted web checkout (not available)
+### Start a hosted web checkout
 
 `POST /rcbilling/v1/hosted-checkout` · Auth: public app key
 
-The iOS SDK's paywall web checkout. RevenueDot takes no payments: 400 with code 7000, and the SDK returns `failed` for the checkout without retrying.
+The iOS SDK's paywall web checkout. RevenueDot finds the package in the offering, picks the project's Stripe app that sells it as a web product, and creates a Stripe Checkout Session for this app user id with that app's key. The SDK opens `checkout_url` and closes it when the browser reaches `success_url` or `cancel_url`; the success page records the purchase, so the customer info has it at once. See [Sell on the web with Stripe](../docs/guides/web-billing.md).
+
+- **400 · 7000:** the offering or package is unknown, or the package has no web product.
+- **503 · 7101:** Stripe is unavailable or refused the key.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `app_user_id` | string | yes |  |
+| `package_id` | string | yes | Package lookup key, such as $rc_monthly. |
+| `presented_offering_identifier` | string | yes | The offering's lookup key. |
 
 **Example request**
 
 ```bash
-curl -s -X POST "$REVENUEDOT_URL/rcbilling/v1/hosted-checkout" -H "Authorization: Bearer $PUBLIC_KEY"
+curl -s -X POST "$REVENUEDOT_URL/rcbilling/v1/hosted-checkout" -H "Authorization: Bearer $PUBLIC_KEY" \
+  -H "Content-Type: application/json" -d '{"app_user_id":"user_1","package_id":"$rc_monthly","presented_offering_identifier":"web"}'
 ```
 
 **Responses**
 
-- **400**: Not available. Returns [V1Error](#v1error).
+- **200**: The checkout.
+- **400**: No web product for this package. Returns [V1Error](#v1error).
 - **401**: Unknown API key. Returns [V1Error](#v1error).
+- **503**: The store could not be reached. Retry later. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "operation_session_id": "wco_8k2m9q4x7a1b3c5d",
+  "checkout_url": "https://checkout.stripe.com/c/pay/cs_test_a1B2c3D4",
+  "success_url": "https://api.revenuedot.app/pay/scanner/_/success",
+  "cancel_url": "https://api.revenuedot.app/pay/scanner/_/cancel"
+}
+```
 
 ### Web Billing purchase (not available)
 

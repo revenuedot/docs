@@ -199,7 +199,7 @@ REST API v2 follows RevenueCat's v2 paths, objects, list envelope and error form
 Authenticate with a **secret key** (\`Authorization: Bearer sk_...\`) or the dashboard session cookie. Lists return \`{ "object": "list", "items": [...], "next_page": ..., "url": ... }\`; follow \`next_page\` to page. \`limit\` is 1 to 100 (default 20).
 RevenueDot-only endpoints are on [Extensions](extensions.md).`);
 counts.extensions = operationsPage("extensions", "Which API endpoints are RevenueDot extensions?",
-  "RevenueDot-only endpoints: dashboard sign-in, OAuth for MCP clients, project settings, store setup, API keys, webhook deliveries, event log, Test Store, dashboard data and migration import.", `
+  "RevenueDot-only endpoints: dashboard sign-in, OAuth for MCP clients, project settings, store setup, API keys, webhook deliveries, event log, Test Store, web billing, purchase links, funnels, hosted pages, dashboard data and migration import.", `
 These endpoints exist only in RevenueDot. They use the same auth, errors and list envelope as [REST API v2](rest-v2.md). The dashboard is built on them, so everything the dashboard does, a script or an AI agent can do too.`);
 
 // Webhook events
@@ -208,10 +208,10 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
   out.push("RevenueDot POSTs one JSON event per request to each matching webhook: `{ \"api_version\": \"1.0\", \"event\": { ... } }`. The payload matches RevenueCat's webhook format field for field, so existing handlers keep working. Set up, verify and test webhooks with the [webhooks guide](../docs/guides/webhooks.md).", "");
   out.push("- **Headers:** `Content-Type: application/json`, `User-Agent: RevenueDot-Webhooks/1.0`, `X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256>`, and your `Authorization` header when you set one.");
   out.push("- **Delivery:** only HTTP 200 counts. Anything else, or no answer within 60 seconds, is retried after 5, 10, 20, 40 and 80 minutes, then marked failed. Deliveries can repeat: deduplicate on `event.id`.");
-  out.push("- **Examples:** recorded from a RevenueDot server on 2026-09-30 with Test Store purchases. Events that the Test Store cannot produce (pause, product change, extension, refund reversal, uncancellation, price consent) show the same builder's output with App Store or Google Play values.", "");
+  out.push("- **Examples:** recorded from a RevenueDot server on 2026-09-30 with Test Store purchases. Events that the Test Store cannot produce (pause, product change, extension, refund reversal, uncancellation, price consent) show the same builder's output with App Store or Google Play values. `PURCHASE_REDEEMED` and the funnel events show the builder's output for a web checkout on a test-mode Stripe account.", "");
   out.push("| Event | When it is sent |", "|---|---|");
   for (const [type, item] of Object.entries(spec.webhooks)) out.push(`| [\`${type}\`](#${slug(type)}) | ${esc(item.post.description)} |`);
-  out.push("", `Accepted in a webhook's \`event_types\` filter but never sent, because RevenueDot never has the fact behind them: \`TEMPORARY_ENTITLEMENT_GRANT\` (RevenueDot never grants access it has not verified with the store; during a store outage the SDK keeps the purchase and grants access on the device from the [offline entitlement mapping](../docs/guides/offline-entitlements.md)), \`INVOICE_ISSUANCE\` (only RevenueCat Billing issues invoices) and \`PURCHASE_REDEEMED\` (RevenueDot issues no web purchase redemption links). That makes 18 of RevenueCat's 21 event types sent.`, "");
+  out.push("", `Accepted in a webhook's \`event_types\` filter but never sent, because RevenueDot never has the fact behind them: \`TEMPORARY_ENTITLEMENT_GRANT\` (RevenueDot never grants access it has not verified with the store; during a store outage the SDK keeps the purchase and grants access on the device from the [offline entitlement mapping](../docs/guides/offline-entitlements.md)) and \`INVOICE_ISSUANCE\` (only RevenueCat Billing issues invoices). That makes 19 of RevenueCat's 21 event types sent. \`SUBSCRIBER_ALIAS\` and RevenueDot's three funnel types (\`FUNNEL_VIEWED\`, \`FUNNEL_STEP_COMPLETED\`, \`FUNNEL_PURCHASE\`) are opt-in: they go only to webhooks whose filter names them.`, "");
   for (const [type, item] of Object.entries(spec.webhooks)) {
     const content = item.post.requestBody.content["application/json"];
     out.push(`## ${type}`, "", item.post.description, "");
@@ -281,7 +281,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
   out.push(`| SDK endpoints and store notifications | \`/v1/...\`, \`/rcbilling/...\` | public app key | ${counts["sdk-endpoints"]} | [SDK endpoints](sdk-endpoints.md) |`);
   out.push(`| REST API v1 | \`/v1/subscribers/...\` | secret key | ${counts["rest-v1"]} | [REST API v1](rest-v1.md) |`);
   out.push(`| REST API v2 | \`/v2/projects/...\` | secret key or dashboard session | ${counts["rest-v2"]} | [REST API v2](rest-v2.md) |`);
-  out.push(`| RevenueDot extensions | \`/v2/...\`, \`/auth/...\`, \`/oauth/...\` | secret key, session or none | ${counts.extensions} | [Extensions](extensions.md) |`);
+  out.push(`| RevenueDot extensions | \`/v2/...\`, \`/auth/...\`, \`/oauth/...\`, \`/pay/...\` | secret key, session or none | ${counts.extensions} | [Extensions](extensions.md) |`);
   out.push(`| Webhooks (sent by RevenueDot) | your URL | HMAC signature | ${counts["webhook-events"]} event types | [Webhook events](webhook-events.md) |`, "");
   out.push("## Quick example", "", "```bash", "export REVENUEDOT_URL=http://localhost:8787 SECRET_KEY=sk_... PROJECT_ID=proj...", "curl -s \"$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1\" -H \"Authorization: Bearer $SECRET_KEY\"", "```", "", json(deref(spec.paths["/v2/projects/{project_id}/customers/{customer_id}"].get.responses["200"]).content["application/json"].example), "");
   out.push("## Conventions", "");

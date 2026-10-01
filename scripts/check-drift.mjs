@@ -32,10 +32,12 @@ for (const src of text.values()) for (const m of src.matchAll(/export\s+const\s+
 // Mounted routers: r.route("/prefix", someRoutes(deps)) prefixes every route of the file that defines someRoutes.
 const definedIn = new Map();
 for (const [file, src] of text) for (const m of src.matchAll(/export\s+function\s+(\w+)\s*\(/g)) definedIn.set(m[1], file);
+// Also r.route("/prefix", pay) after `const pay = payRoutes(deps)` (the hosted pages under /pay).
 const prefixOf = new Map();
 for (const src of text.values()) {
-  for (const m of src.matchAll(/\.route\(\s*"([^"]*)"\s*,\s*(\w+)\(/g)) {
-    const file = definedIn.get(m[2]);
+  const builtBy = new Map([...src.matchAll(/const\s+(\w+)\s*=\s*(\w+)\(/g)].map((m) => [m[1], m[2]]));
+  for (const m of src.matchAll(/\.route\(\s*"([^"]*)"\s*,\s*(\w+)\s*(\()?/g)) {
+    const file = definedIn.get(m[3] ? m[2] : builtBy.get(m[2]));
     if (file && m[1] !== "/") prefixOf.set(file, m[1].replace(/\/$/, ""));
   }
 }
@@ -113,9 +115,20 @@ function propNames(schema, depth = 0, out = [], seen = new Set()) {
   if (s.additionalProperties && typeof s.additionalProperties === "object") propNames(s.additionalProperties, depth + 1, out, seen);
   return out;
 }
+// A route file's own text plus the server files it imports directly (request schemas often live in a service file).
+const withImports = (file) => {
+  const src = text.get(file) ?? "";
+  const dir = file.split("/").slice(0, -1);
+  const imported = [...src.matchAll(/from\s+"(\.{1,2}\/[^"]+)\.js"/g)].map((m) => {
+    const parts = [...dir];
+    for (const seg of m[1].split("/")) { if (seg === "..") parts.pop(); else if (seg !== ".") parts.push(seg); }
+    return text.get(`${parts.join("/")}.ts`) ?? "";
+  });
+  return [src, ...imported].join("\n");
+};
 let fieldsChecked = 0;
 for (const { op, shared } of specOps.values()) {
-  const own = text.get(op["x-source"]) ?? "";
+  const own = withImports(op["x-source"]);
   // Pagination and expand parameters are read by shared helpers in routes/v2/common.ts.
   const ownOrCommon = own + (text.get("routes/v2/common.ts") ?? "");
   const params = [...shared, ...(op.parameters ?? [])].map(resolveRef).filter((p) => p.in === "query");
@@ -126,7 +139,7 @@ for (const { op, shared } of specOps.values()) {
   const schema = op.requestBody?.content?.["application/json"]?.schema;
   for (const { name, depth } of schema ? propNames(schema) : []) {
     fieldsChecked++;
-    if (depth === 0 ? !has(own, name) : !has(allCode, name)) problems.push(`${op.operationId}: request field "${name}" does not appear in ${depth === 0 ? op["x-source"] : "the server code"}`);
+    if (depth === 0 ? !has(own, name) : !has(allCode, name)) problems.push(`${op.operationId}: request field "${name}" does not appear in ${depth === 0 ? `${op["x-source"]} or the files it imports` : "the server code"}`);
   }
 }
 for (const [name, schema] of Object.entries(spec.components.schemas)) {

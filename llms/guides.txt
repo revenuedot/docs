@@ -1,4 +1,4 @@
-# RevenueDot documentation: Guides: stores, webhooks, integrations, self-hosting
+# RevenueDot documentation: Guides: stores, web billing, webhooks, integrations, self-hosting
 
 > RevenueDot is an open-source backend for in-app purchases and subscriptions that works with the RevenueCat SDK.
 > Start free on RevenueDot Cloud (https://app.revenuedot.app/signup, free up to $10,000 monthly tracked revenue) or self-host it. An app points the RevenueCat SDK's proxy URL at RevenueDot and keeps its purchase code, offerings and customers.
@@ -10,7 +10,7 @@ Generated from https://github.com/revenuedot/docs by scripts/gen-llms.mjs. Index
 # Which guide do I need?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/README.md
-Description: Step-by-step guides for connecting stores, webhooks, integrations and data exports, refund requests, retention and win-back, support, customer lists, testing, your team, alert emails, and running RevenueDot on your own servers.
+Description: Step-by-step guides for connecting stores, selling on the web with purchase links and funnels, webhooks, integrations and data exports, refund requests, retention and win-back, support, customer lists, testing, your team, alert emails, and running RevenueDot on your own servers.
 
 Each guide is one task, start to finish. Connect a store first, then receive webhooks; run the server yourself with the self-hosting guides.
 
@@ -20,6 +20,12 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Accept Google Play purchases and get real-time notifications | [Connect Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md) |
 | Accept Amazon Appstore purchases on Fire tablets and Fire TV | [Connect the Amazon Appstore](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md) |
 | Track subscriptions sold with my own Stripe account | [Connect Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md) |
+| Sell my app's subscriptions on the web with a hosted Stripe checkout | [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md) |
+| Share a checkout link for an offering | [Purchase links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md) |
+| Build a multi-step web-to-app funnel (quiz, email, paywall) | [Funnels](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md) |
+| Unlock a web purchase in my app | [Redemption links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md) |
+| Give a discount or a code at web checkout | [Web discounts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-discounts.md) |
+| Put my purchase links and funnels on my own domain | [Custom domains](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/custom-domains.md) |
 | Receive purchase events in my backend and verify them | [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md) |
 | Send purchase events to Slack, Segment, Amplitude, Mixpanel, PostHog, Firebase, BigQuery, AppsFlyer, Adjust or Meta, or export my data to S3, R2 or Google Cloud Storage | [Integrations and data exports](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md) |
 | Have the SDK verify that responses come from my server | [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md) |
@@ -401,6 +407,845 @@ Both Stripe API shapes work: before 2025-03-31 (period fields on the subscriptio
 - [Sandbox and production](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/sandbox.md)
 - [SDK endpoints: POST /v1/receipts](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md)
 - [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md)
+
+---
+
+# How do I sell my app's subscriptions on the web with Stripe?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md
+Description: Connect your Stripe account with a restricted key, add a web config, let RevenueDot create web products in Stripe, put them in an offering, then share a purchase link or publish a funnel. Buyers pay on Stripe Checkout and unlock the app with a redemption link.
+
+RevenueDot hosts the checkout pages and runs every payment on **your own Stripe account**. Open **Web** in the dashboard and do four steps: connect Stripe, add a web config, create web products, and put them in an offering. Then share a [purchase link](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md) or publish a [funnel](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md). Buyers pay on Stripe Checkout. RevenueDot records the purchase like any Stripe purchase, sends the usual webhooks, and gives the buyer a [redemption link](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md) that unlocks the app.
+
+You need a Stripe account and a RevenueDot project with your app. You write no checkout code.
+
+## How a web purchase works
+1. A buyer opens a purchase link or a funnel, such as `https://api.revenuedot.app/pay/scanner/spring-sale`.
+2. They pick a plan. RevenueDot creates a Stripe Checkout Session with your Stripe key and sends them to Stripe's payment page.
+3. Stripe sends them back to the success page. RevenueDot reads the session from Stripe and records the purchase.
+4. The success page shows **Open the app** and the store buttons. The buyer also gets the link by email.
+5. The app opens the redemption link and calls `redeemWebPurchase`. The purchase moves to the app's user and the entitlement is active.
+
+When the page already knows the buyer's app user id (`?app_user_id=` on a purchase link, or the iOS SDK's web checkout), step 5 is not needed: the purchase goes straight to that user.
+
+## 1. Connect Stripe
+On the **Web** page, click **Add web provider** and pick Stripe. Or create a Stripe app with the API:
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"Scanner Web","type":"stripe"}'
+```
+
+Then create a **restricted key** in the [Stripe Dashboard → Developers → API keys](https://dashboard.stripe.com/apikeys/create). Web billing needs more than [tracking Stripe subscriptions](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md) does, because RevenueDot creates products, prices, Checkout Sessions, coupons and promotion codes in your account:
+
+| Stripe resource | Permission |
+|---|---|
+| Products | Write |
+| Prices | Write |
+| Checkout Sessions | Write |
+| Coupons | Write |
+| Promotion Codes | Write |
+| Subscriptions | Read |
+| Invoices | Read |
+| Charges | Read |
+| Customers | Read |
+
+Leave everything else at None. Save the key on the Stripe app page, or with the API:
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"stripe":{"stripe_secret_key":"rk_test_…"}}'
+```
+
+**Check credentials** on the app page tests the read permissions. It does not test the write permissions: a key without them fails when you create the first web product, with a 422 `store_error` that says the key needs write access to Products and Prices.
+
+### Add the Stripe webhook
+Use the same webhook endpoint as the [Stripe guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md#3-add-the-webhook-endpoint): `https://<your server>/v1/notifications/stripe/{app_id}`, with its signing secret saved as `stripe_webhook_secret`. **Select `checkout.session.completed`.** Add `checkout.session.async_payment_succeeded` too if you accept payment methods that confirm later, such as bank debits.
+
+The webhook is your backup for the success page. A buyer who closes the tab after paying still gets the purchase, because the webhook records it. A session that RevenueDot's checkout created is always recorded, even when **Track new purchases** is off.
+
+## 2. Add a web config
+The web config sets how the pages look and what happens after payment. One config per Stripe app. On the **Web** page, open the provider's menu and click **Add web config**.
+
+| Field | What it does |
+|---|---|
+| `app_name` | Shown at the top of every page. Default: the Stripe app's name |
+| `logo_url` | Logo at the top of every page |
+| `theme` | `background`, `text`, `accent` and `button_text` as `#RRGGBB`, and `corner_radius` from 0 to 24. Presets: Ink, Night, Ocean, Forest, Sunset |
+| `terms_url`, `privacy_url` | Links at the bottom of every page |
+| `support_email` | A Support link on the pages, and the reply-to address of the redemption email |
+| `success_mode` | `show_redemption` (RevenueDot's success page) or `redirect` (your own page) |
+| `success_redirect_url` | Required for `redirect`. RevenueDot answers 303 to it and adds `redemption_url` to the query |
+| `success_title`, `success_body` | The success page's title and text |
+| `cancel_url` | Where a cancelled checkout goes. Default: back to the page, which says "Checkout was cancelled" |
+| `app_scheme` | Your app's URL scheme for [redemption links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md), such as `scanner`. Default: `rd-` and 10 hex characters |
+| `app_store_url`, `play_store_url` | Store buttons on the success and redemption pages |
+| `redemption_link_hours` | How long a redemption link works, 1 to 720. Default 24 |
+
+Every URL must be https. With the API, send only the fields you change:
+
+```bash
+curl -s -X PUT "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/web_config" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"app_name":"Scanner","support_email":"help@scanner.example","terms_url":"https://scanner.example/terms","privacy_url":"https://scanner.example/privacy","app_scheme":"scanner","app_store_url":"https://apps.apple.com/app/id123","play_store_url":"https://play.google.com/store/apps/details?id=com.example.scanner"}'
+```
+```json
+{"object":"web_config","app_id":"appstrp8k2m9q4","saved":true,"updated_at":1790801342625,"app_name":"Scanner","logo_url":null,"theme":{"background":"#FFFFFF","text":"#0A0A0A","accent":"#0A0A0A","button_text":"#FFFFFF","corner_radius":0},"terms_url":"https://scanner.example/terms","privacy_url":"https://scanner.example/privacy","support_email":"help@scanner.example","success_mode":"show_redemption","success_redirect_url":null,"success_title":null,"success_body":null,"cancel_url":null,"app_scheme":"scanner","app_store_url":"https://apps.apple.com/app/id123","play_store_url":"https://play.google.com/store/apps/details?id=com.example.scanner","redemption_link_hours":24,"presets":["…"]}
+```
+
+`GET` on the same path returns the config, or the defaults with `saved: false` before the first save.
+
+## 3. Create web products
+A web product is a price you sell on the web. On the **Web** page, open the provider's menu and click **Create web product**. RevenueDot then, with your key:
+
+1. Creates a **Stripe Product** named after the web product, with `metadata.revenuedot_project` set to your project id.
+2. Creates a **Stripe Price** on it: the amount and currency, and for a subscription the billing period.
+3. Creates a RevenueDot product whose **`store_identifier` is the Stripe price id** (`price_…`). Stripe purchases of that price map to this product, so each price is its own product.
+4. Attaches it to the entitlements you pick.
+
+Billing periods are `P1W` (week), `P1M` (month), `P3M` (3 months), `P6M` (6 months) and `P1Y` (year). `trial_days` adds a free trial to each checkout; it is not stored on the Stripe price. `type` is `subscription`, `consumable` or `non_consumable` (one-time prices).
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/web_products" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"display_name":"Pro monthly","type":"subscription","price":{"amount":9.99,"currency":"USD"},"duration":"P1M","trial_days":7,"entitlement_ids":["entl1a2b3c4d5e"]}'
+```
+```json
+{"object":"web_product","product":{"object":"product","id":"prod1a2b3c4d5e6f7g","store_identifier":"price_1QxR2nKc8Hn4AbCd","type":"subscription","state":"active","subscription":{"duration":"P1M","grace_period_duration":null,"trial_duration":null},"one_time":{"is_consumable":null},"created_at":1790800901115,"app_id":"appstrp8k2m9q4","display_name":"Pro monthly"},"stripe_product_id":"prod_RqA1b2C3d4E5f6","stripe_price_id":"price_1QxR2nKc8Hn4AbCd","price":{"amount":9.99,"amount_minor":999,"currency":"USD"},"interval":"month","interval_count":1,"trial_days":7,"created_at":1790800901115}
+```
+
+**Already have prices in Stripe?** Send `stripe_price_id` instead of `price` and `duration`. RevenueDot reads the amount and period from Stripe and creates nothing there. The price needs a fixed amount, and its type must match: recurring for `subscription`, one-time otherwise. A second product for the same price answers 409.
+
+List them with `GET /v2/projects/{project_id}/apps/{app_id}/web_products`.
+
+## 4. Put web products in an offering
+Pages sell an offering's packages. A package can hold one product per app, so the same package can hold your App Store product, your Google Play product and your web product. The web pages show only the packages that have a web product of the Stripe app.
+
+```bash
+# Create the offering, a package, and attach the web product.
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/offerings" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"lookup_key":"web","display_name":"Go Pro on the web"}'
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/offerings/$OFFERING_ID/packages" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"lookup_key":"$rc_monthly","display_name":"Monthly","position":1}'
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/packages/$PACKAGE_ID/actions/attach_products" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"products":[{"product_id":"prod1a2b3c4d5e6f7g","eligibility_criteria":"all"}]}'
+```
+
+The checklist on the **Web** page is now complete. Read it with the API:
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/web" -H "Authorization: Bearer $SECRET_KEY"
+```
+```json
+{"object":"web_overview","pay_base":"https://api.revenuedot.app/pay","project_base":"https://api.revenuedot.app/pay/scanner","checklist":{"connect_stripe":true,"web_config":true,"web_products":true,"offering":true},"web_products":3,"offerings_with_web_products":["ofrngm2u3h89blc"],"providers":["…"],"domain":{"…":"…"}}
+```
+
+Now create a [purchase link](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md) or a [funnel](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md).
+
+## The hosted checkout
+A checkout starts from a purchase link, a funnel's paywall step, or the iOS SDK's paywall web checkout. RevenueDot checks the plan and any [discount](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-discounts.md), then creates a Stripe Checkout Session:
+
+- `mode` is `subscription` for a recurring price and `payment` for a one-time price, with one line item: the package's price.
+- `subscription_data.trial_period_days` when the web product has a trial.
+- `customer_email` when the page knows the email (`?email=`, or a funnel's email step).
+- `discounts` with the code's promotion code, or the page's automatic coupon.
+- `metadata` with `app_user_id`, `rd_checkout` (the web checkout id) and `rd_source`. A subscription gets the same metadata.
+- `success_url` is the page's success page. `cancel_url` is the web config's `cancel_url`, or the page itself.
+
+**Who the purchase belongs to.** When the page has an app user id, the purchase goes to that customer. Otherwise the buyer gets a new anonymous id, `$RCAnonymousID:` and 32 hex characters, and a redemption link later moves the purchase to the app's user.
+
+**How it is recorded.** The success page and the `checkout.session.completed` webhook both record the purchase; whichever comes first does it, once. Both read the session from Stripe and record it through the same path as [`POST /v1/receipts` with `X-Platform: stripe`](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md#4-post-each-purchase-from-your-backend). So you get the usual events: `INITIAL_PURCHASE` (`TRIAL` during a trial) or `NON_RENEWING_PURCHASE`, with `store: STRIPE` and `presented_offering_id` set to the offering. Renewals, cancellations and refunds then come from Stripe's webhooks as described in the [Stripe guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md#how-stripe-states-map-to-events).
+
+**The buyer's email** becomes the customer's `$email` attribute. The redemption link is emailed to it when the server can send email. RevenueDot Cloud always can. A self-hosted server needs [SMTP settings](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#email).
+
+## The success page
+After payment, Stripe sends the buyer to `<page>/success`. The page shows:
+- **Paid, anonymous buyer:** the success title and text, **Open the app** (the [redemption link](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md)), and the App Store and Google Play buttons.
+- **Paid, buyer with an app user id:** "Your purchase is linked to your account. Open the app to use it." and the store buttons. No redemption link is needed.
+- **Not confirmed yet:** "Your payment is processing. This page updates by itself." The page reloads until Stripe confirms.
+
+With `success_mode: redirect`, the page answers 303 to your `success_redirect_url` and adds `redemption_url` (the https redemption link) to the query, so your own page can show it.
+
+## The iOS SDK's web checkout
+A RevenueCatUI paywall can have a purchase button that opens web checkout (see [Paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md)). The iOS SDK then calls `POST /rcbilling/v1/hosted-checkout` with the package. RevenueDot finds the Stripe app that sells that package and answers with a Stripe Checkout URL for the SDK's app user id. The SDK closes the page when it reaches the success or cancel URL, and the purchase is already on the customer. A package with no web product answers 400 with code 7000. Reference: [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#start-a-hosted-web-checkout).
+
+## Test before you go live
+Use a test-mode key (`rk_test_…`). Purchases are then sandbox data, kept out of production charts, and webhooks carry `environment: SANDBOX`. Pay with [Stripe's test cards](https://docs.stripe.com/testing), such as `4242 4242 4242 4242`. For production, create a second Stripe app with a live key, its own webhook endpoint and its own web products: Stripe keeps test and live products apart.
+
+## Not built yet
+- **"Connect with Stripe"** (OAuth). It needs RevenueDot's own Stripe platform account. Until then, paste a restricted key.
+- **Paddle** as a web provider.
+- **An embedded checkout** (Stripe Elements on your page) and the purchases-js Web Billing checkout for `rcb_` keys. RevenueDot's checkout is a hosted page.
+- **Apple Pay domain registration** for your custom domain.
+- No real Stripe account has run these flows yet. The tests run against an in-memory copy of Stripe's API. Run a purchase in Stripe test mode before you send buyers.
+
+## Related
+- [Purchase links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md), [Funnels](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md), [Redemption links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md), [Web discounts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-discounts.md), [Custom domains](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/custom-domains.md)
+- [Connect Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md): subscriptions from your own checkout, the webhook and the event mapping
+- [Extensions: Web billing](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#web-billing)
+
+---
+
+# How do I share a checkout link for an offering?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md
+Description: A purchase link is a hosted checkout page for one offering at /pay/<project>/<link>. Add ?app_user_id= to buy for a signed-in user, ?email= to pre-fill the email and ?code= to pre-fill a discount code. Links can expire and carry an automatic discount.
+
+Create a **purchase link**. It is a checkout page for one offering that RevenueDot hosts, at an address such as `https://api.revenuedot.app/pay/scanner/spring-sale`. The page shows the offering's web plans, takes payment on Stripe Checkout, and ends on the success page with a redemption link. Put it in emails, ads, QR codes or your website.
+
+First finish the four steps in [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md): Stripe connected, a web config, web products, and an offering with them.
+
+## Create a link
+In the dashboard, open **Funnels**, then **Purchase links → Create purchase link**. Pick the offering and give the link a name. With the API:
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/purchase_links" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"Spring sale","offering_id":"ofrngm2u3h89blc","slug":"spring-sale"}'
+```
+```json
+{"object":"purchase_link","id":"plink_4k8m2q9x1z3c","name":"Spring sale","slug":"spring-sale","app_id":"appstrp8k2m9q4","offering_id":"ofrngm2u3h89blc","offering_lookup_key":"web","offering_display_name":"Go Pro on the web","discount_id":null,"expires_at":null,"disabled_at":null,"status":"active","url":"https://api.revenuedot.app/pay/scanner/spring-sale","checkouts":0,"purchases":0,"created_at":1790800901115}
+```
+
+| Field | What it does |
+|---|---|
+| `name` | Your name for the link. Buyers do not see it |
+| `offering_id` | The offering whose packages the page sells |
+| `slug` | The end of the address. Default: made from the name. 3 to 40 lower-case letters, digits or `-`, unique among the project's links and funnels. A few words are reserved, such as `api`, `r` and `success` |
+| `app_id` | The Stripe app to sell through. Default: the project's first Stripe app |
+| `discount_id` | An automatic [web discount](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-discounts.md), applied without a code |
+| `expires_at` | When the link stops working, in epoch milliseconds |
+| `enabled` | `false` creates it turned off |
+
+`checkouts` and `purchases` count the checkouts started and paid from the link.
+
+## The URL
+```
+<pay base>/<project slug>/<link slug>
+```
+
+- On RevenueDot Cloud the pay base is `https://api.revenuedot.app/pay` today.
+- On a self-hosted server it is `https://<your server>/pay`, or `REVENUEDOT_PAY_URL` when you set it.
+- With a verified [custom domain](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/custom-domains.md), the link is `https://<your domain>/<link slug>`.
+
+The `url` field always holds the current address. Change the project slug or the domain, and every link follows.
+
+### Query parameters
+| Parameter | What it does |
+|---|---|
+| `?app_user_id=user_123` | Buys for this app user id. The purchase goes straight to that customer, so no redemption link is needed. Use it in emails or in-app links to signed-in users |
+| `?email=ana@example.com` | Pre-fills the email. Stripe Checkout shows it and the receipt goes there |
+| `?code=SPRING20` | Pre-fills a discount code. The page checks it at once and shows the result |
+
+Combine them: `https://api.revenuedot.app/pay/scanner/spring-sale?app_user_id=user_123&code=SPRING20`. In the dashboard, **Copy link for a signed-in user** copies the link with an `app_user_id` placeholder.
+
+The purchase goes to whatever `app_user_id` the link carries. Put your app's real user id there, the same one the app passes to `Purchases.logIn`.
+
+## What the page shows
+- The web config's logo, app name and colours.
+- One card per package that holds a web product of the Stripe app: the package name, the price per period, and the trial ("7-day free trial, then $9.99 per month"). The plan with the lowest monthly price gets a "Save N%" badge when it saves 5% or more.
+- A discount code field with a live check ("20% off for 3 months applied at checkout.").
+- Your terms, privacy and support links.
+
+A cancelled checkout returns to the page with `?canceled=1`, which says "Checkout was cancelled. Pick a plan to try again." Set `cancel_url` in the web config to send buyers elsewhere.
+
+## Expiry and turning a link off
+An expired or turned-off link answers **410** with a page that says "This link has expired". Starting a checkout from it also answers 410.
+
+```bash
+# Turn the link off, or set an expiry (null removes it).
+curl -s -X PATCH "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/purchase_links/plink_4k8m2q9x1z3c" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" -d '{"enabled":false}'
+curl -s -X PATCH "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/purchase_links/plink_4k8m2q9x1z3c" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" -d '{"expires_at":1793392914000}'
+```
+
+`status` is `active`, `expired` or `disabled`. A deleted link answers 404.
+
+## Automatic discount
+Set `discount_id` to apply a [web discount](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-discounts.md) to every checkout from the link, with no code. A buyer who types a code gets the code's discount instead. The discount's own checks still apply: it must be enabled, not expired, under its cap, for the chosen plan, and the buyer must be eligible.
+
+```bash
+curl -s -X PATCH "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/purchase_links/plink_4k8m2q9x1z3c" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" -d '{"discount_id":"disc8h3n1v6w0z2y4d"}'
+```
+
+## Other operations
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/purchase_links" -H "Authorization: Bearer $SECRET_KEY"
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/purchase_links/plink_4k8m2q9x1z3c" -H "Authorization: Bearer $SECRET_KEY"
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/purchase_links/plink_4k8m2q9x1z3c" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+The key needs `project_configuration:offerings:read_write` to change links. Reference: [Extensions: Purchase links](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#purchase-links).
+
+## Related
+- [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md)
+- [Redemption links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md): how an anonymous buyer unlocks the app
+- [Funnels](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md): several steps before the plans
+- [Custom domains](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/custom-domains.md)
+
+---
+
+# How do I build a web-to-app funnel?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md
+Description: Build a multi-step funnel (questions, info, email, paywall, success) in the dashboard or with AI, publish it to a public URL, sell on Stripe Checkout, and see where visitors drop off. Funnel events can go to webhooks and to Segment, Amplitude, Mixpanel and PostHog.
+
+Open **Funnels** in the dashboard and click **Create funnel**. A funnel is a few screens in a row, such as a quiz, a proof point, an email field, the plans and a success page. Edit the steps in the builder, check them in the live preview, and click **Publish**. The funnel then lives at a public URL such as `https://api.revenuedot.app/pay/scanner/focus-quiz`. Visitors pay on Stripe Checkout and open the app with a [redemption link](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md). The **Analytics** tab shows where they drop off.
+
+First finish the four steps in [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md). A funnel's paywall step sells an offering's web products.
+
+## Start a funnel
+- **New funnel from the starter**: a question, an info step, an email step, the paywall and the success step, in your web config's colours.
+- **New blank funnel**: the paywall and the success step only.
+- **Build with AI**: describe the funnel, such as "A fitness app for beginners with an email step before the paywall". See [Build with AI](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md#build-with-ai).
+
+## The builder
+- **Steps** on the left: add, reorder, duplicate and delete steps.
+- **Properties** in the middle: the selected step's texts and options, and the theme (colours and corner radius, with the presets Ink, Night, Ocean, Forest and Sunset).
+- **Preview** on the right: the real page in a phone frame, showing the selected step with your web prices. Discount codes and payments only run on the public page.
+- **Publish** (or **Publish changes**), **Unpublish**, the public URL with a copy button, and the **Analytics** tab.
+
+Edits are saved as a draft. Visitors keep seeing the published copy until you publish again.
+
+## Step types
+| Type | What the visitor sees | Fields |
+|---|---|---|
+| `question` | A question with 1 to 8 answers | `options` (`id`, `label`, optional `next`), `multiple`, `attribute`, `button_label` |
+| `info` | A short text, with an optional image | `body`, `image_url` (https), `button_label` |
+| `email` | An email field | `placeholder`, `required` (default true), `button_label` |
+| `paywall` | The offering's web plans and the pay button | `offering`, `features`, `highlight_package`, `discount_id`, `allow_codes`, `button_label` |
+| `success` | The end page after payment | `body`, `show_redemption` |
+
+Every step has an `id`, a `type`, a `title` and an optional `subtitle`.
+
+- **Questions.** A single-choice question moves on as soon as the visitor taps an answer. With `multiple: true` the visitor picks several and taps the button.
+- **Email.** The address goes to Stripe Checkout as `customer_email` and becomes the customer's `$email` attribute. The redemption link is emailed there.
+- **Paywall.** `offering` is the offering's lookup key, or null for the current offering. `features` are up to 8 bullet lines. `highlight_package` is the package selected first, such as `$rc_annual`. `discount_id` applies a [web discount](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-discounts.md) without a code. `allow_codes` shows the code field.
+- **Success.** Shown after payment. With `show_redemption`, it shows **Open the app** and the store buttons. A visitor who arrived with `?app_user_id=` sees that the purchase is linked to their account instead.
+
+## The funnel JSON
+The builder edits a JSON document, the same one the API reads and writes:
+
+```json
+{
+  "theme": { "background": "#FFFFFF", "text": "#0A0A0A", "accent": "#0A0A0A", "button_text": "#FFFFFF", "corner_radius": 0 },
+  "steps": [
+    { "id": "goal", "type": "question", "title": "What do you want to get done?", "attribute": "goal",
+      "options": [
+        { "id": "focus", "label": "Focus on deep work" },
+        { "id": "habits", "label": "Build better habits" },
+        { "id": "sleep", "label": "Sleep better", "next": "sleep_tip" }
+      ] },
+    { "id": "plan", "type": "info", "title": "Your plan is ready", "body": "People with the same goal kept going 3 times longer with a daily plan." },
+    { "id": "sleep_tip", "type": "info", "title": "Better sleep starts tonight", "body": "Most people fall asleep 15 minutes sooner in the first week." },
+    { "id": "email", "type": "email", "title": "Where should we send your plan?", "placeholder": "you@example.com", "required": true },
+    { "id": "paywall", "type": "paywall", "title": "Unlock your full plan", "offering": "web", "highlight_package": "$rc_annual",
+      "features": ["Your personal daily plan", "Reminders that adapt to you"], "allow_codes": true, "button_label": "Continue" },
+    { "id": "success", "type": "success", "title": "You are in", "body": "Open the app to start your plan.", "show_redemption": true }
+  ]
+}
+```
+
+**Rules checked on every save:**
+- 1 to 30 steps. Step ids are unique, 1 to 40 lower-case letters, digits, `-` or `_`.
+- Titles up to 120 characters. Subtitles and bodies up to 600. Button labels up to 40.
+- Questions have 1 to 8 options with unique ids and labels up to 80 characters.
+- Every `next` names a step that exists.
+- Colours are `#RRGGBB`. `corner_radius` is 0 to 24. `image_url` is https.
+- An `attribute` uses letters, digits and `_ . - $`.
+
+**Rules checked before publishing:** exactly one paywall step and exactly one success step, the paywall before the success step, and the success step last. The funnel's `problems` list says what is missing, and **Publish** stays off until it is empty.
+
+## Paths
+An answer can jump to another step: set the option's `next` to that step's id. Without `next`, the visitor goes to the next step in the list. In the example above, "Sleep better" skips to `sleep_tip`; the other answers go to `plan`. Paths work on single-choice questions. The back button returns along the path the visitor took.
+
+## Answers become customer attributes
+Give a question an `attribute`, such as `goal`. When the visitor pays, the answer is saved on the customer under that name. Several answers are joined with ", ". Attributes reach the app's user when the purchase is [redeemed](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md), and they appear in webhooks' `subscriber_attributes` and in the dashboard. Use them to personalize the app after sign-up.
+
+## Publish
+Click **Publish**, or call the API. A funnel needs a connected Stripe app to publish.
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/funnels/fnl_7q2k9m4x1z8c/actions/publish" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+The public URL is `<pay base>/<project slug>/<funnel slug>`, or `https://<your domain>/<funnel slug>` with a [custom domain](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/custom-domains.md). A funnel's slug is unique among the project's funnels and [purchase links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md). The page takes the same query parameters as a purchase link: `?app_user_id=`, `?email=` and `?code=`. `utm_*` parameters are kept with the funnel's events. **Unpublish** takes the page down (404) and keeps the draft.
+
+## Events
+The page records what each visitor does, once per page session:
+
+| Event | When |
+|---|---|
+| `funnel_viewed` | The visitor opens the funnel |
+| `step_viewed` | A step appears |
+| `step_completed` | The visitor finishes a step. A question carries the answer; a paywall the package; an email step only `provided` or `skipped`, never the address |
+| `checkout_started` | The paywall starts a Stripe Checkout (recorded by the server) |
+| `purchase` | The checkout is paid (recorded by the server) |
+
+### Webhooks and analytics tools
+Three of them can also go to your [webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md) and [integrations](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md) as RevenueDot event types:
+
+| Event type | Filter value | Analytics event name |
+|---|---|---|
+| `FUNNEL_VIEWED` | `funnel_viewed` | `rd_funnel_viewed` |
+| `FUNNEL_STEP_COMPLETED` | `funnel_step_completed` | `rd_funnel_step_completed` |
+| `FUNNEL_PURCHASE` | `funnel_purchase` | `rd_funnel_purchase` |
+
+They are **opt-in**: only webhooks and integrations whose event filter names them receive them, so handlers that know only RevenueCat's event types never see them. Segment, Amplitude, Mixpanel and PostHog send them with the names above.
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/webhooks" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"Funnels","url":"https://api.example.com/webhooks/funnels","event_types":["funnel_viewed","funnel_step_completed","funnel_purchase","initial_purchase"]}'
+```
+
+Each event carries `funnel_id`, `funnel_name`, `funnel_slug`, `session_id`, `step_id`, `step_type`, `step_index`, `answer`, the page's `utm_*` parameters, `store: STRIPE` and the environment. `FUNNEL_PURCHASE` adds `product_id` and the buyer's `app_user_id`. Visitors who have not paid have no app user id, so `app_user_id` is null on the first two types unless the page URL had `?app_user_id=`. Use `session_id` to join one visit's events. Full fields: [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#funnel_step_completed).
+
+## Analytics
+The **Analytics** tab, or the API, shows the last 7, 30 or more days:
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/funnels/fnl_7q2k9m4x1z8c/analytics?days=7" -H "Authorization: Bearer $SECRET_KEY"
+```
+```json
+{"object":"funnel_analytics","funnel_id":"fnl_7q2k9m4x1z8c","days":7,"views":2,"checkouts":1,"purchases":1,"conversion":0.5,"revenue_usd":59.99,
+ "steps":[{"id":"goal","type":"question","title":"What do you want to get done?","viewed":2,"completed":1,"drop_off":0.5},"…"],
+ "daily":[{"date":"2026-09-30","views":2,"purchases":1},"…"]}
+```
+
+| Field | Meaning |
+|---|---|
+| `views` | Page sessions that opened the funnel |
+| `steps[].viewed`, `steps[].completed` | Sessions that saw the step and finished it. For the success step, `completed` is purchases |
+| `steps[].drop_off` | 1 minus completed divided by viewed, from 0 to 1 |
+| `checkouts` | Sessions that started a Stripe Checkout |
+| `purchases` | Paid checkouts |
+| `conversion` | Purchases divided by views |
+| `revenue_usd` | What the purchases paid, in US dollars |
+| `daily` | Views and purchases per UTC day |
+
+`days` is 1 to 365 (default 30). The funnel list shows `views_30d` and `purchases_30d`.
+
+## Build with AI
+Click **Build with AI** and describe the funnel: who it is for, the questions to ask and the offer. RevenueDot asks a language model for the funnel JSON, repairs what it can (ids, a missing paywall or success step, paths to steps that do not exist), checks it, and opens the result as a new funnel for you to edit. Nothing is published until you publish it.
+
+It uses the same model and the same limits as [Generate with AI on paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md#ai-on-a-self-hosted-server), shared between the two: one generation every 5 seconds and 60 a day per project, 100 a day per person, and 5,000 a day per server. On RevenueDot Cloud it works without setup. On a self-hosted server it needs `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`; without one the button is hidden and the API answers 503.
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/funnels/generate" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"prompt":"A sleep app quiz for people who wake up at night","app_name":"Drift"}'
+```
+
+The answer is `{ "object": "funnel_generation", "draft": {…}, "fixes": ["added a success step"], "provider", "model" }`. Create a funnel from it with `POST /funnels` and `"draft"`.
+
+## Use the API
+```bash
+# Create from the starter, then change the draft and publish.
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/funnels" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"name":"Focus quiz"}'
+curl -s -X PATCH "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/funnels/fnl_7q2k9m4x1z8c" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d @funnel-draft.json   # {"draft": {"theme": {…}, "steps": […]}}
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/funnels/fnl_7q2k9m4x1z8c/actions/publish" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+`POST /funnels` takes `name`, and optionally `slug`, `app_id`, `template` (`starter` or `blank`) or a full `draft`. A draft that breaks a rule answers 400 and names the field, such as `draft.theme.accent`. Every operation: [Extensions: Funnels](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#funnels).
+
+## Not built yet
+- A/B tests of funnel steps, a template gallery, and image upload (use an https image URL).
+- Funnel events go to webhooks and to Segment, Amplitude, Mixpanel and PostHog. Ad networks (Meta, AppsFlyer, Adjust) do not get them yet.
+
+## Related
+- [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md)
+- [Purchase links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md): one page with the plans, no steps
+- [Redemption links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md)
+- [Web discounts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-discounts.md)
+
+---
+
+# How does a web purchase reach my app?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md
+Description: An anonymous web buyer gets a redemption link, <scheme>://redeem_web_purchase?redemption_token=…. Register the scheme, pass the link to redeemWebPurchase, and the purchase moves to the app's user. The results are success, invalidToken, purchaseBelongsToOtherUser and expired.
+
+Through a **redemption link**. A buyer who paid on the web without an app user id gets a link to open on their phone. The link opens your app, your app passes it to the SDK's `redeemWebPurchase`, and RevenueDot moves the purchase to the app's user. The entitlement is active at once, even if the buyer paid before they installed the app.
+
+Buyers whose app user id the page already knew (`?app_user_id=` on a [purchase link](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md), or the iOS SDK's web checkout) need no redemption link: their purchase is on their customer already.
+
+## The two forms of the link
+| Form | Looks like | Where it is used |
+|---|---|---|
+| Deep link | `scanner://redeem_web_purchase?redemption_token=rdrt_q8Xc…` | Opens the app. The SDK parses it |
+| https link | `https://api.revenuedot.app/pay/r/rdrt_q8Xc…` | In emails and QR codes. It opens a page with **Open the app** (the deep link) and the App Store and Google Play buttons |
+
+The scheme is the web config's `app_scheme` (see [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md#2-add-a-web-config)). Set it to your app's own scheme, such as `scanner`. The default is `rd-` and 10 hex characters, which works too once you register it in the app.
+
+The buyer gets the link in three places:
+- On the **success page** after payment: **Open the app**. On a phone, tapping it tries the deep link first.
+- **By email**, when Stripe has the buyer's email and the server can send email. The subject is "Your Scanner purchase is ready", and replies go to the web config's `support_email`.
+- On your own page, as `redemption_url`, when the web config's `success_mode` is `redirect`.
+
+A link works for `redemption_link_hours` (default 24). The token is `rdrt_` and 43 random characters; RevenueDot stores only its SHA-256 hash.
+
+## 1. Register the URL scheme
+### iOS
+Add the scheme to `Info.plist`:
+
+```xml
+<key>CFBundleURLTypes</key>
+<array>
+  <dict>
+    <key>CFBundleURLName</key>
+    <string>com.example.scanner.redeem</string>
+    <key>CFBundleURLSchemes</key>
+    <array>
+      <string>scanner</string>
+    </array>
+  </dict>
+</array>
+```
+
+### Android
+Add an intent filter to the activity that opens the app:
+
+```xml
+<activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop">
+  <intent-filter>
+    <action android:name="android.intent.action.VIEW" />
+    <category android:name="android.intent.category.DEFAULT" />
+    <category android:name="android.intent.category.BROWSABLE" />
+    <data android:scheme="scanner" />
+  </intent-filter>
+</activity>
+```
+
+## 2. Redeem the link
+Configure the SDK with its proxy URL pointing at RevenueDot, as usual. If your app has accounts, call `logIn` before you redeem, so the purchase lands on the signed-in user.
+
+### iOS (Swift)
+```swift
+// RevenueDot: the RevenueCat SDK parses the redemption link and calls POST /v1/subscribers/redeem_purchase.
+// Docs: https://revenuedot.app/docs/guides/redemption-links
+import RevenueCat
+import SwiftUI
+
+struct ContentView: View {
+    var body: some View {
+        HomeView()
+            .onOpenURL { url in
+                // Only redemption links parse; other deep links return nil.
+                guard let redemption = url.asWebPurchaseRedemption else { return }
+                Task {
+                    switch await Purchases.shared.redeemWebPurchase(redemption) {
+                    case let .success(customerInfo):
+                        print("Unlocked:", customerInfo.entitlements.active.keys)
+                    case let .error(error):
+                        print("Try again later:", error.localizedDescription)
+                    case .invalidToken:
+                        print("This link is not valid.")
+                    case .purchaseBelongsToOtherUser:
+                        print("This purchase is already linked to another account.")
+                    case let .expired(obfuscatedEmail):
+                        print("This link expired. We sent a new one to \(obfuscatedEmail).")
+                    }
+                }
+            }
+    }
+}
+```
+
+`Purchases.parseAsWebPurchaseRedemption(_:)` does the same as `url.asWebPurchaseRedemption`. In Objective-C or completion-handler code, call `redeemWebPurchase(webPurchaseRedemption:completion:)`. In a UIKit app, handle the URL in `scene(_:openURLContexts:)`.
+
+### Android (Kotlin)
+```kotlin
+// RevenueDot: the RevenueCat SDK parses the redemption link and calls POST /v1/subscribers/redeem_purchase.
+// Docs: https://revenuedot.app/docs/guides/redemption-links
+import com.revenuecat.purchases.Purchases
+import com.revenuecat.purchases.asWebPurchaseRedemption
+import com.revenuecat.purchases.interfaces.RedeemWebPurchaseListener
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        redeem(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        redeem(intent)
+    }
+
+    private fun redeem(intent: Intent) {
+        // Only redemption links parse; other intents return null.
+        val redemption = intent.asWebPurchaseRedemption() ?: return
+        Purchases.sharedInstance.redeemWebPurchase(redemption) { result ->
+            when (result) {
+                is RedeemWebPurchaseListener.Result.Success -> showUnlocked(result.customerInfo)
+                is RedeemWebPurchaseListener.Result.Error -> showError(result.error.message)
+                RedeemWebPurchaseListener.Result.InvalidToken -> showError("This link is not valid.")
+                RedeemWebPurchaseListener.Result.PurchaseBelongsToOtherUser -> showError("This purchase is already linked to another account.")
+                is RedeemWebPurchaseListener.Result.Expired -> showError("This link expired. We sent a new one to ${result.obfuscatedEmail}.")
+            }
+        }
+    }
+}
+```
+
+`Purchases.parseAsWebPurchaseRedemption(url)` parses a URL string instead of an intent.
+
+### React Native and Flutter
+Both call the same endpoint. In React Native, `await Purchases.parseAsWebPurchaseRedemption(url)` returns the redemption, and `await Purchases.redeemWebPurchase(redemption)` redeems it. Flutter has the same two methods on `Purchases`.
+
+## What each result means
+The SDK calls `POST /v1/subscribers/redeem_purchase` with `{ "app_user_id", "redemption_token" }` and the app's public key.
+
+| SDK result | Server answer | What happened |
+|---|---|---|
+| `success` | 200, customer info | The purchase is on the app's user. A second redeem by the same customer also succeeds, so a retry is safe |
+| `invalidToken` | 400, code 7849 | The token is unknown, malformed, from another project, or replaced by a newer link |
+| `purchaseBelongsToOtherUser` | 400, code 7852 | Another customer already redeemed it. The https link page says "Already unlocked" |
+| `expired` | 400, code 7853 | The link is older than `redemption_link_hours`. RevenueDot emails a new link and answers the address in a hidden form, such as `t***@e*****e.com` |
+| `error` | 401, 5xx, no network | Show an error and let the buyer try again |
+
+```json
+{"code":7853,"message":"The link has expired.","purchase_redemption_error_info":{"obfuscated_email":"t***@e*****e.com"}}
+```
+
+**About expired links.** The first redeem of an expired link emails a fresh link and answers `expired`. The fresh link replaces the old one, so the old link then answers `invalidToken`. A new email goes out at most once an hour per purchase. If the buyer gave no email, the answer has no `purchase_redemption_error_info` and no email is sent; ask them to contact support.
+
+## What redeeming does
+The anonymous customer who paid on the web (`$RCAnonymousID:…`) is merged into the app's user, the same way `logIn` merges an anonymous customer. Purchases and attributes move over, including `$email` and the answers from a [funnel](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md). If the app's user already has purchases, it keeps them and gains the web purchase. The SDK gets the updated customer info, so the entitlement is active at once.
+
+RevenueDot then sends **`PURCHASE_REDEEMED`** to your [webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md) and integrations, once:
+
+```json
+{"api_version":"1.0","event":{"type":"PURCHASE_REDEEMED","id":"5B2E8C1D-9F3A-4E7B-A6C0-1D2E3F4A5B6C","app_id":"appstrp8k2m9q4","event_timestamp_ms":1790801342625,"store":"STRIPE","environment":"SANDBOX","redeemed_from":["$RCAnonymousID:7c1e9b2f4a6d48e3b05f9a8c2d1e3f47"],"redeemed_by":["user_1"],"redemption_outcome":"alias","redemption_platform":"ios","product_id":"price_1QxR2nKc8Hn4AbCd","entitlement_ids":["pro"],"workflow_id":"fnl_7q2k9m4x1z8c","workflow_step_id":null,"trace_id":"wco_8k2m9q4x7a1b3c5d","app_user_id":"user_1"}}
+```
+
+The fields follow RevenueCat's sample payload. `workflow_id` is the funnel id when the purchase came from a funnel, `trace_id` is the web checkout id, and `app_user_id` (a RevenueDot addition) is the user who redeemed it. Every field: [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#purchase_redeemed).
+
+## Test it
+1. Buy with a test-mode Stripe key and the card `4242 4242 4242 4242`, without `?app_user_id=`.
+2. Copy the deep link from the https link page, or the email.
+3. Open it on a simulator: `xcrun simctl openurl booted "scanner://redeem_web_purchase?redemption_token=rdrt_…"` on iOS, or `adb shell am start -a android.intent.action.VIEW -d "scanner://redeem_web_purchase?redemption_token=rdrt_…"` on Android.
+4. The app should show the entitlement, and the customer's history in the dashboard shows the purchase and `PURCHASE_REDEEMED`.
+
+## Related
+- [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md)
+- [Purchase links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md) and [Funnels](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md)
+- [iOS SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/ios.md), [Android SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/android.md)
+- [SDK endpoints: redeem a web purchase](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#redeem-a-web-purchase)
+
+---
+
+# How do I give discounts at web checkout?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-discounts.md
+Description: Web discounts use RevenueCat's v2 discount fields and operations. Each discount is a Stripe coupon and each code a Stripe promotion code in your own account. Checkout checks that it is enabled, not expired, under its cap, for the plan, and that the buyer is eligible.
+
+Create a **web discount**. It takes a percentage or a fixed amount off the first payment, every payment for some months, or every payment. Buyers use it in two ways: they type a **code** on a [purchase link](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md) or a [funnel](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md), or the page applies it **automatically**. RevenueDot creates each discount as a **Stripe coupon** and each code as a **Stripe promotion code** in your own Stripe account, so the discount shows on Stripe Checkout, the invoices and the receipts.
+
+In the dashboard: **Product catalog → Web discounts → Create discount**. With the API, use RevenueCat's v2 discount operations, which RevenueDot implements with the same fields and answers.
+
+## Discount fields
+| Field | Values | Stripe coupon |
+|---|---|---|
+| `identifier` | Your id, unique in the project. Letters, digits, `_ . -` | `metadata.revenuedot_identifier` |
+| `customer_facing_name` | What buyers see, such as "Spring sale" | `name` (first 40 characters) |
+| `type` | `percentage` or `fixed_amount` | |
+| `percentage` | 1 to 100, for `percentage` | `percent_off` |
+| `fixed_amounts` | Amount off per currency, for `fixed_amount`: `{"USD":{"currency":"USD","amount":5}}` | `amount_off` and `currency` for USD (or else the first currency in alphabetical order), `currency_options` for the others |
+| `duration_mode` | `one_time`, `time_window` or `forever` | `duration`: `once`, `repeating`, `forever` |
+| `time_window` | For `time_window`: whole months or years, `P1M` to `P3Y` | `duration_in_months` |
+| `eligibility` | `everyone`, `never_purchased`, `never_subscribed`, `never_subscribed_to_the_same_product` | Checked by RevenueDot |
+| `product_identifiers` | The plans it applies to: a web product's store identifier (its Stripe price id) or its RevenueDot product id (`prod…`). Empty: every plan | `applies_to.products` |
+| `max_redemptions` | RevenueDot addition. Paid checkouts it may be used in, across all codes | `max_redemptions` |
+| `expires_at` | RevenueDot addition. The last moment it works, in epoch milliseconds | `redeem_by` (and `expires_at` on each promotion code) |
+
+These are the field names of [RevenueCat's v2 discount operations](https://www.revenuecat.com/docs/api-v2), so existing scripts keep working. RevenueCat's `Discount` answer has no room for `max_redemptions` and `expires_at`, so read them back with the extension `GET /v2/projects/{project_id}/web_discounts`.
+
+A fixed amount only applies to payments in the currencies it lists. A plan in another currency refuses it. Stripe repeats a coupon by whole months, so `time_window` accepts months and years only, up to 36 months.
+
+## Create a discount and its codes
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"identifier":"spring20","customer_facing_name":"Spring sale","type":"percentage","percentage":20,"duration_mode":"time_window","time_window":"P3M","eligibility":"everyone","max_redemptions":100}'
+```
+```json
+{"object":"discount","id":"disc5k2m9q4x7a1b3c","identifier":"spring20","customer_facing_name":"Spring sale","duration_mode":"time_window","eligibility":"everyone","time_window":"P3M","disabled_at":null,"type":"percentage","percentage":20,"created_at":1790800901115,"updated_at":1790800901115}
+```
+
+RevenueDot creates the coupon in every Stripe app of the project that has a key. Then add codes. Each becomes a Stripe promotion code:
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/disc5k2m9q4x7a1b3c/discount_codes" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"codes":["SPRING20","friends"]}'
+```
+```json
+[{"object":"discount_code","code":"SPRING20","created_at":1790800901115},{"object":"discount_code","code":"friends","created_at":1790800901115}]
+```
+
+Codes use letters, digits, `_` and `-`. They are unique in the project and buyers can type them in any case: `spring20` works for `SPRING20`, and `spring20` cannot be added as a second code (409).
+
+A fixed amount in two currencies:
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"identifier":"five_off","customer_facing_name":"$5 off","type":"fixed_amount","fixed_amounts":{"USD":{"currency":"USD","amount":5},"EUR":{"currency":"EUR","amount":4.5}},"duration_mode":"one_time","eligibility":"never_purchased"}'
+```
+
+## Apply it without a code
+Set the discount as a purchase link's `discount_id`, or a funnel paywall step's `discount_id`. Every checkout from that page then gets the coupon. A buyer who types a code gets the code's discount instead.
+
+## What checkout checks
+When a buyer types a code, the page checks it at once and shows the answer. Checkout checks again before it creates the Stripe Checkout Session:
+
+| Check | The buyer sees |
+|---|---|
+| The code exists in the project | "This code is not valid." |
+| The discount is enabled | "This code is no longer active." |
+| `expires_at` has not passed | "This code has expired." |
+| Fewer than `max_redemptions` paid checkouts used it | "This code has been used the maximum number of times." |
+| The plan is in `product_identifiers` (when set) | "This code does not apply to this plan." |
+| A fixed amount lists the plan's currency | "This code does not apply to payments in EUR." |
+| The buyer is eligible | "This code is for new customers only." |
+
+**Eligibility** uses the purchase history of the buyer's app user id. `never_purchased` refuses anyone with any purchase. `never_subscribed` refuses anyone with a subscription. `never_subscribed_to_the_same_product` refuses anyone who had a subscription to the plan's product. An anonymous buyer (no `?app_user_id=`) has no history, so they are always eligible.
+
+A valid code goes to Stripe as the session's promotion code; an automatic discount as its coupon. A use counts once the checkout is paid. The extension list shows `times_redeemed` per discount and per code.
+
+## Edit, disable and delete
+Send only what changes:
+
+```bash
+curl -s -X PATCH "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/disc5k2m9q4x7a1b3c" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" -d '{"percentage":30}'
+```
+
+- **A new coupon replaces the old one.** Stripe coupons cannot change their amount or duration. So a change to `type`, `percentage`, `fixed_amounts`, `duration_mode`, `time_window`, `product_identifiers`, `max_redemptions` or `expires_at` creates a new coupon and new promotion codes for the same codes, and turns the old promotion codes off. Subscriptions that already use the old coupon keep it. A new name or eligibility changes nothing in Stripe.
+- **Disable** (`POST …/discounts/{id}/actions/disable`) refuses the discount at checkout and turns its promotion codes off. **Enable** (`…/actions/enable`) turns them back on.
+- **Delete a code** (`DELETE …/discount_codes/{code}`) turns its promotion code off.
+- **Delete the discount** (`DELETE …/discounts/{id}`) turns its promotion codes off and deletes its coupons. Existing subscriptions keep their discount, as in Stripe.
+
+When Stripe cannot be reached, a write answers 422 `store_error` with `retryable: true` and saves nothing, like the other store operations.
+
+## See settings, uses and Stripe ids
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/web_discounts" -H "Authorization: Bearer $SECRET_KEY"
+```
+```json
+{"object":"list","items":[{"object":"web_discount","id":"disc5k2m9q4x7a1b3c","identifier":"spring20","customer_facing_name":"Spring sale","type":"percentage","percentage":20,"duration_mode":"time_window","time_window":"P3M","eligibility":"everyone","disabled_at":null,"label":"20% off for 3 months","product_identifiers":[],"max_redemptions":100,"expires_at":null,"times_redeemed":1,"status":"active","stripe":[{"app_id":"appstrp8k2m9q4","coupon_id":"Zx81kQ2p"}],"codes":[{"code":"SPRING20","times_redeemed":1,"created_at":1790800901115,"stripe_promotion_codes":{"appstrp8k2m9q4":"promo_1QxS0aKc8Hn4AbCd"}}],"created_at":1790800901115,"updated_at":1790800901115}],"next_page":null,"url":"/v2/projects/proj18pzzkao/web_discounts"}
+```
+
+`status` is `active`, `disabled`, `expired` or `used_up`. `label` is how checkout describes it.
+
+## All operations
+| Operation | Path |
+|---|---|
+| List, create | `GET`, `POST /v2/projects/{project_id}/discounts` |
+| Get, update, delete | `GET`, `PATCH`, `DELETE /v2/projects/{project_id}/discounts/{discount_id}` |
+| Enable, disable | `POST …/discounts/{discount_id}/actions/enable`, `…/actions/disable` |
+| List codes, create codes | `GET`, `POST …/discounts/{discount_id}/discount_codes` |
+| Delete a code | `DELETE …/discounts/{discount_id}/discount_codes/{discount_code}` |
+| Settings, uses and Stripe ids (extension) | `GET /v2/projects/{project_id}/web_discounts` |
+
+Keys need `project_configuration:discounts:read` or `:read_write`. Reference: [REST API v2: Discounts](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#discounts).
+
+Web discounts apply to RevenueDot's web checkout only. App Store and Google Play offers are set up in those stores: see [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md) for Apple's.
+
+## Related
+- [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md)
+- [Purchase links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md) and [Funnels](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md)
+
+---
+
+# Where do my purchase links and funnels live, and can I use my own domain?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/custom-domains.md
+Description: Hosted pages live at <pay base>/<project slug>/<page>, which is https://api.revenuedot.app/pay on Cloud and your server's /pay (or REVENUEDOT_PAY_URL) when self-hosted. A custom domain needs a CNAME, a TXT record and Verify; on Cloud, TLS is then added by hand.
+
+By default, every [purchase link](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md), [funnel](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md) and [redemption link](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md) lives on RevenueDot's address: `<pay base>/<project slug>/<page slug>`. You can move them to a domain you own, such as `pay.yourapp.com`: add two DNS records, click **Verify**, and the pages answer at `https://pay.yourapp.com/<page slug>`. On RevenueDot Cloud there is one more step, done by the RevenueDot team by hand for now: adding the domain's TLS certificate.
+
+Both settings are in **Project settings → Domains**.
+
+## The default address
+| Where RevenueDot runs | Pay base | Example page |
+|---|---|---|
+| RevenueDot Cloud | `https://api.revenuedot.app/pay` | `https://api.revenuedot.app/pay/scanner/spring-sale` |
+| Self-hosted | `https://<your server>/pay` | `https://revenuedot.example.com/pay/scanner/spring-sale` |
+| Self-hosted with `REVENUEDOT_PAY_URL` | The value you set | `https://pay.example.com/scanner/spring-sale` |
+
+- **Project slug.** Each project gets one from its name, such as `scanner`. Change it under **Project address**; it must be unique on the server. Every link and funnel follows at once, and the old address stops working.
+- **Redemption links** live at `<pay base>/r/<token>`, outside any project.
+- **`REVENUEDOT_PAY_URL`** (self-hosted) moves every project's pages. With a path, such as `https://api.example.com/pay`, pages live under it. Without a path, such as `https://pay.example.com`, the server answers that host at its root: point the host at the same server.
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/web_domain" -H "Authorization: Bearer $SECRET_KEY"
+curl -s -X PUT "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/web_domain" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"slug":"scanner"}'
+```
+
+## Use your own domain
+Use a subdomain you own, such as `pay.yourapp.com`. A CNAME cannot sit on a bare domain such as `yourapp.com` at most DNS providers.
+
+1. In **Project settings → Domains**, enter the domain and click **Save domain**. Or with the API:
+
+   ```bash
+   curl -s -X PUT "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/web_domain" -H "Authorization: Bearer $SECRET_KEY" \
+     -H "Content-Type: application/json" -d '{"custom_domain":"pay.yourapp.com"}'
+   ```
+   ```json
+   {"object":"web_domain","slug":"scanner","custom_domain":"pay.yourapp.com","status":"pending","dns":[{"type":"CNAME","name":"pay.yourapp.com","value":"api.revenuedot.app"},{"type":"TXT","name":"_revenuedot.pay.yourapp.com","value":"revenuedot-verify=k3m9q2x7z1c4v8b6n0p5w2e7"}],"…":"…"}
+   ```
+
+2. Add the two records at your DNS provider, with the values from `dns`:
+
+   | Type | Name | Value | Why |
+   |---|---|---|---|
+   | CNAME | `pay.yourapp.com` | the CNAME target shown (on Cloud today, `api.revenuedot.app`) | Sends the traffic to RevenueDot |
+   | TXT | `_revenuedot.pay.yourapp.com` | `revenuedot-verify=<token>` | Proves you own the domain |
+
+   With Cloudflare DNS, set the CNAME to **DNS only** (grey cloud).
+
+3. Click **Verify**, or:
+
+   ```bash
+   curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/web_domain/actions/verify" -H "Authorization: Bearer $SECRET_KEY"
+   ```
+
+   RevenueDot reads both records through Cloudflare's DNS-over-HTTPS resolver. When both match, `status` becomes `verified`. Otherwise it is `failed`, and `error` says which record is wrong and what DNS answered, such as "The TXT record _revenuedot.pay.yourapp.com must be … and was not found". DNS changes can take a few minutes. You can check 6 times a minute.
+
+Once verified, the project's pages answer at the root of your domain:
+- Pages: `https://pay.yourapp.com/<page slug>`
+- Redemption links: `https://pay.yourapp.com/r/<token>`
+- The calls the pages make: `https://pay.yourapp.com/api/...`
+
+The `url` of every link and funnel switches to the new domain. The default address keeps working too. One domain belongs to one project. Send `{"custom_domain":null}` to remove it.
+
+## On RevenueDot Cloud: TLS is added by hand for now
+Browsers need a TLS certificate for `pay.yourapp.com`. RevenueDot Cloud serves custom domains through Cloudflare for SaaS, and **adding a verified domain there is a manual step for now**. After your domain shows as verified, the RevenueDot team adds it and Cloudflare issues the certificate once the CNAME resolves. Until then, `https://pay.yourapp.com` does not load: keep sharing the default address. The dashboard shows this note next to the domain.
+
+The CNAME target on Cloud may change when this step is automated. Always use the value the dashboard shows.
+
+## Self-hosted servers
+Your server answers a verified domain itself. You need:
+- **DNS** pointing the domain at your server. By default the CNAME target is the pay host (the host of `REVENUEDOT_PAY_URL`, else your server's host). Set `REVENUEDOT_CUSTOM_DOMAIN_TARGET` to tell customers a different host, for example a load balancer's name.
+- **TLS** for the domain at your reverse proxy, for example with Caddy's on-demand TLS or a certificate from Let's Encrypt.
+- **The request's host** passed through to RevenueDot: the `Host` header, or `X-Forwarded-Host`. RevenueDot picks the project by host.
+
+The default `docker-compose.yml` does not pass `REVENUEDOT_PAY_URL` or `REVENUEDOT_CUSTOM_DOMAIN_TARGET` to the container. Add them under the service's `environment:` when you use them. See [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md).
+
+## Related
+- [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md)
+- [Purchase links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md), [Funnels](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md), [Redemption links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md)
+- [Extensions: Web billing](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#web-billing)
 
 ---
 

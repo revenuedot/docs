@@ -1,6 +1,6 @@
 // RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
 // This file: the last operations of RevenueCat's v2 API (restore by order id, create in store, subscriber tokens), the
-// RevenueCat Billing operations RevenueDot answers on purpose (discounts, invoices), and the win-back eligibility extension.
+// RevenueCat Billing invoice operations RevenueDot answers on purpose, and the win-back eligibility extension.
 // Docs: https://revenuedot.app/docs/api/rest-v2   Migrate from RevenueCat: https://revenuedot.app/docs/migrate
 import { SECRET, arr, body, en, int, listOf, nstr, obj, ok, op, param, ref, str, v2Errors, nms } from "./common.mjs";
 
@@ -12,14 +12,8 @@ const OPS = "routes/v2/store-ops.ts";
 const AUTH = "routes/v2/subscriber-auth.ts";
 const BILLING = "routes/v2/billing-excluded.ts";
 const productId = { name: "product_id", in: "path", required: true, schema: str(), description: "Product id (prod...)." };
-const discountId = { name: "discount_id", in: "path", required: true, schema: str(), description: "Discount id." };
-const why = "RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any.";
+const why = "Invoices belong to RevenueCat Billing, which issues its own. For web purchases through RevenueDot's checkout, Stripe issues the invoices in your Stripe account.";
 const empty = (url) => ok("Always an empty list.", listOf({ type: "object" }), { object: "list", items: [], next_page: null, url });
-const notAvailable = (summary, id, scopes, extra = {}) => op({
-  id, tag: "Discounts and invoices", summary, security: SECRET, source: BILLING, scopes, parameters: [project, ...(extra.parameters ?? [])],
-  description: `Answers 422 \`unprocessable_entity_error\`. ${why} No body is read.`,
-  responses: { ...v2Errors(401, 403, 422) },
-});
 const storeProduct = obj({
   object: en(["store_product"]), id: str("The product's id in the store: the App Store Connect id, or the Google Play product id."),
   name: nstr("The name in the store."), product_identifier: str("The product identifier in the store."),
@@ -85,34 +79,13 @@ A short-lived access token (one hour) for one app user id of one app. Send it as
       } }),
   },
 
-  // ---- RevenueCat Billing only: answered on purpose ----------------------------------------------------------------
-  [`${P}/discounts`]: {
-    get: op({ id: "listDiscounts", tag: "Discounts and invoices", summary: "List discounts", security: SECRET, source: BILLING, scopes: ["project_configuration:discounts:read"], parameters: [project, ...page],
-      description: `Always an empty list. ${why}`, responses: { 200: empty("/v2/projects/proj18pzzkao/discounts"), ...v2Errors(401, 403) } }),
-    post: notAvailable("Create a discount", "createDiscount", ["project_configuration:discounts:read_write"]),
-  },
-  [`${P}/discounts/{discount_id}`]: {
-    get: op({ id: "getDiscount", tag: "Discounts and invoices", summary: "Get a discount", security: SECRET, source: BILLING, scopes: ["project_configuration:discounts:read"], parameters: [project, discountId],
-      description: `Answers 404 \`resource_missing\`: there is no discount. ${why}`, responses: { ...v2Errors(401, 403, 404) } }),
-    patch: notAvailable("Update a discount", "updateDiscount", ["project_configuration:discounts:read_write"], { parameters: [discountId] }),
-    delete: notAvailable("Delete a discount", "deleteDiscount", ["project_configuration:discounts:read_write"], { parameters: [discountId] }),
-  },
-  [`${P}/discounts/{discount_id}/actions/enable`]: { post: notAvailable("Enable a discount", "enableDiscount", ["project_configuration:discounts:read_write"], { parameters: [discountId] }) },
-  [`${P}/discounts/{discount_id}/actions/disable`]: { post: notAvailable("Disable a discount", "disableDiscount", ["project_configuration:discounts:read_write"], { parameters: [discountId] }) },
-  [`${P}/discounts/{discount_id}/discount_codes`]: {
-    get: op({ id: "listDiscountCodes", tag: "Discounts and invoices", summary: "List a discount's codes", security: SECRET, source: BILLING, scopes: ["project_configuration:discounts:read"], parameters: [project, discountId, ...page],
-      description: `Answers 404 \`resource_missing\`: there is no discount. ${why}`, responses: { ...v2Errors(401, 403, 404) } }),
-    post: notAvailable("Create discount codes", "createDiscountCodes", ["project_configuration:discounts:read_write"], { parameters: [discountId] }),
-  },
-  [`${P}/discounts/{discount_id}/discount_codes/{discount_code}`]: {
-    delete: notAvailable("Delete a discount code", "deleteDiscountCode", ["project_configuration:discounts:read_write"], { parameters: [discountId, { name: "discount_code", in: "path", required: true, schema: str() }] }),
-  },
+  // ---- RevenueCat Billing invoices: answered on purpose (discounts are real, in web.mjs) ------------------------------
   [`${P}/customers/{customer_id}/invoices`]: {
-    get: op({ id: "listCustomerInvoices", tag: "Discounts and invoices", summary: "List a customer's invoices", security: SECRET, source: BILLING, scopes: ["customer_information:invoices:read"], parameters: [project, customer, ...page],
+    get: op({ id: "listCustomerInvoices", tag: "Invoices", summary: "List a customer's invoices", security: SECRET, source: BILLING, scopes: ["customer_information:invoices:read"], parameters: [project, customer, ...page],
       description: `Always an empty list for a known customer; 404 for an unknown one. ${why}`, responses: { 200: empty("/v2/projects/proj18pzzkao/customers/user_1/invoices"), ...v2Errors(401, 403, 404) } }),
   },
   [`${P}/customers/{customer_id}/invoices/{invoice_id}/file`]: {
-    get: op({ id: "getInvoiceFile", tag: "Discounts and invoices", summary: "Download an invoice", security: SECRET, source: BILLING, scopes: ["customer_information:invoices:read"], parameters: [project, customer, { name: "invoice_id", in: "path", required: true, schema: str() }],
+    get: op({ id: "getInvoiceFile", tag: "Invoices", summary: "Download an invoice", security: SECRET, source: BILLING, scopes: ["customer_information:invoices:read"], parameters: [project, customer, { name: "invoice_id", in: "path", required: true, schema: str() }],
       description: `Answers 404 \`resource_missing\`: there is no invoice. ${why}`, responses: { ...v2Errors(401, 403, 404) } }),
   },
 };

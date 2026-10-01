@@ -199,13 +199,28 @@ A public key gets only its own app's products, keyed the way that SDK looks them
       responses: { 200: ok("Balances.", obj({ virtual_currencies: { type: "object", additionalProperties: obj({ balance: int(), name: str(), code: str(), description: nstr() }, ["balance", "name", "code"]) } }, ["virtual_currencies"]), { virtual_currencies: { GLD: { balance: 700, name: "Gold", code: "GLD", description: null } } }) } }),
   },
   "/v1/subscribers/redeem_purchase": {
-    post: op({ id: "redeemWebPurchase", tag: "SDK support", summary: "Redeem a web purchase (not available)", security: PUBLIC, source: SDK,
-      description: "What `Purchases.redeemWebPurchase()` calls with the `redemption_token` from a redemption deep link. RevenueDot takes no web payments, so no token is valid: 400 with code 7849, which the SDKs return as the `invalidToken` result.",
-      responses: { 400: ok("Invalid token.", ref("V1Error"), { code: 7849, message: "This redemption link is not valid: RevenueDot has no web purchases to redeem." }), ...v1Errors(401) } }),
+    post: op({ id: "redeemWebPurchase", tag: "SDK support", summary: "Redeem a web purchase", security: PUBLIC, source: SDK, parameters: [param("XPlatform")],
+      description: `
+What \`Purchases.redeemWebPurchase()\` calls with the \`redemption_token\` from a redemption link (\`<scheme>://redeem_web_purchase?redemption_token=rdrt_...\`). The anonymous customer who paid on RevenueDot's web checkout is merged into this app user id, like \`logIn\`: their purchases and attributes move over. The answer is the customer info, and \`PURCHASE_REDEEMED\` is sent once. See [Redemption links](../docs/guides/redemption-links.md).
+
+- **200:** redeemed, or already redeemed by this customer (a retry is safe).
+- **400 · 7849:** the token is unknown, malformed or from another project. The SDK returns \`invalidToken\`.
+- **400 · 7852:** another customer redeemed it. The SDK returns \`purchaseBelongsToOtherUser\`.
+- **400 · 7853:** the link expired (after the web config's \`redemption_link_hours\`, default 24). \`purchase_redemption_error_info.obfuscated_email\` says where a new link goes; it is emailed at most once an hour. The SDK returns \`expired\` with that email.`,
+      requestBody: body(obj({ app_user_id: str("The app user id that gets the purchase."), redemption_token: str("From the redemption link.") }, ["app_user_id", "redemption_token"]), { app_user_id: "user_1", redemption_token: "rdrt_q8Xc2kP0vN5mZ7tL1sW9hB3yR6dF4gJ2aE0uI8oK1nM" }),
+      responses: {
+        200: ci("Customer info with the web purchase."),
+        400: { description: "The token cannot be redeemed.", content: { "application/json": { schema: obj({ code: int(), message: str(), purchase_redemption_error_info: obj({ obfuscated_email: str("Such as t***@e*****e.com.") }, ["obfuscated_email"]) }, ["code", "message"]), examples: {
+          invalid: { summary: "7849 invalid token", value: { code: 7849, message: "Invalid redemption token." } },
+          other_user: { summary: "7852 redeemed by another customer", value: { code: 7852, message: "The purchase has already been redeemed." } },
+          expired: { summary: "7853 expired, a new link is emailed", value: { code: 7853, message: "The link has expired.", purchase_redemption_error_info: { obfuscated_email: "t***@e*****e.com" } } },
+        } } } },
+        ...v1Errors(401),
+      } }),
   },
   "/v1/external_purchase_tokens": {
     post: op({ id: "postExternalPurchaseToken", tag: "SDK support", summary: "Register an Apple external purchase token (iOS)", security: PUBLIC, source: SDK,
-      description: "Part of Apple's external purchase and link-out flows, before a web checkout. The token is acknowledged with an id, which is all the SDK reads; the web checkout that follows is not available (see `/rcbilling/v1/hosted-checkout`).",
+      description: "Part of Apple's external purchase and link-out flows, before a web checkout. The token is acknowledged with an id, which is all the SDK reads. The web checkout that follows is `/rcbilling/v1/hosted-checkout`.",
       requestBody: body(obj({ app_user_id: str(), purchase_type: en(["IN_APP", "LINK_OUT"]), token: str("Apple's external purchase token, when there is one.") }, ["app_user_id", "purchase_type"])),
       responses: { 200: ok("Registered.", obj({ id: str(), purchase_type: str(), is_sandbox: bool(), token_source: en(["APPLE_SDK", "RC_GENERATED"]) }), { id: "ept3b1f0c9e2d8a4f6b9c7e5d3a1b2c4d6e", purchase_type: "LINK_OUT", is_sandbox: true, token_source: "APPLE_SDK" }), ...v1Errors(401) } }),
   },
@@ -283,23 +298,33 @@ published paywall, keyed by workflow id, with \`offering_identifier\`). The othe
       responses: { 200: ok("No web offerings.", obj({ offerings: { type: "object" } }), { offerings: {} }), ...v1Errors(401) } }),
   },
   "/rcbilling/v1/hosted-checkout": {
-    post: op({ id: "hostedCheckout", tag: "Web Billing", summary: "Start a hosted web checkout (not available)", security: PUBLIC, source: SDK,
-      description: "The iOS SDK's paywall web checkout. RevenueDot takes no payments: 400 with code 7000, and the SDK returns `failed` for the checkout without retrying.",
-      responses: { 400: ok("Not available.", ref("V1Error"), { code: 7000, message: "Web checkout is not available on RevenueDot." }), ...v1Errors(401) } }),
+    post: op({ id: "hostedCheckout", tag: "Web Billing", summary: "Start a hosted web checkout", security: PUBLIC, source: SDK,
+      description: `
+The iOS SDK's paywall web checkout. RevenueDot finds the package in the offering, picks the project's Stripe app that sells it as a web product, and creates a Stripe Checkout Session for this app user id with that app's key. The SDK opens \`checkout_url\` and closes it when the browser reaches \`success_url\` or \`cancel_url\`; the success page records the purchase, so the customer info has it at once. See [Sell on the web with Stripe](../docs/guides/web-billing.md).
+
+- **400 · 7000:** the offering or package is unknown, or the package has no web product.
+- **503 · 7101:** Stripe is unavailable or refused the key.`,
+      requestBody: body(obj({ app_user_id: str(), package_id: str("Package lookup key, such as $rc_monthly."), presented_offering_identifier: str("The offering's lookup key.") }, ["app_user_id", "package_id", "presented_offering_identifier"]), { app_user_id: "user_1", package_id: "$rc_monthly", presented_offering_identifier: "web" }),
+      responses: {
+        200: ok("The checkout.", obj({ operation_session_id: str("The web checkout id (wco_...)."), checkout_url: str("Stripe Checkout."), success_url: str("Close the page when the browser gets here."), cancel_url: str("Close the page when the browser gets here.") }, ["operation_session_id", "checkout_url", "success_url", "cancel_url"]),
+          { operation_session_id: "wco_8k2m9q4x7a1b3c5d", checkout_url: "https://checkout.stripe.com/c/pay/cs_test_a1B2c3D4", success_url: "https://api.revenuedot.app/pay/scanner/_/success", cancel_url: "https://api.revenuedot.app/pay/scanner/_/cancel" }),
+        400: ok("No web product for this package.", ref("V1Error"), { code: 7000, message: "This package has no web product, so it cannot be bought on the web." }),
+        ...v1Errors(401, 503),
+      } }),
   },
   "/rcbilling/v1/purchase": {
     post: op({ id: "webBillingPurchase", tag: "Web Billing", summary: "Web Billing purchase (not available)", security: PUBLIC, source: SDK,
       description: "Defined in purchases-js with no caller. 400 with code 7000.",
-      responses: { 400: ok("Not available.", ref("V1Error"), { code: 7000, message: "Web checkout is not available on RevenueDot." }), ...v1Errors(401) } }),
+      responses: { 400: ok("Not available.", ref("V1Error"), { code: 7000, message: "Web Billing checkout inside the SDK is not available on RevenueDot. Use a purchase link or the hosted checkout." }), ...v1Errors(401) } }),
   },
   "/rcbilling/v1/checkout/prepare": {
     post: op({ id: "checkoutPrepare", tag: "Web Billing", summary: "Prepare a Web Billing checkout (not available)", security: PUBLIC, source: SDK,
       description: "purchases-js with an `rcb_` key. 400 with code 7000: the purchase fails with an error in the SDK's purchase screen.",
-      responses: { 400: ok("Not available.", ref("V1Error"), { code: 7000, message: "Web checkout is not available on RevenueDot." }), ...v1Errors(401) } }),
+      responses: { 400: ok("Not available.", ref("V1Error"), { code: 7000, message: "Web Billing checkout inside the SDK is not available on RevenueDot. Use a purchase link or the hosted checkout." }), ...v1Errors(401) } }),
   },
   "/rcbilling/v1/checkout/start": {
     post: op({ id: "checkoutStart", tag: "Web Billing", summary: "Start a Web Billing checkout (not available)", security: PUBLIC, source: SDK,
-      responses: { 400: ok("Not available.", ref("V1Error"), { code: 7000, message: "Web checkout is not available on RevenueDot." }), ...v1Errors(401) } }),
+      responses: { 400: ok("Not available.", ref("V1Error"), { code: 7000, message: "Web Billing checkout inside the SDK is not available on RevenueDot. Use a purchase link or the hosted checkout." }), ...v1Errors(401) } }),
   },
   "/rcbilling/v1/checkout/{operation_session_id}": {
     parameters: [{ name: "operation_session_id", in: "path", required: true, schema: str() }],

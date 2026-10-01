@@ -20,7 +20,7 @@ RevenueDot answers errors in the format each API's clients already parse: SDK en
 
 | Code | Name | HTTP status | Meaning |
 |---|---|---|---|
-| 7000 | BAD_REQUEST / INVALID_PLATFORM | 400 | The request is malformed, a secret-key receipt post has no X-Platform app, the store action does not exist for this store, or a web checkout was asked for (RevenueDot takes no web payments). |
+| 7000 | BAD_REQUEST / INVALID_PLATFORM | 400 | The request is malformed, a secret-key receipt post has no X-Platform app, the store action does not exist for this store, a hosted checkout was asked for a package with no web product, or purchases-js asked for its own Web Billing checkout (`rcb_` keys), which RevenueDot does not have. |
 | 7101 | STORE_PROBLEM | 400 or 503 | The store refused the request (400), or the store or its credentials could not be used right now (503, retry later). |
 | 7102 | RECEIPT_ALREADY_IN_USE | 400 | The purchase belongs to another customer and the project's transfer behaviour is keep or transfer_if_no_active. |
 | 7103 | INVALID_RECEIPT | 400 | The receipt, signed transaction or purchase token is not valid, or it belongs to another bundle id or package name. |
@@ -33,7 +33,9 @@ RevenueDot answers errors in the format each API's clients already parse: SDK en
 | 7259 | NOT_FOUND | 404 | The customer, entitlement, offering or subscription does not exist. |
 | 7263 | INVALID_SUBSCRIBER_ATTRIBUTES | 400 | Some attributes were not saved; `attribute_errors` lists them. |
 | 7662 | UNSUPPORTED_RECEIPT | 400 | Receipts for this app's store are not supported yet (Web Billing, Paddle, Roku), and the Android SDK's Amazon receipt lookup with a key that is not an Amazon app's. |
-| 7849 | INVALID_WEB_REDEMPTION_TOKEN | 400 | A web purchase redemption token is not valid. RevenueDot has no web purchases, so every token answers this; the SDKs return the `invalidToken` result. |
+| 7849 | INVALID_WEB_REDEMPTION_TOKEN | 400 | A web purchase redemption token is unknown, malformed or from another project. The SDKs return the `invalidToken` result. |
+| 7852 | PURCHASE_BELONGS_TO_OTHER_USER | 400 | Another customer already redeemed this web purchase. The SDKs return `purchaseBelongsToOtherUser`. |
+| 7853 | EXPIRED_WEB_REDEMPTION_TOKEN | 400 | The redemption link expired. `purchase_redemption_error_info.obfuscated_email` names where a new link was emailed. The SDKs return `expired`. |
 | 7877 | INVALID_OPERATION_SESSION | 400 | A Web Billing checkout session does not exist. |
 
 ## REST API v2 error types

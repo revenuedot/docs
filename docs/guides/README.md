@@ -1,6 +1,6 @@
 ---
 title: Which guide do I need?
-description: Step-by-step guides for connecting stores, webhooks, integrations and data exports, refund requests, retention and win-back, support, customer lists, testing, your team, alert emails, and running RevenueDot on your own servers.
+description: Step-by-step guides for connecting stores, selling on the web with purchase links and funnels, webhooks, integrations and data exports, refund requests, retention and win-back, support, customer lists, testing, your team, alert emails, and running RevenueDot on your own servers.
 ---
 
 # Which guide do I need?
@@ -13,6 +13,12 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Accept Google Play purchases and get real-time notifications | [Connect Google Play](google-play.md) |
 | Accept Amazon Appstore purchases on Fire tablets and Fire TV | [Connect the Amazon Appstore](amazon-appstore.md) |
 | Track subscriptions sold with my own Stripe account | [Connect Stripe](stripe.md) |
+| Sell my app's subscriptions on the web with a hosted Stripe checkout | [Sell on the web with Stripe](web-billing.md) |
+| Share a checkout link for an offering | [Purchase links](purchase-links.md) |
+| Build a multi-step web-to-app funnel (quiz, email, paywall) | [Funnels](funnels.md) |
+| Unlock a web purchase in my app | [Redemption links](redemption-links.md) |
+| Give a discount or a code at web checkout | [Web discounts](web-discounts.md) |
+| Put my purchase links and funnels on my own domain | [Custom domains](custom-domains.md) |
 | Receive purchase events in my backend and verify them | [Webhooks](webhooks.md) |
 | Send purchase events to Slack, Segment, Amplitude, Mixpanel, PostHog, Firebase, BigQuery, AppsFlyer, Adjust or Meta, or export my data to S3, R2 or Google Cloud Storage | [Integrations and data exports](integrations.md) |
 | Have the SDK verify that responses come from my server | [Trusted Entitlements](trusted-entitlements.md) |

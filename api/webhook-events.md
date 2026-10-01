@@ -11,7 +11,7 @@ RevenueDot POSTs one JSON event per request to each matching webhook: `{ "api_ve
 
 - **Headers:** `Content-Type: application/json`, `User-Agent: RevenueDot-Webhooks/1.0`, `X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256>`, and your `Authorization` header when you set one.
 - **Delivery:** only HTTP 200 counts. Anything else, or no answer within 60 seconds, is retried after 5, 10, 20, 40 and 80 minutes, then marked failed. Deliveries can repeat: deduplicate on `event.id`.
-- **Examples:** recorded from a RevenueDot server on 2026-09-30 with Test Store purchases. Events that the Test Store cannot produce (pause, product change, extension, refund reversal, uncancellation, price consent) show the same builder's output with App Store or Google Play values.
+- **Examples:** recorded from a RevenueDot server on 2026-09-30 with Test Store purchases. Events that the Test Store cannot produce (pause, product change, extension, refund reversal, uncancellation, price consent) show the same builder's output with App Store or Google Play values. `PURCHASE_REDEEMED` and the funnel events show the builder's output for a web checkout on a test-mode Stripe account.
 
 | Event | When it is sent |
 |---|---|
@@ -32,9 +32,13 @@ RevenueDot POSTs one JSON event per request to each matching webhook: `{ "api_ve
 | [`VIRTUAL_CURRENCY_TRANSACTION`](#virtual_currency_transaction) | An in-app currency was credited because a purchase of a granting product was recorded. Not sent for adjustments made through the API. |
 | [`EXPERIMENT_ENROLLMENT`](#experiment_enrollment) | A customer was enrolled in an offering experiment. Sent once per customer and experiment. |
 | [`SUBSCRIBER_ALIAS`](#subscriber_alias) | A new app user id joined an existing customer: `logIn` onto an anonymous customer, `logIn` that merged an anonymous customer into an existing one, Android's alias call, or a restore that merged two customers. RevenueCat deprecated this event and sends it only to older projects, so RevenueDot delivers it only to webhooks whose `event_types` filter names `subscriber_alias`; it always appears in the customer's event history. |
+| [`PURCHASE_REDEEMED`](#purchase_redeemed) | A web purchase was redeemed in the app through a redemption link (`POST /v1/subscribers/redeem_purchase`): the anonymous customer who paid on the web was merged into the app user. Fields follow RevenueCat's sample; `app_user_id` is added so analytics tools know who it is. See [Redemption links](../docs/guides/redemption-links.md). |
+| [`FUNNEL_VIEWED`](#funnel_viewed) | RevenueDot type. A visitor opened a published funnel. Opt-in: sent only to webhooks and integrations whose `event_types` names `funnel_viewed`. `app_user_id` is null unless the page URL had `?app_user_id=`. See [Funnels](../docs/guides/funnels.md). |
+| [`FUNNEL_STEP_COMPLETED`](#funnel_step_completed) | RevenueDot type. A visitor finished a funnel step, with the answer for a question (an email step's answer is `provided`, never the address). Opt-in: `funnel_step_completed`. |
+| [`FUNNEL_PURCHASE`](#funnel_purchase) | RevenueDot type. A funnel's checkout was paid. `app_user_id` is the buyer's (anonymous unless the page had one) and `product_id` the Stripe price. Opt-in: `funnel_purchase`. |
 | [`TEST`](#test) | Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase. |
 
-Accepted in a webhook's `event_types` filter but never sent, because RevenueDot never has the fact behind them: `TEMPORARY_ENTITLEMENT_GRANT` (RevenueDot never grants access it has not verified with the store; during a store outage the SDK keeps the purchase and grants access on the device from the [offline entitlement mapping](../docs/guides/offline-entitlements.md)), `INVOICE_ISSUANCE` (only RevenueCat Billing issues invoices) and `PURCHASE_REDEEMED` (RevenueDot issues no web purchase redemption links). That makes 18 of RevenueCat's 21 event types sent.
+Accepted in a webhook's `event_types` filter but never sent, because RevenueDot never has the fact behind them: `TEMPORARY_ENTITLEMENT_GRANT` (RevenueDot never grants access it has not verified with the store; during a store outage the SDK keeps the purchase and grants access on the device from the [offline entitlement mapping](../docs/guides/offline-entitlements.md)) and `INVOICE_ISSUANCE` (only RevenueCat Billing issues invoices). That makes 19 of RevenueCat's 21 event types sent. `SUBSCRIBER_ALIAS` and RevenueDot's three funnel types (`FUNNEL_VIEWED`, `FUNNEL_STEP_COMPLETED`, `FUNNEL_PURCHASE`) are opt-in: they go only to webhooks whose filter names them.
 
 ## INITIAL_PURCHASE
 
@@ -1216,6 +1220,224 @@ Example:
     },
     "type": "SUBSCRIBER_ALIAS",
     "id": "5B3C2D1E-0F9A-4B8C-9D7E-6F5A4B3C2D1E"
+  }
+}
+```
+
+## PURCHASE_REDEEMED
+
+A web purchase was redeemed in the app through a redemption link (`POST /v1/subscribers/redeem_purchase`): the anonymous customer who paid on the web was merged into the app user. Fields follow RevenueCat's sample; `app_user_id` is added so analytics tools know who it is. See [Redemption links](../docs/guides/redemption-links.md).
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique event id (upper-case UUID). Deduplicate on it. |
+| `type` | string | Event type. |
+| `event_timestamp_ms` | integer | When RevenueDot recorded the event. Epoch milliseconds. |
+| `app_id` | string | The Stripe app the purchase was made through. |
+| `store` | `STRIPE` |  |
+| `environment` | `PRODUCTION`, `SANDBOX` |  |
+| `redeemed_from` | array of string | The anonymous web buyer's app user id. |
+| `redeemed_by` | array of string | The app user id that redeemed it. |
+| `redemption_outcome` | `alias` | The web customer was merged into the app user. |
+| `redemption_platform` | string or null | From the SDK's X-Platform header: ios, android, web ... |
+| `product_id` | string or null | The web product's store identifier (the Stripe price id). |
+| `entitlement_ids` | array of string | Entitlements the product unlocks, or null. |
+| `workflow_id` | string or null | The funnel id when the purchase came from a funnel, else null. |
+| `workflow_step_id` | null |  |
+| `trace_id` | string | The web checkout id (wco_...). |
+| `app_user_id` | string | The app user id that redeemed it. A RevenueDot addition to RevenueCat's sample. |
+
+Example:
+
+```json
+{
+  "api_version": "1.0",
+  "event": {
+    "app_id": "appstrp8k2m9q4",
+    "event_timestamp_ms": 1790801342625,
+    "id": "5B2E8C1D-9F3A-4E7B-A6C0-1D2E3F4A5B6C",
+    "store": "STRIPE",
+    "environment": "SANDBOX",
+    "redeemed_from": [
+      "$RCAnonymousID:7c1e9b2f4a6d48e3b05f9a8c2d1e3f47"
+    ],
+    "redeemed_by": [
+      "user_1"
+    ],
+    "redemption_outcome": "alias",
+    "redemption_platform": "ios",
+    "product_id": "price_1QxR2nKc8Hn4AbCd",
+    "entitlement_ids": [
+      "pro"
+    ],
+    "workflow_id": "fnl_7q2k9m4x1z8c",
+    "workflow_step_id": null,
+    "trace_id": "wco_8k2m9q4x7a1b3c5d",
+    "app_user_id": "user_1",
+    "type": "PURCHASE_REDEEMED"
+  }
+}
+```
+
+## FUNNEL_VIEWED
+
+RevenueDot type. A visitor opened a published funnel. Opt-in: sent only to webhooks and integrations whose `event_types` names `funnel_viewed`. `app_user_id` is null unless the page URL had `?app_user_id=`. See [Funnels](../docs/guides/funnels.md).
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique event id (upper-case UUID). Deduplicate on it. |
+| `type` | string | Event type. |
+| `event_timestamp_ms` | integer | When RevenueDot recorded the event. Epoch milliseconds. |
+| `app_id` | string or null | The funnel's Stripe app. |
+| `app_user_id` | string or null | The visitor's app user id, when known. |
+| `aliases` | array of string | Every app user id of the customer. |
+| `environment` | `PRODUCTION`, `SANDBOX` | SANDBOX when the Stripe app uses a test-mode key. |
+| `store` | `STRIPE` |  |
+| `funnel_id` | string |  |
+| `funnel_name` | string |  |
+| `funnel_slug` | string |  |
+| `session_id` | string | The page session; one per visit. |
+| `step_id` | string or null |  |
+| `step_type` | `question`, `info`, `email`, `paywall`, `success`, null |  |
+| `step_index` | integer or null | 0-based position of the step. |
+| `answer` | string or array of string or null | FUNNEL_STEP_COMPLETED of a question: the answer, or a list for multiple choice. Otherwise null. |
+| `product_id` | string | FUNNEL_PURCHASE only: the Stripe price id. |
+| `subscriber_attributes` | object | Always empty. |
+
+Example:
+
+```json
+{
+  "api_version": "1.0",
+  "event": {
+    "id": "A1C3E5F7-2B4D-4F6A-8C0E-1A3C5E7F9B2D",
+    "type": "FUNNEL_VIEWED",
+    "event_timestamp_ms": 1790800914034,
+    "app_id": "appstrp8k2m9q4",
+    "environment": "SANDBOX",
+    "store": "STRIPE",
+    "funnel_id": "fnl_7q2k9m4x1z8c",
+    "funnel_name": "Focus quiz",
+    "funnel_slug": "focus-quiz",
+    "session_id": "3f9c2a7b1e8d4c6a9b0f1e2d3c4b5a69",
+    "app_user_id": null,
+    "aliases": [],
+    "step_id": null,
+    "step_type": null,
+    "step_index": null,
+    "answer": null,
+    "utm_source": "tiktok",
+    "utm_campaign": "fall",
+    "subscriber_attributes": {}
+  }
+}
+```
+
+## FUNNEL_STEP_COMPLETED
+
+RevenueDot type. A visitor finished a funnel step, with the answer for a question (an email step's answer is `provided`, never the address). Opt-in: `funnel_step_completed`.
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique event id (upper-case UUID). Deduplicate on it. |
+| `type` | string | Event type. |
+| `event_timestamp_ms` | integer | When RevenueDot recorded the event. Epoch milliseconds. |
+| `app_id` | string or null | The funnel's Stripe app. |
+| `app_user_id` | string or null | The visitor's app user id, when known. |
+| `aliases` | array of string | Every app user id of the customer. |
+| `environment` | `PRODUCTION`, `SANDBOX` | SANDBOX when the Stripe app uses a test-mode key. |
+| `store` | `STRIPE` |  |
+| `funnel_id` | string |  |
+| `funnel_name` | string |  |
+| `funnel_slug` | string |  |
+| `session_id` | string | The page session; one per visit. |
+| `step_id` | string or null |  |
+| `step_type` | `question`, `info`, `email`, `paywall`, `success`, null |  |
+| `step_index` | integer or null | 0-based position of the step. |
+| `answer` | string or array of string or null | FUNNEL_STEP_COMPLETED of a question: the answer, or a list for multiple choice. Otherwise null. |
+| `product_id` | string | FUNNEL_PURCHASE only: the Stripe price id. |
+| `subscriber_attributes` | object | Always empty. |
+
+Example:
+
+```json
+{
+  "api_version": "1.0",
+  "event": {
+    "id": "B2D4F6A8-3C5E-4A7B-9D1F-2B4D6F8A0C3E",
+    "type": "FUNNEL_STEP_COMPLETED",
+    "event_timestamp_ms": 1790800921034,
+    "app_id": "appstrp8k2m9q4",
+    "environment": "SANDBOX",
+    "store": "STRIPE",
+    "funnel_id": "fnl_7q2k9m4x1z8c",
+    "funnel_name": "Focus quiz",
+    "funnel_slug": "focus-quiz",
+    "session_id": "3f9c2a7b1e8d4c6a9b0f1e2d3c4b5a69",
+    "app_user_id": null,
+    "aliases": [],
+    "step_id": "goal",
+    "step_type": "question",
+    "step_index": 0,
+    "answer": "Sleep better",
+    "utm_source": "tiktok",
+    "utm_campaign": "fall",
+    "subscriber_attributes": {}
+  }
+}
+```
+
+## FUNNEL_PURCHASE
+
+RevenueDot type. A funnel's checkout was paid. `app_user_id` is the buyer's (anonymous unless the page had one) and `product_id` the Stripe price. Opt-in: `funnel_purchase`.
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique event id (upper-case UUID). Deduplicate on it. |
+| `type` | string | Event type. |
+| `event_timestamp_ms` | integer | When RevenueDot recorded the event. Epoch milliseconds. |
+| `app_id` | string or null | The funnel's Stripe app. |
+| `app_user_id` | string or null | The visitor's app user id, when known. |
+| `aliases` | array of string | Every app user id of the customer. |
+| `environment` | `PRODUCTION`, `SANDBOX` | SANDBOX when the Stripe app uses a test-mode key. |
+| `store` | `STRIPE` |  |
+| `funnel_id` | string |  |
+| `funnel_name` | string |  |
+| `funnel_slug` | string |  |
+| `session_id` | string | The page session; one per visit. |
+| `step_id` | string or null |  |
+| `step_type` | `question`, `info`, `email`, `paywall`, `success`, null |  |
+| `step_index` | integer or null | 0-based position of the step. |
+| `answer` | string or array of string or null | FUNNEL_STEP_COMPLETED of a question: the answer, or a list for multiple choice. Otherwise null. |
+| `product_id` | string | FUNNEL_PURCHASE only: the Stripe price id. |
+| `subscriber_attributes` | object | Always empty. |
+
+Example:
+
+```json
+{
+  "api_version": "1.0",
+  "event": {
+    "id": "C3E5A7B9-4D6F-4B8C-0E2A-3C5E7A9B1D4F",
+    "type": "FUNNEL_PURCHASE",
+    "event_timestamp_ms": 1790800994034,
+    "app_id": "appstrp8k2m9q4",
+    "environment": "SANDBOX",
+    "store": "STRIPE",
+    "funnel_id": "fnl_7q2k9m4x1z8c",
+    "funnel_name": "Focus quiz",
+    "funnel_slug": "focus-quiz",
+    "session_id": "3f9c2a7b1e8d4c6a9b0f1e2d3c4b5a69",
+    "app_user_id": "$RCAnonymousID:7c1e9b2f4a6d48e3b05f9a8c2d1e3f47",
+    "aliases": [
+      "$RCAnonymousID:7c1e9b2f4a6d48e3b05f9a8c2d1e3f47"
+    ],
+    "step_id": null,
+    "step_type": null,
+    "step_index": null,
+    "answer": null,
+    "product_id": "price_1QxR3pKc8Hn4EfGh",
+    "subscriber_attributes": {}
   }
 }
 ```
