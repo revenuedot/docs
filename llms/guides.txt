@@ -483,7 +483,7 @@ The web config sets how the pages look and what happens after payment. One confi
 | `success_redirect_url` | Required for `redirect`. RevenueDot answers 303 to it and adds `redemption_url` to the query |
 | `success_title`, `success_body` | The success page's title and text |
 | `cancel_url` | Where a cancelled checkout goes. Default: back to the page, which says "Checkout was cancelled" |
-| `app_scheme` | Your app's URL scheme for [redemption links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md), such as `scanner`. Default: `rd-` and 10 hex characters |
+| `app_scheme` | Your app's URL scheme for [redemption links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md), such as `scanner`. Default: `rd-` and 10 hex characters. Schemes a browser opens itself (`https`, `javascript`, `mailto` and the like) are refused |
 | `app_store_url`, `play_store_url` | Store buttons on the success and redemption pages |
 | `redemption_link_hours` | How long a redemption link works, 1 to 720. Default 24 |
 
@@ -557,11 +557,11 @@ A checkout starts from a purchase link, a funnel's paywall step, or the iOS SDK'
 - `metadata` with `app_user_id`, `rd_checkout` (the web checkout id) and `rd_source`. A subscription gets the same metadata.
 - `success_url` is the page's success page. `cancel_url` is the web config's `cancel_url`, or the page itself.
 
-**Who the purchase belongs to.** When the page has an app user id, the purchase goes to that customer. Otherwise the buyer gets a new anonymous id, `$RCAnonymousID:` and 32 hex characters, and a redemption link later moves the purchase to the app's user.
+**Who the purchase belongs to.** When the page has an app user id, the purchase goes to that customer. Otherwise the buyer gets a new anonymous id, `$RCAnonymousID:` and 32 hex characters, and a redemption link later moves the purchase to the app's user. A funnel uses its visitor's anonymous id, unless a customer already has that id.
 
 **How it is recorded.** The success page and the `checkout.session.completed` webhook both record the purchase; whichever comes first does it, once. Both read the session from Stripe and record it through the same path as [`POST /v1/receipts` with `X-Platform: stripe`](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md#4-post-each-purchase-from-your-backend). So you get the usual events: `INITIAL_PURCHASE` (`TRIAL` during a trial) or `NON_RENEWING_PURCHASE`, with `store: STRIPE` and `presented_offering_id` set to the offering. Renewals, cancellations and refunds then come from Stripe's webhooks as described in the [Stripe guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md#how-stripe-states-map-to-events).
 
-**The buyer's email** becomes the customer's `$email` attribute. The redemption link is emailed to it when the server can send email. RevenueDot Cloud always can. A self-hosted server needs [SMTP settings](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#email).
+**The buyer's email** becomes the customer's `$email` attribute. For an app user id that already exists, the email and funnel answers only fill in attributes the customer does not have; they never overwrite them. The redemption link is emailed to it when the server can send email. RevenueDot Cloud always can. A self-hosted server needs [SMTP settings](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#email).
 
 ## The success page
 After payment, Stripe sends the buyer to `<page>/success`. The page shows:
@@ -767,7 +767,7 @@ The builder edits a JSON document, the same one the API reads and writes:
 An answer can jump to another step: set the option's `next` to that step's id. Without `next`, the visitor goes to the next step in the list. In the example above, "Sleep better" skips to `sleep_tip`; the other answers go to `plan`. Paths work on single-choice questions. The back button returns along the path the visitor took.
 
 ## Answers become customer attributes
-Give a question an `attribute`, such as `goal`. When the visitor pays, the answer is saved on the customer under that name. Several answers are joined with ", ". Attributes reach the app's user when the purchase is [redeemed](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md), and they appear in webhooks' `subscriber_attributes` and in the dashboard. Use them to personalize the app after sign-up.
+Give a question an `attribute`, such as `goal`. When the visitor pays, the answer is saved on the customer under that name. Only the question's own option labels are saved, so a visitor cannot write free text into an attribute. Several answers are joined with ", ". Attributes reach the app's user when the purchase is [redeemed](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md), and they appear in webhooks' `subscriber_attributes` and in the dashboard. Use them to personalize the app after sign-up.
 
 ## Publish
 Click **Publish**, or call the API. A funnel needs a connected Stripe app to publish.
@@ -1010,7 +1010,7 @@ The SDK calls `POST /v1/subscribers/redeem_purchase` with `{ "app_user_id", "red
 |---|---|---|
 | `success` | 200, customer info | The purchase is on the app's user. A second redeem by the same customer also succeeds, so a retry is safe |
 | `invalidToken` | 400, code 7849 | The token is unknown, malformed or from another project |
-| `purchaseBelongsToOtherUser` | 400, code 7852 | Another customer already redeemed it. The https link page says "Already unlocked" |
+| `purchaseBelongsToOtherUser` | 400, code 7852 | Another customer already redeemed it. When two app users redeem one link at the same moment, exactly one gets the purchase and the other gets 7852. The https link page says "Already unlocked" |
 | `expired` | 400, code 7853 | The link is older than `redemption_link_hours`, or a newer link replaced it. RevenueDot emails a new link and answers the address in a hidden form, such as `t***@e*****e.com` |
 | `error` | 401, 5xx, no network | Show an error and let the buyer try again |
 
@@ -1115,7 +1115,7 @@ When a buyer types a code, the page checks it at once and shows the answer. Chec
 | The code exists in the project | "This code is not valid." |
 | The discount is enabled | "This code is no longer active." |
 | `expires_at` has not passed | "This code has expired." |
-| Fewer than `max_redemptions` paid checkouts used it | "This code has been used the maximum number of times." |
+| Paid checkouts plus open checkouts are fewer than `max_redemptions` | "This code has been used the maximum number of times." |
 | The plan is in `product_identifiers` (when set) | "This code does not apply to this plan." |
 | A fixed amount lists the plan's currency | "This code does not apply to payments in EUR." |
 | The buyer is eligible | "This code is for new customers only." |
@@ -1123,6 +1123,8 @@ When a buyer types a code, the page checks it at once and shows the answer. Chec
 **Eligibility** uses the purchase history of the buyer's app user id. `never_purchased` refuses anyone with any purchase. `never_subscribed` refuses anyone with a subscription. `never_subscribed_to_the_same_product` refuses anyone who had a subscription to the plan's product. An anonymous buyer (no `?app_user_id=`) has no history, so they are always eligible.
 
 A valid code goes to Stripe as the session's promotion code; an automatic discount as its coupon. A use counts once the checkout is paid. The extension list shows `times_redeemed` per discount and per code.
+
+**A capped discount cannot be overrun.** With `max_redemptions` set, each checkout that starts holds one use, and its Stripe Checkout page expires after 31 minutes. Buyers who start at the same moment cannot all take the last use. An abandoned checkout gives its use back once its page has expired.
 
 ## Edit, disable and delete
 Send only what changes:
@@ -1132,7 +1134,7 @@ curl -s -X PATCH "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/disc5k2m9q4x
   -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" -d '{"percentage":30}'
 ```
 
-- **A new coupon replaces the old one.** Stripe coupons cannot change their amount or duration. So a change to `type`, `percentage`, `fixed_amounts`, `duration_mode`, `time_window`, `product_identifiers`, `max_redemptions` or `expires_at` creates a new coupon and new promotion codes for the same codes, and turns the old promotion codes off. Subscriptions that already use the old coupon keep it. A new name or eligibility changes nothing in Stripe.
+- **A new coupon replaces the old one.** Stripe coupons cannot change their amount or duration. So a change to `type`, `percentage`, `fixed_amounts`, `duration_mode`, `time_window`, `product_identifiers`, `max_redemptions` or `expires_at` creates a new coupon and new promotion codes for the same codes, and turns the old promotion codes off. The new coupon's Stripe `max_redemptions` is the uses that are left. Subscriptions that already use the old coupon keep it. A new name or eligibility changes nothing in Stripe.
 - **Disable** (`POST …/discounts/{id}/actions/disable`) refuses the discount at checkout and turns its promotion codes off. **Enable** (`…/actions/enable`) turns them back on.
 - **Delete a code** (`DELETE …/discount_codes/{code}`) turns its promotion code off.
 - **Delete the discount** (`DELETE …/discounts/{id}`) turns its promotion codes off and deletes its coupons. Existing subscriptions keep their discount, as in Stripe.
@@ -1230,7 +1232,11 @@ Once verified, the project's pages answer at the root of your domain:
 - Redemption links: `https://pay.yourapp.com/r/<token>`
 - The calls the pages make: `https://pay.yourapp.com/api/...`
 
-The `url` of every link and funnel switches to the new domain. The default address keeps working too. One domain belongs to one project. Send `{"custom_domain":null}` to remove it.
+The `url` of every link and funnel switches to the new domain. The default address keeps working too. Send `{"custom_domain":null}` to remove it.
+
+The domain serves these pages and nothing else. The API, sign-in and OAuth answer 404 there, so no RevenueDot session or login page ever lives on a domain you control.
+
+**One verified domain belongs to one project.** Another project can type the same domain, but only the project that adds its TXT record can verify it, and a claim that is not verified never blocks you. Once your domain is verified, no other project can verify it.
 
 ## On RevenueDot Cloud: TLS is added by hand for now
 Browsers need a TLS certificate for `pay.yourapp.com`. RevenueDot Cloud serves custom domains through Cloudflare for SaaS, and **adding a verified domain there is a manual step for now**. After your domain shows as verified, the RevenueDot team adds it and Cloudflare issues the certificate once the CNAME resolves. Until then, `https://pay.yourapp.com` does not load: keep sharing the default address. The dashboard shows this note next to the domain.
@@ -1243,7 +1249,7 @@ Your server answers a verified domain itself. You need:
 - **TLS** for the domain at your reverse proxy, for example with Caddy's on-demand TLS or a certificate from Let's Encrypt.
 - **The request's host** passed through to RevenueDot: the `Host` header, or `X-Forwarded-Host`. RevenueDot picks the project by host.
 
-The default `docker-compose.yml` does not pass `REVENUEDOT_PAY_URL` or `REVENUEDOT_CUSTOM_DOMAIN_TARGET` to the container. Add them under the service's `environment:` when you use them. See [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md).
+The default `docker-compose.yml` passes `REVENUEDOT_PAY_URL` and `REVENUEDOT_CUSTOM_DOMAIN_TARGET` from your `.env` to the container. See [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md).
 
 ## Related
 - [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md)
@@ -1646,8 +1652,8 @@ Inside the container the server reads:
 | `REVENUEDOT_ALLOW_SIGNUP` | unset (owner only) | See above |
 | `REVENUEDOT_SIGNING_KEY` | unset | See above |
 | `REVENUEDOT_SMTP_URL` and the other mail variables | unset | See [Email](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#email) |
-| `REVENUEDOT_PAY_URL` | `<this server>/pay` | Where purchase links, funnels and redemption links live. A URL without a path, such as `https://pay.example.com`, serves them at that host's root. Not passed through by the default `docker-compose.yml`. See [Custom domains](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/custom-domains.md) |
-| `REVENUEDOT_CUSTOM_DOMAIN_TARGET` | the pay host | The host customers' custom domains must CNAME to. Not passed through by the default `docker-compose.yml` |
+| `REVENUEDOT_PAY_URL` | `<this server>/pay` | Where purchase links, funnels and redemption links live. A URL without a path, such as `https://pay.example.com`, serves them at that host's root. Redemption emails link here, else to `REVENUEDOT_PUBLIC_URL` + `/pay`, never to the host a request named. See [Custom domains](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/custom-domains.md) |
+| `REVENUEDOT_CUSTOM_DOMAIN_TARGET` | the pay host | The host customers' custom domains must CNAME to |
 
 ### Set the signing key
 Generate a key once (`pnpm tsx scripts/signing-keygen.ts` in a checkout with `pnpm install` done), add it to `.env`, and pass it to the container with a `docker-compose.override.yml`, which Compose reads automatically:

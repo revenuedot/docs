@@ -61,7 +61,11 @@ Once verified, the project's pages answer at the root of your domain:
 - Redemption links: `https://pay.yourapp.com/r/<token>`
 - The calls the pages make: `https://pay.yourapp.com/api/...`
 
-The `url` of every link and funnel switches to the new domain. The default address keeps working too. One domain belongs to one project. Send `{"custom_domain":null}` to remove it.
+The `url` of every link and funnel switches to the new domain. The default address keeps working too. Send `{"custom_domain":null}` to remove it.
+
+The domain serves these pages and nothing else. The API, sign-in and OAuth answer 404 there, so no RevenueDot session or login page ever lives on a domain you control.
+
+**One verified domain belongs to one project.** Another project can type the same domain, but only the project that adds its TXT record can verify it, and a claim that is not verified never blocks you. Once your domain is verified, no other project can verify it.
 
 ## On RevenueDot Cloud: TLS is added by hand for now
 Browsers need a TLS certificate for `pay.yourapp.com`. RevenueDot Cloud serves custom domains through Cloudflare for SaaS, and **adding a verified domain there is a manual step for now**. After your domain shows as verified, the RevenueDot team adds it and Cloudflare issues the certificate once the CNAME resolves. Until then, `https://pay.yourapp.com` does not load: keep sharing the default address. The dashboard shows this note next to the domain.
@@ -74,7 +78,7 @@ Your server answers a verified domain itself. You need:
 - **TLS** for the domain at your reverse proxy, for example with Caddy's on-demand TLS or a certificate from Let's Encrypt.
 - **The request's host** passed through to RevenueDot: the `Host` header, or `X-Forwarded-Host`. RevenueDot picks the project by host.
 
-The default `docker-compose.yml` does not pass `REVENUEDOT_PAY_URL` or `REVENUEDOT_CUSTOM_DOMAIN_TARGET` to the container. Add them under the service's `environment:` when you use them. See [Self-hosting](self-hosting.md).
+The default `docker-compose.yml` passes `REVENUEDOT_PAY_URL` and `REVENUEDOT_CUSTOM_DOMAIN_TARGET` from your `.env` to the container. See [Self-hosting](self-hosting.md).
 
 ## Related
 - [Sell on the web with Stripe](web-billing.md)

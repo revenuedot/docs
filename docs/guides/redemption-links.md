@@ -140,7 +140,7 @@ The SDK calls `POST /v1/subscribers/redeem_purchase` with `{ "app_user_id", "red
 |---|---|---|
 | `success` | 200, customer info | The purchase is on the app's user. A second redeem by the same customer also succeeds, so a retry is safe |
 | `invalidToken` | 400, code 7849 | The token is unknown, malformed or from another project |
-| `purchaseBelongsToOtherUser` | 400, code 7852 | Another customer already redeemed it. The https link page says "Already unlocked" |
+| `purchaseBelongsToOtherUser` | 400, code 7852 | Another customer already redeemed it. When two app users redeem one link at the same moment, exactly one gets the purchase and the other gets 7852. The https link page says "Already unlocked" |
 | `expired` | 400, code 7853 | The link is older than `redemption_link_hours`, or a newer link replaced it. RevenueDot emails a new link and answers the address in a hidden form, such as `t***@e*****e.com` |
 | `error` | 401, 5xx, no network | Show an error and let the buyer try again |
 

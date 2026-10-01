@@ -70,7 +70,7 @@ The web config sets how the pages look and what happens after payment. One confi
 | `success_redirect_url` | Required for `redirect`. RevenueDot answers 303 to it and adds `redemption_url` to the query |
 | `success_title`, `success_body` | The success page's title and text |
 | `cancel_url` | Where a cancelled checkout goes. Default: back to the page, which says "Checkout was cancelled" |
-| `app_scheme` | Your app's URL scheme for [redemption links](redemption-links.md), such as `scanner`. Default: `rd-` and 10 hex characters |
+| `app_scheme` | Your app's URL scheme for [redemption links](redemption-links.md), such as `scanner`. Default: `rd-` and 10 hex characters. Schemes a browser opens itself (`https`, `javascript`, `mailto` and the like) are refused |
 | `app_store_url`, `play_store_url` | Store buttons on the success and redemption pages |
 | `redemption_link_hours` | How long a redemption link works, 1 to 720. Default 24 |
 
@@ -144,11 +144,11 @@ A checkout starts from a purchase link, a funnel's paywall step, or the iOS SDK'
 - `metadata` with `app_user_id`, `rd_checkout` (the web checkout id) and `rd_source`. A subscription gets the same metadata.
 - `success_url` is the page's success page. `cancel_url` is the web config's `cancel_url`, or the page itself.
 
-**Who the purchase belongs to.** When the page has an app user id, the purchase goes to that customer. Otherwise the buyer gets a new anonymous id, `$RCAnonymousID:` and 32 hex characters, and a redemption link later moves the purchase to the app's user.
+**Who the purchase belongs to.** When the page has an app user id, the purchase goes to that customer. Otherwise the buyer gets a new anonymous id, `$RCAnonymousID:` and 32 hex characters, and a redemption link later moves the purchase to the app's user. A funnel uses its visitor's anonymous id, unless a customer already has that id.
 
 **How it is recorded.** The success page and the `checkout.session.completed` webhook both record the purchase; whichever comes first does it, once. Both read the session from Stripe and record it through the same path as [`POST /v1/receipts` with `X-Platform: stripe`](stripe.md#4-post-each-purchase-from-your-backend). So you get the usual events: `INITIAL_PURCHASE` (`TRIAL` during a trial) or `NON_RENEWING_PURCHASE`, with `store: STRIPE` and `presented_offering_id` set to the offering. Renewals, cancellations and refunds then come from Stripe's webhooks as described in the [Stripe guide](stripe.md#how-stripe-states-map-to-events).
 
-**The buyer's email** becomes the customer's `$email` attribute. The redemption link is emailed to it when the server can send email. RevenueDot Cloud always can. A self-hosted server needs [SMTP settings](self-hosting.md#email).
+**The buyer's email** becomes the customer's `$email` attribute. For an app user id that already exists, the email and funnel answers only fill in attributes the customer does not have; they never overwrite them. The redemption link is emailed to it when the server can send email. RevenueDot Cloud always can. A self-hosted server needs [SMTP settings](self-hosting.md#email).
 
 ## The success page
 After payment, Stripe sends the buyer to `<page>/success`. The page shows:

@@ -75,7 +75,7 @@ The builder edits a JSON document, the same one the API reads and writes:
 An answer can jump to another step: set the option's `next` to that step's id. Without `next`, the visitor goes to the next step in the list. In the example above, "Sleep better" skips to `sleep_tip`; the other answers go to `plan`. Paths work on single-choice questions. The back button returns along the path the visitor took.
 
 ## Answers become customer attributes
-Give a question an `attribute`, such as `goal`. When the visitor pays, the answer is saved on the customer under that name. Several answers are joined with ", ". Attributes reach the app's user when the purchase is [redeemed](redemption-links.md), and they appear in webhooks' `subscriber_attributes` and in the dashboard. Use them to personalize the app after sign-up.
+Give a question an `attribute`, such as `goal`. When the visitor pays, the answer is saved on the customer under that name. Only the question's own option labels are saved, so a visitor cannot write free text into an attribute. Several answers are joined with ", ". Attributes reach the app's user when the purchase is [redeemed](redemption-links.md), and they appear in webhooks' `subscriber_attributes` and in the dashboard. Use them to personalize the app after sign-up.
 
 ## Publish
 Click **Publish**, or call the API. A funnel needs a connected Stripe app to publish.

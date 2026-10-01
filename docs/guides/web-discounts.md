@@ -70,7 +70,7 @@ When a buyer types a code, the page checks it at once and shows the answer. Chec
 | The code exists in the project | "This code is not valid." |
 | The discount is enabled | "This code is no longer active." |
 | `expires_at` has not passed | "This code has expired." |
-| Fewer than `max_redemptions` paid checkouts used it | "This code has been used the maximum number of times." |
+| Paid checkouts plus open checkouts are fewer than `max_redemptions` | "This code has been used the maximum number of times." |
 | The plan is in `product_identifiers` (when set) | "This code does not apply to this plan." |
 | A fixed amount lists the plan's currency | "This code does not apply to payments in EUR." |
 | The buyer is eligible | "This code is for new customers only." |
@@ -78,6 +78,8 @@ When a buyer types a code, the page checks it at once and shows the answer. Chec
 **Eligibility** uses the purchase history of the buyer's app user id. `never_purchased` refuses anyone with any purchase. `never_subscribed` refuses anyone with a subscription. `never_subscribed_to_the_same_product` refuses anyone who had a subscription to the plan's product. An anonymous buyer (no `?app_user_id=`) has no history, so they are always eligible.
 
 A valid code goes to Stripe as the session's promotion code; an automatic discount as its coupon. A use counts once the checkout is paid. The extension list shows `times_redeemed` per discount and per code.
+
+**A capped discount cannot be overrun.** With `max_redemptions` set, each checkout that starts holds one use, and its Stripe Checkout page expires after 31 minutes. Buyers who start at the same moment cannot all take the last use. An abandoned checkout gives its use back once its page has expired.
 
 ## Edit, disable and delete
 Send only what changes:
@@ -87,7 +89,7 @@ curl -s -X PATCH "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/disc5k2m9q4x
   -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" -d '{"percentage":30}'
 ```
 
-- **A new coupon replaces the old one.** Stripe coupons cannot change their amount or duration. So a change to `type`, `percentage`, `fixed_amounts`, `duration_mode`, `time_window`, `product_identifiers`, `max_redemptions` or `expires_at` creates a new coupon and new promotion codes for the same codes, and turns the old promotion codes off. Subscriptions that already use the old coupon keep it. A new name or eligibility changes nothing in Stripe.
+- **A new coupon replaces the old one.** Stripe coupons cannot change their amount or duration. So a change to `type`, `percentage`, `fixed_amounts`, `duration_mode`, `time_window`, `product_identifiers`, `max_redemptions` or `expires_at` creates a new coupon and new promotion codes for the same codes, and turns the old promotion codes off. The new coupon's Stripe `max_redemptions` is the uses that are left. Subscriptions that already use the old coupon keep it. A new name or eligibility changes nothing in Stripe.
 - **Disable** (`POST …/discounts/{id}/actions/disable`) refuses the discount at checkout and turns its promotion codes off. **Enable** (`…/actions/enable`) turns them back on.
 - **Delete a code** (`DELETE …/discount_codes/{code}`) turns its promotion code off.
 - **Delete the discount** (`DELETE …/discounts/{id}`) turns its promotion codes off and deletes its coupons. Existing subscriptions keep their discount, as in Stripe.

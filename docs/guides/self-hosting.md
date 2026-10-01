@@ -46,8 +46,8 @@ Inside the container the server reads:
 | `REVENUEDOT_ALLOW_SIGNUP` | unset (owner only) | See above |
 | `REVENUEDOT_SIGNING_KEY` | unset | See above |
 | `REVENUEDOT_SMTP_URL` and the other mail variables | unset | See [Email](#email) |
-| `REVENUEDOT_PAY_URL` | `<this server>/pay` | Where purchase links, funnels and redemption links live. A URL without a path, such as `https://pay.example.com`, serves them at that host's root. Not passed through by the default `docker-compose.yml`. See [Custom domains](custom-domains.md) |
-| `REVENUEDOT_CUSTOM_DOMAIN_TARGET` | the pay host | The host customers' custom domains must CNAME to. Not passed through by the default `docker-compose.yml` |
+| `REVENUEDOT_PAY_URL` | `<this server>/pay` | Where purchase links, funnels and redemption links live. A URL without a path, such as `https://pay.example.com`, serves them at that host's root. Redemption emails link here, else to `REVENUEDOT_PUBLIC_URL` + `/pay`, never to the host a request named. See [Custom domains](custom-domains.md) |
+| `REVENUEDOT_CUSTOM_DOMAIN_TARGET` | the pay host | The host customers' custom domains must CNAME to |
 
 ### Set the signing key
 Generate a key once (`pnpm tsx scripts/signing-keygen.ts` in a checkout with `pnpm install` done), add it to `.env`, and pass it to the container with a `docker-compose.override.yml`, which Compose reads automatically:
