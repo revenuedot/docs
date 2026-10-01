@@ -81,6 +81,24 @@ if let package = offerings.current?.availablePackages.first {
 ```
 The purchase goes to `POST /v1/receipts`. RevenueDot verifies it with Apple, which needs the App Store in-app purchase key on the app. See [Connect the App Store](../guides/app-store.md).
 
+## Web purchases: redemption links and web checkout
+Customers who buy on the web through a RevenueDot [purchase link](../guides/purchase-links.md) or [funnel](../guides/funnels.md) unlock the app with a redemption link, `<scheme>://redeem_web_purchase?redemption_token=…`. Register the scheme in `Info.plist` (`CFBundleURLTypes`), then pass the URL to the SDK:
+
+```swift
+.onOpenURL { url in
+    guard let redemption = url.asWebPurchaseRedemption else { return }
+    Task {
+        switch await Purchases.shared.redeemWebPurchase(redemption) {
+        case .success: break  // The entitlement is active.
+        case .expired(let email): print("Expired. A new link went to \(email).")
+        case .invalidToken, .purchaseBelongsToOtherUser, .error: print("Could not redeem.")
+        }
+    }
+}
+```
+
+A RevenueCatUI paywall's **web checkout** button also works: it opens a Stripe Checkout on your Stripe account for the app's current user, and the purchase lands on that user with no redemption link. Full setup: [Redemption links](../guides/redemption-links.md) and [Sell on the web with Stripe](../guides/web-billing.md).
+
 ## Test Store
 Create a `test_store` app in RevenueDot and pass its `test_...` key to `configure`. The SDK then shows a Test Store alert instead of the App Store sheet.
 - **Test Store keys only work in Debug builds.** In a Release build the SDK shows a "Wrong API Key" alert and stops the app on purpose.
@@ -115,5 +133,6 @@ The full order of steps is in [Migrate from RevenueCat](../migrate/README.md).
 - [All SDKs](README.md)
 - [Connect the App Store](../guides/app-store.md)
 - [Trusted Entitlements](../guides/trusted-entitlements.md)
+- [Redemption links](../guides/redemption-links.md)
 - [Restore purchases](../help/restore-purchases.md)
 - [Receipt errors: 4xx vs 5xx](../help/receipt-errors-4xx-vs-5xx.md)

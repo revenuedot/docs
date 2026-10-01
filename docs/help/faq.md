@@ -52,9 +52,9 @@ Receipts are accepted today for four app types:
 | `play_store` | Google Play |
 | `test_store` | RevenueDot Test Store (no real store) |
 | `amazon` | Amazon Appstore ([guide](../guides/amazon-appstore.md)) |
-| `stripe` | Stripe subscriptions from your own Stripe account, posted by your backend ([guide](../guides/stripe.md)) |
+| `stripe` | Stripe purchases on your own Stripe account: from RevenueDot's hosted checkout ([web billing](../guides/web-billing.md)) or posted by your backend ([guide](../guides/stripe.md)) |
 
-Web Billing, Paddle and Roku apps can be created, but their receipts answer HTTP 400 with code 7662. See [Projects and apps](../concepts/projects-and-apps.md).
+RevenueCat Billing (`rcb_`), Paddle and Roku apps can be created, but their receipts answer HTTP 400 with code 7662. See [Projects and apps](../concepts/projects-and-apps.md).
 
 ## Is it production-ready?
 No. The App Store and Google Play code is tested against mocked Apple and Google APIs only. No real App Store or Google Play sandbox purchase has run end to end yet. Use it for evaluation and testing, and keep RevenueCat for live customers until a release says otherwise. See [Known issues](known-issues.md).
@@ -93,7 +93,13 @@ Yes, with the Test Store: create a `test_store` app and use its `test_` key. See
 They are not implemented. The SDK endpoints answer empty or 404 in the way that makes the SDK hide those features, so your app does not crash. Paywalls built in RevenueCat do not render against RevenueDot.
 
 ## Does the web SDK work?
-`purchases-js` works with Test Store (`test_`) keys against RevenueDot. Web Billing (`rcb_`) and Paddle purchases do not work yet. Stripe purchases from your own checkout are posted by your backend instead ([Stripe guide](../guides/stripe.md)). With the stock SDK, turn off analytics events (`flags: { collectAnalyticsEvents: false }`), because the stock SDK sends them to RevenueCat. See the [web guide](../sdks/web.md).
+`purchases-js` works with Test Store (`test_`) keys against RevenueDot. RevenueCat Billing (`rcb_`) and Paddle purchases do not. For real payments on the web, use RevenueDot's hosted checkout on your Stripe account ([web billing](../guides/web-billing.md)), or post purchases from your own Stripe checkout from your backend ([Stripe guide](../guides/stripe.md)). With the stock SDK, turn off analytics events (`flags: { collectAnalyticsEvents: false }`), because the stock SDK sends them to RevenueCat. See the [web guide](../sdks/web.md).
+
+## Can I sell my app's subscription on the web?
+Yes, on your own Stripe account. Connect Stripe with a restricted key, add a web config, and let RevenueDot create your web products in Stripe. Then share a [purchase link](../guides/purchase-links.md) for an offering, or publish a multi-step [funnel](../guides/funnels.md). Buyers pay on Stripe Checkout, and the purchase gives the same entitlements as an in-app purchase. See [Sell on the web with Stripe](../guides/web-billing.md).
+
+## How does a web purchase reach the app?
+Two ways. If the checkout knew the buyer's app user id (a purchase link with `?app_user_id=`, or the iOS paywall's web checkout), the purchase is on that user at once: `customerInfo` shows it the next time the app asks. Otherwise the buyer gets a **redemption link**, on the success page and by email. It opens your app with `<scheme>://redeem_web_purchase?redemption_token=…`, and your app passes it to `Purchases.shared.redeemWebPurchase(...)`. The web purchase then moves to the app's user. See [Redemption links](../guides/redemption-links.md).
 
 ## Can AI agents set it up?
 Yes. The hosted MCP server is live at `https://mcp.revenuedot.app/mcp`: your client signs in with OAuth, or sends a secret key. It has 17 tools for the catalog, customers, access grants, webhooks and import status ([revenuedot/mcp](https://github.com/revenuedot/mcp)). The local version is on npm: `npx -y @revenuedot/mcp`. Agent skills for Claude Code, Codex and Cursor are in [revenuedot/agent-skills](https://github.com/revenuedot/agent-skills).

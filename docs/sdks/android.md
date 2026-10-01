@@ -80,6 +80,22 @@ try {
 ```
 The purchase goes to `POST /v1/receipts` with the Google Play purchase token. RevenueDot verifies it with Google, which needs the app's service account. See [Connect Google Play](../guides/google-play.md).
 
+## Web purchases: redemption links
+Customers who buy on the web through a RevenueDot [purchase link](../guides/purchase-links.md) or [funnel](../guides/funnels.md) unlock the app with a redemption link, `<scheme>://redeem_web_purchase?redemption_token=…`. Add an intent filter for the scheme to your activity, then pass the intent to the SDK:
+
+```kotlin
+val redemption = intent.asWebPurchaseRedemption() ?: return
+Purchases.sharedInstance.redeemWebPurchase(redemption) { result ->
+    when (result) {
+        is RedeemWebPurchaseListener.Result.Success -> Unit // The entitlement is active.
+        is RedeemWebPurchaseListener.Result.Expired -> showMessage("Expired. A new link went to ${result.obfuscatedEmail}.")
+        else -> showMessage("Could not redeem.")
+    }
+}
+```
+
+Call it from `onCreate` and `onNewIntent`. Full setup: [Redemption links](../guides/redemption-links.md) and [Sell on the web with Stripe](../guides/web-billing.md).
+
 ## Test Store
 Create a `test_store` app in RevenueDot and pass its `test_...` key to `configure`. The SDK shows a Test Store dialog instead of Google Play's purchase sheet.
 - **Test Store keys only work in debug builds.** In a release build the SDK shows an error screen and stops the app on purpose. Ship with the `goog_` key.
@@ -113,4 +129,5 @@ The full order of steps is in [Migrate from RevenueCat](../migrate/README.md).
 - [All SDKs](README.md)
 - [Connect Google Play](../guides/google-play.md)
 - [Trusted Entitlements](../guides/trusted-entitlements.md)
+- [Redemption links](../guides/redemption-links.md)
 - [What differs from RevenueCat](../migrate/what-differs.md)

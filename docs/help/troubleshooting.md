@@ -15,7 +15,7 @@ Find your symptom below; each row gives the cause and the fix. Most problems com
 | Logs say entitlement verification FAILED | The stock SDK checks RevenueCat's signing key | Turn verification off. See [signature verification](signature-verification-failed.md) |
 | Offerings are empty | No offering is marked current, or its packages point at products of another app | Mark an offering current and add this app's products to its packages. See [Offerings and packages](../concepts/offerings-and-packages.md) |
 | iOS says "No base price found for product" with a `test_` key | The server was built before the 2026-09-30 Test Store fix | Rebuild the server from the current source. See [Known issues](known-issues.md) |
-| Web purchases with an `rcb_` key fail | Web Billing is not supported yet | Use a Test Store (`test_`) key. See [Known issues](known-issues.md) |
+| Web purchases with an `rcb_` key fail | RevenueCat Billing is not supported | Sell on the web with RevenueDot's hosted checkout on your Stripe account ([web billing](../guides/web-billing.md)), or test with a Test Store (`test_`) key |
 | An Android emulator cannot reach `http://localhost:8787` | `localhost` is the emulator itself | Use `http://10.0.2.2:8787` |
 | Android needs HTTPS | Android blocks cleartext HTTP by default | Use HTTPS, or allow cleartext for your dev host in the network security config |
 
@@ -26,7 +26,7 @@ Find your symptom below; each row gives the cause and the fix. Most problems com
 | `/v1/receipts` answers 400, code 7103 | The receipt cannot be verified, or is for another bundle ID or package name | See [4xx or 5xx](receipt-errors-4xx-vs-5xx.md) |
 | `/v1/receipts` answers 500, code 7234 | A StoreKit 1 receipt, and no App Store in-app purchase key | Add the key. See [Connect the App Store](../guides/app-store.md) |
 | `/v1/receipts` answers 503, code 7101 | Apple or Google failed, or the Google service account is wrong | Run **Verify credentials** on the app page. The SDK retries on its own |
-| `/v1/receipts` answers 400, code 7662 | The app is a Web Billing, Paddle or Roku app | Not supported yet. Use App Store, Mac App Store, Google Play, Amazon Appstore, Stripe or Test Store |
+| `/v1/receipts` answers 400, code 7662 | The app is a RevenueCat Billing, Paddle or Roku app | Not supported. Use App Store, Mac App Store, Google Play, Amazon Appstore, Stripe or Test Store |
 | Restore fails with 7102 | Another user owns the purchase and the transfer behaviour forbids moving it | See [How do I restore purchases?](restore-purchases.md) |
 | Xcode StoreKit test purchases fail with 7103 | Xcode signs them with its own certificate | Add the `xcode_certificate` credential. See [Test purchases](test-sandbox-purchases.md) |
 

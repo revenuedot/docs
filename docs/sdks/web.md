@@ -1,11 +1,11 @@
 ---
 title: How do I use RevenueDot with the web SDK (purchases-js)?
-description: Pass httpConfig.proxyURL to Purchases.configure and turn off analytics events. Only Test Store (test_) keys work against RevenueDot today; Web Billing and Paddle do not. Stripe purchases are posted by your backend.
+description: Pass httpConfig.proxyURL to Purchases.configure and turn off analytics events. purchases-js buys with Test Store (test_) keys; to take real payments on the web, send buyers to a RevenueDot purchase link or funnel on your Stripe account.
 ---
 
 # How do I use RevenueDot with the web SDK (purchases-js)?
 
-Pass `httpConfig: { proxyURL: "https://revenuedot.example.com" }` to `Purchases.configure`, and set `flags: { collectAnalyticsEvents: false }` so the stock SDK does not send analytics events to RevenueCat. **Only Test Store (`test_`) keys work against RevenueDot today.** Web Billing (`rcb_`) and Paddle (`pdl_`) purchases do not: RevenueDot answers their receipts with error 7662. Purchases from your own Stripe checkout are posted by your backend with the Stripe app's `strp_` key, not by purchases-js ([Stripe guide](../guides/stripe.md)).
+Pass `httpConfig: { proxyURL: "https://revenuedot.example.com" }` to `Purchases.configure`, and set `flags: { collectAnalyticsEvents: false }` so the stock SDK does not send analytics events to RevenueCat. **Only Test Store (`test_`) keys work against RevenueDot today.** Web Billing (`rcb_`) and Paddle (`pdl_`) purchases do not: RevenueDot answers their receipts with error 7662. To take real payments on the web, send buyers to a RevenueDot [purchase link](../guides/purchase-links.md) or [funnel](../guides/funnels.md), which run Stripe Checkout on your own Stripe account ([web billing](../guides/web-billing.md)). Purchases from your own Stripe checkout are posted by your backend with the Stripe app's `strp_` key ([Stripe guide](../guides/stripe.md)).
 
 ## Use the RevenueCat SDK you already ship (proxy mode)
 ```ts
@@ -63,11 +63,12 @@ if (rcPackage) {
 ```
 With a `test_` key, `purchase` opens the Test Store modal instead of a payment form.
 
-## Test Store is the only web store today
-- Create a `test_store` app in RevenueDot and use its `test_...` key. See [Test Store](../guides/test-store.md).
+## Which web purchases work
+- **Test Store** inside purchases-js: create a `test_store` app in RevenueDot and use its `test_...` key. See [Test Store](../guides/test-store.md).
 - Test Store purchases are always sandbox purchases.
 - Test Store prices come from each product's Test Store price. Set it in the dashboard (Product catalog, Edit product) or with `test_store_price` on `POST /v2/projects/{project_id}/products`; a product without one shows 0.
-- `rcb_`, `strp_` and `pdl_` apps can be created, but RevenueDot does not accept their purchases yet. Web Billing is planned for a later tier; see [What differs from RevenueCat](../migrate/what-differs.md).
+- **Real payments** go through RevenueDot's hosted checkout on your Stripe account, not through purchases-js. Link to a purchase link with `?app_user_id=` set to the same app user id you pass to `Purchases.configure`; after payment, `getCustomerInfo()` shows the entitlement, because entitlements belong to the customer, not to one app. See [Sell on the web with Stripe](../guides/web-billing.md).
+- RevenueCat Billing (`rcb_`) and Paddle (`pdl_`) apps can be created, but RevenueDot does not accept their purchases, and purchases-js's own Web Billing checkout answers an error. See [What differs from RevenueCat](../migrate/what-differs.md).
 
 ## Migrate from RevenueCat
 ```diff
@@ -80,7 +81,7 @@ With a `test_` key, `purchase` opens the Test Store modal instead of a payment f
 +  flags: { collectAnalyticsEvents: false },
  });
 ```
-If you sell through RevenueCat Web Billing today, keep those subscriptions on RevenueCat: the importer copies their current access, but renewals stay with RevenueCat. See [Migrate from RevenueCat](../migrate/README.md).
+If you sell through RevenueCat Web Billing today, keep those subscriptions on RevenueCat: the importer copies their current access, but renewals stay with RevenueCat. New web sales can start on RevenueDot's [hosted checkout](../guides/web-billing.md). See [Migrate from RevenueCat](../migrate/README.md).
 
 ## Examples
 - [web/purchases-js-vite](https://github.com/revenuedot/examples/tree/main/web/purchases-js-vite): a Vite page that configures purchases-js with a proxy URL, buys through the Test Store and shows the entitlement.
@@ -88,5 +89,6 @@ If you sell through RevenueCat Web Billing today, keep those subscriptions on Re
 ## Related
 - [All SDKs](README.md)
 - [Test Store](../guides/test-store.md)
+- [Sell on the web with Stripe](../guides/web-billing.md)
 - [Customers and app user IDs](../concepts/customers-and-app-user-ids.md)
 - [What differs from RevenueCat](../migrate/what-differs.md)

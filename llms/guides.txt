@@ -319,7 +319,9 @@ RVS has no price. The price and currency the SDK posts (the marketplace's local 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md
 Description: Create a Stripe app, save a restricted API key and a webhook signing secret from your own Stripe account, post each new subscription or Checkout Session to /v1/receipts, and let Stripe's webhooks keep it current.
 
-Four steps: create a Stripe app in RevenueDot, save a **restricted API key** from your Stripe account, add a **webhook endpoint** in Stripe and save its signing secret, then have your backend **post each purchase** to `POST /v1/receipts`. Customers who pay on your website then get the same entitlements in your apps when they use the same app user ID. RevenueDot only reads from Stripe: it never charges, refunds or changes anything there.
+Four steps: create a Stripe app in RevenueDot, save a **restricted API key** from your Stripe account, add a **webhook endpoint** in Stripe and save its signing secret, then have your backend **post each purchase** to `POST /v1/receipts`. Customers who pay on your website then get the same entitlements in your apps when they use the same app user ID. For this, RevenueDot only reads from Stripe: it never charges, refunds or changes anything there.
+
+**No checkout of your own?** RevenueDot can host one on the same Stripe app: purchase links, funnels and redemption links, with products, prices and coupons it creates in your account. That needs write permissions on the key. See [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md).
 
 ## 1. Create the app
 ```bash
@@ -332,7 +334,7 @@ The app's public key starts with `strp_`. Create its products with `store_identi
 
 ## 2. Save a restricted API key
 1. In the [Stripe Dashboard → Developers → API keys](https://dashboard.stripe.com/apikeys/create), click **Create restricted key**.
-2. Give it **Read** access to Subscriptions, Invoices, Checkout Sessions, Charges, Customers, Products and Prices. Leave everything else at None.
+2. Give it **Read** access to Subscriptions, Invoices, Checkout Sessions, Charges, Customers, Products and Prices. Leave everything else at None. For [web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md#1-connect-stripe), give Products, Prices, Checkout Sessions, Coupons and Promotion Codes **Write** instead.
 3. In the dashboard, open the app → **Stripe API key**, paste it and click **Check credentials**. RevenueDot lists one subscription and one Checkout Session: a wrong key says so, and a key without a permission names the one it lacks.
 
 With the API:
@@ -350,7 +352,7 @@ A publishable key (`pk_…`) is refused. Using a Stripe Connect platform key for
 
 ## 3. Add the webhook endpoint
 1. Copy the app's webhook URL, `https://revenuedot.example.com/v1/notifications/stripe/{app_id}`, from the dashboard or from `store_settings` (`notification_url`).
-2. In the [Stripe Dashboard → Developers → Webhooks](https://dashboard.stripe.com/webhooks/create), add an endpoint with that URL and these events: `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.subscription.paused`, `customer.subscription.resumed`, `invoice.paid`, `invoice.payment_failed`, `invoice.updated`, `charge.refunded`, `checkout.session.completed`. Other events are accepted and ignored.
+2. In the [Stripe Dashboard → Developers → Webhooks](https://dashboard.stripe.com/webhooks/create), add an endpoint with that URL and these events: `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.subscription.paused`, `customer.subscription.resumed`, `invoice.paid`, `invoice.payment_failed`, `invoice.updated`, `charge.refunded`, `checkout.session.completed`. Other events are accepted and ignored. For [web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md), `checkout.session.completed` also records purchases from RevenueDot's hosted checkout, and `checkout.session.async_payment_succeeded` records the ones paid with delayed methods.
 3. Reveal the endpoint's **Signing secret** (`whsec_…`) and paste it on the app page, or save it as `stripe_webhook_secret`.
 
 Every event must carry a valid `Stripe-Signature`: RevenueDot computes the HMAC-SHA256 of `"<t>.<body>"` with the signing secret, the way [Stripe documents it](https://docs.stripe.com/webhooks#verify-manually), and refuses a timestamp more than 5 minutes off. A missing secret or a bad signature answers 400. Each event is stored once (by event ID), copied to `notification_forward_url` when set, and applied by reading the subscription from Stripe again, so events arriving out of order cannot roll a subscription back. Temporary failures answer 500, and Stripe retries.
@@ -398,11 +400,12 @@ Webhooks report `store: STRIPE` with no store commission. Revenue is what each i
 Both Stripe API shapes work: before 2025-03-31 (period fields on the subscription, `invoice.subscription`) and after (period fields on the subscription item, `invoice.parent.subscription_details`).
 
 ## Not supported yet
-- "Connect with Stripe" (OAuth) instead of a restricted key, and hosted checkout: these need RevenueDot's own Stripe platform and come later.
+- "Connect with Stripe" (OAuth) instead of a restricted key. It needs RevenueDot's own Stripe platform account and comes later. Hosted checkout works today with a restricted key: see [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md).
 - Subscription schedules, metered and tiered prices, and subscriptions with several items.
 - A scheduled re-check without webhooks: without the webhook endpoint, a cancellation shows only when your backend posts the subscription again.
 
 ## Related
+- [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md): hosted checkout, purchase links, funnels and redemption links
 - [Webhooks out of RevenueDot](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md)
 - [Sandbox and production](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/sandbox.md)
 - [SDK endpoints: POST /v1/receipts](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md)
@@ -1271,7 +1274,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/webhooks" 
 - **`signing_secret` is shown once**, in this answer. Store it as a secret in your backend.
 - `authorization_header` (optional) is sent verbatim as the `Authorization` header, the same role as the authorization header setting in [RevenueCat's webhooks](https://www.revenuecat.com/docs/integrations/webhooks).
 - `environment`: `production`, `sandbox`, or `null` for both.
-- `event_types`: lower-case types such as `["initial_purchase","renewal"]`; empty means all.
+- `event_types`: lower-case types such as `["initial_purchase","renewal"]`; empty means all except the opt-in types below.
 - `app_id`: only one app's events; `null` for all apps.
 - **Pause without deleting:** send `{"enabled":false}` to `POST /v2/projects/{project_id}/integrations/webhooks/{id}`, or use the Deliveries switch on the webhook's dashboard page. Events recorded while it is paused are not sent; queued retries resume when you turn it back on. `enabled` is a RevenueDot addition; read it with `GET /v2/projects/{project_id}/webhooks`.
 
@@ -1288,9 +1291,11 @@ X-RevenueCat-Webhook-Signature: t=1790800914,v1=0a1552334e825926036f7efe21527800
 
 Every field of every event type, with full examples, is on [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md). Handlers written for RevenueCat's webhooks work unchanged: the field names and values are the same.
 
-RevenueDot sends 18 of RevenueCat's 21 event types:
+RevenueDot sends 19 of RevenueCat's 21 event types:
+- **`PURCHASE_REDEEMED`** is sent when an app redeems a web purchase with a [redemption link](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md). `redeemed_from` is the anonymous web buyer, `redeemed_by` and `app_user_id` the app's user.
 - **`SUBSCRIBER_ALIAS`** is sent only to webhooks whose `event_types` names `subscriber_alias`. RevenueCat deprecated it and sends it only to older projects, so a webhook without a filter never gets it.
-- **`TEMPORARY_ENTITLEMENT_GRANT`, `INVOICE_ISSUANCE` and `PURCHASE_REDEEMED`** are never sent. RevenueDot never grants access it has not verified during a store outage (the SDK keeps access on the device instead, see [offline entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/offline-entitlements.md)), has no billing engine that issues invoices, and issues no web purchase redemption links.
+- **`TEMPORARY_ENTITLEMENT_GRANT` and `INVOICE_ISSUANCE`** are never sent. RevenueDot never grants access it has not verified during a store outage (the SDK keeps access on the device instead, see [offline entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/offline-entitlements.md)), and has no billing engine that issues invoices.
+- **`FUNNEL_VIEWED`, `FUNNEL_STEP_COMPLETED` and `FUNNEL_PURCHASE`** are RevenueDot's own types for [funnels](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md). Like `SUBSCRIBER_ALIAS`, they are opt-in: only webhooks whose `event_types` names `funnel_viewed`, `funnel_step_completed` or `funnel_purchase` get them, so a handler written for RevenueCat's types never sees them.
 - **`offer_code`** carries the App Store or Google Play offer id of the period, such as a [win-back offer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md).
 
 ## 3. Verify the signature
@@ -1641,6 +1646,8 @@ Inside the container the server reads:
 | `REVENUEDOT_ALLOW_SIGNUP` | unset (owner only) | See above |
 | `REVENUEDOT_SIGNING_KEY` | unset | See above |
 | `REVENUEDOT_SMTP_URL` and the other mail variables | unset | See [Email](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#email) |
+| `REVENUEDOT_PAY_URL` | `<this server>/pay` | Where purchase links, funnels and redemption links live. A URL without a path, such as `https://pay.example.com`, serves them at that host's root. Not passed through by the default `docker-compose.yml`. See [Custom domains](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/custom-domains.md) |
+| `REVENUEDOT_CUSTOM_DOMAIN_TARGET` | the pay host | The host customers' custom domains must CNAME to. Not passed through by the default `docker-compose.yml` |
 
 ### Set the signing key
 Generate a key once (`pnpm tsx scripts/signing-keygen.ts` in a checkout with `pnpm install` done), add it to `.env`, and pass it to the container with a `docker-compose.override.yml`, which Compose reads automatically:
@@ -2069,7 +2076,7 @@ Open **Paywalls** in the dashboard. You can start in three ways:
 | Limited offer | A countdown to the end of an offer, one plan, dark | Discount offers after a cancelled purchase made 17% of revenue (Superwall) |
 | Tiers | Two tiers in tabs (Plus and Pro), two plans each | Tiers let a customer pick a level, then a period |
 | Reviews | Rating, a user count and one review, then two plans | Reviews with price anchoring: +17% revenue per user (RevenueCat) |
-| Web checkout | The button opens web checkout instead of the store sheet | Use it only where the store rules allow external purchases |
+| Web checkout | The button opens web checkout instead of the store sheet (iOS; see [web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md#the-ios-sdks-web-checkout)) | Use it only where the store rules allow external purchases |
 
 ## Edit a paywall
 
@@ -2730,6 +2737,13 @@ For your own warehouse, a **scheduled data export** writes CSV or Parquet files 
 | Expiration | `rc_expiration_event` | `rc_expiration` | |
 | Billing issue | `rc_billing_issue_event` | `rc_billing_issue` | |
 | Product change | `rc_product_change_event` | `rc_product_change` | |
+
+| Web purchase redeemed in the app | `rc_purchase_redeemed` (Segment, Amplitude, Mixpanel) | | |
+| Funnel viewed | `rd_funnel_viewed` (Segment, Amplitude, Mixpanel, PostHog) | | |
+| Funnel step completed | `rd_funnel_step_completed` (Segment, Amplitude, Mixpanel, PostHog) | | |
+| Funnel purchase | `rd_funnel_purchase` (Segment, Amplitude, Mixpanel, PostHog) | | |
+
+The three funnel events come from RevenueDot's web [funnels](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md) and are **opt-in**: add `funnel_viewed`, `funnel_step_completed` and `funnel_purchase` to the integration's event types to get them. They carry `funnel_id`, `funnel_name`, `funnel_slug`, `session_id`, `step_id`, `step_type`, `step_index`, `answer`, `product_id` and the page's `utm_*` parameters as event properties. A visitor has no app user id until they pay, unless the funnel URL had `?app_user_id=`.
 
 Rename any of them under **Event names** on the integration's page, or with `event_names` in the API. Each event also sets the customer's `rc_subscription_status` (`active`, `trial`, `cancelled`, `cancelled_trial`, `grace_period`, `expired`, `paused` ...) where the tool has profiles.
 
