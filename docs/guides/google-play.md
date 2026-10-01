@@ -67,6 +67,8 @@ From then on, a push without a valid Google-signed token for that audience (and 
 - **Cancel** (turn auto-renew off): `.../actions/cancel`.
 - **Defer** the next renewal by up to 365 days: `.../actions/extend` with `extend_by_days`, or v1 `.../subscriptions/{product_id}/defer`.
 - **Refund a one-time purchase**: `POST /v2/projects/{project_id}/purchases/{purchase_id}/actions/refund`.
+- **Restore a purchase from its order id** (`GPA.1234-5678-9012-34567`, from the customer's Google receipt email): `POST /v2/projects/{project_id}/customers/{customer_id}/actions/restore_purchase_by_order_id`. RevenueDot finds the purchase token with Google's Orders API (the service account needs **View financial data**), verifies it, and gives the purchase to the customer under the project's transfer behaviour.
+- **Create a subscription in Play Console** from your catalog: `POST /v2/projects/{project_id}/products/{product_id}/create_in_store`. Google gets the subscription id and a listing in your app's default language; add base plans and prices in Play Console. One-time products need a price, so create them in Play Console.
 
 These call Google's API with the service account. They are tested against a mocked Google API only; run one in a sandbox before you rely on it.
 

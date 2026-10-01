@@ -37,7 +37,7 @@ const lifecycle = {
   takehome_percentage: num("1 minus the estimated store commission."),
   tax_percentage: num("Always 0 today."),
   commission_percentage: num("Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store)."),
-  offer_code: { type: "null" },
+  offer_code: nstr("The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md)."),
 };
 
 const payload = (props, required) => ({
@@ -64,11 +64,15 @@ const EVENTS = [
   ["TRANSFER", "A purchase moved to another customer because that customer restored it (transfer behaviour `transfer` or `transfer_if_no_active`).", "transfer"],
   ["VIRTUAL_CURRENCY_TRANSACTION", "An in-app currency was credited because a purchase of a granting product was recorded. Not sent for adjustments made through the API.", "vc"],
   ["EXPERIMENT_ENROLLMENT", "A customer was enrolled in an offering experiment. Sent once per customer and experiment.", "experiment"],
+  ["SUBSCRIBER_ALIAS", "A new app user id joined an existing customer: `logIn` onto an anonymous customer, `logIn` that merged an anonymous customer into an existing one, Android's alias call, or a restore that merged two customers. RevenueCat deprecated this event and sends it only to older projects, so RevenueDot delivers it only to webhooks whose `event_types` filter names `subscriber_alias`; it always appears in the customer's event history.", "alias"],
   ["TEST", "Sent by the dashboard's \"Send test event\" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase.", {}],
 ];
 
-/** Accepted in a webhook's `event_types` filter, never sent by RevenueDot yet. */
-export const NOT_SENT = ["TEMPORARY_ENTITLEMENT_GRANT", "INVOICE_ISSUANCE", "PURCHASE_REDEEMED", "SUBSCRIBER_ALIAS"];
+/**
+ * Accepted in a webhook's `event_types` filter, never sent, because RevenueDot never has the fact behind them: it never
+ * grants unverified access during a store outage, has no billing engine issuing invoices, and issues no web redemption links.
+ */
+export const NOT_SENT = ["TEMPORARY_ENTITLEMENT_GRANT", "INVOICE_ISSUANCE", "PURCHASE_REDEEMED"];
 
 const headers = {
   "X-RevenueCat-Webhook-Signature": { required: true, schema: str(), description: "`t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\" with the webhook's signing secret>`. Signed again on every attempt.", example: "t=1790800914,v1=0a1552334e825926036f7efe21527800ea45caa63eca523c6120c6da9041ef99" },
@@ -108,6 +112,11 @@ for (const [type, description, extra] of EVENTS) {
       id: lifecycle.id, type: lifecycle.type, event_timestamp_ms: lifecycle.event_timestamp_ms, app_user_id: lifecycle.app_user_id, original_app_user_id: lifecycle.original_app_user_id, aliases: lifecycle.aliases,
       experiment_id: str(), experiment_variant: en(["a", "b"]), offering_id: { type: ["string", "null"], description: "The variant's offering identifier." }, experiment_enrolled_at_ms: int("Epoch milliseconds."),
     }, ["id", "type", "event_timestamp_ms", "app_user_id", "experiment_id", "experiment_variant"]);
+  } else if (extra === "alias") {
+    schema = payload({
+      id: lifecycle.id, type: lifecycle.type, event_timestamp_ms: lifecycle.event_timestamp_ms, app_id: lifecycle.app_id, app_user_id: str("The app user id the app uses now."),
+      original_app_user_id: lifecycle.original_app_user_id, aliases: lifecycle.aliases, subscriber_attributes: lifecycle.subscriber_attributes,
+    }, ["id", "type", "event_timestamp_ms", "app_user_id", "original_app_user_id", "aliases"]);
   } else if (extra === null) {
     const pick = ["id", "type", "event_timestamp_ms", "app_id", "app_user_id", "original_app_user_id", "aliases", "product_id", "transaction_id", "original_transaction_id", "store", "environment", "currency", "country_code", "subscriber_attributes"];
     schema = payload(Object.fromEntries(pick.map((k) => [k, lifecycle[k]])), ["id", "type", "event_timestamp_ms", "app_user_id", "product_id", "store", "environment"]);

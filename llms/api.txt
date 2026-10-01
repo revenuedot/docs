@@ -16,11 +16,11 @@ One RevenueDot server answers every API below on one port. The reference is gene
 
 | API | Paths | Auth | Operations | Reference |
 |---|---|---|---|---|
-| SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 45 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
+| SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 60 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
 | REST API v1 | `/v1/subscribers/...` | secret key | 10 | [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md) |
-| REST API v2 | `/v2/projects/...` | secret key or dashboard session | 132 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
+| REST API v2 | `/v2/projects/...` | secret key or dashboard session | 148 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
 | RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...` | secret key, session or none | 67 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
-| Webhooks (sent by RevenueDot) | your URL | HMAC signature | 17 event types | [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md) |
+| Webhooks (sent by RevenueDot) | your URL | HMAC signature | 18 event types | [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md) |
 
 ## Quick example
 
@@ -95,6 +95,7 @@ Send every key as a bearer token: `Authorization: Bearer <key>`. Which key depen
 - **`publicApiKey`**: A public app key (`appl_`, `mac_`, `goog_`, `test_`, `amzn_`, `strp_`, `rcb_`, `pdl_`, `roku_`). Safe to ship in an app. The SDK sends it on every request.
 - **`secretApiKey`**: A project secret key (`sk_...`). Server side only. Its `permissions` limit what it can do.
 - **`dashboardSession`**: The dashboard session cookie from `POST /auth/login`. It authorizes `/v2` for every project the user belongs to.
+- **`subscriberToken`**: A subscriber access token (`rdat_...`) from `POST /v2/projects/{project_id}/apps/{app_id}/authenticate`. It speaks for one app user id of one app for one hour. An expired token, or a path or body naming another app user id, answers 401 with code 7224.
 - **`googlePubSubOidc`**: Google-signed OIDC token of a Pub/Sub push subscription. Checked only when the app's `pubsub_audience` credential is set.
 
 ## Where keys come from
@@ -115,16 +116,20 @@ Permissions the operations use:
 - `charts_metrics:overview:read`
 - `customer_information:customers:read`
 - `customer_information:customers:read_write`
+- `customer_information:invoices:read`
 - `customer_information:purchases:read`
 - `customer_information:purchases:read_write`
 - `customer_information:subscriptions:read`
 - `customer_information:subscriptions:read_write`
+- `iam:authorization:issue_token`
 - `project_configuration:api_keys:read`
 - `project_configuration:api_keys:read_write`
 - `project_configuration:apps:read`
 - `project_configuration:apps:read_write`
 - `project_configuration:audit_logs:read`
 - `project_configuration:collaborators:read`
+- `project_configuration:discounts:read`
+- `project_configuration:discounts:read_write`
 - `project_configuration:entitlements:read`
 - `project_configuration:entitlements:read_write`
 - `project_configuration:integrations:read`
@@ -274,7 +279,7 @@ Responses under `/v1` and `/rcbilling` are signed when the server has a signing 
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (45)
+## Operations on this page (60)
 
 - **Server**: [Server name and docs link](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#server-name-and-docs-link), [Health check](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#health-check), [Connectivity probe](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#connectivity-probe)
 - **Customer info**: [Get customer info](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#get-customer-info)
@@ -284,6 +289,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Attributes**: [Set customer attributes](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#set-customer-attributes)
 - **SDK support**: [Intro offer eligibility (StoreKit 1)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#intro-offer-eligibility-storekit-1), [Sign a promotional offer (iOS)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sign-a-promotional-offer-ios), [Attribution data (deprecated iOS call)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#attribution-data-deprecated-ios-call), [Apple AdServices token](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#apple-adservices-token), [SDK health report availability](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-health-report-availability), [SDK health report](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-health-report), [Product to entitlement mapping (offline entitlements)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#product-to-entitlement-mapping-offline-entitlements), [Customer Center configuration](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-configuration), [Customer Center support ticket (not built)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-support-ticket-not-built), [Virtual currency balances](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#virtual-currency-balances), [Redeem a web purchase (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#redeem-a-web-purchase-not-available), [Register an Apple external purchase token (iOS)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#register-an-apple-external-purchase-token-ios), [Rewarded ad verification (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#rewarded-ad-verification-not-available), [Amazon receipt details (not supported)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#amazon-receipt-details-not-supported), [Paywall workflows (web SDK)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#paywall-workflows-web-sdk), [One paywall workflow (web SDK)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#one-paywall-workflow-web-sdk), [Restore eligibility (StoreKit 2)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#restore-eligibility-storekit-2), [Remote config fallback (none)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#remote-config-fallback-none), [Remote config: paywalls and UI settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#remote-config-paywalls-and-ui-settings), [Download a remote-config blob](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#download-a-remote-config-blob), [SDK paywall, Customer Center and ad events](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-paywall-customer-center-and-ad-events), [SDK diagnostics (accepted, not stored)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-diagnostics-accepted-not-stored)
 - **Web Billing**: [Web offering products](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-offering-products), [Start a hosted web checkout (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#start-a-hosted-web-checkout-not-available), [Web Billing purchase (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-billing-purchase-not-available), [Prepare a Web Billing checkout (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#prepare-a-web-billing-checkout-not-available), [Start a Web Billing checkout (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#start-a-web-billing-checkout-not-available), [Web Billing checkout status](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-billing-checkout-status), [Refresh Web Billing checkout pricing](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#refresh-web-billing-checkout-pricing), [Complete a Web Billing checkout](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#complete-a-web-billing-checkout), [Web checkout branding](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-checkout-branding)
+- **Subscriber tokens**: [Get customer info (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#get-customer-info-subscriber-token), [Get offerings (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#get-offerings-subscriber-token), [Intro offer eligibility (StoreKit 1) (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#intro-offer-eligibility-storekit-1-subscriber-token), [Attribution data (deprecated iOS call) (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#attribution-data-deprecated-ios-call-subscriber-token), [Set customer attributes (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#set-customer-attributes-subscriber-token), [Apple AdServices token (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#apple-adservices-token-subscriber-token), [SDK health report (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-health-report-subscriber-token), [Customer Center configuration (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-configuration-subscriber-token), [Customer Center support ticket (not built) (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-support-ticket-not-built-subscriber-token), [Virtual currency balances (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#virtual-currency-balances-subscriber-token), [Restore eligibility (StoreKit 2) (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#restore-eligibility-storekit-2-subscriber-token), [Rewarded ad verification (not available) (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#rewarded-ad-verification-not-available-subscriber-token), [Web offering products (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-offering-products-subscriber-token), [Test Store product details (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#test-store-product-details-subscriber-token), [Spend in-app currency as the subscriber](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#spend-in-app-currency-as-the-subscriber)
 - **Store notifications**: [App Store Server Notifications v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#app-store-server-notifications-v2), [Google Play real-time developer notifications (Pub/Sub push)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#google-play-real-time-developer-notifications-pubsub-push)
 - **Response signing**: [Public key for response signatures](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#public-key-for-response-signatures)
 
@@ -1119,7 +1125,8 @@ Example 200 response:
 
 `GET /v1/product_entitlement_mapping` · Auth: public app key or secret key
 
-Lets the SDK grant entitlements while the server cannot be reached.
+Lets the SDK grant entitlements on the device while the server answers 5xx (offline entitlements). The SDK fetches it every 25 hours.
+A public key gets only its own app's products, keyed the way that SDK looks them up: App Store products by product id (`product:monthly` for a monthly billing plan), Google Play products by `subscription:base_plan` and by the bare subscription id, which carries every base plan's entitlements because Android purchases do not name their base plan. Consumables are left out. A secret key gets the whole project. See [Offline entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/offline-entitlements.md).
 
 **Example request**
 
@@ -1766,6 +1773,591 @@ Example 200 response:
   "support_email": null,
   "gateway_tax_collection_enabled": false,
   "brand_font_config": null
+}
+```
+
+## Subscriber tokens
+
+The SDK endpoints for one customer, authorized by a subscriber access token from `POST /v2/projects/{project_id}/apps/{app_id}/authenticate` instead of the app key. The RevenueCat SDKs call these paths in their internal token mode.
+
+### Get customer info (subscriber token)
+
+`GET /v1/customer` · Auth: none
+
+The subscriber-token form of `GET /v1/subscribers/{app_user_id}`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Headers**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `X-Nonce` | string | no | Base64 nonce the SDK sends when entitlement verification is on; it is part of the signed message. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/customer"
+```
+
+**Responses**
+
+- **200**: Customer info. Returns [CustomerInfo](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customerinfo).
+- **201**: Customer info of a customer created by this call. Returns [CustomerInfo](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customerinfo).
+- **400**: Bad request. For receipts, a 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "request_date": "2026-09-30T20:41:54Z",
+  "request_date_ms": 1790800914034,
+  "subscriber": {
+    "entitlements": {
+      "pro": {
+        "expires_date": "2026-10-30T20:41:54Z",
+        "grace_period_expires_date": null,
+        "product_identifier": "pro_monthly",
+        "purchase_date": "2026-09-30T20:41:54Z"
+      }
+    },
+    "first_seen": "2026-09-30T20:41:54Z",
+    "last_seen": "2026-09-30T20:41:54Z",
+    "management_url": null,
+    "non_subscriptions": {},
+    "original_app_user_id": "user_1",
+    "original_application_version": null,
+    "original_purchase_date": "2026-09-30T20:41:54Z",
+    "other_purchases": {},
+    "subscriptions": {
+      "pro_monthly": {
+        "auto_resume_date": null,
+        "billing_issues_detected_at": null,
+        "display_name": null,
+        "expires_date": "2026-10-30T20:41:54Z",
+        "grace_period_expires_date": null,
+        "is_sandbox": true,
+        "management_url": null,
+        "original_purchase_date": "2026-09-30T20:41:54Z",
+        "ownership_type": "PURCHASED",
+        "period_type": "normal",
+        "purchase_date": "2026-09-30T20:41:54Z",
+        "refunded_at": null,
+        "store": "test_store",
+        "store_transaction_id": "test_1790800914000_quickstart",
+        "unsubscribe_detected_at": null,
+        "price": {
+          "amount": 9.99,
+          "currency": "USD"
+        }
+      }
+    }
+  }
+}
+```
+
+### Get offerings (subscriber token)
+
+`GET /v1/customer/offerings` · Auth: none
+
+The subscriber-token form of `GET /v1/subscribers/{app_user_id}/offerings`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/customer/offerings"
+```
+
+**Responses**
+
+- **200**: Offerings. Returns [Offerings](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#offerings).
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "current_offering_id": "default",
+  "offerings": [
+    {
+      "description": "Standard plans",
+      "identifier": "default",
+      "metadata": null,
+      "packages": [
+        {
+          "identifier": "$rc_monthly",
+          "platform_product_identifier": "pro_monthly"
+        },
+        {
+          "identifier": "$rc_annual",
+          "platform_product_identifier": "pro_annual"
+        },
+        {
+          "identifier": "$rc_lifetime",
+          "platform_product_identifier": "pro_lifetime"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Intro offer eligibility (StoreKit 1) (subscriber token)
+
+`POST /v1/customer/intro_eligibility` · Auth: none
+
+The subscriber-token form of `POST /v1/subscribers/{app_user_id}/intro_eligibility`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `product_identifiers` | array of string | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/customer/intro_eligibility"
+```
+
+**Responses**
+
+- **200**: Eligibility per product.
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "pro_monthly": null
+}
+```
+
+### Attribution data (deprecated iOS call) (subscriber token)
+
+`POST /v1/customer/attribution` · Auth: none
+
+The subscriber-token form of `POST /v1/subscribers/{app_user_id}/attribution`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `network` | integer | yes | The SDK's AttributionNetwork: 0 Apple Search Ads. |
+| `data` | object | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/customer/attribution" \
+  -H "Content-Type: application/json" -d '{"network":0,"data":{"rc_idfv":"4CEE1BEE-3C19-4591-9E34-1AD968D7B609","Version3.1":{"iad-attribution":"true","iad-campaign-name":"Spring","iad-keyword":"scanner"}}}'
+```
+
+**Responses**
+
+- **200**: Stored.
+- **400**: Bad request. For receipts, a 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{}
+```
+
+### Set customer attributes (subscriber token)
+
+`POST /v1/customer/attributes` · Auth: none
+
+The subscriber-token form of `POST /v1/subscribers/{app_user_id}/attributes`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `attributes` | object | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/customer/attributes" \
+  -H "Content-Type: application/json" -d '{"attributes":{"$email":{"value":"ana@example.com","updated_at_ms":1790800914000}}}'
+```
+
+**Responses**
+
+- **200**: Saved.
+- **400**: Some attributes were not saved. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{}
+```
+
+### Apple AdServices token (subscriber token)
+
+`POST /v1/customer/adservices_attribution` · Auth: none
+
+The subscriber-token form of `POST /v1/subscribers/{app_user_id}/adservices_attribution`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `aad_attribution_token` | string | yes | The token from AAAttribution.attributionToken(). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/customer/adservices_attribution" \
+  -H "Content-Type: application/json" -d '{"aad_attribution_token":"wD3Ma…"}'
+```
+
+**Responses**
+
+- **200**: Accepted; the lookup runs after the answer.
+- **400**: No token. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{}
+```
+
+### SDK health report (subscriber token)
+
+`GET /v1/customer/health_report` · Auth: none
+
+The subscriber-token form of `GET /v1/subscribers/{app_user_id}/health_report`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/customer/health_report"
+```
+
+**Responses**
+
+- **200**: Always passed.
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "status": "passed",
+  "project_id": "proj18pzzkao",
+  "app_id": "appvnrm0a5h",
+  "checks": []
+}
+```
+
+### Customer Center configuration (subscriber token)
+
+`GET /v1/customer/customercenter` · Auth: none
+
+The subscriber-token form of `GET /v1/customercenter/{app_user_id}`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/customer/customercenter"
+```
+
+**Responses**
+
+- **200**: The configuration.
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "customer_center": {
+    "screens": {
+      "MANAGEMENT": {
+        "type": "MANAGEMENT",
+        "title": "Manage subscription",
+        "paths": []
+      }
+    },
+    "support": {
+      "email": "support@example.com"
+    }
+  }
+}
+```
+
+### Customer Center support ticket (not built) (subscriber token)
+
+`POST /v1/customer/customercenter/support/create-ticket` · Auth: none
+
+The subscriber-token form of `POST /v1/customercenter/support/create-ticket`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/customer/customercenter/support/create-ticket"
+```
+
+**Responses**
+
+- **200**: Not sent.
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "sent": false
+}
+```
+
+### Virtual currency balances (subscriber token)
+
+`GET /v1/customer/virtual_currencies` · Auth: none
+
+The subscriber-token form of `GET /v1/subscribers/{app_user_id}/virtual_currencies`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/customer/virtual_currencies"
+```
+
+**Responses**
+
+- **200**: Balances.
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "virtual_currencies": {
+    "GLD": {
+      "balance": 700,
+      "name": "Gold",
+      "code": "GLD",
+      "description": null
+    }
+  }
+}
+```
+
+### Restore eligibility (StoreKit 2) (subscriber token)
+
+`POST /v1/customer/restore/eligibility` · Auth: none
+
+The subscriber-token form of `POST /v1/subscribers/{app_user_id}/restore/eligibility`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/customer/restore/eligibility"
+```
+
+**Responses**
+
+- **200**: Always allowed.
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "is_purchase_allowed_by_restore_behavior": true
+}
+```
+
+### Rewarded ad verification (not available) (subscriber token)
+
+`GET /v1/customer/ads/reward_verifications/{client_transaction_id}` · Auth: none
+
+The subscriber-token form of `GET /v1/subscribers/{app_user_id}/ads/reward_verifications/{client_transaction_id}`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `client_transaction_id` | string | yes | From `generateRewardVerificationToken`. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/customer/ads/reward_verifications/$CLIENT_TRANSACTION_ID"
+```
+
+**Responses**
+
+- **200**: Failed.
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "status": "failed",
+  "reward": null,
+  "failure_reason": "not_supported",
+  "message": "Server-side reward verification is not available on RevenueDot."
+}
+```
+
+### Web offering products (subscriber token)
+
+`GET /rcbilling/v1/customer/offering_products` · Auth: none
+
+The subscriber-token form of `GET /rcbilling/v1/subscribers/{app_user_id}/offering_products`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/rcbilling/v1/customer/offering_products"
+```
+
+**Responses**
+
+- **200**: No web offerings.
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "offerings": {}
+}
+```
+
+### Test Store product details (subscriber token)
+
+`GET /rcbilling/v1/customer/products` · Auth: none
+
+The subscriber-token form of `GET /rcbilling/v1/subscribers/{app_user_id}/products`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `id` | array of string | no | Product ids; repeat the parameter. None lists every product of the app. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/rcbilling/v1/customer/products"
+```
+
+**Responses**
+
+- **200**: Product details.
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "product_details": [
+    {
+      "identifier": "pro_monthly",
+      "product_type": "subscription",
+      "title": "Pro monthly",
+      "description": null,
+      "current_price": {
+        "amount": 0,
+        "amount_micros": 0,
+        "currency": "USD"
+      },
+      "normal_period_duration": "P1M",
+      "default_purchase_option_id": "base",
+      "default_subscription_option_id": "base",
+      "purchase_options": {
+        "base": {
+          "id": "base",
+          "price_id": "base",
+          "base": {
+            "period_duration": "P1M",
+            "cycle_count": 1,
+            "price": {
+              "amount": 0,
+              "amount_micros": 0,
+              "currency": "USD"
+            }
+          },
+          "base_price": null,
+          "trial": null,
+          "intro_price": null
+        }
+      },
+      "subscription_options": {
+        "base": {
+          "id": "base",
+          "price_id": "base",
+          "base": {
+            "period_duration": "P1M",
+            "cycle_count": 1,
+            "price": {
+              "amount": 0,
+              "amount_micros": 0,
+              "currency": "USD"
+            }
+          },
+          "base_price": null,
+          "trial": null,
+          "intro_price": null
+        }
+      }
+    }
+  ]
+}
+```
+
+### Spend in-app currency as the subscriber
+
+`POST /v1/customer/virtual_currencies/spend` · Auth: none
+
+Takes the amounts off the subscriber's balances, all or nothing. A balance cannot go below zero (422, code 7000); an unknown currency or a malformed body is 400 with code 7226. No webhook is sent, as for balance changes through the API.
+
+**Headers**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `Idempotency-Key` | string | no | A retry with the same key spends nothing again. |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `adjustments` | object | yes | Amount to spend per currency code. |
+| `reference` | string or null | no | Your own note, kept in the ledger. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/customer/virtual_currencies/spend" \
+  -H "Content-Type: application/json" -d '{"adjustments":{"GLD":5},"reference":"sword"}'
+```
+
+**Responses**
+
+- **200**: The balances after the spend.
+- **400**: Bad request. For receipts, a 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **401**: Unknown API key. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **422**: The request is valid but cannot be done in this state. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "virtual_currencies": {
+    "GLD": {
+      "balance": 95,
+      "name": "Gold",
+      "code": "GLD",
+      "description": null
+    }
+  }
 }
 ```
 
@@ -2913,15 +3505,15 @@ RevenueDot-only endpoints are on [Extensions](https://raw.githubusercontent.com/
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (132)
+## Operations on this page (148)
 
 - **Projects**: [List projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-projects), [Create a project](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-project)
-- **Apps**: [List apps](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-apps), [Create an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-app), [Get an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-app), [Update an app and its store credentials](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-app-and-its-store-credentials), [Delete an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-app), [Get an app's public SDK key](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-apps-public-sdk-key), [Get a StoreKit configuration file](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-storekit-configuration-file)
-- **Products**: [List products](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-products), [Create a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-product), [Get a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-product), [Update a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-product), [Delete a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-product), [Archive a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#archive-a-product), [Unarchive a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#unarchive-a-product)
+- **Apps**: [List apps](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-apps), [Create an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-app), [Get an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-app), [Update an app and its store credentials](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-app-and-its-store-credentials), [Delete an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-app), [Get an app's public SDK key](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-apps-public-sdk-key), [Get a StoreKit configuration file](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-storekit-configuration-file), [Issue a subscriber access token](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#issue-a-subscriber-access-token)
+- **Products**: [List products](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-products), [Create a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-product), [Get a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-product), [Update a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-product), [Delete a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-product), [Archive a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#archive-a-product), [Unarchive a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#unarchive-a-product), [Create the product in its store](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-the-product-in-its-store)
 - **Entitlements**: [List entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-entitlements), [Create an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-entitlement), [Get an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-entitlement), [Rename an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#rename-an-entitlement), [Delete an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-entitlement), [Archive an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#archive-an-entitlement), [Unarchive an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#unarchive-an-entitlement), [List an entitlement's products](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-an-entitlements-products), [Attach products to an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#attach-products-to-an-entitlement), [Detach products from an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#detach-products-from-an-entitlement)
 - **Offerings**: [List offerings](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-offerings), [Create an offering](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-offering), [Get an offering](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-offering), [Update an offering or make it current](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-offering-or-make-it-current), [Delete an offering](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-offering), [Archive an offering](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#archive-an-offering), [Unarchive an offering](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#unarchive-an-offering)
 - **Packages**: [List an offering's packages](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-an-offerings-packages), [Create a package](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-package), [Get a package](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-package), [Update a package](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-package), [Delete a package](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-package), [List a package's products](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-packages-products), [Attach products to a package](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#attach-products-to-a-package), [Detach products from a package](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#detach-products-from-a-package)
-- **Customers**: [List or search customers](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-or-search-customers), [Create a customer](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-customer), [Get a customer](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-customer), [Delete a customer](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-customer), [List a customer's app user ids](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-app-user-ids), [List a customer's attributes](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-attributes), [Set a customer's attributes](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#set-a-customers-attributes), [List a customer's active entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-active-entitlements), [List a customer's subscriptions](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-subscriptions), [List a customer's one-time purchases](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-one-time-purchases), [List a customer's events](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-events), [Grant an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#grant-an-entitlement), [Revoke a granted entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#revoke-a-granted-entitlement), [Assign an offering to a customer](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#assign-an-offering-to-a-customer), [Transfer a customer's purchases to another customer](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#transfer-a-customers-purchases-to-another-customer), [Get the Customer Center configuration](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-the-customer-center-configuration)
+- **Customers**: [List or search customers](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-or-search-customers), [Create a customer](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-customer), [Get a customer](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-customer), [Delete a customer](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-customer), [List a customer's app user ids](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-app-user-ids), [List a customer's attributes](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-attributes), [Set a customer's attributes](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#set-a-customers-attributes), [List a customer's active entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-active-entitlements), [List a customer's subscriptions](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-subscriptions), [List a customer's one-time purchases](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-one-time-purchases), [List a customer's events](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-events), [Grant an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#grant-an-entitlement), [Revoke a granted entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#revoke-a-granted-entitlement), [Assign an offering to a customer](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#assign-an-offering-to-a-customer), [Transfer a customer's purchases to another customer](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#transfer-a-customers-purchases-to-another-customer), [Get the Customer Center configuration](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-the-customer-center-configuration), [Restore a purchase by its store order id](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#restore-a-purchase-by-its-store-order-id), [List the win-back offers Apple lets a customer redeem](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-the-win-back-offers-apple-lets-a-customer-redeem)
 - **Subscriptions**: [Find subscriptions by store id](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#find-subscriptions-by-store-id), [Get a subscription](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-subscription), [List the entitlements a subscription unlocks](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-the-entitlements-a-subscription-unlocks), [List a subscription's payments](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-subscriptions-payments), [Cancel a subscription (Google Play)](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#cancel-a-subscription-google-play), [Refund and revoke a subscription (Google Play)](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#refund-and-revoke-a-subscription-google-play), [Extend a subscription](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#extend-a-subscription), [Refund one payment of a subscription (Google Play)](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#refund-one-payment-of-a-subscription-google-play), [Get where the customer manages a subscription](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-where-the-customer-manages-a-subscription)
 - **Purchases**: [Find one-time purchases by store id](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#find-one-time-purchases-by-store-id), [Get a one-time purchase](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-one-time-purchase), [List the entitlements a purchase unlocks](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-the-entitlements-a-purchase-unlocks), [Refund a one-time purchase (Google Play)](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#refund-a-one-time-purchase-google-play)
 - **Metrics**: [Overview metrics](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#overview-metrics), [Revenue over a date range](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#revenue-over-a-date-range)
@@ -2932,6 +3524,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Experiments**: [List experiments](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-experiments), [Create an offering experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-offering-experiment), [Get an experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-experiment), [Update an experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-experiment), [Delete an experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-experiment), [Start or resume](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#start-or-resume), [Pause: enrolled customers keep their variant, nobody new joins](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#pause-enrolled-customers-keep-their-variant-nobody-new-joins), [Stop for good](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#stop-for-good), [Results per variant](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#results-per-variant)
 - **Paywalls**: [List paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-paywalls), [Create a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-paywall), [Get a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-paywall), [Update a paywall's draft](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-paywalls-draft), [Delete a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-paywall), [Publish a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#publish-a-paywall), [Unpublish a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#unpublish-a-paywall), [Attach an offering to a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#attach-an-offering-to-a-paywall), [Detach the offering from a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#detach-the-offering-from-a-paywall), [Duplicate a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#duplicate-a-paywall), [Save a named snapshot](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#save-a-named-snapshot), [Get a snapshot](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-snapshot), [Get the template form of a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-the-template-form-of-a-paywall), [Store the template form of a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#store-the-template-form-of-a-paywall), [List images](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-images), [Upload an image](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#upload-an-image), [List fonts](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-fonts), [Upload a font](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#upload-a-font), [Download a paywall image or font](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#download-a-paywall-image-or-font)
 - **Webhook integrations**: [List webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-webhooks), [Create a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-webhook), [Get a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-webhook), [Update a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-webhook), [Delete a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-webhook)
+- **Discounts and invoices**: [List discounts](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-discounts), [Create a discount](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-discount), [Get a discount](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-discount), [Update a discount](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-discount), [Delete a discount](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-discount), [Enable a discount](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#enable-a-discount), [Disable a discount](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#disable-a-discount), [List a discount's codes](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-discounts-codes), [Create discount codes](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-discount-codes), [Delete a discount code](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-discount-code), [List a customer's invoices](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-invoices), [Download an invoice](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#download-an-invoice)
 - **Collaborators**: [List collaborators](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-collaborators)
 
 ## Projects
@@ -3260,6 +3853,50 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/store_kit_config" 
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
+### Issue a subscriber access token
+
+`POST /v2/projects/{project_id}/apps/{app_id}/authenticate` · Auth: secret key or dashboard session · Permissions: `iam:authorization:issue_token`
+
+A short-lived access token (one hour) for one app user id of one app. Send it as `Authorization: Bearer rdat_...` to the [subscriber token endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) (`/v1/customer`, `/v1/customer/offerings` ...), which answer for that app user id, or to any SDK endpoint for that app user id. It cannot be refreshed: ask for a new one. Only a hash of the token is stored.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes | App id (app...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `app_user_id` | string | yes | The app user id the token speaks for. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/authenticate" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"app_user_id":"user_1"}'
+```
+
+**Responses**
+
+- **200**: The token.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "authentication",
+  "access_token": "rdat_3f0c1d0b9e8a7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c2b",
+  "expires_at": 1790804514034
+}
+```
+
 ## Products
 
 Store products.
@@ -3545,6 +4182,60 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products/$PRODUCT_ID/ac
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Create the product in its store
+
+`POST /v2/projects/{project_id}/products/{product_id}/create_in_store` · Auth: secret key or dashboard session · Permissions: `project_configuration:products:read_write`
+
+Creates a catalog product in the store its app belongs to. The product's display name becomes the store name.
+
+- **App Store** (needs the app's App Store Connect API key with the App Manager role: `app_store_connect_api_key`, `app_store_connect_api_key_id`, `app_store_connect_api_key_issuer`). A subscription needs `store_information` with `duration` and `subscription_group_name` (or `subscription_group_id`); the group is reused by name or created. Consumables, non-consumables and non-renewing subscriptions need no body. Add prices, a review screenshot and localizations in App Store Connect before submitting.
+- **Google Play** (a RevenueDot addition; needs the service account with "Manage store presence"): a subscription with one listing in the app's default language. Add its base plans and prices in Play Console. One-time products answer 422, because Google needs a price to create them.
+
+409 when the store already has the product id, 422 without the credentials or for another store, 422 `store_error` with `retryable: true` while the store is down.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `product_id` | string | yes | Product id (prod...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `store_information` | object or object | no | App Store subscriptions only. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products/$PRODUCT_ID/create_in_store" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"store_information":{"duration":"ONE_MONTH","subscription_group_name":"Pro"}}'
+```
+
+**Responses**
+
+- **201**: The product in the store.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+Example 201 response:
+
+```json
+{
+  "created_product": {
+    "object": "store_product",
+    "id": "6743920115",
+    "name": "Pro Monthly",
+    "product_identifier": "pro_monthly"
+  }
+}
+```
 
 ## Entitlements
 
@@ -5007,6 +5698,95 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/customer_cente
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Restore a purchase by its store order id
+
+`POST /v2/projects/{project_id}/customers/{customer_id}/actions/restore_purchase_by_order_id` · Auth: secret key or dashboard session · Permissions: `customer_information:customers:read_write`
+
+Finds the purchase an order id paid for and gives it to the customer, like a restore from the device: the project's transfer behaviour applies, and a purchase that moves records a `TRANSFER` event.
+
+- **Google Play** order ids (`GPA.1234-5678-9012-34567`, renewals with `..0`, `..1`): `orders.batchGet` on each Play app with a service account gives the purchase token, which is verified and acknowledged like a receipt. The service account needs the "View financial data" permission.
+- **App Store** order ids (the id on the customer's receipt email, such as `MK5TTTVWJH`): Apple's Look Up Order ID on each App Store app with an In-App Purchase key, production first, then the sandbox. Only the order's own subscriptions and purchases are restored. RevenueCat's operation takes Google Play order ids only; App Store order ids are a RevenueDot addition.
+
+404 when no store knows the order, 422 `unprocessable_entity_error` when no app has the credentials the lookup needs, 422 `store_error` with `retryable: true` while the store cannot be reached, 409 when the project's transfer behaviour is `keep` and another customer owns the purchase.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `customer_id` | string | yes | Any app user id of the customer. |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `order_id` | string | yes | The store order id. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/actions/restore_purchase_by_order_id" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"order_id":"GPA.3372-4157-7914-56870"}'
+```
+
+**Responses**
+
+- **200**: The customer after the restore. Returns [Customer](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#customer).
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### List the win-back offers Apple lets a customer redeem
+
+`GET /v2/projects/{project_id}/customers/{customer_id}/win_back_offers` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:subscriptions:read`
+
+One item per App Store subscription of the customer, with the win-back offer ids from Apple's renewal info, best first. RevenueDot reads the renewal info when the app posts a receipt, when Apple sends a notification, and after store actions; it needs the app's In-App Purchase key. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `customer_id` | string | yes | Any app user id of the customer. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/win_back_offers" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The customer's App Store subscriptions.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "items": [
+    {
+      "object": "win_back_offer_eligibility",
+      "subscription_id": "sub_4kq0x2m9a7c1d8e3",
+      "product_id": "pro_monthly",
+      "store": "app_store",
+      "offer_ids": [
+        "comeback_50"
+      ],
+      "updated_at": 1790800914034
+    }
+  ],
+  "next_page": null,
+  "url": "/v2/projects/proj18pzzkao/customers/user_1/win_back_offers"
+}
+```
 
 ## Subscriptions
 
@@ -7796,6 +8576,354 @@ Example 200 response:
   "deleted_at": 1790801342625
 }
 ```
+
+## Discounts and invoices
+
+RevenueCat Billing (Web Billing) objects. RevenueDot does not have that billing engine, so these operations answer on purpose: writes 422, lists empty, single reads 404.
+
+### List discounts
+
+`GET /v2/projects/{project_id}/discounts` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read`
+
+Always an empty list. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Always an empty list.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "items": [],
+  "next_page": null,
+  "url": "/v2/projects/proj18pzzkao/discounts"
+}
+```
+
+### Create a discount
+
+`POST /v2/projects/{project_id}/discounts` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read_write`
+
+Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Get a discount
+
+`GET /v2/projects/{project_id}/discounts/{discount_id}` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read`
+
+Answers 404 `resource_missing`: there is no discount. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `discount_id` | string | yes | Discount id. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Update a discount
+
+`PATCH /v2/projects/{project_id}/discounts/{discount_id}` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read_write`
+
+Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `discount_id` | string | yes | Discount id. |
+
+**Example request**
+
+```bash
+curl -s -X PATCH "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Delete a discount
+
+`DELETE /v2/projects/{project_id}/discounts/{discount_id}` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read_write`
+
+Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `discount_id` | string | yes | Discount id. |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Enable a discount
+
+`POST /v2/projects/{project_id}/discounts/{discount_id}/actions/enable` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read_write`
+
+Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `discount_id` | string | yes | Discount id. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_ID/actions/enable" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Disable a discount
+
+`POST /v2/projects/{project_id}/discounts/{discount_id}/actions/disable` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read_write`
+
+Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `discount_id` | string | yes | Discount id. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_ID/actions/disable" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### List a discount's codes
+
+`GET /v2/projects/{project_id}/discounts/{discount_id}/discount_codes` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read`
+
+Answers 404 `resource_missing`: there is no discount. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `discount_id` | string | yes | Discount id. |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_ID/discount_codes" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Create discount codes
+
+`POST /v2/projects/{project_id}/discounts/{discount_id}/discount_codes` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read_write`
+
+Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `discount_id` | string | yes | Discount id. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_ID/discount_codes" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Delete a discount code
+
+`DELETE /v2/projects/{project_id}/discounts/{discount_id}/discount_codes/{discount_code}` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read_write`
+
+Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `discount_id` | string | yes | Discount id. |
+| `discount_code` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_ID/discount_codes/$DISCOUNT_CODE" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### List a customer's invoices
+
+`GET /v2/projects/{project_id}/customers/{customer_id}/invoices` · Auth: secret key or dashboard session · Permissions: `customer_information:invoices:read`
+
+Always an empty list for a known customer; 404 for an unknown one. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `customer_id` | string | yes | Any app user id of the customer. |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/invoices" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Always an empty list.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "items": [],
+  "next_page": null,
+  "url": "/v2/projects/proj18pzzkao/customers/user_1/invoices"
+}
+```
+
+### Download an invoice
+
+`GET /v2/projects/{project_id}/customers/{customer_id}/invoices/{invoice_id}/file` · Auth: secret key or dashboard session · Permissions: `customer_information:invoices:read`
+
+Answers 404 `resource_missing`: there is no invoice. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `customer_id` | string | yes | Any app user id of the customer. |
+| `invoice_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/invoices/$INVOICE_ID/file" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
 ## Collaborators
 
@@ -11264,9 +12392,10 @@ RevenueDot POSTs one JSON event per request to each matching webhook: `{ "api_ve
 | [`TRANSFER`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#transfer) | A purchase moved to another customer because that customer restored it (transfer behaviour `transfer` or `transfer_if_no_active`). |
 | [`VIRTUAL_CURRENCY_TRANSACTION`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#virtual_currency_transaction) | An in-app currency was credited because a purchase of a granting product was recorded. Not sent for adjustments made through the API. |
 | [`EXPERIMENT_ENROLLMENT`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#experiment_enrollment) | A customer was enrolled in an offering experiment. Sent once per customer and experiment. |
+| [`SUBSCRIBER_ALIAS`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#subscriber_alias) | A new app user id joined an existing customer: `logIn` onto an anonymous customer, `logIn` that merged an anonymous customer into an existing one, Android's alias call, or a restore that merged two customers. RevenueCat deprecated this event and sends it only to older projects, so RevenueDot delivers it only to webhooks whose `event_types` filter names `subscriber_alias`; it always appears in the customer's event history. |
 | [`TEST`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#test) | Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase. |
 
-Accepted in a webhook's `event_types` filter but never sent yet: `TEMPORARY_ENTITLEMENT_GRANT`, `INVOICE_ISSUANCE`, `PURCHASE_REDEEMED`, `SUBSCRIBER_ALIAS`.
+Accepted in a webhook's `event_types` filter but never sent, because RevenueDot never has the fact behind them: `TEMPORARY_ENTITLEMENT_GRANT` (RevenueDot never grants access it has not verified with the store; during a store outage the SDK keeps the purchase and grants access on the device from the [offline entitlement mapping](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/offline-entitlements.md)), `INVOICE_ISSUANCE` (only RevenueCat Billing issues invoices) and `PURCHASE_REDEEMED` (RevenueDot issues no web purchase redemption links). That makes 18 of RevenueCat's 21 event types sent.
 
 ## INITIAL_PURCHASE
 
@@ -11301,7 +12430,7 @@ The first purchase of a subscription, including a free trial start.
 | `takehome_percentage` | number | 1 minus the estimated store commission. |
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
-| `offer_code` | null |  |
+| `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md). |
 
 Example:
 
@@ -11378,7 +12507,7 @@ A new paid period: a renewal, a trial converting (`is_trial_conversion: true`), 
 | `takehome_percentage` | number | 1 minus the estimated store commission. |
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
-| `offer_code` | null |  |
+| `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md). |
 | `is_trial_conversion` | boolean | True for the first paid period after a free trial. |
 
 Example:
@@ -11457,7 +12586,7 @@ Auto-renew was turned off, or the purchase was refunded. Access continues to `ex
 | `takehome_percentage` | number | 1 minus the estimated store commission. |
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
-| `offer_code` | null |  |
+| `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md). |
 | `cancel_reason` | `UNSUBSCRIBE`, `BILLING_ERROR`, `DEVELOPER_INITIATED`, `PRICE_INCREASE`, `CUSTOMER_SUPPORT`, `UNKNOWN` |  |
 
 Example (auto-renew turned off):
@@ -11579,7 +12708,7 @@ Auto-renew was turned back on before the subscription expired.
 | `takehome_percentage` | number | 1 minus the estimated store commission. |
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
-| `offer_code` | null |  |
+| `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md). |
 
 Example:
 
@@ -11656,7 +12785,7 @@ A one-time purchase: consumable, non-consumable or lifetime.
 | `takehome_percentage` | number | 1 minus the estimated store commission. |
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
-| `offer_code` | null |  |
+| `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md). |
 
 Example:
 
@@ -11733,7 +12862,7 @@ A Google Play subscription is scheduled to pause. It will not renew at the end o
 | `takehome_percentage` | number | 1 minus the estimated store commission. |
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
-| `offer_code` | null |  |
+| `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md). |
 | `auto_resume_at_ms` | integer or null | When it resumes. Epoch milliseconds. |
 
 Example:
@@ -11812,7 +12941,7 @@ Access ended: the period ran out, billing retry gave up or the subscription paus
 | `takehome_percentage` | number | 1 minus the estimated store commission. |
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
-| `offer_code` | null |  |
+| `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md). |
 | `expiration_reason` | `UNSUBSCRIBE`, `BILLING_ERROR`, `DEVELOPER_INITIATED`, `PRICE_INCREASE`, `CUSTOMER_SUPPORT`, `UNKNOWN`, `SUBSCRIPTION_PAUSED` |  |
 
 Example:
@@ -11891,7 +13020,7 @@ A renewal charge failed. The store retries; access may continue in a grace perio
 | `takehome_percentage` | number | 1 minus the estimated store commission. |
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
-| `offer_code` | null |  |
+| `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md). |
 | `grace_period_expiration_at_ms` | integer or null | End of the grace period, or null when there is none. Epoch milliseconds. |
 
 Example:
@@ -11970,7 +13099,7 @@ The customer changed product: an upgrade now, or a downgrade or crossgrade sched
 | `takehome_percentage` | number | 1 minus the estimated store commission. |
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
-| `offer_code` | null |  |
+| `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md). |
 | `new_product_id` | string | The product the customer changed to. |
 
 Example:
@@ -12049,7 +13178,7 @@ The current period got longer without a new payment: an App Store renewal extens
 | `takehome_percentage` | number | 1 minus the estimated store commission. |
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
-| `offer_code` | null |  |
+| `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md). |
 
 Example:
 
@@ -12126,7 +13255,7 @@ A refund was reversed and access is back.
 | `takehome_percentage` | number | 1 minus the estimated store commission. |
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
-| `offer_code` | null |  |
+| `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md). |
 
 Example:
 
@@ -12411,6 +13540,47 @@ Example:
 }
 ```
 
+## SUBSCRIBER_ALIAS
+
+A new app user id joined an existing customer: `logIn` onto an anonymous customer, `logIn` that merged an anonymous customer into an existing one, Android's alias call, or a restore that merged two customers. RevenueCat deprecated this event and sends it only to older projects, so RevenueDot delivers it only to webhooks whose `event_types` filter names `subscriber_alias`; it always appears in the customer's event history.
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique event id (upper-case UUID). Deduplicate on it. |
+| `type` | string | Event type. |
+| `event_timestamp_ms` | integer | When RevenueDot recorded the event. Epoch milliseconds. |
+| `app_id` | string | RevenueDot app id. Left out for promotional grants. |
+| `app_user_id` | string | The app user id the app uses now. |
+| `original_app_user_id` | string | The customer's first app user id. |
+| `aliases` | array of string | Every app user id of the customer. |
+| `subscriber_attributes` | object |  |
+
+Example:
+
+```json
+{
+  "api_version": "1.0",
+  "event": {
+    "aliases": [
+      "$RCAnonymousID:0123456789abcdef0123456789abcdef",
+      "user_1"
+    ],
+    "app_id": "appvnrm0a5h",
+    "app_user_id": "user_1",
+    "event_timestamp_ms": 1790800925011,
+    "original_app_user_id": "$RCAnonymousID:0123456789abcdef0123456789abcdef",
+    "subscriber_attributes": {
+      "$email": {
+        "value": "ana@example.com",
+        "updated_at_ms": 1790800901000
+      }
+    },
+    "type": "SUBSCRIBER_ALIAS",
+    "id": "5B3C2D1E-0F9A-4B8C-9D7E-6F5A4B3C2D1E"
+  }
+}
+```
+
 ## TEST
 
 Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase.
@@ -12444,7 +13614,7 @@ Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id
 | `takehome_percentage` | number | 1 minus the estimated store commission. |
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
-| `offer_code` | null |  |
+| `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md). |
 
 Example:
 

@@ -39,6 +39,11 @@ X-RevenueCat-Webhook-Signature: t=1790800914,v1=0a1552334e825926036f7efe21527800
 
 Every field of every event type, with full examples, is on [Webhook events](../../api/webhook-events.md). Handlers written for RevenueCat's webhooks work unchanged: the field names and values are the same.
 
+RevenueDot sends 18 of RevenueCat's 21 event types:
+- **`SUBSCRIBER_ALIAS`** is sent only to webhooks whose `event_types` names `subscriber_alias`. RevenueCat deprecated it and sends it only to older projects, so a webhook without a filter never gets it.
+- **`TEMPORARY_ENTITLEMENT_GRANT`, `INVOICE_ISSUANCE` and `PURCHASE_REDEEMED`** are never sent. RevenueDot never grants access it has not verified during a store outage (the SDK keeps access on the device instead, see [offline entitlements](offline-entitlements.md)), has no billing engine that issues invoices, and issues no web purchase redemption links.
+- **`offer_code`** carries the App Store or Google Play offer id of the period, such as a [win-back offer](win-back-offers.md).
+
 ## 3. Verify the signature
 The header is `t=<unix seconds>,v1=<hex>`, where the hex is HMAC-SHA256 of `"<t>.<raw body>"` keyed with the signing secret. RevenueDot signs again on every attempt, so `t` is the attempt's time.
 

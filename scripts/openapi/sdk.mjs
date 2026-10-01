@@ -3,6 +3,8 @@
 // Docs: https://revenuedot.app/docs/api/sdk-endpoints   Migrate from RevenueCat: https://revenuedot.app/docs/migrate
 import { NONE, PUBLIC, PUBLIC_OR_SECRET, SECRET_ONLY, body, bool, en, int, json, obj, ok, op, param, ref, str, v1Errors, arr, nstr } from "./common.mjs";
 
+const SUBSCRIBER = [{ subscriberToken: [] }];
+
 const SDK = "routes/sdk.ts";
 const V1 = "routes/rest-v1.ts";
 const user = param("AppUserId");
@@ -172,7 +174,9 @@ After answering, RevenueDot looks the token up with [Apple's attribution API](ht
   },
   "/v1/product_entitlement_mapping": {
     get: op({ id: "productEntitlementMapping", tag: "SDK support", summary: "Product to entitlement mapping (offline entitlements)", security: PUBLIC_OR_SECRET, source: SDK,
-      description: "Lets the SDK grant entitlements while the server cannot be reached.",
+      description: `
+Lets the SDK grant entitlements on the device while the server answers 5xx (offline entitlements). The SDK fetches it every 25 hours.
+A public key gets only its own app's products, keyed the way that SDK looks them up: App Store products by product id (\`product:monthly\` for a monthly billing plan), Google Play products by \`subscription:base_plan\` and by the bare subscription id, which carries every base plan's entitlements because Android purchases do not name their base plan. Consumables are left out. A secret key gets the whole project. See [Offline entitlements](../docs/guides/offline-entitlements.md).`,
       responses: { 200: ok("The mapping.", obj({ product_entitlement_mapping: { type: "object", additionalProperties: obj({ product_identifier: str(), base_plan_id: str(), entitlements: arr(str()) }) } }),
         { product_entitlement_mapping: { pro_monthly: { product_identifier: "pro_monthly", entitlements: ["pro"] } } }) } }),
   },
@@ -397,4 +401,44 @@ Each message is stored once (by message id), forwarded when \`notification_forwa
       requestBody: body(obj({ extend_by_days: int("1 to 90."), extend_reason_code: int("Apple's reason code: 0 undeclared, 1 customer satisfaction, 2 other, 3 service issue or outage.") }), { extend_by_days: 7, extend_reason_code: 1 }),
       responses: { 200: ci(), ...v1Errors(400, 401, 403, 404, 503) } }),
   },
+};
+
+// ---- Subscriber token paths (the SDKs' IAM mode) ---------------------------------------------------------------------
+// Each answers like the /v1/subscribers/{app_user_id} path it stands for, for the app user id of the token.
+const ALTERNATES = [
+  ["/v1/customer", "/v1/subscribers/{app_user_id}", "get", "getCustomerInfoWithToken"],
+  ["/v1/customer/offerings", "/v1/subscribers/{app_user_id}/offerings", "get", "getOfferingsWithToken"],
+  ["/v1/customer/intro_eligibility", "/v1/subscribers/{app_user_id}/intro_eligibility", "post", "introEligibilityWithToken"],
+  ["/v1/customer/attribution", "/v1/subscribers/{app_user_id}/attribution", "post", "postAttributionWithToken"],
+  ["/v1/customer/attributes", "/v1/subscribers/{app_user_id}/attributes", "post", "postAttributesWithToken"],
+  ["/v1/customer/adservices_attribution", "/v1/subscribers/{app_user_id}/adservices_attribution", "post", "postAdServicesAttributionWithToken"],
+  ["/v1/customer/health_report", "/v1/subscribers/{app_user_id}/health_report", "get", "healthReportWithToken"],
+  ["/v1/customer/customercenter", "/v1/customercenter/{app_user_id}", "get", "customerCenterWithToken"],
+  ["/v1/customer/customercenter/support/create-ticket", "/v1/customercenter/support/create-ticket", "post", "createSupportTicketWithToken"],
+  ["/v1/customer/virtual_currencies", "/v1/subscribers/{app_user_id}/virtual_currencies", "get", "virtualCurrenciesWithToken"],
+  ["/v1/customer/restore/eligibility", "/v1/subscribers/{app_user_id}/restore/eligibility", "post", "restoreEligibilityWithToken"],
+  ["/v1/customer/ads/reward_verifications/{client_transaction_id}", "/v1/subscribers/{app_user_id}/ads/reward_verifications/{client_transaction_id}", "get", "rewardVerificationWithToken"],
+  ["/rcbilling/v1/customer/offering_products", "/rcbilling/v1/subscribers/{app_user_id}/offering_products", "get", "webOfferingProductsWithToken"],
+  ["/rcbilling/v1/customer/products", "/rcbilling/v1/subscribers/{app_user_id}/products", "get", "webProductsWithToken"],
+];
+const isUser = (p) => p?.$ref === "#/components/parameters/AppUserId";
+for (const [path, original, method, id] of ALTERNATES) {
+  const base = sdkPaths[original]?.[method];
+  if (!base) throw new Error(`sdk.mjs: no ${method.toUpperCase()} ${original} to build ${path} from`);
+  const parameters = (base.parameters ?? []).filter((p) => !isUser(p));
+  sdkPaths[path] = {
+    [method]: {
+      ...base, operationId: id, tags: ["Subscriber tokens"], security: SUBSCRIBER, summary: `${base.summary} (subscriber token)`,
+      description: `The subscriber-token form of \`${method.toUpperCase()} ${original}\`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.`,
+      ...(parameters.length ? { parameters } : { parameters: undefined }),
+      responses: { ...base.responses, 401: { $ref: "#/components/responses/V1Error401" } },
+    },
+  };
+  if (!parameters.length) delete sdkPaths[path][method].parameters;
+}
+sdkPaths["/v1/customer/virtual_currencies/spend"] = {
+  post: op({ id: "spendVirtualCurrencyWithToken", tag: "Subscriber tokens", summary: "Spend in-app currency as the subscriber", security: SUBSCRIBER, source: SDK, parameters: [{ name: "Idempotency-Key", in: "header", schema: str(), description: "A retry with the same key spends nothing again." }],
+    description: "Takes the amounts off the subscriber's balances, all or nothing. A balance cannot go below zero (422, code 7000); an unknown currency or a malformed body is 400 with code 7226. No webhook is sent, as for balance changes through the API.",
+    requestBody: body(obj({ adjustments: { type: "object", additionalProperties: int(undefined, { minimum: 1 }), description: "Amount to spend per currency code." }, reference: nstr("Your own note, kept in the ledger.") }, ["adjustments"]), { adjustments: { GLD: 5 }, reference: "sword" }),
+    responses: { 200: ok("The balances after the spend.", obj({ virtual_currencies: { type: "object", additionalProperties: obj({ balance: int(), name: str(), code: str(), description: nstr() }) } }, ["virtual_currencies"]), { virtual_currencies: { GLD: { balance: 95, name: "Gold", code: "GLD", description: null } } }), ...v1Errors(400, 401, 422) } }),
 };

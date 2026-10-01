@@ -33,6 +33,8 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Read MRR, revenue, churn, conversion and LTV, and know how each is calculated | [Charts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md) |
 | Run RevenueDot from ChatGPT, Claude or Cursor | [Connect AI assistants](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/connect-ai-assistants.md) |
 | Get an email when store notifications, webhooks or store credentials fail | [Alert emails](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md) |
+| Win back lapsed App Store subscribers with Apple's win-back offers | [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md) |
+| Know what happens to customers' access when the server is down | [Offline entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/offline-entitlements.md) |
 
 Moving from RevenueCat? Start with [Migrate from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md). Looking for a specific endpoint? See the [API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/README.md).
 
@@ -110,13 +112,16 @@ Set these in the app's `app_store` object with `POST /v2/projects/{project_id}/a
 | `app_apple_id` | Your app's Apple ID (a number). Production notifications for another app ID are refused |
 | `xcode_certificate` | The StoreKit test certificate exported from Xcode (PEM). Lets RevenueDot accept purchases made with a StoreKit configuration file in the simulator. See [sandbox testing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/sandbox-testing.md) |
 | `allow_unsigned_receipts` | Development only: accept StoreKit 1 receipts without the In-App Purchase key |
-| `app_store_connect_api_key`, `_id`, `_issuer`, `app_store_connect_vendor_number` | A separate App Store Connect API key. Stored for a later product import; not used yet |
+| `app_store_connect_api_key`, `_id`, `_issuer`, `app_store_connect_vendor_number` | A separate App Store Connect API key with the App Manager role. Used to create products in App Store Connect (below) |
 | `shared_secret` | The legacy app-specific shared secret. Stored but not used: RevenueDot does not call Apple's deprecated verifyReceipt endpoint |
 
 ## What you can do from the server afterwards
 - **Extend a subscription** by 1 to 90 days: `POST /v2/projects/{project_id}/subscriptions/{subscription_id}/actions/extend` with `extend_by_days` and `extend_reason_code`.
 - **Extend every active subscriber of a product**, for example after an outage: `POST /v2/projects/{project_id}/apps/{app_id}/actions/mass_extend`.
 - **Refunds** are Apple's decision; customers ask Apple. RevenueDot records Apple's `REFUND` notification as a `CANCELLATION` with a negative price.
+- **Restore a purchase from its order id**, for a customer who sends you Apple's receipt email: `POST /v2/projects/{project_id}/customers/{customer_id}/actions/restore_purchase_by_order_id` with `{"order_id":"MK5TTTVWJH"}`. RevenueDot looks the order up with Apple (needs the In-App Purchase key) and gives the customer its subscriptions and purchases, under the project's transfer behaviour.
+- **Create a product in App Store Connect** from your catalog: `POST /v2/projects/{project_id}/products/{product_id}/create_in_store`. A subscription needs `{"store_information":{"duration":"ONE_MONTH","subscription_group_name":"Pro"}}`; the group is reused by name or created. Other product types need no body. Add prices, a review screenshot and localizations in App Store Connect before you submit. Needs the App Store Connect API key above.
+- **Win-back offers** work with no server setup beyond the In-App Purchase key and notifications. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md).
 
 ## Related
 - [iOS SDK guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/ios.md)
@@ -193,6 +198,8 @@ From then on, a push without a valid Google-signed token for that audience (and 
 - **Cancel** (turn auto-renew off): `.../actions/cancel`.
 - **Defer** the next renewal by up to 365 days: `.../actions/extend` with `extend_by_days`, or v1 `.../subscriptions/{product_id}/defer`.
 - **Refund a one-time purchase**: `POST /v2/projects/{project_id}/purchases/{purchase_id}/actions/refund`.
+- **Restore a purchase from its order id** (`GPA.1234-5678-9012-34567`, from the customer's Google receipt email): `POST /v2/projects/{project_id}/customers/{customer_id}/actions/restore_purchase_by_order_id`. RevenueDot finds the purchase token with Google's Orders API (the service account needs **View financial data**), verifies it, and gives the purchase to the customer under the project's transfer behaviour.
+- **Create a subscription in Play Console** from your catalog: `POST /v2/projects/{project_id}/products/{product_id}/create_in_store`. Google gets the subscription id and a listing in your app's default language; add base plans and prices in Play Console. One-time products need a price, so create them in Play Console.
 
 These call Google's API with the service account. They are tested against a mocked Google API only; run one in a sandbox before you rely on it.
 
@@ -242,6 +249,11 @@ X-RevenueCat-Webhook-Signature: t=1790800914,v1=0a1552334e825926036f7efe21527800
 ```
 
 Every field of every event type, with full examples, is on [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md). Handlers written for RevenueCat's webhooks work unchanged: the field names and values are the same.
+
+RevenueDot sends 18 of RevenueCat's 21 event types:
+- **`SUBSCRIBER_ALIAS`** is sent only to webhooks whose `event_types` names `subscriber_alias`. RevenueCat deprecated it and sends it only to older projects, so a webhook without a filter never gets it.
+- **`TEMPORARY_ENTITLEMENT_GRANT`, `INVOICE_ISSUANCE` and `PURCHASE_REDEEMED`** are never sent. RevenueDot never grants access it has not verified during a store outage (the SDK keeps access on the device instead, see [offline entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/offline-entitlements.md)), has no billing engine that issues invoices, and issues no web purchase redemption links.
+- **`offer_code`** carries the App Store or Google Play offer id of the period, such as a [win-back offer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md).
 
 ## 3. Verify the signature
 The header is `t=<unix seconds>,v1=<hex>`, where the hex is HMAC-SHA256 of `"<t>.<raw body>"` keyed with the signing secret. RevenueDot signs again on every attempt, so `t` is the attempt's time.
@@ -1742,3 +1754,151 @@ FROM transactions WHERE NOT is_sandbox GROUP BY 1 ORDER BY 1;
 - Set `REVENUEDOT_ENCRYPTION_KEY` (`openssl rand -base64 32`) in `.env` so integration keys are encrypted at rest. Without it the key is derived from `REVENUEDOT_SIGNING_KEY`; with neither, they are stored unencrypted (never shown by the API). Changing the key means entering the integrations' keys again.
 - Deliveries and exports run in the server's background job, every 30 seconds on Node and every minute on RevenueDot Cloud.
 - Parquet works on both, since the writer is plain JavaScript.
+
+---
+
+# How do win-back offers work with RevenueDot?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md
+Description: Apple's iOS 18 win-back offers work with the RevenueCat SDK and RevenueDot unchanged. RevenueDot records the offer on each purchase, sends it as offer_code in webhooks and exports it, and keeps Apple's list of offers a lapsed customer may redeem.
+
+Win-back offers are discounted or free periods Apple shows to customers whose subscription lapsed (iOS 18 and later). **The RevenueCat SDK does all win-back work on the device**, so your app code stays the same: `eligibleWinBackOffers(forProduct:)` asks StoreKit which offers the customer can redeem, and `purchase(product:winBackOffer:)` adds StoreKit's win-back purchase option. Unlike promotional offers, win-back offers need no signature from the server. RevenueCat describes the app side in its [iOS subscription offers guide](https://www.revenuecat.com/docs/subscription-guidance/subscription-offers/ios-subscription-offers).
+
+What the server does:
+- **Grants access.** A win-back purchase is a resubscription in the same subscription group, so it arrives as a `RENEWAL` event with the same `original_transaction_id`, and the customer's entitlement is active again.
+- **Records the offer.** Each subscription period and each transaction stores its offer type and the store's offer id.
+- **Keeps Apple's eligibility list.** Apple's renewal info names the win-back offers the customer may redeem now; RevenueDot stores that list each time it reads the renewal info.
+
+## Before you start
+1. Create the win-back offer in App Store Connect on a subscription that App Review has approved. RevenueCat's [iOS subscription offers guide](https://www.revenuecat.com/docs/subscription-guidance/subscription-offers/ios-subscription-offers) walks through the fields: offer identifier, publish dates, priority and the eligibility rules.
+2. Add the app's **In-App Purchase key** in RevenueDot. RevenueDot needs it to read the renewal info and the full purchase history. See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md).
+3. Turn on **App Store Server Notifications**. Customers can redeem a win-back offer in the App Store without opening your app (streamlined purchasing); the notification is how RevenueDot hears about it.
+
+## What you see after a win-back purchase
+The webhook is a `RENEWAL` with the offer id in `offer_code`:
+
+```json
+{
+  "api_version": "1.0",
+  "event": {
+    "type": "RENEWAL",
+    "app_user_id": "user_1",
+    "product_id": "pro_monthly",
+    "period_type": "NORMAL",
+    "transaction_id": "2000000007",
+    "original_transaction_id": "2000000001",
+    "price_in_purchased_currency": 4.99,
+    "offer_code": "comeback_50",
+    "store": "APP_STORE"
+  }
+}
+```
+
+(Shortened; the full payload is on [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#renewal).)
+
+- A **paid** win-back period has `period_type: NORMAL`; a **free** one is `TRIAL`. RevenueCat reports Apple's paid promotional and win-back offers as normal periods too.
+- The transaction export's `offer` and `offer_type` columns say `comeback_50` and `win_back`. See [Integrations and data exports](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md).
+
+`offer_code` and `offer_type` cover every store offer, not only win-back:
+
+| Store offer | `offer_type` | `offer_code` |
+|---|---|---|
+| App Store free introductory offer | `free_trial` | null |
+| App Store paid introductory offer | `introductory` | null |
+| App Store promotional offer | `promotional` | the offer identifier |
+| App Store offer code | `offer_code` | the offer identifier |
+| App Store win-back offer | `win_back` | the offer identifier |
+| Google Play offer, free-trial phase | `free_trial` | the offer id |
+| Google Play offer, introductory-price phase | `introductory` | the offer id |
+| Google Play offer on a later period | `unspecified` | the offer id |
+
+Google Play has no separate win-back offer type. An offer you build for lapsed subscribers in Play Console (a "developer determined" offer) arrives with its offer id like any other offer.
+
+## Find customers who can be won back
+Apple's eligibility list is readable per customer:
+
+```bash
+curl -s https://api.revenuedot.app/v2/projects/$PROJECT_ID/customers/user_1/win_back_offers \
+  -H "Authorization: Bearer $SECRET_KEY"
+```
+
+```json
+{
+  "object": "list",
+  "items": [
+    { "object": "win_back_offer_eligibility", "subscription_id": "sub_4kq0x2m9a7c1d8e3", "product_id": "pro_monthly", "store": "app_store", "offer_ids": ["comeback_50"], "updated_at": 1790800914034 }
+  ],
+  "next_page": null,
+  "url": "/v2/projects/proj18pzzkao/customers/user_1/win_back_offers"
+}
+```
+
+`offer_ids` is Apple's list, best offer first, and is empty when Apple offers the customer nothing. `updated_at` says when RevenueDot last read it. Use it to send a lapsed customer the offer's link from your own email tool. This endpoint is a RevenueDot extension; RevenueCat's API has no equivalent. Reference: [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-the-win-back-offers-apple-lets-a-customer-redeem).
+
+## Known limits
+- No real win-back offer has been redeemed against RevenueDot yet; the flow is tested with signed test transactions and a mocked App Store.
+- The charts have no "offer type" dimension yet.
+
+## Related
+- [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md)
+- [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md)
+- [Offline entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/offline-entitlements.md)
+
+---
+
+# What happens to my customers' access when RevenueDot is down?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/offline-entitlements.md
+Description: The RevenueCat SDKs keep paying customers' access while the server answers 5xx, using a product-to-entitlement mapping RevenueDot serves for each app. How it works per store, and what to check.
+
+**Paying customers keep their access.** The RevenueCat SDKs cache a product-to-entitlement mapping from your server and, when the server answers with a 5xx, compute the customer's entitlements on the device from the store's own record of their purchases. This is the SDKs' "offline entitlements" feature, described in RevenueCat's [customer info docs](https://www.revenuecat.com/docs/customers/customer-info#offline-entitlements). It needs nothing from you beyond the normal setup.
+
+## How it works
+1. The SDK fetches `GET /v1/product_entitlement_mapping` and caches it. It refreshes it when the copy is 25 hours old.
+2. When `GET /v1/subscribers/{app_user_id}` or `POST /v1/receipts` answers 5xx and no customer info is cached, the SDK reads the active purchases from StoreKit or Google Play and looks each product up in the mapping.
+3. The result is marked as verified on the device and is not cached. The purchase stays unfinished, so the SDK posts it again once the server is back.
+
+RevenueDot answers 5xx for its own failures and for store outages, never 4xx, so this path is always taken when it should be. See [4xx vs 5xx on receipts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/receipt-errors-4xx-vs-5xx.md).
+
+## What the mapping contains
+Each app key gets its own app's products, keyed the way that app's SDK looks them up:
+
+| Store | Product in RevenueDot | Keys in the mapping |
+|---|---|---|
+| App Store | `pro_monthly` | `pro_monthly` |
+| App Store, iOS 26.4 billing plan | `pro_annual:monthly` | `pro_annual:monthly` (base plan `monthly`) |
+| App Store, up-front billing plan | `pro_annual:upFront` | `pro_annual` |
+| Google Play | `pro:monthly` and `pro:annual` | `pro:monthly`, `pro:annual`, and `pro` |
+| Google Play, product without a base plan | `legacy_pro` | `legacy_pro` |
+
+- **Google Play's bare key** (`pro` above) carries the entitlements of **every** base plan of the subscription. Android's purchase record names the subscription but not the base plan, so the SDK can only look up `pro`. With the union, nobody who paid loses access; a customer on a cheaper base plan may see the richer plan's entitlements for at most a day, and only while the server is down. RevenueCat's sample mapping uses the first base plan's entitlements instead.
+- **Archived products** still map, so earlier buyers keep access. **Archived entitlements** unlock nothing, online or offline.
+- **Consumables** are left out: they never unlock an entitlement.
+
+```bash
+curl -s https://api.revenuedot.app/v1/product_entitlement_mapping -H "Authorization: Bearer $GOOGLE_APP_KEY"
+```
+
+```json
+{
+  "product_entitlement_mapping": {
+    "pro:monthly": { "product_identifier": "pro", "base_plan_id": "monthly", "entitlements": ["pro"] },
+    "pro:annual": { "product_identifier": "pro", "base_plan_id": "annual", "entitlements": ["pro", "cloud_sync"] },
+    "pro": { "product_identifier": "pro", "base_plan_id": "monthly", "entitlements": ["pro", "cloud_sync"] }
+  }
+}
+```
+
+A secret key with no `X-Platform` header gets the whole project. Reference: [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#product-to-entitlement-mapping-offline-entitlements).
+
+## When offline entitlements do not apply
+These limits are the SDKs' own:
+- The app completes purchases itself (observer mode, `purchasesAreCompletedBy = .myApp`).
+- The Test Store, and iOS before 15.
+- A pending consumable on iOS, or any active one-time purchase on Android: the SDK returns an error instead.
+- A network error with no answer at all. Only a 5xx counts as "server down".
+
+## Related
+- [Concepts: subscriptions and events](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/subscriptions-and-events.md)
+- [Going to production](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/going-to-production.md)
+- [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md)

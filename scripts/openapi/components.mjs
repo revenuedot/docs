@@ -374,6 +374,7 @@ export const responses = {
   V1Error401: v1err(401, 7225, "Invalid API Key.", "Unknown API key."),
   V1Error403: v1err(403, 7225, "This endpoint requires a secret API key.", "A public app key was used for a secret-key endpoint."),
   V1Error404: v1err(404, 7259, "Subscriber not found.", "Not found."),
+  V1Error422: v1err(422, 7000, "Balance of GLD is 3; spending 5 would take it below zero.", "The request is valid but cannot be done in this state."),
   V1Error500: v1err(500, 7110, "Internal server error.", "Server error. The SDK keeps the purchase and retries."),
   V1Error503: v1err(503, 7101, "Google Play could not be reached.", "The store could not be reached. Retry later."),
 };
@@ -382,5 +383,6 @@ export const securitySchemes = {
   publicApiKey: { type: "http", scheme: "bearer", description: "A public app key (`appl_`, `mac_`, `goog_`, `test_`, `amzn_`, `strp_`, `rcb_`, `pdl_`, `roku_`). Safe to ship in an app. The SDK sends it on every request." },
   secretApiKey: { type: "http", scheme: "bearer", description: "A project secret key (`sk_...`). Server side only. Its `permissions` limit what it can do." },
   dashboardSession: { type: "apiKey", in: "cookie", name: "rd_session", description: "The dashboard session cookie from `POST /auth/login`. It authorizes `/v2` for every project the user belongs to." },
+  subscriberToken: { type: "http", scheme: "bearer", description: "A subscriber access token (`rdat_...`) from `POST /v2/projects/{project_id}/apps/{app_id}/authenticate`. It speaks for one app user id of one app for one hour. An expired token, or a path or body naming another app user id, answers 401 with code 7224." },
   googlePubSubOidc: { type: "http", scheme: "bearer", bearerFormat: "JWT", description: "Google-signed OIDC token of a Pub/Sub push subscription. Checked only when the app's `pubsub_audience` credential is set." },
 };
