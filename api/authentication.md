@@ -35,6 +35,8 @@ A secret key belongs to one project and holds a list of permissions. `*` allows 
 
 Permissions the operations use:
 
+- `audiences:audiences:read`
+- `audiences:audiences:read_write`
 - `charts_metrics:overview:read`
 - `customer_information:customers:read`
 - `customer_information:customers:read_write`

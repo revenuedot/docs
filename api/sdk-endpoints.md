@@ -13,7 +13,7 @@ Responses under `/v1` and `/rcbilling` are signed when the server has a signing 
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (44)
+## Operations on this page (45)
 
 - **Server**: [Server name and docs link](#server-name-and-docs-link), [Health check](#health-check), [Connectivity probe](#connectivity-probe)
 - **Customer info**: [Get customer info](#get-customer-info)
@@ -21,7 +21,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Offerings (SDK)**: [Get offerings](#get-offerings), [Get offerings without a user](#get-offerings-without-a-user), [Test Store product details](#test-store-product-details)
 - **Identity**: [Log in (identify)](#log-in-identify), [Alias two app user ids](#alias-two-app-user-ids)
 - **Attributes**: [Set customer attributes](#set-customer-attributes)
-- **SDK support**: [Intro offer eligibility (StoreKit 1)](#intro-offer-eligibility-storekit-1), [Sign a promotional offer (iOS)](#sign-a-promotional-offer-ios), [Attribution data (deprecated iOS call)](#attribution-data-deprecated-ios-call), [Apple AdServices token](#apple-adservices-token), [SDK health report availability](#sdk-health-report-availability), [SDK health report](#sdk-health-report), [Product to entitlement mapping (offline entitlements)](#product-to-entitlement-mapping-offline-entitlements), [Customer Center configuration](#customer-center-configuration), [Customer Center support ticket (not built)](#customer-center-support-ticket-not-built), [Virtual currency balances](#virtual-currency-balances), [Redeem a web purchase (not available)](#redeem-a-web-purchase-not-available), [Register an Apple external purchase token (iOS)](#register-an-apple-external-purchase-token-ios), [Rewarded ad verification (not available)](#rewarded-ad-verification-not-available), [Amazon receipt details (not supported)](#amazon-receipt-details-not-supported), [Paywall workflows (web SDK)](#paywall-workflows-web-sdk), [One paywall workflow (web SDK)](#one-paywall-workflow-web-sdk), [Restore eligibility (StoreKit 2)](#restore-eligibility-storekit-2), [Remote config (none yet)](#remote-config-none-yet), [Remote config (none yet)](#remote-config-none-yet), [SDK paywall and feature events (accepted, not stored)](#sdk-paywall-and-feature-events-accepted-not-stored), [SDK diagnostics (accepted, not stored)](#sdk-diagnostics-accepted-not-stored)
+- **SDK support**: [Intro offer eligibility (StoreKit 1)](#intro-offer-eligibility-storekit-1), [Sign a promotional offer (iOS)](#sign-a-promotional-offer-ios), [Attribution data (deprecated iOS call)](#attribution-data-deprecated-ios-call), [Apple AdServices token](#apple-adservices-token), [SDK health report availability](#sdk-health-report-availability), [SDK health report](#sdk-health-report), [Product to entitlement mapping (offline entitlements)](#product-to-entitlement-mapping-offline-entitlements), [Customer Center configuration](#customer-center-configuration), [Customer Center support ticket (not built)](#customer-center-support-ticket-not-built), [Virtual currency balances](#virtual-currency-balances), [Redeem a web purchase (not available)](#redeem-a-web-purchase-not-available), [Register an Apple external purchase token (iOS)](#register-an-apple-external-purchase-token-ios), [Rewarded ad verification (not available)](#rewarded-ad-verification-not-available), [Amazon receipt details (not supported)](#amazon-receipt-details-not-supported), [Paywall workflows (web SDK)](#paywall-workflows-web-sdk), [One paywall workflow (web SDK)](#one-paywall-workflow-web-sdk), [Restore eligibility (StoreKit 2)](#restore-eligibility-storekit-2), [Remote config fallback (none)](#remote-config-fallback-none), [Remote config: paywalls and UI settings](#remote-config-paywalls-and-ui-settings), [Download a remote-config blob](#download-a-remote-config-blob), [SDK paywall and feature events (accepted, not stored)](#sdk-paywall-and-feature-events-accepted-not-stored), [SDK diagnostics (accepted, not stored)](#sdk-diagnostics-accepted-not-stored)
 - **Web Billing**: [Web offering products](#web-offering-products), [Start a hosted web checkout (not available)](#start-a-hosted-web-checkout-not-available), [Web Billing purchase (not available)](#web-billing-purchase-not-available), [Prepare a Web Billing checkout (not available)](#prepare-a-web-billing-checkout-not-available), [Start a Web Billing checkout (not available)](#start-a-web-billing-checkout-not-available), [Web Billing checkout status](#web-billing-checkout-status), [Refresh Web Billing checkout pricing](#refresh-web-billing-checkout-pricing), [Complete a Web Billing checkout](#complete-a-web-billing-checkout), [Web checkout branding](#web-checkout-branding)
 - **Store notifications**: [App Store Server Notifications v2](#app-store-server-notifications-v2), [Google Play real-time developer notifications (Pub/Sub push)](#google-play-real-time-developer-notifications-pubsub-push)
 - **Response signing**: [Public key for response signatures](#public-key-for-response-signatures)
@@ -1187,11 +1187,11 @@ Example 200 response:
 }
 ```
 
-### Remote config (none yet)
+### Remote config fallback (none)
 
 `GET /v1/config/{domain}` · Auth: public app key
 
-Answers 204 (no config). `getOfferings` waits on this call.
+The SDK's JSON fallback host path, never used with a proxy URL. Answers 204.
 
 **Path parameters**
 
@@ -1209,9 +1209,14 @@ curl -s "$REVENUEDOT_URL/v1/config/app" -H "Authorization: Bearer $PUBLIC_KEY"
 
 - **204**: No config.
 
-### Remote config (none yet)
+### Remote config: paywalls and UI settings
 
 `POST /v1/config/{domain}` · Auth: public app key
+
+How current SDKs (iOS 5.83 and later) load paywalls. The body is an RC Container (`application/x-rc-format`): an 8-byte header ("RC", version 1), then elements of
+checksum (24 bytes, the first 24 bytes of SHA-256 of the payload), size (u32, little-endian), encoding (0, none) and 3 reserved bytes, then the payload padded to 8 bytes.
+Element 0 is the configuration JSON with the topics `sources`, `ui_config` (app, localizations, variable_config, custom_variables) and `workflows` (one per
+published paywall, keyed by workflow id, with `offering_identifier`). The other elements are the blobs those topics reference, inline. 204 when the `manifest` the SDK sent is current.
 
 **Path parameters**
 
@@ -1219,15 +1224,47 @@ curl -s "$REVENUEDOT_URL/v1/config/app" -H "Authorization: Bearer $PUBLIC_KEY"
 |---|---|---|---|
 | `domain` | string | yes | Config domain the SDK asks for (for example `app`). |
 
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `manifest` | string | no | The manifest of the configuration the SDK holds. |
+| `prefetched_blobs` | array of string | no | Blob refs the SDK already holds; they are not inlined again. |
+
 **Example request**
 
 ```bash
-curl -s -X POST "$REVENUEDOT_URL/v1/config/app" -H "Authorization: Bearer $PUBLIC_KEY"
+curl -s -X POST "$REVENUEDOT_URL/v1/config/app" -H "Authorization: Bearer $PUBLIC_KEY" \
+  -H "Content-Type: application/json" -d '{"manifest":"v1.Qm9vdHN0cmFw","prefetched_blobs":[]}'
 ```
 
 **Responses**
 
-- **204**: No config.
+- **200**: RC Container.
+- **204**: The SDK's configuration is current.
+
+### Download a remote-config blob
+
+`GET /blobs/{blob_ref}` · Auth: none
+
+Public and immutable. The SDK downloads a blob here when it was not inline in the container (the `sources` topic points here).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `blob_ref` | string | yes | base64url of the first 24 bytes of SHA-256 of the blob. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/blobs/$BLOB_REF"
+```
+
+**Responses**
+
+- **200**: The blob (JSON).
+- **404**: Unknown blob.
 
 ### SDK paywall and feature events (accepted, not stored)
 

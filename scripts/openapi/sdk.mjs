@@ -231,8 +231,21 @@ After answering, RevenueDot looks the token up with [Apple's attribution API](ht
   },
   "/v1/config/{domain}": {
     parameters: [{ name: "domain", in: "path", required: true, schema: str(), description: "Config domain the SDK asks for (for example `app`)." }],
-    get: op({ id: "getRemoteConfig", tag: "SDK support", summary: "Remote config (none yet)", security: PUBLIC, source: SDK, description: "Answers 204 (no config). `getOfferings` waits on this call.", responses: { 204: { description: "No config." } } }),
-    post: op({ id: "postRemoteConfig", tag: "SDK support", summary: "Remote config (none yet)", security: PUBLIC, source: SDK, responses: { 204: { description: "No config." } } }),
+    get: op({ id: "getRemoteConfig", tag: "SDK support", summary: "Remote config fallback (none)", security: PUBLIC, source: SDK, description: "The SDK's JSON fallback host path, never used with a proxy URL. Answers 204.", responses: { 204: { description: "No config." } } }),
+    post: op({ id: "postRemoteConfig", tag: "SDK support", summary: "Remote config: paywalls and UI settings", security: PUBLIC, source: SDK,
+      description: `
+How current SDKs (iOS 5.83 and later) load paywalls. The body is an RC Container (\`application/x-rc-format\`): an 8-byte header ("RC", version 1), then elements of
+checksum (24 bytes, the first 24 bytes of SHA-256 of the payload), size (u32, little-endian), encoding (0, none) and 3 reserved bytes, then the payload padded to 8 bytes.
+Element 0 is the configuration JSON with the topics \`sources\`, \`ui_config\` (app, localizations, variable_config, custom_variables) and \`workflows\` (one per
+published paywall, keyed by workflow id, with \`offering_identifier\`). The other elements are the blobs those topics reference, inline. 204 when the \`manifest\` the SDK sent is current.`,
+      requestBody: body(obj({ manifest: str("The manifest of the configuration the SDK holds."), prefetched_blobs: arr(str(), { description: "Blob refs the SDK already holds; they are not inlined again." }) }, [], { description: "The SDK also sends `fetch_context` and `app_user_id`, which the server does not use." }), { manifest: "v1.Qm9vdHN0cmFw", prefetched_blobs: [] }),
+      responses: { 200: { description: "RC Container.", content: { "application/x-rc-format": { schema: { type: "string", format: "binary" } } } }, 204: { description: "The SDK's configuration is current." } } }),
+  },
+  "/blobs/{blob_ref}": {
+    get: op({ id: "getConfigBlob", tag: "SDK support", summary: "Download a remote-config blob", security: NONE, source: "routes/assets.ts",
+      parameters: [{ name: "blob_ref", in: "path", required: true, schema: str(), description: "base64url of the first 24 bytes of SHA-256 of the blob." }],
+      description: "Public and immutable. The SDK downloads a blob here when it was not inline in the container (the \`sources\` topic points here).",
+      responses: { 200: ok("The blob (JSON).", { type: "object", additionalProperties: true }), 404: ok("Unknown blob.", obj({ object: str(), type: str(), message: str() })) } }),
   },
   "/v1/events": {
     post: op({ id: "postEvents", tag: "SDK support", summary: "SDK paywall and feature events (accepted, not stored)", security: PUBLIC, source: SDK,

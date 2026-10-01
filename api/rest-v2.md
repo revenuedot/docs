@@ -13,7 +13,7 @@ RevenueDot-only endpoints are on [Extensions](extensions.md).
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (108)
+## Operations on this page (130)
 
 - **Projects**: [List projects](#list-projects), [Create a project](#create-a-project)
 - **Apps**: [List apps](#list-apps), [Create an app](#create-an-app), [Get an app](#get-an-app), [Update an app and its store credentials](#update-an-app-and-its-store-credentials), [Delete an app](#delete-an-app), [Get an app's public SDK key](#get-an-apps-public-sdk-key), [Get a StoreKit configuration file](#get-a-storekit-configuration-file)
@@ -27,6 +27,8 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Metrics**: [Overview metrics](#overview-metrics), [Revenue over a date range](#revenue-over-a-date-range)
 - **In-app currencies**: [List in-app currencies](#list-in-app-currencies), [Create an in-app currency](#create-an-in-app-currency), [Get an in-app currency](#get-an-in-app-currency), [Update an in-app currency](#update-an-in-app-currency), [Delete an in-app currency](#delete-an-in-app-currency), [Archive an in-app currency](#archive-an-in-app-currency), [Unarchive an in-app currency](#unarchive-an-in-app-currency), [List a customer's balances](#list-a-customers-balances), [Credit or spend in-app currency](#credit-or-spend-in-app-currency), [Change a balance without a ledger entry](#change-a-balance-without-a-ledger-entry)
 - **Audit log**: [List audit log entries](#list-audit-log-entries)
+- **Targeting**: [List audiences](#list-audiences), [Create an audience](#create-an-audience), [Preview who matches](#preview-who-matches), [Known values for attribution and custom-attribute fields](#known-values-for-attribution-and-custom-attribute-fields), [Get an audience](#get-an-audience), [Update an audience](#update-an-audience), [Delete an unused audience](#delete-an-unused-audience), [List targeting rules in order](#list-targeting-rules-in-order), [Create a targeting rule](#create-a-targeting-rule), [Set the evaluation order](#set-the-evaluation-order), [Get a targeting rule](#get-a-targeting-rule), [Update a targeting rule](#update-a-targeting-rule), [Delete a targeting rule](#delete-a-targeting-rule)
+- **Experiments**: [List experiments](#list-experiments), [Create an offering experiment](#create-an-offering-experiment), [Get an experiment](#get-an-experiment), [Update an experiment](#update-an-experiment), [Delete an experiment](#delete-an-experiment), [Start or resume](#start-or-resume), [Pause: enrolled customers keep their variant, nobody new joins](#pause-enrolled-customers-keep-their-variant-nobody-new-joins), [Stop for good](#stop-for-good), [Results per variant](#results-per-variant)
 - **Paywalls**: [List paywalls](#list-paywalls), [Create a paywall](#create-a-paywall), [Get a paywall](#get-a-paywall), [Update a paywall's draft](#update-a-paywalls-draft), [Delete a paywall](#delete-a-paywall), [Publish a paywall](#publish-a-paywall), [Unpublish a paywall](#unpublish-a-paywall), [Attach an offering to a paywall](#attach-an-offering-to-a-paywall), [Detach the offering from a paywall](#detach-the-offering-from-a-paywall), [Duplicate a paywall](#duplicate-a-paywall), [Save a named snapshot](#save-a-named-snapshot), [Get a snapshot](#get-a-snapshot), [Get the template form of a paywall](#get-the-template-form-of-a-paywall), [Store the template form of a paywall](#store-the-template-form-of-a-paywall), [List images](#list-images), [Upload an image](#upload-an-image), [List fonts](#list-fonts), [Upload a font](#upload-a-font), [Download a paywall image or font](#download-a-paywall-image-or-font)
 - **Webhook integrations**: [List webhooks](#list-webhooks), [Create a webhook](#create-a-webhook), [Get a webhook](#get-a-webhook), [Update a webhook](#update-a-webhook), [Delete a webhook](#delete-a-webhook)
 - **Collaborators**: [List collaborators](#list-collaborators)
@@ -3263,6 +3265,660 @@ Example 200 response:
   "url": "/v2/projects/{project_id}/audit_logs"
 }
 ```
+
+## Targeting
+
+Audiences, and rules that pick the offering and placement offerings for each customer.
+
+### List audiences
+
+`GET /v2/projects/{project_id}/audiences` · Auth: secret key or dashboard session · Permissions: `audiences:audiences:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/audiences" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: All audiences.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Create an audience
+
+`POST /v2/projects/{project_id}/audiences` · Auth: secret key or dashboard session · Permissions: `audiences:audiences:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | yes |  |
+| `rules` | object | yes |  |
+| `rules.groups` | array of object | yes | Groups are OR-ed; conditions in a group are AND-ed. |
+| `rules.groups[].conditions` | array of object | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/audiences" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"name":"Gold plan","rules":{"groups":[{"conditions":[{"field":"customAttribute:plan","operator":"is","value":"gold"}]}]}}'
+```
+
+**Responses**
+
+- **201**: The audience.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Preview who matches
+
+`POST /v2/projects/{project_id}/audiences/actions/preview` · Auth: secret key or dashboard session · Permissions: `audiences:audiences:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/audiences/actions/preview" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"rules":{"groups":[{"conditions":[{"field":"country","operator":"isAnyOf","value":"US,CA"}]}]}}'
+```
+
+**Responses**
+
+- **200**: Stats and a sample.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Known values for attribution and custom-attribute fields
+
+`GET /v2/projects/{project_id}/audiences/filter_options` · Auth: secret key or dashboard session · Permissions: `audiences:audiences:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `fields` | string | no | Comma-separated: mediaSource, campaign, adGroup, ad, keyword, creative, latestProduct, customAttribute:<key>. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/audiences/filter_options" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Options per field.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Get an audience
+
+`GET /v2/projects/{project_id}/audiences/{audience_id}` · Auth: secret key or dashboard session · Permissions: `audiences:audiences:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `audience_id` | string | yes |  |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `expand` | array of `stats`, `customer_sample`, `used_by` | no |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/audiences/$AUDIENCE_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The audience.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Update an audience
+
+`POST /v2/projects/{project_id}/audiences/{audience_id}` · Auth: secret key or dashboard session · Permissions: `audiences:audiences:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `audience_id` | string | yes |  |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | no |  |
+| `rules` | object | no |  |
+| `rules.groups` | array of object | yes | Groups are OR-ed; conditions in a group are AND-ed. |
+| `rules.groups[].conditions` | array of object | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/audiences/$AUDIENCE_ID" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"name":"Gold"}'
+```
+
+**Responses**
+
+- **200**: The audience.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Delete an unused audience
+
+`DELETE /v2/projects/{project_id}/audiences/{audience_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `audiences:audiences:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `audience_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/audiences/$AUDIENCE_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deleted. Returns [Deleted](#deleted).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
+
+### List targeting rules in order
+
+`GET /v2/projects/{project_id}/targeting_rules` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/targeting_rules" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: All rules.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Create a targeting rule
+
+`POST /v2/projects/{project_id}/targeting_rules` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
+
+Added at the end of the order, inactive unless `state` is `active`. When the SDK fetches offerings, the first live rule whose audience matches decides the current offering and the offering per placement.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | yes |  |
+| `audience_id` | string or null | no |  |
+| `offering_id` | string | yes |  |
+| `placements` | object | no |  |
+| `state` | `active`, `inactive` | no |  |
+| `starts_at` | integer or null | no |  |
+| `ends_at` | integer or null | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/targeting_rules" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"name":"Gold gets promo","audience_id":"aud1a2b3c4d5e6f","offering_id":"ofrngm2u3h89blc","placements":{"onboarding_end":"ofrng9x8y7z6w5"},"state":"active"}'
+```
+
+**Responses**
+
+- **201**: The rule.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Set the evaluation order
+
+`POST /v2/projects/{project_id}/targeting_rules/actions/reorder` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `rule_ids` | array of string | yes | Every rule of the project, once, first evaluated first. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/targeting_rules/actions/reorder" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: All rules in the new order.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Get a targeting rule
+
+`GET /v2/projects/{project_id}/targeting_rules/{rule_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `rule_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/targeting_rules/$RULE_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The rule.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Update a targeting rule
+
+`POST /v2/projects/{project_id}/targeting_rules/{rule_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `rule_id` | string | yes |  |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | no |  |
+| `audience_id` | string or null | no |  |
+| `offering_id` | string | no |  |
+| `placements` | object | no |  |
+| `state` | `active`, `inactive` | no |  |
+| `starts_at` | integer or null | no |  |
+| `ends_at` | integer or null | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/targeting_rules/$RULE_ID" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"state":"inactive"}'
+```
+
+**Responses**
+
+- **200**: The rule; `revision` goes up by one.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Delete a targeting rule
+
+`DELETE /v2/projects/{project_id}/targeting_rules/{rule_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `rule_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/targeting_rules/$RULE_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deleted. Returns [Deleted](#deleted).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+## Experiments
+
+Offering A/B tests and their results.
+
+### List experiments
+
+`GET /v2/projects/{project_id}/experiments` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: A page of experiments.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Create an offering experiment
+
+`POST /v2/projects/{project_id}/experiments` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
+
+A draft until started. Running experiments enroll customers who match the audience, in the given percentage, into variant a or b (each customer always gets the same variant), and serve that variant's offering as the current offering. Enrolling records an `EXPERIMENT_ENROLLMENT` event, and enrolled customers' lifecycle events carry `experiments`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | yes |  |
+| `audience_id` | string or null | no |  |
+| `enrollment_percent` | integer | no |  |
+| `offering_a` | string | yes | Control offering. |
+| `offering_b` | string | yes | Treatment offering. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"name":"Annual first","offering_a":"ofrngm2u3h89blc","offering_b":"ofrng9x8y7z6w5","enrollment_percent":50}'
+```
+
+**Responses**
+
+- **201**: The experiment.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Get an experiment
+
+`GET /v2/projects/{project_id}/experiments/{experiment_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `experiment_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The experiment.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Update an experiment
+
+`POST /v2/projects/{project_id}/experiments/{experiment_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
+
+Variants and audience change only while it is a draft.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `experiment_id` | string | yes |  |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | no |  |
+| `audience_id` | string or null | no |  |
+| `enrollment_percent` | integer | no |  |
+| `offering_a` | string | no | Control offering. |
+| `offering_b` | string | no | Treatment offering. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT_ID" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"enrollment_percent":100}'
+```
+
+**Responses**
+
+- **200**: The experiment.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### Delete an experiment
+
+`DELETE /v2/projects/{project_id}/experiments/{experiment_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `experiment_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deleted. Returns [Deleted](#deleted).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### Start or resume
+
+`POST /v2/projects/{project_id}/experiments/{experiment_id}/actions/start` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `experiment_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT_ID/actions/start" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The experiment.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### Pause: enrolled customers keep their variant, nobody new joins
+
+`POST /v2/projects/{project_id}/experiments/{experiment_id}/actions/pause` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `experiment_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT_ID/actions/pause" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The experiment.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### Stop for good
+
+`POST /v2/projects/{project_id}/experiments/{experiment_id}/actions/stop` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `experiment_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT_ID/actions/stop" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The experiment.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### Results per variant
+
+`GET /v2/projects/{project_id}/experiments/{experiment_id}/results` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`
+
+Customers, conversions, trials and revenue after enrolling, and the chance that b converts better than a (normal approximation). `enough_data` is false until both variants have 100 customers.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `experiment_id` | string | yes |  |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `environment` | `production`, `sandbox` | no |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT_ID/results" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Results.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
 ## Paywalls
 

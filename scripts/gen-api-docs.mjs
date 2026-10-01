@@ -211,7 +211,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
   out.push("- **Examples:** recorded from a RevenueDot server on 2026-09-30 with Test Store purchases. Events that the Test Store cannot produce (pause, product change, extension, refund reversal, uncancellation, price consent) show the same builder's output with App Store or Google Play values.", "");
   out.push("| Event | When it is sent |", "|---|---|");
   for (const [type, item] of Object.entries(spec.webhooks)) out.push(`| [\`${type}\`](#${slug(type)}) | ${esc(item.post.description)} |`);
-  out.push("", `Accepted in a webhook's \`event_types\` filter but never sent yet: ${["TEMPORARY_ENTITLEMENT_GRANT", "INVOICE_ISSUANCE", "EXPERIMENT_ENROLLMENT", "PURCHASE_REDEEMED", "SUBSCRIBER_ALIAS"].map((t) => `\`${t}\``).join(", ")}.`, "");
+  out.push("", `Accepted in a webhook's \`event_types\` filter but never sent yet: ${["TEMPORARY_ENTITLEMENT_GRANT", "INVOICE_ISSUANCE", "PURCHASE_REDEEMED", "SUBSCRIBER_ALIAS"].map((t) => `\`${t}\``).join(", ")}.`, "");
   for (const [type, item] of Object.entries(spec.webhooks)) {
     const content = item.post.requestBody.content["application/json"];
     out.push(`## ${type}`, "", item.post.description, "");

@@ -30,9 +30,10 @@ RevenueDot POSTs one JSON event per request to each matching webhook: `{ "api_ve
 | [`PRICE_INCREASE_CONSENT_APPROVED`](#price_increase_consent_approved) | The customer accepted the price increase. |
 | [`TRANSFER`](#transfer) | A purchase moved to another customer because that customer restored it (transfer behaviour `transfer` or `transfer_if_no_active`). |
 | [`VIRTUAL_CURRENCY_TRANSACTION`](#virtual_currency_transaction) | An in-app currency was credited because a purchase of a granting product was recorded. Not sent for adjustments made through the API. |
+| [`EXPERIMENT_ENROLLMENT`](#experiment_enrollment) | A customer was enrolled in an offering experiment. Sent once per customer and experiment. |
 | [`TEST`](#test) | Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase. |
 
-Accepted in a webhook's `event_types` filter but never sent yet: `TEMPORARY_ENTITLEMENT_GRANT`, `INVOICE_ISSUANCE`, `EXPERIMENT_ENROLLMENT`, `PURCHASE_REDEEMED`, `SUBSCRIBER_ALIAS`.
+Accepted in a webhook's `event_types` filter but never sent yet: `TEMPORARY_ENTITLEMENT_GRANT`, `INVOICE_ISSUANCE`, `PURCHASE_REDEEMED`, `SUBSCRIBER_ALIAS`.
 
 ## INITIAL_PURCHASE
 
@@ -1134,6 +1135,45 @@ Example:
     "virtual_currency_transaction_id": "vatx1a2b3c4d5e6f7g",
     "type": "VIRTUAL_CURRENCY_TRANSACTION",
     "id": "8F2B1C4D-1234-4C5D-9E6F-0A1B2C3D4E5F"
+  }
+}
+```
+
+## EXPERIMENT_ENROLLMENT
+
+A customer was enrolled in an offering experiment. Sent once per customer and experiment.
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique event id (upper-case UUID). Deduplicate on it. |
+| `type` | string | Event type. |
+| `event_timestamp_ms` | integer | When RevenueDot recorded the event. Epoch milliseconds. |
+| `app_user_id` | string | The app user id the event is about (a non-anonymous alias when there is one). |
+| `original_app_user_id` | string | The customer's first app user id. |
+| `aliases` | array of string | Every app user id of the customer. |
+| `experiment_id` | string |  |
+| `experiment_variant` | `a`, `b` |  |
+| `offering_id` | string or null | The variant's offering identifier. |
+| `experiment_enrolled_at_ms` | integer | Epoch milliseconds. |
+
+Example:
+
+```json
+{
+  "api_version": "1.0",
+  "event": {
+    "event_timestamp_ms": 1790800914012,
+    "app_user_id": "$RCAnonymousID:12345678123412341234123456789123",
+    "aliases": [
+      "$RCAnonymousID:12345678123412341234123456789123"
+    ],
+    "original_app_user_id": "$RCAnonymousID:12345678123412341234123456789123",
+    "experiment_id": "prexpca1234ab",
+    "experiment_variant": "b",
+    "offering_id": "promo",
+    "experiment_enrolled_at_ms": 1790800914012,
+    "type": "EXPERIMENT_ENROLLMENT",
+    "id": "0F1E2D3C-4B5A-4978-8695-A4B3C2D1E0F9"
   }
 }
 ```

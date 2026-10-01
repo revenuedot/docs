@@ -34,7 +34,7 @@ The list below is complete as of **2026-09-30**. The biggest gap: **no real App 
     - Workaround: use the stock RevenueCat SDK with a proxy URL, or build a fork from its `revenuedot/main-patches` branch.
 
 ## Webhooks and events
-12. **Five event types are never sent yet:** `TEMPORARY_ENTITLEMENT_GRANT`, `INVOICE_ISSUANCE`, `EXPERIMENT_ENROLLMENT`, `PURCHASE_REDEEMED` and `SUBSCRIBER_ALIAS`. You can select them in filters.
+12. **Four event types are never sent yet:** `TEMPORARY_ENTITLEMENT_GRANT`, `INVOICE_ISSUANCE`, `PURCHASE_REDEEMED` and `SUBSCRIBER_ALIAS`. You can select them in filters.
     - Workaround: none needed unless your backend relies on them.
 13. **Webhook payloads leave out `renewal_number`, `experiments` and `metadata`.** Every other field matches RevenueCat's sample payloads.
     - Workaround: count renewals in your backend from `RENEWAL` events.

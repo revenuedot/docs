@@ -21,6 +21,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Check everything before real customers arrive | [Going to production](going-to-production.md) |
 | Invite teammates to a project and set their roles | [Invite your team](team.md) |
 | Build a paywall and show it in my app | [Paywalls](paywalls.md) |
+| Show different offerings to different customers, or A/B test two | [Targeting and experiments](targeting-and-experiments.md) |
 | Run RevenueDot from ChatGPT, Claude or Cursor | [Connect AI assistants](connect-ai-assistants.md) |
 | Get an email when store notifications, webhooks or store credentials fail | [Alert emails](alerts.md) |
 

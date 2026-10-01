@@ -108,6 +108,12 @@ tags:
   - name: Audit log
     description: Who changed what in a project.
     x-page: rest-v2
+  - name: Targeting
+    description: Audiences, and rules that pick the offering and placement offerings for each customer.
+    x-page: rest-v2
+  - name: Experiments
+    description: Offering A/B tests and their results.
+    x-page: rest-v2
   - name: Paywalls
     description: Paywall components the SDK renders, their publishing and versions, and the images and fonts they use.
     x-page: rest-v2
@@ -1523,8 +1529,8 @@ paths:
       operationId: getRemoteConfig
       tags:
         - SDK support
-      summary: Remote config (none yet)
-      description: Answers 204 (no config). `getOfferings` waits on this call.
+      summary: Remote config fallback (none)
+      description: The SDK's JSON fallback host path, never used with a proxy URL. Answers 204.
       security:
         - publicApiKey: []
       responses:
@@ -1535,13 +1541,81 @@ paths:
       operationId: postRemoteConfig
       tags:
         - SDK support
-      summary: Remote config (none yet)
+      summary: "Remote config: paywalls and UI settings"
+      description: |-
+        How current SDKs (iOS 5.83 and later) load paywalls. The body is an RC Container (`application/x-rc-format`): an 8-byte header ("RC", version 1), then elements of
+        checksum (24 bytes, the first 24 bytes of SHA-256 of the payload), size (u32, little-endian), encoding (0, none) and 3 reserved bytes, then the payload padded to 8 bytes.
+        Element 0 is the configuration JSON with the topics `sources`, `ui_config` (app, localizations, variable_config, custom_variables) and `workflows` (one per
+        published paywall, keyed by workflow id, with `offering_identifier`). The other elements are the blobs those topics reference, inline. 204 when the `manifest` the SDK sent is current.
       security:
         - publicApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                manifest:
+                  type: string
+                  description: The manifest of the configuration the SDK holds.
+                prefetched_blobs:
+                  type: array
+                  items:
+                    type: string
+                  description: Blob refs the SDK already holds; they are not inlined again.
+              description: The SDK also sends `fetch_context` and `app_user_id`, which the server does not use.
+            example:
+              manifest: v1.Qm9vdHN0cmFw
+              prefetched_blobs: []
       responses:
+        "200":
+          description: RC Container.
+          content:
+            application/x-rc-format:
+              schema:
+                type: string
+                format: binary
         "204":
-          description: No config.
+          description: The SDK's configuration is current.
       x-source: routes/sdk.ts
+  /blobs/{blob_ref}:
+    get:
+      operationId: getConfigBlob
+      tags:
+        - SDK support
+      summary: Download a remote-config blob
+      description: Public and immutable. The SDK downloads a blob here when it was not inline in the container (the `sources` topic points here).
+      security: []
+      parameters:
+        - name: blob_ref
+          in: path
+          required: true
+          schema:
+            type: string
+          description: base64url of the first 24 bytes of SHA-256 of the blob.
+      responses:
+        "200":
+          description: The blob (JSON).
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "404":
+          description: Unknown blob.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/assets.ts
   /v1/events:
     post:
       operationId: postEvents
@@ -10873,6 +10947,2623 @@ paths:
                   message:
                     type: string
       x-source: routes/assets.ts
+  /v2/projects/{project_id}/audiences:
+    get:
+      operationId: listAudiences
+      tags:
+        - Targeting
+      summary: List audiences
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: All audiences.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - audience
+                        id:
+                          type: string
+                        project_id:
+                          type: string
+                        customer_list_id:
+                          type: string
+                        name:
+                          type: string
+                        rules:
+                          type: object
+                          properties:
+                            groups:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  conditions:
+                                    type: array
+                                    items:
+                                      type: object
+                                      properties:
+                                        field:
+                                          type: string
+                                          description: A customer field such as `country`, `appVersion`, `status`, `activeEntitlements`, `totalSpent`, `firstSeenAt`, or `customAttribute:<key>`.
+                                        operator:
+                                          type: string
+                                          enum:
+                                            - is
+                                            - isNot
+                                            - isAnyOf
+                                            - isNotAnyOf
+                                            - greaterThan
+                                            - greaterThanOrEqual
+                                            - lessThan
+                                            - lessThanOrEqual
+                                            - equal
+                                            - notEqual
+                                            - contains
+                                            - doesNotContain
+                                            - containsAnyOf
+                                            - before
+                                            - beforeOrOn
+                                            - on
+                                            - after
+                                            - afterOrOn
+                                            - within
+                                            - between
+                                            - notBetween
+                                            - isEmpty
+                                            - isNotEmpty
+                                        value:
+                                          type: string
+                                          description: Comma-separated for multi-value operators; a duration such as `7d` for `within`.
+                                        currency:
+                                          type: string
+                                      required:
+                                        - field
+                                        - operator
+                                required:
+                                  - conditions
+                              description: Groups are OR-ed; conditions in a group are AND-ed.
+                          required:
+                            - groups
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: Created. Epoch milliseconds.
+                        updated_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Last updated. Epoch milliseconds, or null.
+                        stats:
+                          type: object
+                          properties:
+                            total_customers:
+                              type: integer
+                            active_subscriptions:
+                              type: integer
+                            active_trials:
+                              type: integer
+                            total_revenue:
+                              type: number
+                            currency:
+                              type: string
+                            is_approximate:
+                              type: boolean
+                              description: True when more than 5,000 customers were sampled.
+                          description: With `expand=stats`.
+                        customer_sample:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              object:
+                                type: string
+                                enum:
+                                  - audience_member
+                              app_user_id:
+                                type: string
+                              app_uuid:
+                                type: string
+                              email:
+                                type:
+                                  - string
+                                  - "null"
+                              first_seen_at:
+                                type:
+                                  - integer
+                                  - "null"
+                                format: int64
+                                description: First seen. Epoch milliseconds, or null.
+                              last_seen_at:
+                                type:
+                                  - integer
+                                  - "null"
+                                format: int64
+                                description: Last seen. Epoch milliseconds, or null.
+                              status:
+                                type: string
+                              total_spent:
+                                type:
+                                  - number
+                                  - "null"
+                              currency:
+                                type: string
+                              latest_product_name:
+                                type:
+                                  - string
+                                  - "null"
+                          description: With `expand=customer_sample`.
+                        used_by:
+                          type: object
+                          properties:
+                            object:
+                              type: string
+                            targeting_rules:
+                              type: array
+                              items:
+                                type: object
+                            experiments:
+                              type: array
+                              items:
+                                type: object
+                          description: With `expand=used_by`.
+                      required:
+                        - object
+                        - id
+                        - project_id
+                        - customer_list_id
+                        - name
+                        - rules
+                        - created_at
+                        - updated_at
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/targeting.ts
+      x-scopes:
+        - audiences:audiences:read
+    post:
+      operationId: createAudience
+      tags:
+        - Targeting
+      summary: Create an audience
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                rules:
+                  type: object
+                  properties:
+                    groups:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          conditions:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                field:
+                                  type: string
+                                  description: A customer field such as `country`, `appVersion`, `status`, `activeEntitlements`, `totalSpent`, `firstSeenAt`, or `customAttribute:<key>`.
+                                operator:
+                                  type: string
+                                  enum:
+                                    - is
+                                    - isNot
+                                    - isAnyOf
+                                    - isNotAnyOf
+                                    - greaterThan
+                                    - greaterThanOrEqual
+                                    - lessThan
+                                    - lessThanOrEqual
+                                    - equal
+                                    - notEqual
+                                    - contains
+                                    - doesNotContain
+                                    - containsAnyOf
+                                    - before
+                                    - beforeOrOn
+                                    - on
+                                    - after
+                                    - afterOrOn
+                                    - within
+                                    - between
+                                    - notBetween
+                                    - isEmpty
+                                    - isNotEmpty
+                                value:
+                                  type: string
+                                  description: Comma-separated for multi-value operators; a duration such as `7d` for `within`.
+                                currency:
+                                  type: string
+                              required:
+                                - field
+                                - operator
+                        required:
+                          - conditions
+                      description: Groups are OR-ed; conditions in a group are AND-ed.
+                  required:
+                    - groups
+              required:
+                - name
+                - rules
+            example:
+              name: Gold plan
+              rules:
+                groups:
+                  - conditions:
+                      - field: customAttribute:plan
+                        operator: is
+                        value: gold
+      responses:
+        "201":
+          description: The audience.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - audience
+                  id:
+                    type: string
+                  project_id:
+                    type: string
+                  customer_list_id:
+                    type: string
+                  name:
+                    type: string
+                  rules:
+                    type: object
+                    properties:
+                      groups:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            conditions:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  field:
+                                    type: string
+                                    description: A customer field such as `country`, `appVersion`, `status`, `activeEntitlements`, `totalSpent`, `firstSeenAt`, or `customAttribute:<key>`.
+                                  operator:
+                                    type: string
+                                    enum:
+                                      - is
+                                      - isNot
+                                      - isAnyOf
+                                      - isNotAnyOf
+                                      - greaterThan
+                                      - greaterThanOrEqual
+                                      - lessThan
+                                      - lessThanOrEqual
+                                      - equal
+                                      - notEqual
+                                      - contains
+                                      - doesNotContain
+                                      - containsAnyOf
+                                      - before
+                                      - beforeOrOn
+                                      - on
+                                      - after
+                                      - afterOrOn
+                                      - within
+                                      - between
+                                      - notBetween
+                                      - isEmpty
+                                      - isNotEmpty
+                                  value:
+                                    type: string
+                                    description: Comma-separated for multi-value operators; a duration such as `7d` for `within`.
+                                  currency:
+                                    type: string
+                                required:
+                                  - field
+                                  - operator
+                          required:
+                            - conditions
+                        description: Groups are OR-ed; conditions in a group are AND-ed.
+                    required:
+                      - groups
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  updated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last updated. Epoch milliseconds, or null.
+                  stats:
+                    type: object
+                    properties:
+                      total_customers:
+                        type: integer
+                      active_subscriptions:
+                        type: integer
+                      active_trials:
+                        type: integer
+                      total_revenue:
+                        type: number
+                      currency:
+                        type: string
+                      is_approximate:
+                        type: boolean
+                        description: True when more than 5,000 customers were sampled.
+                    description: With `expand=stats`.
+                  customer_sample:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - audience_member
+                        app_user_id:
+                          type: string
+                        app_uuid:
+                          type: string
+                        email:
+                          type:
+                            - string
+                            - "null"
+                        first_seen_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: First seen. Epoch milliseconds, or null.
+                        last_seen_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Last seen. Epoch milliseconds, or null.
+                        status:
+                          type: string
+                        total_spent:
+                          type:
+                            - number
+                            - "null"
+                        currency:
+                          type: string
+                        latest_product_name:
+                          type:
+                            - string
+                            - "null"
+                    description: With `expand=customer_sample`.
+                  used_by:
+                    type: object
+                    properties:
+                      object:
+                        type: string
+                      targeting_rules:
+                        type: array
+                        items:
+                          type: object
+                      experiments:
+                        type: array
+                        items:
+                          type: object
+                    description: With `expand=used_by`.
+                required:
+                  - object
+                  - id
+                  - project_id
+                  - customer_list_id
+                  - name
+                  - rules
+                  - created_at
+                  - updated_at
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/targeting.ts
+      x-scopes:
+        - audiences:audiences:read_write
+  /v2/projects/{project_id}/audiences/actions/preview:
+    post:
+      operationId: previewAudience
+      tags:
+        - Targeting
+      summary: Preview who matches
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              anyOf:
+                - type: object
+                  properties:
+                    audience_uuid:
+                      type: string
+                  required:
+                    - audience_uuid
+                - type: object
+                  properties:
+                    rules:
+                      type: object
+                      properties:
+                        groups:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              conditions:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    field:
+                                      type: string
+                                      description: A customer field such as `country`, `appVersion`, `status`, `activeEntitlements`, `totalSpent`, `firstSeenAt`, or `customAttribute:<key>`.
+                                    operator:
+                                      type: string
+                                      enum:
+                                        - is
+                                        - isNot
+                                        - isAnyOf
+                                        - isNotAnyOf
+                                        - greaterThan
+                                        - greaterThanOrEqual
+                                        - lessThan
+                                        - lessThanOrEqual
+                                        - equal
+                                        - notEqual
+                                        - contains
+                                        - doesNotContain
+                                        - containsAnyOf
+                                        - before
+                                        - beforeOrOn
+                                        - on
+                                        - after
+                                        - afterOrOn
+                                        - within
+                                        - between
+                                        - notBetween
+                                        - isEmpty
+                                        - isNotEmpty
+                                    value:
+                                      type: string
+                                      description: Comma-separated for multi-value operators; a duration such as `7d` for `within`.
+                                    currency:
+                                      type: string
+                                  required:
+                                    - field
+                                    - operator
+                            required:
+                              - conditions
+                          description: Groups are OR-ed; conditions in a group are AND-ed.
+                      required:
+                        - groups
+                  required:
+                    - rules
+            example:
+              rules:
+                groups:
+                  - conditions:
+                      - field: country
+                        operator: isAnyOf
+                        value: US,CA
+      responses:
+        "200":
+          description: Stats and a sample.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - audience_preview
+                  stats:
+                    type: object
+                    properties:
+                      total_customers:
+                        type: integer
+                      active_subscriptions:
+                        type: integer
+                      active_trials:
+                        type: integer
+                      total_revenue:
+                        type: number
+                      currency:
+                        type: string
+                      is_approximate:
+                        type: boolean
+                        description: True when more than 5,000 customers were sampled.
+                  customer_sample:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - audience_member
+                        app_user_id:
+                          type: string
+                        app_uuid:
+                          type: string
+                        email:
+                          type:
+                            - string
+                            - "null"
+                        first_seen_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: First seen. Epoch milliseconds, or null.
+                        last_seen_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Last seen. Epoch milliseconds, or null.
+                        status:
+                          type: string
+                        total_spent:
+                          type:
+                            - number
+                            - "null"
+                        currency:
+                          type: string
+                        latest_product_name:
+                          type:
+                            - string
+                            - "null"
+                required:
+                  - object
+                  - stats
+                  - customer_sample
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/targeting.ts
+      x-scopes:
+        - audiences:audiences:read
+  /v2/projects/{project_id}/audiences/filter_options:
+    get:
+      operationId: getAudienceFilterOptions
+      tags:
+        - Targeting
+      summary: Known values for attribution and custom-attribute fields
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: fields
+          in: query
+          schema:
+            type: string
+          description: "Comma-separated: mediaSource, campaign, adGroup, ad, keyword, creative, latestProduct, customAttribute:<key>."
+      responses:
+        "200":
+          description: Options per field.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                        field:
+                          type: string
+                        options:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              object:
+                                type: string
+                              id:
+                                type: string
+                              display_name:
+                                type: string
+                        cardinality_exceeded:
+                          type: boolean
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/targeting.ts
+      x-scopes:
+        - audiences:audiences:read
+  /v2/projects/{project_id}/audiences/{audience_id}:
+    get:
+      operationId: getAudience
+      tags:
+        - Targeting
+      summary: Get an audience
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: audience_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: expand
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - stats
+                - customer_sample
+                - used_by
+          style: form
+          explode: true
+      responses:
+        "200":
+          description: The audience.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - audience
+                  id:
+                    type: string
+                  project_id:
+                    type: string
+                  customer_list_id:
+                    type: string
+                  name:
+                    type: string
+                  rules:
+                    type: object
+                    properties:
+                      groups:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            conditions:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  field:
+                                    type: string
+                                    description: A customer field such as `country`, `appVersion`, `status`, `activeEntitlements`, `totalSpent`, `firstSeenAt`, or `customAttribute:<key>`.
+                                  operator:
+                                    type: string
+                                    enum:
+                                      - is
+                                      - isNot
+                                      - isAnyOf
+                                      - isNotAnyOf
+                                      - greaterThan
+                                      - greaterThanOrEqual
+                                      - lessThan
+                                      - lessThanOrEqual
+                                      - equal
+                                      - notEqual
+                                      - contains
+                                      - doesNotContain
+                                      - containsAnyOf
+                                      - before
+                                      - beforeOrOn
+                                      - on
+                                      - after
+                                      - afterOrOn
+                                      - within
+                                      - between
+                                      - notBetween
+                                      - isEmpty
+                                      - isNotEmpty
+                                  value:
+                                    type: string
+                                    description: Comma-separated for multi-value operators; a duration such as `7d` for `within`.
+                                  currency:
+                                    type: string
+                                required:
+                                  - field
+                                  - operator
+                          required:
+                            - conditions
+                        description: Groups are OR-ed; conditions in a group are AND-ed.
+                    required:
+                      - groups
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  updated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last updated. Epoch milliseconds, or null.
+                  stats:
+                    type: object
+                    properties:
+                      total_customers:
+                        type: integer
+                      active_subscriptions:
+                        type: integer
+                      active_trials:
+                        type: integer
+                      total_revenue:
+                        type: number
+                      currency:
+                        type: string
+                      is_approximate:
+                        type: boolean
+                        description: True when more than 5,000 customers were sampled.
+                    description: With `expand=stats`.
+                  customer_sample:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - audience_member
+                        app_user_id:
+                          type: string
+                        app_uuid:
+                          type: string
+                        email:
+                          type:
+                            - string
+                            - "null"
+                        first_seen_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: First seen. Epoch milliseconds, or null.
+                        last_seen_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Last seen. Epoch milliseconds, or null.
+                        status:
+                          type: string
+                        total_spent:
+                          type:
+                            - number
+                            - "null"
+                        currency:
+                          type: string
+                        latest_product_name:
+                          type:
+                            - string
+                            - "null"
+                    description: With `expand=customer_sample`.
+                  used_by:
+                    type: object
+                    properties:
+                      object:
+                        type: string
+                      targeting_rules:
+                        type: array
+                        items:
+                          type: object
+                      experiments:
+                        type: array
+                        items:
+                          type: object
+                    description: With `expand=used_by`.
+                required:
+                  - object
+                  - id
+                  - project_id
+                  - customer_list_id
+                  - name
+                  - rules
+                  - created_at
+                  - updated_at
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/targeting.ts
+      x-scopes:
+        - audiences:audiences:read
+    post:
+      operationId: updateAudience
+      tags:
+        - Targeting
+      summary: Update an audience
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: audience_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                rules:
+                  type: object
+                  properties:
+                    groups:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          conditions:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                field:
+                                  type: string
+                                  description: A customer field such as `country`, `appVersion`, `status`, `activeEntitlements`, `totalSpent`, `firstSeenAt`, or `customAttribute:<key>`.
+                                operator:
+                                  type: string
+                                  enum:
+                                    - is
+                                    - isNot
+                                    - isAnyOf
+                                    - isNotAnyOf
+                                    - greaterThan
+                                    - greaterThanOrEqual
+                                    - lessThan
+                                    - lessThanOrEqual
+                                    - equal
+                                    - notEqual
+                                    - contains
+                                    - doesNotContain
+                                    - containsAnyOf
+                                    - before
+                                    - beforeOrOn
+                                    - on
+                                    - after
+                                    - afterOrOn
+                                    - within
+                                    - between
+                                    - notBetween
+                                    - isEmpty
+                                    - isNotEmpty
+                                value:
+                                  type: string
+                                  description: Comma-separated for multi-value operators; a duration such as `7d` for `within`.
+                                currency:
+                                  type: string
+                              required:
+                                - field
+                                - operator
+                        required:
+                          - conditions
+                      description: Groups are OR-ed; conditions in a group are AND-ed.
+                  required:
+                    - groups
+            example:
+              name: Gold
+      responses:
+        "200":
+          description: The audience.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - audience
+                  id:
+                    type: string
+                  project_id:
+                    type: string
+                  customer_list_id:
+                    type: string
+                  name:
+                    type: string
+                  rules:
+                    type: object
+                    properties:
+                      groups:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            conditions:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  field:
+                                    type: string
+                                    description: A customer field such as `country`, `appVersion`, `status`, `activeEntitlements`, `totalSpent`, `firstSeenAt`, or `customAttribute:<key>`.
+                                  operator:
+                                    type: string
+                                    enum:
+                                      - is
+                                      - isNot
+                                      - isAnyOf
+                                      - isNotAnyOf
+                                      - greaterThan
+                                      - greaterThanOrEqual
+                                      - lessThan
+                                      - lessThanOrEqual
+                                      - equal
+                                      - notEqual
+                                      - contains
+                                      - doesNotContain
+                                      - containsAnyOf
+                                      - before
+                                      - beforeOrOn
+                                      - on
+                                      - after
+                                      - afterOrOn
+                                      - within
+                                      - between
+                                      - notBetween
+                                      - isEmpty
+                                      - isNotEmpty
+                                  value:
+                                    type: string
+                                    description: Comma-separated for multi-value operators; a duration such as `7d` for `within`.
+                                  currency:
+                                    type: string
+                                required:
+                                  - field
+                                  - operator
+                          required:
+                            - conditions
+                        description: Groups are OR-ed; conditions in a group are AND-ed.
+                    required:
+                      - groups
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  updated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last updated. Epoch milliseconds, or null.
+                  stats:
+                    type: object
+                    properties:
+                      total_customers:
+                        type: integer
+                      active_subscriptions:
+                        type: integer
+                      active_trials:
+                        type: integer
+                      total_revenue:
+                        type: number
+                      currency:
+                        type: string
+                      is_approximate:
+                        type: boolean
+                        description: True when more than 5,000 customers were sampled.
+                    description: With `expand=stats`.
+                  customer_sample:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - audience_member
+                        app_user_id:
+                          type: string
+                        app_uuid:
+                          type: string
+                        email:
+                          type:
+                            - string
+                            - "null"
+                        first_seen_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: First seen. Epoch milliseconds, or null.
+                        last_seen_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Last seen. Epoch milliseconds, or null.
+                        status:
+                          type: string
+                        total_spent:
+                          type:
+                            - number
+                            - "null"
+                        currency:
+                          type: string
+                        latest_product_name:
+                          type:
+                            - string
+                            - "null"
+                    description: With `expand=customer_sample`.
+                  used_by:
+                    type: object
+                    properties:
+                      object:
+                        type: string
+                      targeting_rules:
+                        type: array
+                        items:
+                          type: object
+                      experiments:
+                        type: array
+                        items:
+                          type: object
+                    description: With `expand=used_by`.
+                required:
+                  - object
+                  - id
+                  - project_id
+                  - customer_list_id
+                  - name
+                  - rules
+                  - created_at
+                  - updated_at
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/targeting.ts
+      x-scopes:
+        - audiences:audiences:read_write
+    delete:
+      operationId: deleteAudience
+      tags:
+        - Targeting
+      summary: Delete an unused audience
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: audience_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deleted"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "409":
+          $ref: "#/components/responses/V2Error409"
+      x-source: routes/v2/targeting.ts
+      x-scopes:
+        - audiences:audiences:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/targeting_rules:
+    get:
+      operationId: listTargetingRules
+      tags:
+        - Targeting
+      summary: List targeting rules in order
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: All rules.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - targeting_rule
+                        id:
+                          type: string
+                        project_id:
+                          type: string
+                        name:
+                          type: string
+                        audience_id:
+                          type:
+                            - string
+                            - "null"
+                          description: Null targets everyone.
+                        offering_id:
+                          type: string
+                        placements:
+                          type: object
+                          additionalProperties:
+                            type:
+                              - string
+                              - "null"
+                          description: Placement identifier → offering id. Null shows no paywall there.
+                        position:
+                          type: integer
+                          description: Evaluation order, 0 first.
+                        state:
+                          type: string
+                          enum:
+                            - active
+                            - inactive
+                        starts_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Goes live at. Epoch milliseconds, or null.
+                        ends_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Stops at. Epoch milliseconds, or null.
+                        revision:
+                          type: integer
+                          description: Sent to the SDK as `targeting.revision`.
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: Created. Epoch milliseconds.
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/targeting.ts
+      x-scopes:
+        - project_configuration:offerings:read
+      x-revenuedot-extension: true
+    post:
+      operationId: createTargetingRule
+      tags:
+        - Targeting
+      summary: Create a targeting rule
+      description: Added at the end of the order, inactive unless `state` is `active`. When the SDK fetches offerings, the first live rule whose audience matches decides the current offering and the offering per placement.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                audience_id:
+                  type:
+                    - string
+                    - "null"
+                offering_id:
+                  type: string
+                placements:
+                  type: object
+                  additionalProperties:
+                    type:
+                      - string
+                      - "null"
+                state:
+                  type: string
+                  enum:
+                    - active
+                    - inactive
+                starts_at:
+                  type:
+                    - integer
+                    - "null"
+                ends_at:
+                  type:
+                    - integer
+                    - "null"
+              required:
+                - name
+                - offering_id
+            example:
+              name: Gold gets promo
+              audience_id: aud1a2b3c4d5e6f
+              offering_id: ofrngm2u3h89blc
+              placements:
+                onboarding_end: ofrng9x8y7z6w5
+              state: active
+      responses:
+        "201":
+          description: The rule.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - targeting_rule
+                  id:
+                    type: string
+                  project_id:
+                    type: string
+                  name:
+                    type: string
+                  audience_id:
+                    type:
+                      - string
+                      - "null"
+                    description: Null targets everyone.
+                  offering_id:
+                    type: string
+                  placements:
+                    type: object
+                    additionalProperties:
+                      type:
+                        - string
+                        - "null"
+                    description: Placement identifier → offering id. Null shows no paywall there.
+                  position:
+                    type: integer
+                    description: Evaluation order, 0 first.
+                  state:
+                    type: string
+                    enum:
+                      - active
+                      - inactive
+                  starts_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Goes live at. Epoch milliseconds, or null.
+                  ends_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Stops at. Epoch milliseconds, or null.
+                  revision:
+                    type: integer
+                    description: Sent to the SDK as `targeting.revision`.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/targeting.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/targeting_rules/actions/reorder:
+    post:
+      operationId: reorderTargetingRules
+      tags:
+        - Targeting
+      summary: Set the evaluation order
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rule_ids:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 1
+                  description: Every rule of the project, once, first evaluated first.
+              required:
+                - rule_ids
+      responses:
+        "200":
+          description: All rules in the new order.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - targeting_rule
+                        id:
+                          type: string
+                        project_id:
+                          type: string
+                        name:
+                          type: string
+                        audience_id:
+                          type:
+                            - string
+                            - "null"
+                          description: Null targets everyone.
+                        offering_id:
+                          type: string
+                        placements:
+                          type: object
+                          additionalProperties:
+                            type:
+                              - string
+                              - "null"
+                          description: Placement identifier → offering id. Null shows no paywall there.
+                        position:
+                          type: integer
+                          description: Evaluation order, 0 first.
+                        state:
+                          type: string
+                          enum:
+                            - active
+                            - inactive
+                        starts_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Goes live at. Epoch milliseconds, or null.
+                        ends_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Stops at. Epoch milliseconds, or null.
+                        revision:
+                          type: integer
+                          description: Sent to the SDK as `targeting.revision`.
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: Created. Epoch milliseconds.
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/targeting.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/targeting_rules/{rule_id}:
+    get:
+      operationId: getTargetingRule
+      tags:
+        - Targeting
+      summary: Get a targeting rule
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: rule_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The rule.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - targeting_rule
+                  id:
+                    type: string
+                  project_id:
+                    type: string
+                  name:
+                    type: string
+                  audience_id:
+                    type:
+                      - string
+                      - "null"
+                    description: Null targets everyone.
+                  offering_id:
+                    type: string
+                  placements:
+                    type: object
+                    additionalProperties:
+                      type:
+                        - string
+                        - "null"
+                    description: Placement identifier → offering id. Null shows no paywall there.
+                  position:
+                    type: integer
+                    description: Evaluation order, 0 first.
+                  state:
+                    type: string
+                    enum:
+                      - active
+                      - inactive
+                  starts_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Goes live at. Epoch milliseconds, or null.
+                  ends_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Stops at. Epoch milliseconds, or null.
+                  revision:
+                    type: integer
+                    description: Sent to the SDK as `targeting.revision`.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/targeting.ts
+      x-scopes:
+        - project_configuration:offerings:read
+      x-revenuedot-extension: true
+    post:
+      operationId: updateTargetingRule
+      tags:
+        - Targeting
+      summary: Update a targeting rule
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: rule_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                audience_id:
+                  type:
+                    - string
+                    - "null"
+                offering_id:
+                  type: string
+                placements:
+                  type: object
+                  additionalProperties:
+                    type:
+                      - string
+                      - "null"
+                state:
+                  type: string
+                  enum:
+                    - active
+                    - inactive
+                starts_at:
+                  type:
+                    - integer
+                    - "null"
+                ends_at:
+                  type:
+                    - integer
+                    - "null"
+            example:
+              state: inactive
+      responses:
+        "200":
+          description: The rule; `revision` goes up by one.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - targeting_rule
+                  id:
+                    type: string
+                  project_id:
+                    type: string
+                  name:
+                    type: string
+                  audience_id:
+                    type:
+                      - string
+                      - "null"
+                    description: Null targets everyone.
+                  offering_id:
+                    type: string
+                  placements:
+                    type: object
+                    additionalProperties:
+                      type:
+                        - string
+                        - "null"
+                    description: Placement identifier → offering id. Null shows no paywall there.
+                  position:
+                    type: integer
+                    description: Evaluation order, 0 first.
+                  state:
+                    type: string
+                    enum:
+                      - active
+                      - inactive
+                  starts_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Goes live at. Epoch milliseconds, or null.
+                  ends_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Stops at. Epoch milliseconds, or null.
+                  revision:
+                    type: integer
+                    description: Sent to the SDK as `targeting.revision`.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/targeting.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+      x-revenuedot-extension: true
+    delete:
+      operationId: deleteTargetingRule
+      tags:
+        - Targeting
+      summary: Delete a targeting rule
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: rule_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deleted"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/targeting.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/experiments:
+    get:
+      operationId: listExperiments
+      tags:
+        - Experiments
+      summary: List experiments
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/StartingAfter"
+      responses:
+        "200":
+          description: A page of experiments.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - experiment
+                        id:
+                          type: string
+                        project_id:
+                          type: string
+                        name:
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                            - draft
+                            - running
+                            - paused
+                            - stopped
+                        audience_id:
+                          type:
+                            - string
+                            - "null"
+                        enrollment_percent:
+                          type: integer
+                        variants:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                enum:
+                                  - a
+                                  - b
+                              offering_id:
+                                type: string
+                        started_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Started. Epoch milliseconds, or null.
+                        stopped_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Stopped. Epoch milliseconds, or null.
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: Created. Epoch milliseconds.
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/targeting.ts
+      x-scopes:
+        - project_configuration:offerings:read
+      x-revenuedot-extension: true
+    post:
+      operationId: createExperiment
+      tags:
+        - Experiments
+      summary: Create an offering experiment
+      description: A draft until started. Running experiments enroll customers who match the audience, in the given percentage, into variant a or b (each customer always gets the same variant), and serve that variant's offering as the current offering. Enrolling records an `EXPERIMENT_ENROLLMENT` event, and enrolled customers' lifecycle events carry `experiments`.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                audience_id:
+                  type:
+                    - string
+                    - "null"
+                enrollment_percent:
+                  type: integer
+                  minimum: 1
+                  maximum: 100
+                offering_a:
+                  type: string
+                  description: Control offering.
+                offering_b:
+                  type: string
+                  description: Treatment offering.
+              required:
+                - name
+                - offering_a
+                - offering_b
+            example:
+              name: Annual first
+              offering_a: ofrngm2u3h89blc
+              offering_b: ofrng9x8y7z6w5
+              enrollment_percent: 50
+      responses:
+        "201":
+          description: The experiment.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - experiment
+                  id:
+                    type: string
+                  project_id:
+                    type: string
+                  name:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - draft
+                      - running
+                      - paused
+                      - stopped
+                  audience_id:
+                    type:
+                      - string
+                      - "null"
+                  enrollment_percent:
+                    type: integer
+                  variants:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          enum:
+                            - a
+                            - b
+                        offering_id:
+                          type: string
+                  started_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Started. Epoch milliseconds, or null.
+                  stopped_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Stopped. Epoch milliseconds, or null.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/targeting.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/experiments/{experiment_id}:
+    get:
+      operationId: getExperiment
+      tags:
+        - Experiments
+      summary: Get an experiment
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: experiment_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The experiment.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - experiment
+                  id:
+                    type: string
+                  project_id:
+                    type: string
+                  name:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - draft
+                      - running
+                      - paused
+                      - stopped
+                  audience_id:
+                    type:
+                      - string
+                      - "null"
+                  enrollment_percent:
+                    type: integer
+                  variants:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          enum:
+                            - a
+                            - b
+                        offering_id:
+                          type: string
+                  started_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Started. Epoch milliseconds, or null.
+                  stopped_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Stopped. Epoch milliseconds, or null.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/targeting.ts
+      x-scopes:
+        - project_configuration:offerings:read
+      x-revenuedot-extension: true
+    post:
+      operationId: updateExperiment
+      tags:
+        - Experiments
+      summary: Update an experiment
+      description: Variants and audience change only while it is a draft.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: experiment_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                audience_id:
+                  type:
+                    - string
+                    - "null"
+                enrollment_percent:
+                  type: integer
+                  minimum: 1
+                  maximum: 100
+                offering_a:
+                  type: string
+                  description: Control offering.
+                offering_b:
+                  type: string
+                  description: Treatment offering.
+            example:
+              enrollment_percent: 100
+      responses:
+        "200":
+          description: The experiment.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - experiment
+                  id:
+                    type: string
+                  project_id:
+                    type: string
+                  name:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - draft
+                      - running
+                      - paused
+                      - stopped
+                  audience_id:
+                    type:
+                      - string
+                      - "null"
+                  enrollment_percent:
+                    type: integer
+                  variants:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          enum:
+                            - a
+                            - b
+                        offering_id:
+                          type: string
+                  started_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Started. Epoch milliseconds, or null.
+                  stopped_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Stopped. Epoch milliseconds, or null.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/targeting.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+      x-revenuedot-extension: true
+    delete:
+      operationId: deleteExperiment
+      tags:
+        - Experiments
+      summary: Delete an experiment
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: experiment_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deleted"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/targeting.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/experiments/{experiment_id}/actions/start:
+    post:
+      operationId: startExperiment
+      tags:
+        - Experiments
+      summary: Start or resume
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: experiment_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The experiment.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - experiment
+                  id:
+                    type: string
+                  project_id:
+                    type: string
+                  name:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - draft
+                      - running
+                      - paused
+                      - stopped
+                  audience_id:
+                    type:
+                      - string
+                      - "null"
+                  enrollment_percent:
+                    type: integer
+                  variants:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          enum:
+                            - a
+                            - b
+                        offering_id:
+                          type: string
+                  started_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Started. Epoch milliseconds, or null.
+                  stopped_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Stopped. Epoch milliseconds, or null.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/targeting.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/experiments/{experiment_id}/actions/pause:
+    post:
+      operationId: pauseExperiment
+      tags:
+        - Experiments
+      summary: "Pause: enrolled customers keep their variant, nobody new joins"
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: experiment_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The experiment.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - experiment
+                  id:
+                    type: string
+                  project_id:
+                    type: string
+                  name:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - draft
+                      - running
+                      - paused
+                      - stopped
+                  audience_id:
+                    type:
+                      - string
+                      - "null"
+                  enrollment_percent:
+                    type: integer
+                  variants:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          enum:
+                            - a
+                            - b
+                        offering_id:
+                          type: string
+                  started_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Started. Epoch milliseconds, or null.
+                  stopped_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Stopped. Epoch milliseconds, or null.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/targeting.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/experiments/{experiment_id}/actions/stop:
+    post:
+      operationId: stopExperiment
+      tags:
+        - Experiments
+      summary: Stop for good
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: experiment_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The experiment.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - experiment
+                  id:
+                    type: string
+                  project_id:
+                    type: string
+                  name:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - draft
+                      - running
+                      - paused
+                      - stopped
+                  audience_id:
+                    type:
+                      - string
+                      - "null"
+                  enrollment_percent:
+                    type: integer
+                  variants:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          enum:
+                            - a
+                            - b
+                        offering_id:
+                          type: string
+                  started_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Started. Epoch milliseconds, or null.
+                  stopped_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Stopped. Epoch milliseconds, or null.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/targeting.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/experiments/{experiment_id}/results:
+    get:
+      operationId: getExperimentResults
+      tags:
+        - Experiments
+      summary: Results per variant
+      description: Customers, conversions, trials and revenue after enrolling, and the chance that b converts better than a (normal approximation). `enough_data` is false until both variants have 100 customers.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: experiment_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: environment
+          in: query
+          schema:
+            type: string
+            enum:
+              - production
+              - sandbox
+      responses:
+        "200":
+          description: Results.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - experiment_results
+                  experiment_id:
+                    type: string
+                  environment:
+                    type: string
+                  currency:
+                    type: string
+                  variants:
+                    type: object
+                    required:
+                      - object
+                      - items
+                      - next_page
+                      - url
+                    properties:
+                      object:
+                        type: string
+                        const: list
+                      items:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              enum:
+                                - a
+                                - b
+                            offering_id:
+                              type: string
+                            customers:
+                              type: integer
+                              description: Enrolled.
+                            conversions:
+                              type: integer
+                              description: Made any purchase or started a trial after enrolling.
+                            trials:
+                              type: integer
+                            paying_customers:
+                              type: integer
+                            conversion_rate:
+                              type: number
+                            revenue:
+                              type: number
+                              description: USD after enrolling.
+                            revenue_per_customer:
+                              type: number
+                      next_page:
+                        type:
+                          - string
+                          - "null"
+                        description: Path of the next page, or null on the last page.
+                      url:
+                        type: string
+                        description: Path of this list.
+                  chance_b_beats_a:
+                    type: number
+                  enough_data:
+                    type: boolean
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/targeting.ts
+      x-scopes:
+        - project_configuration:offerings:read
+      x-revenuedot-extension: true
   /auth/config:
     get:
       operationId: authConfig
@@ -16749,6 +19440,103 @@ webhooks:
                 virtual_currency_transaction_id: vatx1a2b3c4d5e6f7g
                 type: VIRTUAL_CURRENCY_TRANSACTION
                 id: 8F2B1C4D-1234-4C5D-9E6F-0A1B2C3D4E5F
+      responses:
+        "200":
+          description: Only HTTP 200 counts as delivered. Anything else, or no answer within 60 seconds, is retried after 5, 10, 20, 40 and 80 minutes.
+      x-source: services/events.ts
+  EXPERIMENT_ENROLLMENT:
+    post:
+      operationId: webhookExperimentEnrollment
+      tags:
+        - Webhook events
+      summary: EXPERIMENT_ENROLLMENT
+      description: A customer was enrolled in an offering experiment. Sent once per customer and experiment.
+      parameters:
+        - name: X-RevenueCat-Webhook-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+          description: "`t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\" with the webhook's signing secret>`. Signed again on every attempt."
+          example: t=1790800914,v1=0a1552334e825926036f7efe21527800ea45caa63eca523c6120c6da9041ef99
+        - name: Authorization
+          in: header
+          required: false
+          schema:
+            type: string
+          description: The webhook's `authorization_header`, verbatim, when you set one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - api_version
+                - event
+              properties:
+                api_version:
+                  type: string
+                  const: "1.0"
+                event:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      description: Unique event id (upper-case UUID). Deduplicate on it.
+                    type:
+                      type: string
+                      description: Event type.
+                    event_timestamp_ms:
+                      type: integer
+                      description: When RevenueDot recorded the event. Epoch milliseconds.
+                    app_user_id:
+                      type: string
+                      description: The app user id the event is about (a non-anonymous alias when there is one).
+                    original_app_user_id:
+                      type: string
+                      description: The customer's first app user id.
+                    aliases:
+                      type: array
+                      items:
+                        type: string
+                      description: Every app user id of the customer.
+                    experiment_id:
+                      type: string
+                    experiment_variant:
+                      type: string
+                      enum:
+                        - a
+                        - b
+                    offering_id:
+                      type:
+                        - string
+                        - "null"
+                      description: The variant's offering identifier.
+                    experiment_enrolled_at_ms:
+                      type: integer
+                      description: Epoch milliseconds.
+                  required:
+                    - id
+                    - type
+                    - event_timestamp_ms
+                    - app_user_id
+                    - experiment_id
+                    - experiment_variant
+            example:
+              api_version: "1.0"
+              event:
+                event_timestamp_ms: 1790800914012
+                app_user_id: $RCAnonymousID:12345678123412341234123456789123
+                aliases:
+                  - $RCAnonymousID:12345678123412341234123456789123
+                original_app_user_id: $RCAnonymousID:12345678123412341234123456789123
+                experiment_id: prexpca1234ab
+                experiment_variant: b
+                offering_id: promo
+                experiment_enrolled_at_ms: 1790800914012
+                type: EXPERIMENT_ENROLLMENT
+                id: 0F1E2D3C-4B5A-4978-8695-A4B3C2D1E0F9
       responses:
         "200":
           description: Only HTTP 200 counts as delivered. Anything else, or no answer within 60 seconds, is retried after 5, 10, 20, 40 and 80 minutes.

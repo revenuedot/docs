@@ -72,7 +72,7 @@ Source: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenued
 - **Headers:** an optional `Authorization` header you configure, plus `X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256>` signed with your `whsec_...` secret, and `User-Agent: RevenueDot-Webhooks/1.0`.
 - **Delivery:** only HTTP 200 counts as delivered. Failed deliveries retry after 5, 10, 20, 40 and 80 minutes, then stop. Each attempt times out after 60 seconds. You can retry by hand in the dashboard or the API.
 - **Event types sent today:** `INITIAL_PURCHASE`, `RENEWAL`, `CANCELLATION`, `UNCANCELLATION`, `NON_RENEWING_PURCHASE`, `SUBSCRIPTION_PAUSED`, `EXPIRATION`, `BILLING_ISSUE`, `PRODUCT_CHANGE`, `SUBSCRIPTION_EXTENDED`, `REFUND_REVERSED`, `TRANSFER`, `PRICE_INCREASE_CONSENT_REQUIRED`, `PRICE_INCREASE_CONSENT_APPROVED` and `TEST`.
-- **Accepted in filters but never sent yet:** `TEMPORARY_ENTITLEMENT_GRANT`, `INVOICE_ISSUANCE`, `EXPERIMENT_ENROLLMENT`, `PURCHASE_REDEEMED` and `SUBSCRIBER_ALIAS`.
+- **Accepted in filters but never sent yet:** `TEMPORARY_ENTITLEMENT_GRANT`, `INVOICE_ISSUANCE`, `PURCHASE_REDEEMED` and `SUBSCRIBER_ALIAS`.
 - **Refunds** arrive as `CANCELLATION` with `cancel_reason: "CUSTOMER_SUPPORT"` and a negative price.
 - **Imported history sends no webhooks**, unless you import with `--emit-events`.
 - **Integrations:** webhooks are the only integration today. Slack, Segment, Amplitude, Mixpanel, PostHog, Firebase, BigQuery, AppsFlyer, Adjust and Meta are planned for Tier 2.
