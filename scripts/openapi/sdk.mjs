@@ -188,8 +188,10 @@ A public key gets only its own app's products, keyed the way that SDK looks them
       responses: { 200: ok("The configuration.", obj({ customer_center: { type: "object", additionalProperties: true } }, ["customer_center"]), { customer_center: { screens: { MANAGEMENT: { type: "MANAGEMENT", title: "Manage subscription", paths: [] } }, support: { email: "support@example.com" } } }) } }),
   },
   "/v1/customercenter/support/create-ticket": {
-    post: op({ id: "customerCenterTicket", tag: "SDK support", summary: "Customer Center support ticket (not built)", security: PUBLIC, source: SDK,
-      responses: { 200: ok("Not sent.", obj({ sent: bool() }), { sent: false }) } }),
+    post: op({ id: "customerCenterTicket", tag: "SDK support", summary: "Customer Center support ticket", security: PUBLIC, source: SDK,
+      description: "Stores the ticket, emails the Customer Center support address (Reply-To the customer) and lists it under Lifecycle > Support. `sent` is false when ticket creation is off (`support.support_tickets.allow_creation`), a field is missing or invalid, or the customer sent more than 5 tickets in an hour; the SDK then offers its email link.",
+      requestBody: body(obj({ app_user_id: str(), customer_email: str(), issue_description: str() }, ["app_user_id", "customer_email", "issue_description"]), { app_user_id: "user_1234", customer_email: "wren@example.com", issue_description: "My scans are not syncing." }),
+      responses: { 200: ok("Whether the ticket was taken.", obj({ sent: bool() }), { sent: true }) } }),
   },
   "/v1/subscribers/{app_user_id}/virtual_currencies": {
     get: op({ id: "virtualCurrencies", tag: "SDK support", summary: "Virtual currency balances", security: PUBLIC, source: SDK, parameters: [user],
