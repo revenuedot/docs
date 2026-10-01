@@ -1257,7 +1257,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports" \
   -d '{"name":"Warehouse","destination":"r2","config":{"bucket":"revenue-exports","prefix":"revenuedot","account_id":"'"$CF_ACCOUNT_ID"'","access_key_id":"'"$R2_KEY_ID"'"},"credentials":{"secret_access_key":"'"$R2_SECRET"'"},"format":"parquet","schedule":"daily","hour_utc":3,"tables":["transactions","events"]}'
 ```
 
-- **Files:** `<prefix>/<YYYY-MM-DD>/<table>_<YYYYMMDDTHHMMSSZ>.csv.gz` (or `.csv`, `.parquet`), split into `_part2`, `_part3` ... above 25,000 rows. The date is the end of the window the file covers.
+- **Files:** `<prefix>/<YYYY-MM-DD>/<table>_<YYYYMMDDTHHMMSSZ>.csv.gz` (or `.csv`, `.parquet`), split into `_part2`, `_part3` ... above 10,000 rows. The date is the end of the window the file covers.
 - **Formats:** CSV (comma-separated, header row, gzip by default, times in UTC as `YYYY-MM-DD HH:MM:SS`) or Parquet (Snappy, typed columns: timestamps, integers, decimals, booleans and JSON).
 - **Schedule:** every day at an hour you pick (UTC), or every week on a day you pick. **Run now** queues one at once.
 - **New and changed only** (default): each run exports what changed since the previous successful run of that table. The first run of a table is always complete. A refunded transaction is exported again with `price_in_usd` 0 and `refunded_at` set, so keep the latest row per `store_transaction_id` by `updated_at`. **Everything, every time** writes full tables.
