@@ -1312,9 +1312,9 @@ RevenueDot type. A visitor opened a published funnel. Opt-in: sent only to webho
 | `click_ids.wbraid` | string |  |
 | `click_ids.ttclid` | string |  |
 | `click_ids.msclkid` | string |  |
-| `client_ip` | string | The visitor's IP address. Only while an enabled integration (not a webhook) has a funnel event type in its filter; otherwise no visitor IP is stored. For ad networks (Meta, Branch). |
-| `client_user_agent` | string | The visitor's browser user agent. Same condition as `client_ip`. |
-| `page_url` | string | The funnel page's address, without its query. Same condition as `client_ip`. |
+| `client_ip` | string | The visitor's IP address, for Meta and Branch: only while one of them (enabled) has a funnel event type in its filter; otherwise no visitor IP is stored. Deleted after 7 days. Never for a visitor with Global Privacy Control on. |
+| `client_user_agent` | string | The visitor's browser user agent. Same conditions as `client_ip`. |
+| `page_url` | string | The funnel page's address, without its query. While any enabled integration (not a webhook) has a funnel event type in its filter; not for a visitor with Global Privacy Control on. |
 
 Example:
 
@@ -1381,9 +1381,9 @@ RevenueDot type. A visitor finished a funnel step, with the answer for a questio
 | `click_ids.wbraid` | string |  |
 | `click_ids.ttclid` | string |  |
 | `click_ids.msclkid` | string |  |
-| `client_ip` | string | The visitor's IP address. Only while an enabled integration (not a webhook) has a funnel event type in its filter; otherwise no visitor IP is stored. For ad networks (Meta, Branch). |
-| `client_user_agent` | string | The visitor's browser user agent. Same condition as `client_ip`. |
-| `page_url` | string | The funnel page's address, without its query. Same condition as `client_ip`. |
+| `client_ip` | string | The visitor's IP address, for Meta and Branch: only while one of them (enabled) has a funnel event type in its filter; otherwise no visitor IP is stored. Deleted after 7 days. Never for a visitor with Global Privacy Control on. |
+| `client_user_agent` | string | The visitor's browser user agent. Same conditions as `client_ip`. |
+| `page_url` | string | The funnel page's address, without its query. While any enabled integration (not a webhook) has a funnel event type in its filter; not for a visitor with Global Privacy Control on. |
 
 Example:
 
@@ -1447,9 +1447,9 @@ RevenueDot type. A funnel's checkout was paid. `app_user_id` is the buyer's (ano
 | `click_ids.wbraid` | string |  |
 | `click_ids.ttclid` | string |  |
 | `click_ids.msclkid` | string |  |
-| `client_ip` | string | The visitor's IP address. Only while an enabled integration (not a webhook) has a funnel event type in its filter; otherwise no visitor IP is stored. For ad networks (Meta, Branch). |
-| `client_user_agent` | string | The visitor's browser user agent. Same condition as `client_ip`. |
-| `page_url` | string | The funnel page's address, without its query. Same condition as `client_ip`. |
+| `client_ip` | string | The visitor's IP address, for Meta and Branch: only while one of them (enabled) has a funnel event type in its filter; otherwise no visitor IP is stored. Deleted after 7 days. Never for a visitor with Global Privacy Control on. |
+| `client_user_agent` | string | The visitor's browser user agent. Same conditions as `client_ip`. |
+| `page_url` | string | The funnel page's address, without its query. While any enabled integration (not a webhook) has a funnel event type in its filter; not for a visitor with Global Privacy Control on. |
 
 Example:
 

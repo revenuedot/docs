@@ -89,6 +89,8 @@ Open **Ads > Rewards** and copy the **AdMob callback URL**:
 
 In AdMob, open each rewarded ad unit, turn on **Server-side verification** and paste the URL. AdMob's **Verify URL** button calls it without parameters, and RevenueDot answers 200. One URL serves every project: the token in each callback names the app.
 
+RevenueDot accepts a callback only for **your ad units**: the ones [connecting AdMob](#admob) loads, or an ad unit named on one of your reward rules. Google signs every AdMob account's callbacks with the same keys, and your app key ships inside your app, so without this check someone could send rewards to your project from their own AdMob account. A callback for another ad unit is recorded as failed (`unknown_ad_unit`) and grants nothing.
+
 ### 2. Pass the token in your app
 Call these when the ad has loaded and when its reward callback fires.
 
@@ -138,14 +140,15 @@ Rules are checked from top to bottom, and **the first rule that matches decides*
 **Currency rewards** are written to the in-app currency ledger once per reward, so a callback Google sends twice never credits twice. The balance is what `GET /v1/subscribers/{app_user_id}/virtual_currencies` returns, and a `VIRTUAL_CURRENCY_TRANSACTION` webhook goes out with `source: "ad_reward"` (a RevenueDot addition; see [webhook events](../../api/webhook-events.md)).
 
 ### 4. Test a reward and read the ledger
-**Send a test reward** runs the same rules and grants as a real AdMob callback, for an app user ID you enter, without an ad. It is marked sandbox in the ledger, but the currency or access is granted for real.
+**Send a test reward** runs the same rules and grants as a real AdMob callback, for an app user ID you enter, without an ad. It is marked sandbox in the ledger, but the currency or access is granted for real. With a secret key, it needs `customer_information:purchases:read_write` as well as the integrations permission.
 
 The **Ledger** lists every verified reward, newest first: when, the customer, the network, the ad unit, AdMob's reward item and amount, the status and what was granted. A reward fails with one of these reasons:
 
 | Reason | What happened | What to do |
 |---|---|---|
+| `unknown_ad_unit` | The callback's ad unit is not one of the project's | [Connect AdMob](#admob), or name the ad unit on a reward rule |
 | `missing_user` | AdMob's callback had no user id | Set `userIdentifier` (iOS) or `setUserId` (Android) to the token's `appUserID` |
-| `user_mismatch` | The poll came from a different customer than the reward's user id (the poll answers this; the ledger keeps the reward) | Generate the token after the customer logs in, and pass its `appUserID` |
+| `user_mismatch` | The poll came from a different customer than the reward's user id (the poll answers this, and tells that customer nothing else; the ledger keeps the reward) | Generate the token after the customer logs in, and pass its `appUserID` |
 | `grant_failed` | The matching rule names an in-app currency or entitlement that no longer exists | Fix or delete the rule |
 
 ### What the poll answers
@@ -161,23 +164,25 @@ The **Ledger** lists every verified reward, newest first: when, the customer, th
 
 ### How the callback is checked
 AdMob signs the query string before `&signature=` with ECDSA (P-256, SHA-256). RevenueDot checks it with Google's published keys at `https://www.gstatic.com/admob/reward/verifier-keys.json`, as [Google's server-side verification guide](https://developers.google.com/admob/android/ssv) describes, and fetches the keys again when it sees an unknown key id.
+- Only the signed part of the query is read. A query with anything after `key_id`, or with a parameter twice, answers 400.
 - A bad signature answers 403 and records nothing.
-- When Google's keys cannot be fetched, RevenueDot answers 503. Google retries callbacks that do not answer 200, so the reward is not lost.
+- When Google's keys cannot be fetched, RevenueDot answers 503 and tries Google again at most once a minute. Google retries callbacks that do not answer 200, so the reward is not lost.
+- A network reward amount above 1,000,000,000, and a multiplier rule's result above that, count as 1,000,000,000.
 - A callback whose `custom_data` is not a RevenueDot token is answered 200 and ignored, so Google stops retrying it.
 
 ## AdMob
-Connecting AdMob loads your ad unit names, so the Overview shows "Level end rewarded" instead of `ca-app-pub-…/5224354917`. It is optional: ad revenue and rewarded ads work without it.
+Connecting AdMob loads your ad unit names, so the Overview shows "Level end rewarded" instead of `ca-app-pub-…/5224354917`, and tells rewarded-ad verification which ad units are yours. It is optional: ad revenue works without it, and rewarded ads work when each reward rule names its ad unit.
 
 1. **Use a Google OAuth client.** Google requires one to read AdMob data.
    - **RevenueDot Cloud** has one; skip to step 3.
    - **Self-hosted:** set `REVENUEDOT_GOOGLE_OAUTH_CLIENT_ID` and `REVENUEDOT_GOOGLE_OAUTH_CLIENT_SECRET` on the server for every project, or let each project enter its own client on its AdMob page (**Use your own Google OAuth client**).
 2. **Create the client** (self-hosted, or a project's own client): in Google Cloud, enable the **AdMob API**, then create an OAuth client of type **Web application** and add this authorized redirect URI: `<API origin>/v1/ads/admob/oauth/callback`, for example `https://revenuedot.example.com/v1/ads/admob/oauth/callback`. The AdMob page shows the exact URI.
-3. **Connect.** Open **Integrations > Google AdMob** and select **Connect with Google**. Sign in with the Google account that has your AdMob account and allow read-only access (scope `https://www.googleapis.com/auth/admob.readonly`). The sign-in link works once, for 10 minutes.
+3. **Connect.** Open **Integrations > Google AdMob** and select **Connect with Google**. Sign in with the Google account that has your AdMob account and allow read-only access (scope `https://www.googleapis.com/auth/admob.readonly`). The sign-in link works once, for 10 minutes, and only in the browser that started it: Google sends you back to the AdMob page, which finishes the connection.
 
-RevenueDot stores the refresh token encrypted, lists your AdMob accounts and loads every ad unit (name, format, app), up to 5,000. It loads them again **once a day**; **Refresh now** loads them at once. **Disconnect** deletes the Google tokens and the loaded ad units; ad revenue from the SDK and rewarded ads keep working.
+RevenueDot stores the refresh token encrypted, lists your AdMob accounts and loads every ad unit (name, format, app), up to 5,000. It loads them again **once a day**; **Refresh now** loads them at once. **Disconnect** deletes the Google tokens and the loaded ad units; ad revenue from the SDK keeps working, and rewarded ads then work only for the ad units named on reward rules.
 
 ## Use the API
-Every page is an API call with a secret key ([API reference](../../api/extensions.md#ads)). The Overview needs `charts_metrics:overview:read`; rules, the ledger and AdMob need `project_configuration:integrations:read` or `:read_write`.
+Every page is an API call with a secret key ([API reference](../../api/extensions.md#ads)). The Overview needs `charts_metrics:overview:read`; rules, the ledger and AdMob need `project_configuration:integrations:read` or `:read_write`; a test reward also needs `customer_information:purchases:read_write`.
 
 ```bash
 curl -s "https://api.revenuedot.app/v2/projects/$PROJECT_ID/ads/overview?range=28d&environment=production" \
@@ -197,7 +202,8 @@ curl -s -X POST "https://api.revenuedot.app/v2/projects/$PROJECT_ID/ads/reward_r
 | `GET /v2/projects/{project_id}/ads/reward_verifications?status=&app_user_id=` | The ledger, newest first, paged |
 | `POST /v2/projects/{project_id}/ads/reward_verifications/test` | A test reward: `{"app_user_id":"user_42"}`, optionally `app_id`, `ad_unit_id`, `reward_item`, `reward_amount` |
 | `GET`, `DELETE /v2/projects/{project_id}/ads/admob` | The AdMob connection, its ad units and the URLs to paste; disconnect |
-| `POST /v2/projects/{project_id}/ads/admob/connect` | Google's sign-in URL (body: optional `client_id`, `client_secret`) |
+| `POST /v2/projects/{project_id}/ads/admob/connect` | Google's sign-in URL and a `nonce` (body: optional `client_id`, `client_secret`) |
+| `POST /v2/projects/{project_id}/ads/admob/finish` | Finish the sign-in: `{"code","state","nonce"}` from the AdMob page (the code arrives in its URL fragment; the nonce is the one `connect` gave this browser) |
 | `POST /v2/projects/{project_id}/ads/admob/refresh` | Load the ad units now |
 | `GET /v1/ads/admob/ssv` | AdMob's callback (Google calls it; no key) |
 | `GET /v1/ads/admob/oauth/callback` | Google's redirect after sign-in (no key) |

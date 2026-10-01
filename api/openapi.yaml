@@ -21585,7 +21585,7 @@ paths:
       tags:
         - Ads
       summary: Send a test reward
-      description: "Runs the same rules and grants as a verified AdMob callback, without an ad: network `test`, marked sandbox. The currency or access is granted for real. With `client_transaction_id`, the SDK's poll for that id answers with this reward."
+      description: "Runs the same rules and grants as a verified AdMob callback, without an ad: network `test`, marked sandbox. The currency or access is granted for real, so the key also needs `customer_information:purchases:read_write`, like a balance adjustment. With `client_transaction_id`, the SDK's poll for that id answers with this reward."
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -21796,6 +21796,7 @@ paths:
       x-source: routes/v2/ads.ts
       x-scopes:
         - project_configuration:integrations:read_write
+        - customer_information:purchases:read_write
       x-revenuedot-extension: true
   /v2/projects/{project_id}/ads/admob:
     get:
@@ -21956,7 +21957,7 @@ paths:
       tags:
         - Ads
       summary: Disconnect AdMob
-      description: Deletes the Google tokens and the loaded ad units. Ad revenue from the SDK and rewarded-ad verification keep working.
+      description: Deletes the Google tokens and the loaded ad units. Ad revenue from the SDK keeps working; rewarded-ad verification then accepts only the ad units named on reward rules.
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -22088,7 +22089,7 @@ paths:
       tags:
         - Ads
       summary: Start Google sign-in for AdMob
-      description: Returns Google's authorization URL (scope `https://www.googleapis.com/auth/admob.readonly`, offline access). Open it in a browser; Google redirects to `/v1/ads/admob/oauth/callback`, which saves the token, loads the ad units and returns to the dashboard. The link works once, for 10 minutes. Without a server OAuth client, send the project's own `client_id` and `client_secret` (422 otherwise).
+      description: Returns Google's authorization URL (scope `https://www.googleapis.com/auth/admob.readonly`, offline access) and a `nonce`. Keep the nonce in the browser that opens the URL. Google redirects to `/v1/ads/admob/oauth/callback`, which sends the code on to the project's AdMob page in the URL fragment; that page finishes with `finishAdMobConnect` and the nonce. So a sign-in link someone else started cannot connect your Google account to their project. The link works once, for 10 minutes. Without a server OAuth client, send the project's own `client_id` and `client_secret` (422 otherwise).
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -22114,7 +22115,7 @@ paths:
             example: {}
       responses:
         "200":
-          description: Google's sign-in URL.
+          description: Google's sign-in URL and the browser's nonce.
           content:
             application/json:
               schema:
@@ -22126,12 +22127,202 @@ paths:
                       - admob_authorization
                   url:
                     type: string
+                  nonce:
+                    type: string
+                    description: Send it to `finishAdMobConnect` from the same browser.
                 required:
                   - object
                   - url
+                  - nonce
               example:
                 object: admob_authorization
+                nonce: 4f1c…
                 url: https://accounts.google.com/o/oauth2/v2/auth?client_id=…&redirect_uri=https%3A%2F%2Fapi.revenuedot.app%2Fv1%2Fads%2Fadmob%2Foauth%2Fcallback&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fadmob.readonly&access_type=offline&prompt=consent&include_granted_scopes=true&state=…
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+        "502":
+          $ref: "#/components/responses/V2Error502"
+      x-source: routes/v2/ads.ts
+      x-scopes:
+        - project_configuration:integrations:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ads/admob/finish:
+    post:
+      operationId: finishAdMobConnect
+      tags:
+        - Ads
+      summary: Finish Google sign-in for AdMob
+      description: The AdMob page calls this with the `admob_code` and `admob_state` from its URL fragment and the `nonce` from `connectAdMob`. RevenueDot checks that the state is this project's pending sign-in (single use, 10 minutes) and that the nonce matches, exchanges the code for a refresh token (stored encrypted) and loads the ad units. 400 when the state or nonce is wrong, used or expired.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: "`admob_code` from the fragment."
+                state:
+                  type: string
+                  description: "`admob_state` from the fragment."
+                nonce:
+                  type: string
+                  description: From `connectAdMob`.
+              required:
+                - code
+                - state
+                - nonce
+            example:
+              code: 4/0Ab…
+              state: proj1a2b3c4d.9f2c…
+              nonce: 4f1c…
+      responses:
+        "200":
+          description: The connection.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - admob_connection
+                  connected:
+                    type: boolean
+                    description: Whether a Google refresh token is saved.
+                  oauth_client:
+                    type:
+                      - string
+                      - "null"
+                    enum:
+                      - server
+                      - project
+                      - null
+                    description: "Which Google OAuth client is used: the server's (`REVENUEDOT_GOOGLE_OAUTH_CLIENT_ID` and `_SECRET`), the project's own, or none yet."
+                  client_id:
+                    type:
+                      - string
+                      - "null"
+                    description: The project's own OAuth client id, when it saved one.
+                  client_secret:
+                    type: object
+                    properties:
+                      configured:
+                        type: boolean
+                      hint:
+                        type:
+                          - string
+                          - "null"
+                        description: The last four characters.
+                    required:
+                      - configured
+                      - hint
+                  connected_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When Google sign-in finished. Epoch milliseconds, or null.
+                  accounts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          description: Publisher id (pub-…).
+                        currency:
+                          type:
+                            - string
+                            - "null"
+                          description: The account's reporting currency.
+                  last_sync_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last load of the ad units, successful or not. Epoch milliseconds, or null.
+                  last_sync_error:
+                    type:
+                      - string
+                      - "null"
+                    description: Why the last load failed.
+                  ad_units:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ad_unit_id:
+                          type: string
+                          description: ca-app-pub-…/…
+                        name:
+                          type: string
+                        format:
+                          type:
+                            - string
+                            - "null"
+                          description: AdMob's format, lower case (`rewarded`, `banner` ...).
+                        account_id:
+                          type: string
+                        app_id:
+                          type:
+                            - string
+                            - "null"
+                          description: The AdMob app id.
+                        updated_at:
+                          type: integer
+                          format: int64
+                          description: Loaded. Epoch milliseconds.
+                  redirect_uri:
+                    type: string
+                    description: "The redirect URI to add to the Google OAuth client: `<API origin>/v1/ads/admob/oauth/callback`."
+                  ssv_callback_url:
+                    type: string
+                    description: "The server-side verification callback URL to paste into each rewarded ad unit: `<API origin>/v1/ads/admob/ssv`."
+                required:
+                  - object
+                  - connected
+                  - ad_units
+                  - redirect_uri
+                  - ssv_callback_url
+              example:
+                object: admob_connection
+                connected: true
+                oauth_client: server
+                client_id: null
+                client_secret:
+                  configured: false
+                  hint: null
+                connected_at: 1790850000000
+                accounts:
+                  - id: pub-3940256099942544
+                    currency: USD
+                last_sync_at: 1790936400000
+                last_sync_error: null
+                ad_units:
+                  - ad_unit_id: ca-app-pub-3940256099942544/5224354917
+                    name: Level end rewarded
+                    format: rewarded
+                    account_id: pub-3940256099942544
+                    app_id: ca-app-pub-3940256099942544~1458002511
+                    updated_at: 1790936400000
+                redirect_uri: https://api.revenuedot.app/v1/ads/admob/oauth/callback
+                ssv_callback_url: https://api.revenuedot.app/v1/ads/admob/ssv
         "400":
           $ref: "#/components/responses/V2Error400"
         "401":
@@ -22474,10 +22665,10 @@ paths:
         - Ads
       summary: AdMob server-side verification callback
       description: |-
-        The URL to paste into each rewarded ad unit's server-side verification settings in AdMob. Google calls it with a signed query (`ad_network`, `ad_unit`, `custom_data`, `key_id`, `reward_amount`, `reward_item`, `signature`, `timestamp`, `transaction_id`, `user_id`; [AdMob SSV](https://developers.google.com/admob/android/ssv)); RevenueDot checks the ECDSA signature with Google's published keys, finds the project from the app key in `custom_data` (the SDK's reward verification token), records the reward once per AdMob `transaction_id` and grants what the first matching reward rule says.
+        The URL to paste into each rewarded ad unit's server-side verification settings in AdMob. Google calls it with a signed query (`ad_network`, `ad_unit`, `custom_data`, `key_id`, `reward_amount`, `reward_item`, `signature`, `timestamp`, `transaction_id`, `user_id`; [AdMob SSV](https://developers.google.com/admob/android/ssv)); RevenueDot checks the ECDSA signature with Google's published keys, finds the project from the app key in `custom_data` (the SDK's reward verification token), checks that `ad_unit` is one of the project's ad units (loaded by the AdMob connection, or named on a reward rule), records the reward once per AdMob `transaction_id` and grants what the first matching reward rule says. Only the signed part of the query is read. Google signs every publisher's callbacks with the same keys, and the app key ships inside the app, so another AdMob account's callback with your app key is recorded as failed (`unknown_ad_unit`) and grants nothing.
 
         - **200** `{"ok":true,"recorded":true}`: recorded (or already recorded). Also 200 with no parameters (AdMob's **Verify URL** button), and 200 `{"ok":true,"recorded":false,"reason":"invalid_custom_data"}` or `"unknown_api_key"` when `custom_data` is not a RevenueDot token, so Google stops retrying.
-        - **400:** the query has no `signature` and `key_id`. **403:** the signature is not valid or the key id is unknown; nothing is recorded.
+        - **400:** the query does not end with `signature` and `key_id`, has anything after `key_id`, or repeats a parameter. **403:** the signature is not valid or the key id is unknown; nothing is recorded.
         - **503:** Google's keys could not be fetched. Google retries callbacks that do not answer 200.
       security: []
       parameters:
@@ -22575,7 +22766,7 @@ paths:
       tags:
         - Ads
       summary: Google's redirect after AdMob sign-in
-      description: Add `<API origin>/v1/ads/admob/oauth/callback` as an authorized redirect URI of the Google OAuth client. RevenueDot exchanges the code for a refresh token (stored encrypted), loads the ad units and redirects to the project's AdMob page with `connected=1`, or with `admob_error=<message>`.
+      description: Add `<API origin>/v1/ads/admob/oauth/callback` as an authorized redirect URI of the Google OAuth client. RevenueDot redirects to the project's AdMob page with the code and state in the URL fragment (`#admob_code=…&admob_state=…`, never sent to a server), and the page finishes with `finishAdMobConnect`. A cancelled sign-in redirects with `?admob_error=<message>`.
       security: []
       parameters:
         - name: code
@@ -30106,7 +30297,7 @@ paths:
                   description: "The page URL's query: its `utm_*` parameters and ad click ids (`fbclid`, `gclid`, `gbraid`, `wbraid`, `ttclid`, `msclkid`) are kept with the event."
                 page_url:
                   type: string
-                  description: The page's address without its query (http or https). Kept, with the request's IP address and user agent, only while an integration asks for funnel events, for ad networks.
+                  description: "The page's address without its query (http or https). Kept only while an integration asks for funnel events, for ad networks; the request's IP address and user agent only while that integration is Meta or Branch (deleted after 7 days). Nothing of this with `Sec-GPC: 1`."
               required:
                 - type
                 - funnel_id
@@ -36546,13 +36737,13 @@ webhooks:
                       description: The ad click ids from the landing page's URL, when it had any. Checkouts and purchases take them from the visit's first page view while an integration asks for funnel events.
                     client_ip:
                       type: string
-                      description: The visitor's IP address. Only while an enabled integration (not a webhook) has a funnel event type in its filter; otherwise no visitor IP is stored. For ad networks (Meta, Branch).
+                      description: "The visitor's IP address, for Meta and Branch: only while one of them (enabled) has a funnel event type in its filter; otherwise no visitor IP is stored. Deleted after 7 days. Never for a visitor with Global Privacy Control on."
                     client_user_agent:
                       type: string
-                      description: The visitor's browser user agent. Same condition as `client_ip`.
+                      description: The visitor's browser user agent. Same conditions as `client_ip`.
                     page_url:
                       type: string
-                      description: The funnel page's address, without its query. Same condition as `client_ip`.
+                      description: The funnel page's address, without its query. While any enabled integration (not a webhook) has a funnel event type in its filter; not for a visitor with Global Privacy Control on.
                   required:
                     - id
                     - type
@@ -36733,13 +36924,13 @@ webhooks:
                       description: The ad click ids from the landing page's URL, when it had any. Checkouts and purchases take them from the visit's first page view while an integration asks for funnel events.
                     client_ip:
                       type: string
-                      description: The visitor's IP address. Only while an enabled integration (not a webhook) has a funnel event type in its filter; otherwise no visitor IP is stored. For ad networks (Meta, Branch).
+                      description: "The visitor's IP address, for Meta and Branch: only while one of them (enabled) has a funnel event type in its filter; otherwise no visitor IP is stored. Deleted after 7 days. Never for a visitor with Global Privacy Control on."
                     client_user_agent:
                       type: string
-                      description: The visitor's browser user agent. Same condition as `client_ip`.
+                      description: The visitor's browser user agent. Same conditions as `client_ip`.
                     page_url:
                       type: string
-                      description: The funnel page's address, without its query. Same condition as `client_ip`.
+                      description: The funnel page's address, without its query. While any enabled integration (not a webhook) has a funnel event type in its filter; not for a visitor with Global Privacy Control on.
                   required:
                     - id
                     - type
@@ -36918,13 +37109,13 @@ webhooks:
                       description: The ad click ids from the landing page's URL, when it had any. Checkouts and purchases take them from the visit's first page view while an integration asks for funnel events.
                     client_ip:
                       type: string
-                      description: The visitor's IP address. Only while an enabled integration (not a webhook) has a funnel event type in its filter; otherwise no visitor IP is stored. For ad networks (Meta, Branch).
+                      description: "The visitor's IP address, for Meta and Branch: only while one of them (enabled) has a funnel event type in its filter; otherwise no visitor IP is stored. Deleted after 7 days. Never for a visitor with Global Privacy Control on."
                     client_user_agent:
                       type: string
-                      description: The visitor's browser user agent. Same condition as `client_ip`.
+                      description: The visitor's browser user agent. Same conditions as `client_ip`.
                     page_url:
                       type: string
-                      description: The funnel page's address, without its query. Same condition as `client_ip`.
+                      description: The funnel page's address, without its query. While any enabled integration (not a webhook) has a funnel event type in its filter; not for a visitor with Global Privacy Control on.
                   required:
                     - id
                     - type

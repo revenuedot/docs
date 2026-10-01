@@ -170,8 +170,8 @@ export const adsPaths = {
       responses: { 200: ok("Verifications.", listOf(verification), { object: "list", items: [verificationExample], next_page: null, url: "/v2/projects/proj1a2b3c4d/ads/reward_verifications" }), ...v2Errors(400, 401, 403, 404) } }),
   },
   [`${P}/reward_verifications/test`]: {
-    post: v2({ id: "testAdReward", summary: "Send a test reward", source: ADS, scopes: WRITE, parameters: [project],
-      description: "Runs the same rules and grants as a verified AdMob callback, without an ad: network `test`, marked sandbox. The currency or access is granted for real. With `client_transaction_id`, the SDK's poll for that id answers with this reward.",
+    post: v2({ id: "testAdReward", summary: "Send a test reward", source: ADS, scopes: [...WRITE, "customer_information:purchases:read_write"], parameters: [project],
+      description: "Runs the same rules and grants as a verified AdMob callback, without an ad: network `test`, marked sandbox. The currency or access is granted for real, so the key also needs `customer_information:purchases:read_write`, like a balance adjustment. With `client_transaction_id`, the SDK's poll for that id answers with this reward.",
       requestBody: body(obj({
         app_user_id: str("The customer to reward."), app_id: nstr("Match rules for this app."), ad_unit_id: nstr(), reward_item: nstr(), reward_amount: nint("The network amount a multiplier rule multiplies."),
         client_transaction_id: str("Default: a new UUID."),
@@ -182,14 +182,20 @@ export const adsPaths = {
     get: v2({ id: "getAdMobConnection", summary: "AdMob connection, loaded ad units and the URLs to paste", source: ADS, scopes: READ, parameters: [project],
       responses: { 200: ok("The connection.", admob, admobExample), ...E(404) } }),
     delete: v2({ id: "disconnectAdMob", summary: "Disconnect AdMob", source: ADS, scopes: WRITE, parameters: [project],
-      description: "Deletes the Google tokens and the loaded ad units. Ad revenue from the SDK and rewarded-ad verification keep working.",
+      description: "Deletes the Google tokens and the loaded ad units. Ad revenue from the SDK keeps working; rewarded-ad verification then accepts only the ad units named on reward rules.",
       responses: { 200: ok("The connection, now empty.", admob), ...E(404) } }),
   },
   [`${P}/admob/connect`]: {
     post: v2({ id: "connectAdMob", summary: "Start Google sign-in for AdMob", source: ADS, scopes: WRITE, parameters: [project],
-      description: "Returns Google's authorization URL (scope `https://www.googleapis.com/auth/admob.readonly`, offline access). Open it in a browser; Google redirects to `/v1/ads/admob/oauth/callback`, which saves the token, loads the ad units and returns to the dashboard. The link works once, for 10 minutes. Without a server OAuth client, send the project's own `client_id` and `client_secret` (422 otherwise).",
+      description: "Returns Google's authorization URL (scope `https://www.googleapis.com/auth/admob.readonly`, offline access) and a `nonce`. Keep the nonce in the browser that opens the URL. Google redirects to `/v1/ads/admob/oauth/callback`, which sends the code on to the project's AdMob page in the URL fragment; that page finishes with `finishAdMobConnect` and the nonce. So a sign-in link someone else started cannot connect your Google account to their project. The link works once, for 10 minutes. Without a server OAuth client, send the project's own `client_id` and `client_secret` (422 otherwise).",
       requestBody: body(obj({ client_id: nstr("A Google OAuth client id (…apps.googleusercontent.com). Null removes the project's own client."), client_secret: nstr("Its secret. Leave out to keep the saved one.") }), {}, false),
-      responses: { 200: ok("Google's sign-in URL.", obj({ object: en(["admob_authorization"]), url: str() }, ["object", "url"]), { object: "admob_authorization", url: "https://accounts.google.com/o/oauth2/v2/auth?client_id=…&redirect_uri=https%3A%2F%2Fapi.revenuedot.app%2Fv1%2Fads%2Fadmob%2Foauth%2Fcallback&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fadmob.readonly&access_type=offline&prompt=consent&include_granted_scopes=true&state=…" }), ...v2Errors(400, 401, 403, 404, 422, 502) } }),
+      responses: { 200: ok("Google's sign-in URL and the browser's nonce.", obj({ object: en(["admob_authorization"]), url: str(), nonce: str("Send it to `finishAdMobConnect` from the same browser.") }, ["object", "url", "nonce"]), { object: "admob_authorization", nonce: "4f1c…", url: "https://accounts.google.com/o/oauth2/v2/auth?client_id=…&redirect_uri=https%3A%2F%2Fapi.revenuedot.app%2Fv1%2Fads%2Fadmob%2Foauth%2Fcallback&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fadmob.readonly&access_type=offline&prompt=consent&include_granted_scopes=true&state=…" }), ...v2Errors(400, 401, 403, 404, 422, 502) } }),
+  },
+  [`${P}/admob/finish`]: {
+    post: v2({ id: "finishAdMobConnect", summary: "Finish Google sign-in for AdMob", source: ADS, scopes: WRITE, parameters: [project],
+      description: "The AdMob page calls this with the `admob_code` and `admob_state` from its URL fragment and the `nonce` from `connectAdMob`. RevenueDot checks that the state is this project's pending sign-in (single use, 10 minutes) and that the nonce matches, exchanges the code for a refresh token (stored encrypted) and loads the ad units. 400 when the state or nonce is wrong, used or expired.",
+      requestBody: body(obj({ code: str("`admob_code` from the fragment."), state: str("`admob_state` from the fragment."), nonce: str("From `connectAdMob`.") }, ["code", "state", "nonce"]), { code: "4/0Ab…", state: "proj1a2b3c4d.9f2c…", nonce: "4f1c…" }),
+      responses: { 200: ok("The connection.", admob, admobExample), ...v2Errors(400, 401, 403, 404, 422, 502) } }),
   },
   [`${P}/admob/refresh`]: {
     post: v2({ id: "refreshAdMob", summary: "Load AdMob ad units now", source: ADS, scopes: WRITE, parameters: [project],
@@ -211,10 +217,10 @@ export const adsPaths = {
     get: op({ id: "admobSsvCallback", tag: "Ads", summary: "AdMob server-side verification callback", security: NONE, source: PUB, extension: true,
       parameters: ["ad_unit", "custom_data", "key_id", "reward_amount", "reward_item", "signature", "timestamp", "transaction_id", "user_id"].map((name) => ({ name, in: "query", schema: str() })),
       description: `
-The URL to paste into each rewarded ad unit's server-side verification settings in AdMob. Google calls it with a signed query (\`ad_network\`, \`ad_unit\`, \`custom_data\`, \`key_id\`, \`reward_amount\`, \`reward_item\`, \`signature\`, \`timestamp\`, \`transaction_id\`, \`user_id\`; [AdMob SSV](https://developers.google.com/admob/android/ssv)); RevenueDot checks the ECDSA signature with Google's published keys, finds the project from the app key in \`custom_data\` (the SDK's reward verification token), records the reward once per AdMob \`transaction_id\` and grants what the first matching reward rule says.
+The URL to paste into each rewarded ad unit's server-side verification settings in AdMob. Google calls it with a signed query (\`ad_network\`, \`ad_unit\`, \`custom_data\`, \`key_id\`, \`reward_amount\`, \`reward_item\`, \`signature\`, \`timestamp\`, \`transaction_id\`, \`user_id\`; [AdMob SSV](https://developers.google.com/admob/android/ssv)); RevenueDot checks the ECDSA signature with Google's published keys, finds the project from the app key in \`custom_data\` (the SDK's reward verification token), checks that \`ad_unit\` is one of the project's ad units (loaded by the AdMob connection, or named on a reward rule), records the reward once per AdMob \`transaction_id\` and grants what the first matching reward rule says. Only the signed part of the query is read. Google signs every publisher's callbacks with the same keys, and the app key ships inside the app, so another AdMob account's callback with your app key is recorded as failed (\`unknown_ad_unit\`) and grants nothing.
 
 - **200** \`{"ok":true,"recorded":true}\`: recorded (or already recorded). Also 200 with no parameters (AdMob's **Verify URL** button), and 200 \`{"ok":true,"recorded":false,"reason":"invalid_custom_data"}\` or \`"unknown_api_key"\` when \`custom_data\` is not a RevenueDot token, so Google stops retrying.
-- **400:** the query has no \`signature\` and \`key_id\`. **403:** the signature is not valid or the key id is unknown; nothing is recorded.
+- **400:** the query does not end with \`signature\` and \`key_id\`, has anything after \`key_id\`, or repeats a parameter. **403:** the signature is not valid or the key id is unknown; nothing is recorded.
 - **503:** Google's keys could not be fetched. Google retries callbacks that do not answer 200.`,
       responses: {
         200: ok("Recorded, or nothing to record.", obj({ ok: bool(), recorded: bool(), reason: str() }), { ok: true, recorded: true }),
@@ -226,7 +232,7 @@ The URL to paste into each rewarded ad unit's server-side verification settings 
   "/v1/ads/admob/oauth/callback": {
     get: op({ id: "admobOAuthCallback", tag: "Ads", summary: "Google's redirect after AdMob sign-in", security: NONE, source: PUB, extension: true,
       parameters: [{ name: "code", in: "query", schema: str() }, { name: "state", in: "query", schema: str(), description: "From `connectAdMob`; single use, valid 10 minutes." }, { name: "error", in: "query", schema: str(), description: "`access_denied` when the user cancelled." }],
-      description: "Add `<API origin>/v1/ads/admob/oauth/callback` as an authorized redirect URI of the Google OAuth client. RevenueDot exchanges the code for a refresh token (stored encrypted), loads the ad units and redirects to the project's AdMob page with `connected=1`, or with `admob_error=<message>`.",
+      description: "Add `<API origin>/v1/ads/admob/oauth/callback` as an authorized redirect URI of the Google OAuth client. RevenueDot redirects to the project's AdMob page with the code and state in the URL fragment (`#admob_code=…&admob_state=…`, never sent to a server), and the page finishes with `finishAdMobConnect`. A cancelled sign-in redirects with `?admob_error=<message>`.",
       responses: { 302: { description: "To the dashboard's AdMob page." } } }),
   },
 };

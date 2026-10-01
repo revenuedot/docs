@@ -140,9 +140,9 @@ for (const [type, description, extra] of EVENTS) {
       product_id: str("FUNNEL_PURCHASE only: the Stripe price id."), subscriber_attributes: { type: "object", description: "Always empty." },
       revenue_usd: num("FUNNEL_PURCHASE only: what the buyer paid, in US dollars."), currency: en(["USD"], "FUNNEL_PURCHASE only: the currency of `revenue_usd`."),
       click_ids: obj({ fbclid: str(), gclid: str(), gbraid: str(), wbraid: str(), ttclid: str(), msclkid: str() }, [], { description: "The ad click ids from the landing page's URL, when it had any. Checkouts and purchases take them from the visit's first page view while an integration asks for funnel events." }),
-      client_ip: str("The visitor's IP address. Only while an enabled integration (not a webhook) has a funnel event type in its filter; otherwise no visitor IP is stored. For ad networks (Meta, Branch)."),
-      client_user_agent: str("The visitor's browser user agent. Same condition as `client_ip`."),
-      page_url: str("The funnel page's address, without its query. Same condition as `client_ip`."),
+      client_ip: str("The visitor's IP address, for Meta and Branch: only while one of them (enabled) has a funnel event type in its filter; otherwise no visitor IP is stored. Deleted after 7 days. Never for a visitor with Global Privacy Control on."),
+      client_user_agent: str("The visitor's browser user agent. Same conditions as `client_ip`."),
+      page_url: str("The funnel page's address, without its query. While any enabled integration (not a webhook) has a funnel event type in its filter; not for a visitor with Global Privacy Control on."),
     }, ["id", "type", "event_timestamp_ms", "environment", "store", "funnel_id", "funnel_name", "session_id"]);
     schema.properties.event.additionalProperties = { type: "string", description: "The page's `utm_*` query parameters, such as `utm_source`." };
   } else if (extra === null) {

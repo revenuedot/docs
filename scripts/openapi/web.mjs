@@ -436,7 +436,7 @@ To use a price you already have, send \`stripe_price_id\` instead of \`price\` a
         type: en(["funnel_viewed", "step_viewed", "step_completed"]), funnel_id: str(), session_id: str("8-80 letters, digits, `_` or `-`."), step_id: str("Not for funnel_viewed."),
         answer: { oneOf: [str(), arr(str())], description: "step_completed of a question." }, app_user_id: str(),
         query: { type: "object", additionalProperties: str(), description: "The page URL's query: its `utm_*` parameters and ad click ids (`fbclid`, `gclid`, `gbraid`, `wbraid`, `ttclid`, `msclkid`) are kept with the event." },
-        page_url: str("The page's address without its query (http or https). Kept, with the request's IP address and user agent, only while an integration asks for funnel events, for ad networks."),
+        page_url: str("The page's address without its query (http or https). Kept only while an integration asks for funnel events, for ad networks; the request's IP address and user agent only while that integration is Meta or Branch (deleted after 7 days). Nothing of this with `Sec-GPC: 1`."),
       }, ["type", "funnel_id", "session_id"]), { type: "step_completed", funnel_id: "fnl_7q2k9m4x1z8c", session_id: "3f9c2a7b1e8d4c6a9b0f1e2d3c4b5a69", step_id: "goal", answer: "Sleep better", query: { utm_source: "tiktok", fbclid: "IwAR2xQ9kM" }, page_url: "https://api.revenuedot.app/pay/scanner/sleep-quiz" }),
       responses: { 204: { description: "Accepted or ignored." }, 429: { description: "Too many events from this address." } } }),
   },

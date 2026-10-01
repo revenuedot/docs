@@ -2612,7 +2612,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/webhooks" 
   -d '{"name":"Funnels","url":"https://api.example.com/webhooks/funnels","event_types":["funnel_viewed","funnel_step_completed","funnel_purchase","initial_purchase"]}'
 ```
 
-Each event carries `funnel_id`, `funnel_name`, `funnel_slug`, `session_id`, `step_id`, `step_type`, `step_index`, `answer`, the page's `utm_*` parameters, the ad click ids from the landing URL (`click_ids`), `store: STRIPE` and the environment. `FUNNEL_PURCHASE` adds `product_id`, `revenue_usd`, `currency` and the buyer's `app_user_id`. While an integration asks for funnel events, events also carry the visitor's `client_ip`, `client_user_agent` and `page_url` for the ad networks; otherwise no visitor IP address is stored. Each visitor gets an anonymous app user id (`$RCAnonymousID:…`) when the page loads, unless the URL had `?app_user_id=`. Their events and their purchase use the same id, so analytics tools see one user from the first view to the purchase. `session_id` also joins one visit's events. Full fields: [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#funnel_step_completed).
+Each event carries `funnel_id`, `funnel_name`, `funnel_slug`, `session_id`, `step_id`, `step_type`, `step_index`, `answer`, the page's `utm_*` parameters, the ad click ids from the landing URL (`click_ids`), `store: STRIPE` and the environment. `FUNNEL_PURCHASE` adds `product_id`, `revenue_usd`, `currency` and the buyer's `app_user_id`. While an integration asks for funnel events, events also carry `page_url`, and while that integration is Meta or Branch, the visitor's `client_ip` and `client_user_agent` (deleted after 7 days); otherwise no visitor IP address is stored. Visitors with Global Privacy Control on (`Sec-GPC: 1`) get none of these and no `click_ids`. Each visitor gets an anonymous app user id (`$RCAnonymousID:…`) when the page loads, unless the URL had `?app_user_id=`. Their events and their purchase use the same id, so analytics tools see one user from the first view to the purchase. `session_id` also joins one visit's events. Full fields: [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#funnel_step_completed).
 
 ## Analytics
 The **Analytics** tab, or the API, shows the last 7, 30 or more days:
@@ -4709,7 +4709,7 @@ Renaming a step under **Event names** replaces these names, including `Lead`, `g
 
 Sandbox funnel events follow each network's sandbox setting (Meta's sandbox dataset, Google Tag Manager's sandbox measurement ID, Branch's sandbox key); AppsFlyer skips them. Adjust, Kochava, Singular, Tenjin and Airbridge never get funnel events, because they match people by mobile device ids, which a web visitor does not have.
 
-**What RevenueDot records for this.** While at least one enabled integration (not a webhook) has a funnel event type in its filter, each funnel event also stores the visitor's IP address (`client_ip`), browser user agent (`client_user_agent`) and page address (`page_url`). Checkout and purchase events take them from the visit's first page view, with its `utm_*` parameters and ad click ids. Without such an integration, no visitor IP address is stored. Every funnel event carries the ad click ids from the landing URL (`click_ids`: `fbclid`, `gclid`, `gbraid`, `wbraid`, `ttclid`, `msclkid`), and `FUNNEL_PURCHASE` carries `revenue_usd` and `currency`. Visits that started before you turned funnel events on have no browser details, so Meta skips them. Mention the IP address and ad click ids in your privacy policy.
+**What RevenueDot records for this.** While at least one enabled integration (not a webhook) has a funnel event type in its filter, each funnel event also stores the page address (`page_url`). The visitor's IP address (`client_ip`) and browser user agent (`client_user_agent`) are stored only while that integration is Meta or Branch, the two that match visitors with them, and are deleted after 7 days. Checkout and purchase events take them from the visit's first page view, with its `utm_*` parameters and ad click ids. Without such an integration, no visitor IP address is stored. A visitor whose browser sends Global Privacy Control (`Sec-GPC: 1`) is not shared: their events carry no IP address, user agent, page address or click ids. Partners on the webhook adapter never get the IP address or user agent. Every funnel event carries the ad click ids from the landing URL (`click_ids`: `fbclid`, `gclid`, `gbraid`, `wbraid`, `ttclid`, `msclkid`), and `FUNNEL_PURCHASE` carries `revenue_usd` and `currency`. Visits that started before you turned funnel events on have no browser details, so Meta skips them. Mention the IP address and ad click ids in your privacy policy.
 
 ## Superwall, Appstack, SplitMetrics Acquire and SolarEngine take a webhook
 These four partners publish no API for subscription events. They ask RevenueCat customers for a webhook instead, so RevenueDot sends them exactly what a [webhook](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md) gets: RevenueCat's webhook body, `{"api_version":"1.0","event":{...}}`, POSTed as JSON to the URL the partner gives you, with the **Authorization header value** you enter.
@@ -5013,6 +5013,8 @@ Open **Ads > Rewards** and copy the **AdMob callback URL**:
 
 In AdMob, open each rewarded ad unit, turn on **Server-side verification** and paste the URL. AdMob's **Verify URL** button calls it without parameters, and RevenueDot answers 200. One URL serves every project: the token in each callback names the app.
 
+RevenueDot accepts a callback only for **your ad units**: the ones [connecting AdMob](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/ads.md#admob) loads, or an ad unit named on one of your reward rules. Google signs every AdMob account's callbacks with the same keys, and your app key ships inside your app, so without this check someone could send rewards to your project from their own AdMob account. A callback for another ad unit is recorded as failed (`unknown_ad_unit`) and grants nothing.
+
 ### 2. Pass the token in your app
 Call these when the ad has loaded and when its reward callback fires.
 
@@ -5062,14 +5064,15 @@ Rules are checked from top to bottom, and **the first rule that matches decides*
 **Currency rewards** are written to the in-app currency ledger once per reward, so a callback Google sends twice never credits twice. The balance is what `GET /v1/subscribers/{app_user_id}/virtual_currencies` returns, and a `VIRTUAL_CURRENCY_TRANSACTION` webhook goes out with `source: "ad_reward"` (a RevenueDot addition; see [webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md)).
 
 ### 4. Test a reward and read the ledger
-**Send a test reward** runs the same rules and grants as a real AdMob callback, for an app user ID you enter, without an ad. It is marked sandbox in the ledger, but the currency or access is granted for real.
+**Send a test reward** runs the same rules and grants as a real AdMob callback, for an app user ID you enter, without an ad. It is marked sandbox in the ledger, but the currency or access is granted for real. With a secret key, it needs `customer_information:purchases:read_write` as well as the integrations permission.
 
 The **Ledger** lists every verified reward, newest first: when, the customer, the network, the ad unit, AdMob's reward item and amount, the status and what was granted. A reward fails with one of these reasons:
 
 | Reason | What happened | What to do |
 |---|---|---|
+| `unknown_ad_unit` | The callback's ad unit is not one of the project's | [Connect AdMob](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/ads.md#admob), or name the ad unit on a reward rule |
 | `missing_user` | AdMob's callback had no user id | Set `userIdentifier` (iOS) or `setUserId` (Android) to the token's `appUserID` |
-| `user_mismatch` | The poll came from a different customer than the reward's user id (the poll answers this; the ledger keeps the reward) | Generate the token after the customer logs in, and pass its `appUserID` |
+| `user_mismatch` | The poll came from a different customer than the reward's user id (the poll answers this, and tells that customer nothing else; the ledger keeps the reward) | Generate the token after the customer logs in, and pass its `appUserID` |
 | `grant_failed` | The matching rule names an in-app currency or entitlement that no longer exists | Fix or delete the rule |
 
 ### What the poll answers
@@ -5085,23 +5088,25 @@ The **Ledger** lists every verified reward, newest first: when, the customer, th
 
 ### How the callback is checked
 AdMob signs the query string before `&signature=` with ECDSA (P-256, SHA-256). RevenueDot checks it with Google's published keys at `https://www.gstatic.com/admob/reward/verifier-keys.json`, as [Google's server-side verification guide](https://developers.google.com/admob/android/ssv) describes, and fetches the keys again when it sees an unknown key id.
+- Only the signed part of the query is read. A query with anything after `key_id`, or with a parameter twice, answers 400.
 - A bad signature answers 403 and records nothing.
-- When Google's keys cannot be fetched, RevenueDot answers 503. Google retries callbacks that do not answer 200, so the reward is not lost.
+- When Google's keys cannot be fetched, RevenueDot answers 503 and tries Google again at most once a minute. Google retries callbacks that do not answer 200, so the reward is not lost.
+- A network reward amount above 1,000,000,000, and a multiplier rule's result above that, count as 1,000,000,000.
 - A callback whose `custom_data` is not a RevenueDot token is answered 200 and ignored, so Google stops retrying it.
 
 ## AdMob
-Connecting AdMob loads your ad unit names, so the Overview shows "Level end rewarded" instead of `ca-app-pub-…/5224354917`. It is optional: ad revenue and rewarded ads work without it.
+Connecting AdMob loads your ad unit names, so the Overview shows "Level end rewarded" instead of `ca-app-pub-…/5224354917`, and tells rewarded-ad verification which ad units are yours. It is optional: ad revenue works without it, and rewarded ads work when each reward rule names its ad unit.
 
 1. **Use a Google OAuth client.** Google requires one to read AdMob data.
    - **RevenueDot Cloud** has one; skip to step 3.
    - **Self-hosted:** set `REVENUEDOT_GOOGLE_OAUTH_CLIENT_ID` and `REVENUEDOT_GOOGLE_OAUTH_CLIENT_SECRET` on the server for every project, or let each project enter its own client on its AdMob page (**Use your own Google OAuth client**).
 2. **Create the client** (self-hosted, or a project's own client): in Google Cloud, enable the **AdMob API**, then create an OAuth client of type **Web application** and add this authorized redirect URI: `<API origin>/v1/ads/admob/oauth/callback`, for example `https://revenuedot.example.com/v1/ads/admob/oauth/callback`. The AdMob page shows the exact URI.
-3. **Connect.** Open **Integrations > Google AdMob** and select **Connect with Google**. Sign in with the Google account that has your AdMob account and allow read-only access (scope `https://www.googleapis.com/auth/admob.readonly`). The sign-in link works once, for 10 minutes.
+3. **Connect.** Open **Integrations > Google AdMob** and select **Connect with Google**. Sign in with the Google account that has your AdMob account and allow read-only access (scope `https://www.googleapis.com/auth/admob.readonly`). The sign-in link works once, for 10 minutes, and only in the browser that started it: Google sends you back to the AdMob page, which finishes the connection.
 
-RevenueDot stores the refresh token encrypted, lists your AdMob accounts and loads every ad unit (name, format, app), up to 5,000. It loads them again **once a day**; **Refresh now** loads them at once. **Disconnect** deletes the Google tokens and the loaded ad units; ad revenue from the SDK and rewarded ads keep working.
+RevenueDot stores the refresh token encrypted, lists your AdMob accounts and loads every ad unit (name, format, app), up to 5,000. It loads them again **once a day**; **Refresh now** loads them at once. **Disconnect** deletes the Google tokens and the loaded ad units; ad revenue from the SDK keeps working, and rewarded ads then work only for the ad units named on reward rules.
 
 ## Use the API
-Every page is an API call with a secret key ([API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#ads)). The Overview needs `charts_metrics:overview:read`; rules, the ledger and AdMob need `project_configuration:integrations:read` or `:read_write`.
+Every page is an API call with a secret key ([API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#ads)). The Overview needs `charts_metrics:overview:read`; rules, the ledger and AdMob need `project_configuration:integrations:read` or `:read_write`; a test reward also needs `customer_information:purchases:read_write`.
 
 ```bash
 curl -s "https://api.revenuedot.app/v2/projects/$PROJECT_ID/ads/overview?range=28d&environment=production" \
@@ -5121,7 +5126,8 @@ curl -s -X POST "https://api.revenuedot.app/v2/projects/$PROJECT_ID/ads/reward_r
 | `GET /v2/projects/{project_id}/ads/reward_verifications?status=&app_user_id=` | The ledger, newest first, paged |
 | `POST /v2/projects/{project_id}/ads/reward_verifications/test` | A test reward: `{"app_user_id":"user_42"}`, optionally `app_id`, `ad_unit_id`, `reward_item`, `reward_amount` |
 | `GET`, `DELETE /v2/projects/{project_id}/ads/admob` | The AdMob connection, its ad units and the URLs to paste; disconnect |
-| `POST /v2/projects/{project_id}/ads/admob/connect` | Google's sign-in URL (body: optional `client_id`, `client_secret`) |
+| `POST /v2/projects/{project_id}/ads/admob/connect` | Google's sign-in URL and a `nonce` (body: optional `client_id`, `client_secret`) |
+| `POST /v2/projects/{project_id}/ads/admob/finish` | Finish the sign-in: `{"code","state","nonce"}` from the AdMob page (the code arrives in its URL fragment; the nonce is the one `connect` gave this browser) |
 | `POST /v2/projects/{project_id}/ads/admob/refresh` | Load the ad units now |
 | `GET /v1/ads/admob/ssv` | AdMob's callback (Google calls it; no key) |
 | `GET /v1/ads/admob/oauth/callback` | Google's redirect after sign-in (no key) |
@@ -6259,7 +6265,7 @@ One RevenueDot server answers every API below on one port. The reference is gene
 | SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 62 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
 | REST API v1 | `/v1/subscribers/...` | secret key | 10 | [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md) |
 | REST API v2 | `/v2/projects/...` | secret key or dashboard session | 160 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
-| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 148 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
+| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 149 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
 | Webhooks (sent by RevenueDot) | your URL | HMAC signature | 22 event types | [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md) |
 
 ## Quick example
@@ -16509,7 +16515,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (148)
+## Operations on this page (149)
 
 - **Dashboard auth**: [Whether sign-up is open](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-sign-up-is-open), [Create a dashboard account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-dashboard-account), [Sign in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-in), [Sign out](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out), [The signed-in user and their projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-signed-in-user-and-their-projects), [Update account settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-account-settings), [Email a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#email-a-password-reset-link), [Check a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-a-password-reset-link), [Set a new password from a reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-a-new-password-from-a-reset-link), [Confirm an email address](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#confirm-an-email-address), [Send a new confirmation email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-new-confirmation-email), [Look up an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#look-up-an-invite), [Accept an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#accept-an-invite)
 - **Members and invites**: [List open invites](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-open-invites), [Invite someone by email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#invite-someone-by-email), [Resend an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#resend-an-invite), [Revoke an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#revoke-an-invite), [Change a member's role](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-a-members-role), [Remove a member, or leave the project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#remove-a-member-or-leave-the-project)
@@ -16518,7 +16524,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **API keys**: [List secret keys](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-secret-keys), [Create a secret key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-secret-key), [Delete a secret key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-secret-key)
 - **Webhook deliveries**: [Send a TEST event to one webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-each-webhook-is-enabled), [Delivery log of a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delivery-log-of-a-webhook), [Retry a delivery now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#retry-a-delivery-now)
 - **Integrations**: [What each integration needs](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#what-each-integration-needs), [List integrations](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-integrations), [Connect an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#connect-an-integration), [Get an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-an-integration), [Update, enable or disable an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-enable-or-disable-an-integration), [Disconnect an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#disconnect-an-integration), [Send a TEST event to one integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-test-event-to-one-integration), [Delivery log of an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delivery-log-of-an-integration), [Retry a delivery now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#retry-a-delivery-now), [Queue failed or skipped deliveries again](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#queue-failed-or-skipped-deliveries-again)
-- **Ads**: [Ads Overview: ad revenue, impressions, eCPM and breakdowns](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#ads-overview-ad-revenue-impressions-ecpm-and-breakdowns), [List reward rules in the order they are checked](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-reward-rules-in-the-order-they-are-checked), [Create a reward rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-reward-rule), [Reorder reward rules](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#reorder-reward-rules), [Update, turn on or turn off a reward rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-turn-on-or-turn-off-a-reward-rule), [Delete a reward rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-reward-rule), [The rewards ledger](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-rewards-ledger), [Send a test reward](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-test-reward), [AdMob connection, loaded ad units and the URLs to paste](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#admob-connection-loaded-ad-units-and-the-urls-to-paste), [Disconnect AdMob](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#disconnect-admob), [Start Google sign-in for AdMob](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#start-google-sign-in-for-admob), [Load AdMob ad units now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#load-admob-ad-units-now), [Customers and revenue by Apple Search Ads campaign](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#customers-and-revenue-by-apple-search-ads-campaign), [Load campaign names from Apple Search Ads](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#load-campaign-names-from-apple-search-ads), [AdMob server-side verification callback](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#admob-server-side-verification-callback), [Google's redirect after AdMob sign-in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#googles-redirect-after-admob-sign-in)
+- **Ads**: [Ads Overview: ad revenue, impressions, eCPM and breakdowns](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#ads-overview-ad-revenue-impressions-ecpm-and-breakdowns), [List reward rules in the order they are checked](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-reward-rules-in-the-order-they-are-checked), [Create a reward rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-reward-rule), [Reorder reward rules](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#reorder-reward-rules), [Update, turn on or turn off a reward rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-turn-on-or-turn-off-a-reward-rule), [Delete a reward rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-reward-rule), [The rewards ledger](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-rewards-ledger), [Send a test reward](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-test-reward), [AdMob connection, loaded ad units and the URLs to paste](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#admob-connection-loaded-ad-units-and-the-urls-to-paste), [Disconnect AdMob](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#disconnect-admob), [Start Google sign-in for AdMob](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#start-google-sign-in-for-admob), [Finish Google sign-in for AdMob](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#finish-google-sign-in-for-admob), [Load AdMob ad units now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#load-admob-ad-units-now), [Customers and revenue by Apple Search Ads campaign](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#customers-and-revenue-by-apple-search-ads-campaign), [Load campaign names from Apple Search Ads](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#load-campaign-names-from-apple-search-ads), [AdMob server-side verification callback](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#admob-server-side-verification-callback), [Google's redirect after AdMob sign-in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#googles-redirect-after-admob-sign-in)
 - **Data exports**: [List scheduled data exports](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-scheduled-data-exports), [Create a scheduled data export](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-scheduled-data-export), [Get a data export](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-data-export), [Update a data export](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-a-data-export), [Delete a data export](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-data-export), [Run an export now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#run-an-export-now), [Check the bucket and credentials](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-the-bucket-and-credentials), [Run history](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#run-history)
 - **Refund Control**: [Get policies and settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-policies-and-settings), [Save settings and the ordered policies](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#save-settings-and-the-ordered-policies), [Refund rate, amounts and counts](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#refund-rate-amounts-and-counts), [List refund requests, newest first](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-refund-requests-newest-first)
 - **Retention**: [List Customer Center retention offers](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-customer-center-retention-offers), [Create a retention offer](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-retention-offer), [Update a retention offer](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-a-retention-offer), [Delete a retention offer](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-retention-offer), [Get Apple Retention Messaging settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-apple-retention-messaging-settings), [Save messages, defaults and real-time rules](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#save-messages-defaults-and-real-time-rules), [Upload to Apple and register the real-time URL](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#upload-to-apple-and-register-the-real-time-url), [Apple's real-time Get Retention Message call](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#apples-real-time-get-retention-message-call)
@@ -18698,9 +18704,9 @@ Example 200 response:
 
 ### Send a test reward
 
-`POST /v2/projects/{project_id}/ads/reward_verifications/test` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+`POST /v2/projects/{project_id}/ads/reward_verifications/test` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`, `customer_information:purchases:read_write`
 
-Runs the same rules and grants as a verified AdMob callback, without an ad: network `test`, marked sandbox. The currency or access is granted for real. With `client_transaction_id`, the SDK's poll for that id answers with this reward.
+Runs the same rules and grants as a verified AdMob callback, without an ad: network `test`, marked sandbox. The currency or access is granted for real, so the key also needs `customer_information:purchases:read_write`, like a balance adjustment. With `client_transaction_id`, the SDK's poll for that id answers with this reward.
 
 **Path parameters**
 
@@ -18829,7 +18835,7 @@ Example 200 response:
 
 `DELETE /v2/projects/{project_id}/ads/admob` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
 
-Deletes the Google tokens and the loaded ad units. Ad revenue from the SDK and rewarded-ad verification keep working.
+Deletes the Google tokens and the loaded ad units. Ad revenue from the SDK keeps working; rewarded-ad verification then accepts only the ad units named on reward rules.
 
 **Path parameters**
 
@@ -18854,7 +18860,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/admob" -H "Author
 
 `POST /v2/projects/{project_id}/ads/admob/connect` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
 
-Returns Google's authorization URL (scope `https://www.googleapis.com/auth/admob.readonly`, offline access). Open it in a browser; Google redirects to `/v1/ads/admob/oauth/callback`, which saves the token, loads the ad units and returns to the dashboard. The link works once, for 10 minutes. Without a server OAuth client, send the project's own `client_id` and `client_secret` (422 otherwise).
+Returns Google's authorization URL (scope `https://www.googleapis.com/auth/admob.readonly`, offline access) and a `nonce`. Keep the nonce in the browser that opens the URL. Google redirects to `/v1/ads/admob/oauth/callback`, which sends the code on to the project's AdMob page in the URL fragment; that page finishes with `finishAdMobConnect` and the nonce. So a sign-in link someone else started cannot connect your Google account to their project. The link works once, for 10 minutes. Without a server OAuth client, send the project's own `client_id` and `client_secret` (422 otherwise).
 
 **Path parameters**
 
@@ -18878,7 +18884,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/admob/connect" -H "
 
 **Responses**
 
-- **200**: Google's sign-in URL.
+- **200**: Google's sign-in URL and the browser's nonce.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
@@ -18891,7 +18897,81 @@ Example 200 response:
 ```json
 {
   "object": "admob_authorization",
+  "nonce": "4f1c…",
   "url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=…&redirect_uri=https%3A%2F%2Fapi.revenuedot.app%2Fv1%2Fads%2Fadmob%2Foauth%2Fcallback&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fadmob.readonly&access_type=offline&prompt=consent&include_granted_scopes=true&state=…"
+}
+```
+
+### Finish Google sign-in for AdMob
+
+`POST /v2/projects/{project_id}/ads/admob/finish` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+The AdMob page calls this with the `admob_code` and `admob_state` from its URL fragment and the `nonce` from `connectAdMob`. RevenueDot checks that the state is this project's pending sign-in (single use, 10 minutes) and that the nonce matches, exchanges the code for a refresh token (stored encrypted) and loads the ad units. 400 when the state or nonce is wrong, used or expired.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `code` | string | yes | `admob_code` from the fragment. |
+| `state` | string | yes | `admob_state` from the fragment. |
+| `nonce` | string | yes | From `connectAdMob`. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/admob/finish" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"code":"4/0Ab…","state":"proj1a2b3c4d.9f2c…","nonce":"4f1c…"}'
+```
+
+**Responses**
+
+- **200**: The connection.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **502**: An upstream service (the store or the language model) gave no usable answer. Retry later. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "admob_connection",
+  "connected": true,
+  "oauth_client": "server",
+  "client_id": null,
+  "client_secret": {
+    "configured": false,
+    "hint": null
+  },
+  "connected_at": 1790850000000,
+  "accounts": [
+    {
+      "id": "pub-3940256099942544",
+      "currency": "USD"
+    }
+  ],
+  "last_sync_at": 1790936400000,
+  "last_sync_error": null,
+  "ad_units": [
+    {
+      "ad_unit_id": "ca-app-pub-3940256099942544/5224354917",
+      "name": "Level end rewarded",
+      "format": "rewarded",
+      "account_id": "pub-3940256099942544",
+      "app_id": "ca-app-pub-3940256099942544~1458002511",
+      "updated_at": 1790936400000
+    }
+  ],
+  "redirect_uri": "https://api.revenuedot.app/v1/ads/admob/oauth/callback",
+  "ssv_callback_url": "https://api.revenuedot.app/v1/ads/admob/ssv"
 }
 ```
 
@@ -19052,10 +19132,10 @@ Example 200 response:
 
 `GET /v1/ads/admob/ssv` · Auth: none · RevenueDot extension
 
-The URL to paste into each rewarded ad unit's server-side verification settings in AdMob. Google calls it with a signed query (`ad_network`, `ad_unit`, `custom_data`, `key_id`, `reward_amount`, `reward_item`, `signature`, `timestamp`, `transaction_id`, `user_id`; [AdMob SSV](https://developers.google.com/admob/android/ssv)); RevenueDot checks the ECDSA signature with Google's published keys, finds the project from the app key in `custom_data` (the SDK's reward verification token), records the reward once per AdMob `transaction_id` and grants what the first matching reward rule says.
+The URL to paste into each rewarded ad unit's server-side verification settings in AdMob. Google calls it with a signed query (`ad_network`, `ad_unit`, `custom_data`, `key_id`, `reward_amount`, `reward_item`, `signature`, `timestamp`, `transaction_id`, `user_id`; [AdMob SSV](https://developers.google.com/admob/android/ssv)); RevenueDot checks the ECDSA signature with Google's published keys, finds the project from the app key in `custom_data` (the SDK's reward verification token), checks that `ad_unit` is one of the project's ad units (loaded by the AdMob connection, or named on a reward rule), records the reward once per AdMob `transaction_id` and grants what the first matching reward rule says. Only the signed part of the query is read. Google signs every publisher's callbacks with the same keys, and the app key ships inside the app, so another AdMob account's callback with your app key is recorded as failed (`unknown_ad_unit`) and grants nothing.
 
 - **200** `{"ok":true,"recorded":true}`: recorded (or already recorded). Also 200 with no parameters (AdMob's **Verify URL** button), and 200 `{"ok":true,"recorded":false,"reason":"invalid_custom_data"}` or `"unknown_api_key"` when `custom_data` is not a RevenueDot token, so Google stops retrying.
-- **400:** the query has no `signature` and `key_id`. **403:** the signature is not valid or the key id is unknown; nothing is recorded.
+- **400:** the query does not end with `signature` and `key_id`, has anything after `key_id`, or repeats a parameter. **403:** the signature is not valid or the key id is unknown; nothing is recorded.
 - **503:** Google's keys could not be fetched. Google retries callbacks that do not answer 200.
 
 **Query parameters**
@@ -19098,7 +19178,7 @@ Example 200 response:
 
 `GET /v1/ads/admob/oauth/callback` · Auth: none · RevenueDot extension
 
-Add `<API origin>/v1/ads/admob/oauth/callback` as an authorized redirect URI of the Google OAuth client. RevenueDot exchanges the code for a refresh token (stored encrypted), loads the ad units and redirects to the project's AdMob page with `connected=1`, or with `admob_error=<message>`.
+Add `<API origin>/v1/ads/admob/oauth/callback` as an authorized redirect URI of the Google OAuth client. RevenueDot redirects to the project's AdMob page with the code and state in the URL fragment (`#admob_code=…&admob_state=…`, never sent to a server), and the page finishes with `finishAdMobConnect`. A cancelled sign-in redirects with `?admob_error=<message>`.
 
 **Query parameters**
 
@@ -23059,7 +23139,7 @@ Example 200 response:
 | `answer` | string or array of string | no | step_completed of a question. |
 | `app_user_id` | string | no |  |
 | `query` | object | no | The page URL's query: its `utm_*` parameters and ad click ids (`fbclid`, `gclid`, `gbraid`, `wbraid`, `ttclid`, `msclkid`) are kept with the event. |
-| `page_url` | string | no | The page's address without its query (http or https). Kept, with the request's IP address and user agent, only while an integration asks for funnel events, for ad networks. |
+| `page_url` | string | no | The page's address without its query (http or https). Kept only while an integration asks for funnel events, for ad networks; the request's IP address and user agent only while that integration is Meta or Branch (deleted after 7 days). Nothing of this with `Sec-GPC: 1`. |
 
 **Example request**
 
@@ -25298,9 +25378,9 @@ RevenueDot type. A visitor opened a published funnel. Opt-in: sent only to webho
 | `click_ids.wbraid` | string |  |
 | `click_ids.ttclid` | string |  |
 | `click_ids.msclkid` | string |  |
-| `client_ip` | string | The visitor's IP address. Only while an enabled integration (not a webhook) has a funnel event type in its filter; otherwise no visitor IP is stored. For ad networks (Meta, Branch). |
-| `client_user_agent` | string | The visitor's browser user agent. Same condition as `client_ip`. |
-| `page_url` | string | The funnel page's address, without its query. Same condition as `client_ip`. |
+| `client_ip` | string | The visitor's IP address, for Meta and Branch: only while one of them (enabled) has a funnel event type in its filter; otherwise no visitor IP is stored. Deleted after 7 days. Never for a visitor with Global Privacy Control on. |
+| `client_user_agent` | string | The visitor's browser user agent. Same conditions as `client_ip`. |
+| `page_url` | string | The funnel page's address, without its query. While any enabled integration (not a webhook) has a funnel event type in its filter; not for a visitor with Global Privacy Control on. |
 
 Example:
 
@@ -25367,9 +25447,9 @@ RevenueDot type. A visitor finished a funnel step, with the answer for a questio
 | `click_ids.wbraid` | string |  |
 | `click_ids.ttclid` | string |  |
 | `click_ids.msclkid` | string |  |
-| `client_ip` | string | The visitor's IP address. Only while an enabled integration (not a webhook) has a funnel event type in its filter; otherwise no visitor IP is stored. For ad networks (Meta, Branch). |
-| `client_user_agent` | string | The visitor's browser user agent. Same condition as `client_ip`. |
-| `page_url` | string | The funnel page's address, without its query. Same condition as `client_ip`. |
+| `client_ip` | string | The visitor's IP address, for Meta and Branch: only while one of them (enabled) has a funnel event type in its filter; otherwise no visitor IP is stored. Deleted after 7 days. Never for a visitor with Global Privacy Control on. |
+| `client_user_agent` | string | The visitor's browser user agent. Same conditions as `client_ip`. |
+| `page_url` | string | The funnel page's address, without its query. While any enabled integration (not a webhook) has a funnel event type in its filter; not for a visitor with Global Privacy Control on. |
 
 Example:
 
@@ -25433,9 +25513,9 @@ RevenueDot type. A funnel's checkout was paid. `app_user_id` is the buyer's (ano
 | `click_ids.wbraid` | string |  |
 | `click_ids.ttclid` | string |  |
 | `click_ids.msclkid` | string |  |
-| `client_ip` | string | The visitor's IP address. Only while an enabled integration (not a webhook) has a funnel event type in its filter; otherwise no visitor IP is stored. For ad networks (Meta, Branch). |
-| `client_user_agent` | string | The visitor's browser user agent. Same condition as `client_ip`. |
-| `page_url` | string | The funnel page's address, without its query. Same condition as `client_ip`. |
+| `client_ip` | string | The visitor's IP address, for Meta and Branch: only while one of them (enabled) has a funnel event type in its filter; otherwise no visitor IP is stored. Deleted after 7 days. Never for a visitor with Global Privacy Control on. |
+| `client_user_agent` | string | The visitor's browser user agent. Same conditions as `client_ip`. |
+| `page_url` | string | The funnel page's address, without its query. While any enabled integration (not a webhook) has a funnel event type in its filter; not for a visitor with Global Privacy Control on. |
 
 Example:
 
