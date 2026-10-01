@@ -43,11 +43,11 @@ For your own warehouse, a **scheduled data export** writes CSV or Parquet files 
 | Billing issue | `rc_billing_issue_event` | `rc_billing_issue` | |
 | Product change | `rc_product_change_event` | `rc_product_change` | |
 | Web purchase redeemed in the app | `rc_purchase_redeemed` (Segment, Amplitude, Mixpanel) | | |
-| Funnel viewed | `rd_funnel_viewed` (Segment, Amplitude, Mixpanel, PostHog) | | |
-| Funnel step completed | `rd_funnel_step_completed` (Segment, Amplitude, Mixpanel, PostHog) | | |
-| Funnel purchase | `rd_funnel_purchase` (Segment, Amplitude, Mixpanel, PostHog) | | |
+| Funnel viewed | `rd_funnel_viewed` (Segment, Amplitude, Mixpanel, PostHog, AppsFlyer) | | `ViewContent` |
+| Funnel step completed | `rd_funnel_step_completed` (Segment, Amplitude, Mixpanel, PostHog, AppsFlyer) | | `FunnelStepCompleted`, or `Lead` for an email step |
+| Funnel purchase | `rd_funnel_purchase` (Segment, Amplitude, Mixpanel, PostHog, AppsFlyer) | | `Purchase` |
 
-The three funnel events come from RevenueDot's web [funnels](funnels.md) and are **opt-in**: add `funnel_viewed`, `funnel_step_completed` and `funnel_purchase` to the integration's event types to get them. They carry `funnel_id`, `funnel_name`, `funnel_slug`, `session_id`, `step_id`, `step_type`, `step_index`, `answer`, `product_id` and the page's `utm_*` parameters as event properties. A visitor has no app user id until they pay, unless the funnel URL had `?app_user_id=`.
+The three funnel events come from RevenueDot's web [funnels](funnels.md) and are **opt-in**: add `funnel_viewed`, `funnel_step_completed` and `funnel_purchase` to the integration's event types to get them. They carry `funnel_id`, `funnel_name`, `funnel_slug`, `session_id`, `step_id`, `step_type`, `step_index`, `answer`, `product_id` and the page's `utm_*` parameters as event properties. A visitor has no app user id until they pay, unless the funnel URL had `?app_user_id=`. Meta, Google Tag Manager, Branch and AppsFlyer also take them as web events; see [Funnel events to ad networks](#funnel-events-to-ad-networks).
 
 Rename any of them under **Event names** on the integration's page, or with `event_names` in the API. Each event also sets the customer's `rc_subscription_status` (`active`, `trial`, `cancelled`, `cancelled_trial`, `grace_period`, `expired`, `paused` ...) where the tool has profiles.
 
@@ -157,6 +157,8 @@ GROUP BY day ORDER BY day DESC;
 
 Events go through AppsFlyer's server-to-server API with `eventValue` holding `af_revenue`, `af_price`, `af_content_id`, `renewal` and `af_currency` (`USD`). Refunds carry negative revenue. Events of customers without `$appsflyerId` are skipped. Sandbox events need the **Sandbox developer key**. Turn off purchase tracking in the AppsFlyer SDK so purchases are not counted twice.
 
+**Web funnels (optional):** to send [funnel events](#funnel-events-to-ad-networks), also enter the AppsFlyer web app's **Web app ID** (the brand bundle ID) and its **Web S2S token**. Funnel events then go through AppsFlyer's Web S2S API (`POST https://events.appsflyer.com/v2.0/s2s/inapps/app/web/{web app id}`, `Authorization: Bearer <token>`) as `rd_funnel_viewed`, `rd_funnel_step_completed` and `rd_funnel_purchase`, with the visitor's app user id as `customer_user_id` (set the same id as the customer user id in AppsFlyer's web SDK). The purchase carries `event_revenue` in US dollars; `event_value` has the funnel, step, `utm_*` parameters and ad click ids. Sandbox funnel events are not sent to AppsFlyer.
+
 ## Adjust
 1. In Adjust, copy each app's **app token** and create one **event token** per step you want (purchase, trial started, renewal ...).
 2. In your app, set `$adjustId` to the Adjust SDK's `adid` and call `collectDeviceIdentifiers()`.
@@ -170,6 +172,28 @@ Events go to Adjust's S2S endpoint with the customer's `adid`, device ids and `e
 3. In RevenueDot, open **Integrations → Meta**, enter the dataset ID and token and click **Connect Meta**. A **Test event code** sends events to Events Manager's Test Events tab.
 
 Trial starts arrive as `StartTrial`, purchases, conversions and renewals as `Subscribe`, one-time purchases as `fb_mobile_purchase`, through the [Conversions API for app events](https://developers.facebook.com/docs/marketing-api/conversions-api/app-events) with `action_source: app`. Meta matches on `$fbAnonId` or the advertising id; the app user id, email and phone number are sent SHA-256 hashed. On iOS, events are sent only when `$attConsentStatus` is `authorized`, unless you turn on **Send iOS events without ATT consent**. Meta takes no negative revenue, so refunds are not sent. Turn off automatic purchase logging in the Meta SDK to avoid counting purchases twice.
+
+## Funnel events to ad networks
+Meta, Google Tag Manager, Branch and AppsFlyer can count your web [funnels](funnels.md) as **website events**, so ad campaigns that send people to a funnel learn which clicks led to sign-ups and purchases. Like for analytics tools, funnel events are opt-in: add `funnel_viewed`, `funnel_step_completed` and `funnel_purchase` to the integration's event types.
+
+| | Funnel viewed | Step completed | Email step completed | Funnel purchase |
+|---|---|---|---|---|
+| [Meta](#meta) | `ViewContent` | `FunnelStepCompleted` | `Lead` | `Purchase` with the US dollar value |
+| [Google Tag Manager](#google_tag_manager) | `page_view` | `rd_funnel_step_completed` | `generate_lead` | `purchase` with the US dollar value |
+| [Branch](#branch) | `VIEW_ITEM` | `rd_funnel_step_completed` | `COMPLETE_REGISTRATION` | `PURCHASE` with the US dollar revenue |
+| [AppsFlyer](#appsflyer) | `rd_funnel_viewed` | `rd_funnel_step_completed` | `rd_funnel_step_completed` | `rd_funnel_purchase` with `event_revenue` |
+
+Renaming a step under **Event names** replaces these names, including `Lead`, `generate_lead` and `COMPLETE_REGISTRATION`.
+
+**What each network gets:**
+- **Meta:** website events (`action_source: website`) through the [Conversions API](https://developers.facebook.com/docs/marketing-api/conversions-api/parameters), with `event_source_url` (the funnel page), `client_user_agent`, `client_ip_address`, `fbc` built from the landing URL's `fbclid`, and `external_id` (the SHA-256 of the visitor's app user id). Meta requires the user agent and page URL for website events, so events without them are skipped. A web purchase also arrives as `INITIAL_PURCHASE` from the Stripe store, which Meta's app events skip for lack of a device id, so a funnel purchase is counted once.
+- **Google Tag Manager:** GA4 events whose `page_location` is the funnel page with its `utm_*` parameters and `gclid`, `gbraid` or `wbraid`, so GA4 and Google Ads attribute the visit as they would a browser hit.
+- **Branch:** web events with the visitor's app user id as `developer_identity`, and the browser's `user_agent`, `ip` and page (`http_origin`), as Branch asks for web events sent from a server ([Events API](https://help.branch.io/apidocs/events-api)).
+- **AppsFlyer:** the Web S2S API, with its own settings; see [AppsFlyer](#appsflyer).
+
+Sandbox funnel events follow each network's sandbox setting (Meta's sandbox dataset, Google Tag Manager's sandbox measurement ID, Branch's sandbox key); AppsFlyer skips them. Adjust, Kochava, Singular, Tenjin and Airbridge never get funnel events, because they match people by mobile device ids, which a web visitor does not have.
+
+**What RevenueDot records for this.** While at least one enabled integration (not a webhook) has a funnel event type in its filter, each funnel event also stores the visitor's IP address (`client_ip`), browser user agent (`client_user_agent`) and page address (`page_url`). Checkout and purchase events take them from the visit's first page view, with its `utm_*` parameters and ad click ids. Without such an integration, no visitor IP address is stored. Every funnel event carries the ad click ids from the landing URL (`click_ids`: `fbclid`, `gclid`, `gbraid`, `wbraid`, `ttclid`, `msclkid`), and `FUNNEL_PURCHASE` carries `revenue_usd` and `currency`. Visits that started before you turned funnel events on have no browser details, so Meta skips them. Mention the IP address and ad click ids in your privacy policy.
 
 <a id="webhook-partners"></a>
 

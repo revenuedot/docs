@@ -6560,13 +6560,14 @@ Example 200 response:
 | `step_id` | string | no | Not for funnel_viewed. |
 | `answer` | string or array of string | no | step_completed of a question. |
 | `app_user_id` | string | no |  |
-| `query` | object | no |  |
+| `query` | object | no | The page URL's query: its `utm_*` parameters and ad click ids (`fbclid`, `gclid`, `gbraid`, `wbraid`, `ttclid`, `msclkid`) are kept with the event. |
+| `page_url` | string | no | The page's address without its query (http or https). Kept, with the request's IP address and user agent, only while an integration asks for funnel events, for ad networks. |
 
 **Example request**
 
 ```bash
 curl -s -X POST "$REVENUEDOT_URL/pay/api/events" \
-  -H "Content-Type: application/json" -d '{"type":"step_completed","funnel_id":"fnl_7q2k9m4x1z8c","session_id":"3f9c2a7b1e8d4c6a9b0f1e2d3c4b5a69","step_id":"goal","answer":"Sleep better","query":{"utm_source":"tiktok"}}'
+  -H "Content-Type: application/json" -d '{"type":"step_completed","funnel_id":"fnl_7q2k9m4x1z8c","session_id":"3f9c2a7b1e8d4c6a9b0f1e2d3c4b5a69","step_id":"goal","answer":"Sleep better","query":{"utm_source":"tiktok","fbclid":"IwAR2xQ9kM"},"page_url":"https://api.revenuedot.app/pay/scanner/sleep-quiz"}'
 ```
 
 **Responses**

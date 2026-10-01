@@ -434,8 +434,10 @@ To use a price you already have, send \`stripe_price_id\` instead of \`price\` a
       description: "`funnel_viewed`, `step_viewed` and `step_completed`, sent by the page with `sendBeacon`. Anything else, an unknown or unpublished funnel or an unknown step is ignored; the answer is 204 either way. An email step's answer is stored as `provided`, never the address. The server records `checkout_started` and `purchase` itself. 300 a minute per IP address.",
       requestBody: body(obj({
         type: en(["funnel_viewed", "step_viewed", "step_completed"]), funnel_id: str(), session_id: str("8-80 letters, digits, `_` or `-`."), step_id: str("Not for funnel_viewed."),
-        answer: { oneOf: [str(), arr(str())], description: "step_completed of a question." }, app_user_id: str(), query: { type: "object", additionalProperties: str() },
-      }, ["type", "funnel_id", "session_id"]), { type: "step_completed", funnel_id: "fnl_7q2k9m4x1z8c", session_id: "3f9c2a7b1e8d4c6a9b0f1e2d3c4b5a69", step_id: "goal", answer: "Sleep better", query: { utm_source: "tiktok" } }),
+        answer: { oneOf: [str(), arr(str())], description: "step_completed of a question." }, app_user_id: str(),
+        query: { type: "object", additionalProperties: str(), description: "The page URL's query: its `utm_*` parameters and ad click ids (`fbclid`, `gclid`, `gbraid`, `wbraid`, `ttclid`, `msclkid`) are kept with the event." },
+        page_url: str("The page's address without its query (http or https). Kept, with the request's IP address and user agent, only while an integration asks for funnel events, for ad networks."),
+      }, ["type", "funnel_id", "session_id"]), { type: "step_completed", funnel_id: "fnl_7q2k9m4x1z8c", session_id: "3f9c2a7b1e8d4c6a9b0f1e2d3c4b5a69", step_id: "goal", answer: "Sleep better", query: { utm_source: "tiktok", fbclid: "IwAR2xQ9kM" }, page_url: "https://api.revenuedot.app/pay/scanner/sleep-quiz" }),
       responses: { 204: { description: "Accepted or ignored." }, 429: { description: "Too many events from this address." } } }),
   },
 };

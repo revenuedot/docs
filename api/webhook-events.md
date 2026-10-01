@@ -1303,6 +1303,18 @@ RevenueDot type. A visitor opened a published funnel. Opt-in: sent only to webho
 | `answer` | string or array of string or null | FUNNEL_STEP_COMPLETED of a question: the answer, or a list for multiple choice. Otherwise null. |
 | `product_id` | string | FUNNEL_PURCHASE only: the Stripe price id. |
 | `subscriber_attributes` | object | Always empty. |
+| `revenue_usd` | number | FUNNEL_PURCHASE only: what the buyer paid, in US dollars. |
+| `currency` | `USD` | FUNNEL_PURCHASE only: the currency of `revenue_usd`. |
+| `click_ids` | object | The ad click ids from the landing page's URL, when it had any. Checkouts and purchases take them from the visit's first page view while an integration asks for funnel events. |
+| `click_ids.fbclid` | string |  |
+| `click_ids.gclid` | string |  |
+| `click_ids.gbraid` | string |  |
+| `click_ids.wbraid` | string |  |
+| `click_ids.ttclid` | string |  |
+| `click_ids.msclkid` | string |  |
+| `client_ip` | string | The visitor's IP address. Only while an enabled integration (not a webhook) has a funnel event type in its filter; otherwise no visitor IP is stored. For ad networks (Meta, Branch). |
+| `client_user_agent` | string | The visitor's browser user agent. Same condition as `client_ip`. |
+| `page_url` | string | The funnel page's address, without its query. Same condition as `client_ip`. |
 
 Example:
 
@@ -1328,7 +1340,10 @@ Example:
     "answer": null,
     "utm_source": "tiktok",
     "utm_campaign": "fall",
-    "subscriber_attributes": {}
+    "subscriber_attributes": {},
+    "click_ids": {
+      "fbclid": "IwAR2xQ9kM"
+    }
   }
 }
 ```
@@ -1357,6 +1372,18 @@ RevenueDot type. A visitor finished a funnel step, with the answer for a questio
 | `answer` | string or array of string or null | FUNNEL_STEP_COMPLETED of a question: the answer, or a list for multiple choice. Otherwise null. |
 | `product_id` | string | FUNNEL_PURCHASE only: the Stripe price id. |
 | `subscriber_attributes` | object | Always empty. |
+| `revenue_usd` | number | FUNNEL_PURCHASE only: what the buyer paid, in US dollars. |
+| `currency` | `USD` | FUNNEL_PURCHASE only: the currency of `revenue_usd`. |
+| `click_ids` | object | The ad click ids from the landing page's URL, when it had any. Checkouts and purchases take them from the visit's first page view while an integration asks for funnel events. |
+| `click_ids.fbclid` | string |  |
+| `click_ids.gclid` | string |  |
+| `click_ids.gbraid` | string |  |
+| `click_ids.wbraid` | string |  |
+| `click_ids.ttclid` | string |  |
+| `click_ids.msclkid` | string |  |
+| `client_ip` | string | The visitor's IP address. Only while an enabled integration (not a webhook) has a funnel event type in its filter; otherwise no visitor IP is stored. For ad networks (Meta, Branch). |
+| `client_user_agent` | string | The visitor's browser user agent. Same condition as `client_ip`. |
+| `page_url` | string | The funnel page's address, without its query. Same condition as `client_ip`. |
 
 Example:
 
@@ -1411,6 +1438,18 @@ RevenueDot type. A funnel's checkout was paid. `app_user_id` is the buyer's (ano
 | `answer` | string or array of string or null | FUNNEL_STEP_COMPLETED of a question: the answer, or a list for multiple choice. Otherwise null. |
 | `product_id` | string | FUNNEL_PURCHASE only: the Stripe price id. |
 | `subscriber_attributes` | object | Always empty. |
+| `revenue_usd` | number | FUNNEL_PURCHASE only: what the buyer paid, in US dollars. |
+| `currency` | `USD` | FUNNEL_PURCHASE only: the currency of `revenue_usd`. |
+| `click_ids` | object | The ad click ids from the landing page's URL, when it had any. Checkouts and purchases take them from the visit's first page view while an integration asks for funnel events. |
+| `click_ids.fbclid` | string |  |
+| `click_ids.gclid` | string |  |
+| `click_ids.gbraid` | string |  |
+| `click_ids.wbraid` | string |  |
+| `click_ids.ttclid` | string |  |
+| `click_ids.msclkid` | string |  |
+| `client_ip` | string | The visitor's IP address. Only while an enabled integration (not a webhook) has a funnel event type in its filter; otherwise no visitor IP is stored. For ad networks (Meta, Branch). |
+| `client_user_agent` | string | The visitor's browser user agent. Same condition as `client_ip`. |
+| `page_url` | string | The funnel page's address, without its query. Same condition as `client_ip`. |
 
 Example:
 
@@ -1437,7 +1476,9 @@ Example:
     "step_index": null,
     "answer": null,
     "product_id": "price_1QxR3pKc8Hn4EfGh",
-    "subscriber_attributes": {}
+    "subscriber_attributes": {},
+    "revenue_usd": 39.99,
+    "currency": "USD"
   }
 }
 ```
