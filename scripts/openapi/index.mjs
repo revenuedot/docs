@@ -7,6 +7,7 @@ import { extensionPaths, v2Paths } from "./v2.mjs";
 import { v2MorePaths } from "./v2-more.mjs";
 import { paywallPaths } from "./paywalls.mjs";
 import { targetingPaths } from "./targeting.mjs";
+import { integrationPaths } from "./integrations.mjs";
 import { webhooks } from "./webhooks.mjs";
 
 /**
@@ -50,6 +51,8 @@ export const TAGS = [
   ["Store setup", "extensions", "Notification URLs, credential checks, setup health and App Store mass extensions."],
   ["API keys", "extensions", "Secret keys for the REST API."],
   ["Webhook deliveries", "extensions", "Delivery log, manual retry and test events."],
+  ["Integrations", "extensions", "Slack, Segment, Amplitude, Mixpanel, PostHog, Firebase, BigQuery, AppsFlyer, Adjust and Meta: connect, test, the delivery log, retry and replay."],
+  ["Data exports", "extensions", "Scheduled CSV or Parquet files of transactions, customers, subscriptions and events in Amazon S3, Cloudflare R2 or Google Cloud Storage."],
   ["Event log", "extensions", "Every recorded event and money movement."],
   ["Test Store", "extensions", "Simulated purchases and lifecycles for development."],
   ["Dashboard data", "extensions", "Series and rows the dashboard shows."],
@@ -82,7 +85,7 @@ export function buildDocument() {
       { url: "https://{host}", description: "Your self-hosted RevenueDot", variables: { host: { default: "revenuedot.example.com" } } },
     ],
     tags: tags(),
-    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...paywallPaths, ...targetingPaths, ...extensionPaths },
+    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...paywallPaths, ...targetingPaths, ...integrationPaths, ...extensionPaths },
     webhooks,
     components: { schemas, parameters, responses, securitySchemes },
     security: [{ secretApiKey: [] }],
