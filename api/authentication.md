@@ -21,6 +21,7 @@ Send every key as a bearer token: `Authorization: Bearer <key>`. Which key depen
 - **`publicApiKey`**: A public app key (`appl_`, `mac_`, `goog_`, `test_`, `amzn_`, `strp_`, `rcb_`, `pdl_`, `roku_`). Safe to ship in an app. The SDK sends it on every request.
 - **`secretApiKey`**: A project secret key (`sk_...`). Server side only. Its `permissions` limit what it can do.
 - **`dashboardSession`**: The dashboard session cookie from `POST /auth/login`. It authorizes `/v2` for every project the user belongs to.
+- **`subscriberToken`**: A subscriber access token (`rdat_...`) from `POST /v2/projects/{project_id}/apps/{app_id}/authenticate`. It speaks for one app user id of one app for one hour. An expired token, or a path or body naming another app user id, answers 401 with code 7224.
 - **`googlePubSubOidc`**: Google-signed OIDC token of a Pub/Sub push subscription. Checked only when the app's `pubsub_audience` credential is set.
 
 ## Where keys come from
@@ -42,16 +43,20 @@ Permissions the operations use:
 - `charts_metrics:overview:read`
 - `customer_information:customers:read`
 - `customer_information:customers:read_write`
+- `customer_information:invoices:read`
 - `customer_information:purchases:read`
 - `customer_information:purchases:read_write`
 - `customer_information:subscriptions:read`
 - `customer_information:subscriptions:read_write`
+- `iam:authorization:issue_token`
 - `project_configuration:api_keys:read`
 - `project_configuration:api_keys:read_write`
 - `project_configuration:apps:read`
 - `project_configuration:apps:read_write`
 - `project_configuration:audit_logs:read`
 - `project_configuration:collaborators:read`
+- `project_configuration:discounts:read`
+- `project_configuration:discounts:read_write`
 - `project_configuration:entitlements:read`
 - `project_configuration:entitlements:read_write`
 - `project_configuration:integrations:read`

@@ -13,15 +13,15 @@ RevenueDot-only endpoints are on [Extensions](extensions.md).
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (144)
+## Operations on this page (160)
 
 - **Projects**: [List projects](#list-projects), [Create a project](#create-a-project)
-- **Apps**: [List apps](#list-apps), [Create an app](#create-an-app), [Get an app](#get-an-app), [Update an app and its store credentials](#update-an-app-and-its-store-credentials), [Delete an app](#delete-an-app), [Get an app's public SDK key](#get-an-apps-public-sdk-key), [Get a StoreKit configuration file](#get-a-storekit-configuration-file)
-- **Products**: [List products](#list-products), [Create a product](#create-a-product), [Get a product](#get-a-product), [Update a product](#update-a-product), [Delete a product](#delete-a-product), [Archive a product](#archive-a-product), [Unarchive a product](#unarchive-a-product)
+- **Apps**: [List apps](#list-apps), [Create an app](#create-an-app), [Get an app](#get-an-app), [Update an app and its store credentials](#update-an-app-and-its-store-credentials), [Delete an app](#delete-an-app), [Get an app's public SDK key](#get-an-apps-public-sdk-key), [Get a StoreKit configuration file](#get-a-storekit-configuration-file), [Issue a subscriber access token](#issue-a-subscriber-access-token)
+- **Products**: [List products](#list-products), [Create a product](#create-a-product), [Get a product](#get-a-product), [Update a product](#update-a-product), [Delete a product](#delete-a-product), [Archive a product](#archive-a-product), [Unarchive a product](#unarchive-a-product), [Create the product in its store](#create-the-product-in-its-store)
 - **Entitlements**: [List entitlements](#list-entitlements), [Create an entitlement](#create-an-entitlement), [Get an entitlement](#get-an-entitlement), [Rename an entitlement](#rename-an-entitlement), [Delete an entitlement](#delete-an-entitlement), [Archive an entitlement](#archive-an-entitlement), [Unarchive an entitlement](#unarchive-an-entitlement), [List an entitlement's products](#list-an-entitlements-products), [Attach products to an entitlement](#attach-products-to-an-entitlement), [Detach products from an entitlement](#detach-products-from-an-entitlement)
 - **Offerings**: [List offerings](#list-offerings), [Create an offering](#create-an-offering), [Get an offering](#get-an-offering), [Update an offering or make it current](#update-an-offering-or-make-it-current), [Delete an offering](#delete-an-offering), [Archive an offering](#archive-an-offering), [Unarchive an offering](#unarchive-an-offering)
 - **Packages**: [List an offering's packages](#list-an-offerings-packages), [Create a package](#create-a-package), [Get a package](#get-a-package), [Update a package](#update-a-package), [Delete a package](#delete-a-package), [List a package's products](#list-a-packages-products), [Attach products to a package](#attach-products-to-a-package), [Detach products from a package](#detach-products-from-a-package)
-- **Customers**: [List or search customers](#list-or-search-customers), [Create a customer](#create-a-customer), [Get a customer](#get-a-customer), [Delete a customer](#delete-a-customer), [List a customer's app user ids](#list-a-customers-app-user-ids), [List a customer's attributes](#list-a-customers-attributes), [Set a customer's attributes](#set-a-customers-attributes), [List a customer's active entitlements](#list-a-customers-active-entitlements), [List a customer's subscriptions](#list-a-customers-subscriptions), [List a customer's one-time purchases](#list-a-customers-one-time-purchases), [List a customer's events](#list-a-customers-events), [Grant an entitlement](#grant-an-entitlement), [Revoke a granted entitlement](#revoke-a-granted-entitlement), [Assign an offering to a customer](#assign-an-offering-to-a-customer), [Transfer a customer's purchases to another customer](#transfer-a-customers-purchases-to-another-customer), [Get the Customer Center configuration](#get-the-customer-center-configuration)
+- **Customers**: [List or search customers](#list-or-search-customers), [Create a customer](#create-a-customer), [Get a customer](#get-a-customer), [Delete a customer](#delete-a-customer), [List a customer's app user ids](#list-a-customers-app-user-ids), [List a customer's attributes](#list-a-customers-attributes), [Set a customer's attributes](#set-a-customers-attributes), [List a customer's active entitlements](#list-a-customers-active-entitlements), [List a customer's subscriptions](#list-a-customers-subscriptions), [List a customer's one-time purchases](#list-a-customers-one-time-purchases), [List a customer's events](#list-a-customers-events), [Grant an entitlement](#grant-an-entitlement), [Revoke a granted entitlement](#revoke-a-granted-entitlement), [Assign an offering to a customer](#assign-an-offering-to-a-customer), [Transfer a customer's purchases to another customer](#transfer-a-customers-purchases-to-another-customer), [Get the Customer Center configuration](#get-the-customer-center-configuration), [Restore a purchase by its store order id](#restore-a-purchase-by-its-store-order-id), [List the win-back offers Apple lets a customer redeem](#list-the-win-back-offers-apple-lets-a-customer-redeem)
 - **Subscriptions**: [Find subscriptions by store id](#find-subscriptions-by-store-id), [Get a subscription](#get-a-subscription), [List the entitlements a subscription unlocks](#list-the-entitlements-a-subscription-unlocks), [List a subscription's payments](#list-a-subscriptions-payments), [Cancel a subscription (Google Play)](#cancel-a-subscription-google-play), [Refund and revoke a subscription (Google Play)](#refund-and-revoke-a-subscription-google-play), [Extend a subscription](#extend-a-subscription), [Refund one payment of a subscription (Google Play)](#refund-one-payment-of-a-subscription-google-play), [Get where the customer manages a subscription](#get-where-the-customer-manages-a-subscription)
 - **Purchases**: [Find one-time purchases by store id](#find-one-time-purchases-by-store-id), [Get a one-time purchase](#get-a-one-time-purchase), [List the entitlements a purchase unlocks](#list-the-entitlements-a-purchase-unlocks), [Refund a one-time purchase (Google Play)](#refund-a-one-time-purchase-google-play)
 - **Metrics**: [Overview metrics](#overview-metrics), [Revenue over a date range](#revenue-over-a-date-range)
@@ -32,6 +32,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Experiments**: [List experiments](#list-experiments), [Create an offering experiment](#create-an-offering-experiment), [Get an experiment](#get-an-experiment), [Update an experiment](#update-an-experiment), [Delete an experiment](#delete-an-experiment), [Start or resume](#start-or-resume), [Pause: enrolled customers keep their variant, nobody new joins](#pause-enrolled-customers-keep-their-variant-nobody-new-joins), [Stop for good](#stop-for-good), [Results per variant](#results-per-variant)
 - **Paywalls**: [List paywalls](#list-paywalls), [Create a paywall](#create-a-paywall), [Get a paywall](#get-a-paywall), [Update a paywall's draft](#update-a-paywalls-draft), [Delete a paywall](#delete-a-paywall), [Publish a paywall](#publish-a-paywall), [Unpublish a paywall](#unpublish-a-paywall), [Attach an offering to a paywall](#attach-an-offering-to-a-paywall), [Detach the offering from a paywall](#detach-the-offering-from-a-paywall), [Duplicate a paywall](#duplicate-a-paywall), [List saved snapshots](#list-saved-snapshots), [Save a named snapshot](#save-a-named-snapshot), [Restore a snapshot into the draft](#restore-a-snapshot-into-the-draft), [Get a snapshot](#get-a-snapshot), [Get the template form of a paywall](#get-the-template-form-of-a-paywall), [Store the template form of a paywall](#store-the-template-form-of-a-paywall), [List the template gallery](#list-the-template-gallery), [Validate paywall components](#validate-paywall-components), [Whether the AI generator is available](#whether-the-ai-generator-is-available), [Generate a paywall with AI](#generate-a-paywall-with-ai), [List images](#list-images), [Upload an image](#upload-an-image), [List fonts](#list-fonts), [Upload a font](#upload-a-font), [Download a paywall image or font](#download-a-paywall-image-or-font), [Download a built-in paywall icon](#download-a-built-in-paywall-icon)
 - **Webhook integrations**: [List webhooks](#list-webhooks), [Create a webhook](#create-a-webhook), [Get a webhook](#get-a-webhook), [Update a webhook](#update-a-webhook), [Delete a webhook](#delete-a-webhook)
+- **Discounts and invoices**: [List discounts](#list-discounts), [Create a discount](#create-a-discount), [Get a discount](#get-a-discount), [Update a discount](#update-a-discount), [Delete a discount](#delete-a-discount), [Enable a discount](#enable-a-discount), [Disable a discount](#disable-a-discount), [List a discount's codes](#list-a-discounts-codes), [Create discount codes](#create-discount-codes), [Delete a discount code](#delete-a-discount-code), [List a customer's invoices](#list-a-customers-invoices), [Download an invoice](#download-an-invoice)
 - **Collaborators**: [List collaborators](#list-collaborators)
 
 ## Projects
@@ -360,6 +361,50 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/store_kit_config" 
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
+### Issue a subscriber access token
+
+`POST /v2/projects/{project_id}/apps/{app_id}/authenticate` · Auth: secret key or dashboard session · Permissions: `iam:authorization:issue_token`
+
+A short-lived access token (one hour) for one app user id of one app. Send it as `Authorization: Bearer rdat_...` to the [subscriber token endpoints](sdk-endpoints.md) (`/v1/customer`, `/v1/customer/offerings` ...), which answer for that app user id, or to any SDK endpoint for that app user id. It cannot be refreshed: ask for a new one. Only a hash of the token is stored.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes | App id (app...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `app_user_id` | string | yes | The app user id the token speaks for. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/authenticate" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"app_user_id":"user_1"}'
+```
+
+**Responses**
+
+- **200**: The token.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "authentication",
+  "access_token": "rdat_3f0c1d0b9e8a7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c2b",
+  "expires_at": 1790804514034
+}
+```
+
 ## Products
 
 Store products.
@@ -645,6 +690,60 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products/$PRODUCT_ID/ac
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Create the product in its store
+
+`POST /v2/projects/{project_id}/products/{product_id}/create_in_store` · Auth: secret key or dashboard session · Permissions: `project_configuration:products:read_write`
+
+Creates a catalog product in the store its app belongs to. The product's display name becomes the store name.
+
+- **App Store** (needs the app's App Store Connect API key with the App Manager role: `app_store_connect_api_key`, `app_store_connect_api_key_id`, `app_store_connect_api_key_issuer`). A subscription needs `store_information` with `duration` and `subscription_group_name` (or `subscription_group_id`); the group is reused by name or created. Consumables, non-consumables and non-renewing subscriptions need no body. Add prices, a review screenshot and localizations in App Store Connect before submitting.
+- **Google Play** (a RevenueDot addition; needs the service account with "Manage store presence"): a subscription with one listing in the app's default language. Add its base plans and prices in Play Console. One-time products answer 422, because Google needs a price to create them.
+
+409 when the store already has the product id, 422 without the credentials or for another store, 422 `store_error` with `retryable: true` while the store is down.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `product_id` | string | yes | Product id (prod...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `store_information` | object or object | no | App Store subscriptions only. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products/$PRODUCT_ID/create_in_store" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"store_information":{"duration":"ONE_MONTH","subscription_group_name":"Pro"}}'
+```
+
+**Responses**
+
+- **201**: The product in the store.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+Example 201 response:
+
+```json
+{
+  "created_product": {
+    "object": "store_product",
+    "id": "6743920115",
+    "name": "Pro Monthly",
+    "product_identifier": "pro_monthly"
+  }
+}
+```
 
 ## Entitlements
 
@@ -2107,6 +2206,95 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/customer_cente
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Restore a purchase by its store order id
+
+`POST /v2/projects/{project_id}/customers/{customer_id}/actions/restore_purchase_by_order_id` · Auth: secret key or dashboard session · Permissions: `customer_information:customers:read_write`
+
+Finds the purchase an order id paid for and gives it to the customer, like a restore from the device: the project's transfer behaviour applies, and a purchase that moves records a `TRANSFER` event.
+
+- **Google Play** order ids (`GPA.1234-5678-9012-34567`, renewals with `..0`, `..1`): `orders.batchGet` on each Play app with a service account gives the purchase token, which is verified and acknowledged like a receipt. The service account needs the "View financial data" permission.
+- **App Store** order ids (the id on the customer's receipt email, such as `MK5TTTVWJH`): Apple's Look Up Order ID on each App Store app with an In-App Purchase key, production first, then the sandbox. Only the order's own subscriptions and purchases are restored. RevenueCat's operation takes Google Play order ids only; App Store order ids are a RevenueDot addition.
+
+404 when no store knows the order, 422 `unprocessable_entity_error` when no app has the credentials the lookup needs, 422 `store_error` with `retryable: true` while the store cannot be reached, 409 when the project's transfer behaviour is `keep` and another customer owns the purchase.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `customer_id` | string | yes | Any app user id of the customer. |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `order_id` | string | yes | The store order id. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/actions/restore_purchase_by_order_id" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"order_id":"GPA.3372-4157-7914-56870"}'
+```
+
+**Responses**
+
+- **200**: The customer after the restore. Returns [Customer](#customer).
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### List the win-back offers Apple lets a customer redeem
+
+`GET /v2/projects/{project_id}/customers/{customer_id}/win_back_offers` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:subscriptions:read`
+
+One item per App Store subscription of the customer, with the win-back offer ids from Apple's renewal info, best first. RevenueDot reads the renewal info when the app posts a receipt, when Apple sends a notification, and after store actions; it needs the app's In-App Purchase key. See [Win-back offers](../docs/guides/win-back-offers.md).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `customer_id` | string | yes | Any app user id of the customer. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/win_back_offers" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The customer's App Store subscriptions.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "items": [
+    {
+      "object": "win_back_offer_eligibility",
+      "subscription_id": "sub_4kq0x2m9a7c1d8e3",
+      "product_id": "pro_monthly",
+      "store": "app_store",
+      "offer_ids": [
+        "comeback_50"
+      ],
+      "updated_at": 1790800914034
+    }
+  ],
+  "next_page": null,
+  "url": "/v2/projects/proj18pzzkao/customers/user_1/win_back_offers"
+}
+```
 
 ## Subscriptions
 
@@ -5270,6 +5458,354 @@ Example 200 response:
   "deleted_at": 1790801342625
 }
 ```
+
+## Discounts and invoices
+
+RevenueCat Billing (Web Billing) objects. RevenueDot does not have that billing engine, so these operations answer on purpose: writes 422, lists empty, single reads 404.
+
+### List discounts
+
+`GET /v2/projects/{project_id}/discounts` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read`
+
+Always an empty list. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Always an empty list.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "items": [],
+  "next_page": null,
+  "url": "/v2/projects/proj18pzzkao/discounts"
+}
+```
+
+### Create a discount
+
+`POST /v2/projects/{project_id}/discounts` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read_write`
+
+Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### Get a discount
+
+`GET /v2/projects/{project_id}/discounts/{discount_id}` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read`
+
+Answers 404 `resource_missing`: there is no discount. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `discount_id` | string | yes | Discount id. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Update a discount
+
+`PATCH /v2/projects/{project_id}/discounts/{discount_id}` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read_write`
+
+Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `discount_id` | string | yes | Discount id. |
+
+**Example request**
+
+```bash
+curl -s -X PATCH "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### Delete a discount
+
+`DELETE /v2/projects/{project_id}/discounts/{discount_id}` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read_write`
+
+Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `discount_id` | string | yes | Discount id. |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### Enable a discount
+
+`POST /v2/projects/{project_id}/discounts/{discount_id}/actions/enable` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read_write`
+
+Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `discount_id` | string | yes | Discount id. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_ID/actions/enable" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### Disable a discount
+
+`POST /v2/projects/{project_id}/discounts/{discount_id}/actions/disable` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read_write`
+
+Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `discount_id` | string | yes | Discount id. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_ID/actions/disable" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### List a discount's codes
+
+`GET /v2/projects/{project_id}/discounts/{discount_id}/discount_codes` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read`
+
+Answers 404 `resource_missing`: there is no discount. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `discount_id` | string | yes | Discount id. |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_ID/discount_codes" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Create discount codes
+
+`POST /v2/projects/{project_id}/discounts/{discount_id}/discount_codes` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read_write`
+
+Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `discount_id` | string | yes | Discount id. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_ID/discount_codes" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### Delete a discount code
+
+`DELETE /v2/projects/{project_id}/discounts/{discount_id}/discount_codes/{discount_code}` · Auth: secret key or dashboard session · Permissions: `project_configuration:discounts:read_write`
+
+Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `discount_id` | string | yes | Discount id. |
+| `discount_code` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/discounts/$DISCOUNT_ID/discount_codes/$DISCOUNT_CODE" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### List a customer's invoices
+
+`GET /v2/projects/{project_id}/customers/{customer_id}/invoices` · Auth: secret key or dashboard session · Permissions: `customer_information:invoices:read`
+
+Always an empty list for a known customer; 404 for an unknown one. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `customer_id` | string | yes | Any app user id of the customer. |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/invoices" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Always an empty list.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "items": [],
+  "next_page": null,
+  "url": "/v2/projects/proj18pzzkao/customers/user_1/invoices"
+}
+```
+
+### Download an invoice
+
+`GET /v2/projects/{project_id}/customers/{customer_id}/invoices/{invoice_id}/file` · Auth: secret key or dashboard session · Permissions: `customer_information:invoices:read`
+
+Answers 404 `resource_missing`: there is no invoice. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `customer_id` | string | yes | Any app user id of the customer. |
+| `invoice_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/invoices/$INVOICE_ID/file" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
 ## Collaborators
 

@@ -28,5 +28,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Read MRR, revenue, churn, conversion and LTV, and know how each is calculated | [Charts](charts.md) |
 | Run RevenueDot from ChatGPT, Claude or Cursor | [Connect AI assistants](connect-ai-assistants.md) |
 | Get an email when store notifications, webhooks or store credentials fail | [Alert emails](alerts.md) |
+| Win back lapsed App Store subscribers with Apple's win-back offers | [Win-back offers](win-back-offers.md) |
+| Know what happens to customers' access when the server is down | [Offline entitlements](offline-entitlements.md) |
 
 Moving from RevenueCat? Start with [Migrate from RevenueCat](../migrate/README.md). Looking for a specific endpoint? See the [API reference](../../api/README.md).

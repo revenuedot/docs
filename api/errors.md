@@ -97,7 +97,7 @@ The key lacks a permission, a public app key was used, or the action needs a das
 
 ### store_error
 
-The App Store or Google Play refused the action (422) or could not be reached (503, `retryable: true`).
+The App Store or Google Play refused the action, or could not be reached (`retryable: true`). Always 422.
 
 <a id="server-error"></a>
 
