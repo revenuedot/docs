@@ -64,11 +64,10 @@ Webhook setup, signature checks and retries: [Webhooks](../guides/webhooks.md).
 ## Re-import and compare
 Re-run the import while old app versions still call RevenueCat. It is idempotent, so a daily run is safe:
 ```bash
-npx revenuedot import --from-revenuecat --rc-key sk_... --rc-project proj... \
-  --to https://revenuedot.example.com --to-key sk_...
-npx revenuedot import verify --rc-key sk_... --rc-project proj... \
-  --to https://revenuedot.example.com --to-key sk_...
+npx revenuedot import --from-revenuecat --rc-project proj... --to https://revenuedot.example.com
+npx revenuedot import verify --rc-project proj... --to https://revenuedot.example.com
 ```
+Each command asks for the RevenueCat and RevenueDot secret keys and hides what you type. For a scheduled job, set `REVENUECAT_API_KEY` and `REVENUEDOT_API_KEY` from your secret store instead.
 `import verify` compares each customer's active entitlements, their expiry dates and how many subscriptions give access. It exits with `1` when anything differs. A difference that remains after a fresh import points to data the import could not bring over; the details are in [The importer](importer.md#check-the-result-with-import-verify).
 
 ## Related
