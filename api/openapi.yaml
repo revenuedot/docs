@@ -14124,6 +14124,176 @@ webhooks:
         "200":
           description: Only HTTP 200 counts as delivered. Anything else, or no answer within 60 seconds, is retried after 5, 10, 20, 40 and 80 minutes.
       x-source: services/events.ts
+  VIRTUAL_CURRENCY_TRANSACTION:
+    post:
+      operationId: webhookVirtualCurrencyTransaction
+      tags:
+        - Webhook events
+      summary: VIRTUAL_CURRENCY_TRANSACTION
+      description: An in-app currency was credited because a purchase of a granting product was recorded. Not sent for adjustments made through the API.
+      parameters:
+        - name: X-RevenueCat-Webhook-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+          description: "`t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\" with the webhook's signing secret>`. Signed again on every attempt."
+          example: t=1790800914,v1=0a1552334e825926036f7efe21527800ea45caa63eca523c6120c6da9041ef99
+        - name: Authorization
+          in: header
+          required: false
+          schema:
+            type: string
+          description: The webhook's `authorization_header`, verbatim, when you set one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - api_version
+                - event
+              properties:
+                api_version:
+                  type: string
+                  const: "1.0"
+                event:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      description: Unique event id (upper-case UUID). Deduplicate on it.
+                    type:
+                      type: string
+                      description: Event type.
+                    event_timestamp_ms:
+                      type: integer
+                      description: When RevenueDot recorded the event. Epoch milliseconds.
+                    app_id:
+                      type: string
+                      description: RevenueDot app id. Left out for promotional grants.
+                    app_user_id:
+                      type: string
+                      description: The app user id the event is about (a non-anonymous alias when there is one).
+                    aliases:
+                      type: array
+                      items:
+                        type: string
+                      description: Every app user id of the customer.
+                    store:
+                      type: string
+                      enum:
+                        - APP_STORE
+                        - MAC_APP_STORE
+                        - PLAY_STORE
+                        - AMAZON
+                        - STRIPE
+                        - RC_BILLING
+                        - PROMOTIONAL
+                        - TEST_STORE
+                        - PADDLE
+                        - ROKU
+                        - EXTERNAL
+                    adjustments:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          amount:
+                            type: integer
+                            description: Credited amount.
+                          currency:
+                            type: object
+                            properties:
+                              code:
+                                type: string
+                              name:
+                                type: string
+                              description:
+                                type:
+                                  - string
+                                  - "null"
+                            required:
+                              - code
+                              - name
+                        required:
+                          - amount
+                          - currency
+                    product_id:
+                      type: string
+                      description: Store product id. For PRODUCT_CHANGE, the product the customer changed from.
+                    product_display_name:
+                      type: string
+                      description: The product's display name.
+                    purchase_environment:
+                      type: string
+                      enum:
+                        - PRODUCTION
+                        - SANDBOX
+                    source:
+                      type: string
+                      enum:
+                        - in_app_purchase
+                    transaction_id:
+                      type:
+                        - string
+                        - "null"
+                      description: Store transaction id of this period.
+                    virtual_currency_transaction_id:
+                      type: string
+                      description: Starts with vatx.
+                    subscriber_attributes:
+                      type: object
+                      additionalProperties:
+                        type: object
+                        properties:
+                          value:
+                            type:
+                              - string
+                              - "null"
+                          updated_at_ms:
+                            type: integer
+                  required:
+                    - id
+                    - type
+                    - event_timestamp_ms
+                    - app_user_id
+                    - adjustments
+                    - product_id
+                    - source
+                    - store
+            example:
+              api_version: "1.0"
+              event:
+                adjustments:
+                  - amount: 100
+                    currency:
+                      code: GLD
+                      description: Gold coins
+                      name: Gold
+                aliases:
+                  - $RCAnonymousID:8069238d6049ce87cc529853916d624c
+                app_id: appe8dyp6dl
+                app_user_id: user_1
+                event_timestamp_ms: 1790800914012
+                product_display_name: 100 coins
+                product_id: coins_100
+                purchase_environment: PRODUCTION
+                source: in_app_purchase
+                store: APP_STORE
+                subscriber_attributes:
+                  $email:
+                    updated_at_ms: 1790800900000
+                    value: ana@example.com
+                transaction_id: "2000000123456789"
+                virtual_currency_transaction_id: vatx1a2b3c4d5e6f7g
+                type: VIRTUAL_CURRENCY_TRANSACTION
+                id: 8F2B1C4D-1234-4C5D-9E6F-0A1B2C3D4E5F
+      responses:
+        "200":
+          description: Only HTTP 200 counts as delivered. Anything else, or no answer within 60 seconds, is retried after 5, 10, 20, 40 and 80 minutes.
+      x-source: services/events.ts
   TEST:
     post:
       operationId: webhookTest

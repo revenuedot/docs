@@ -62,11 +62,12 @@ const EVENTS = [
   ["PRICE_INCREASE_CONSENT_REQUIRED", "The store asks the customer to accept a price increase.", null],
   ["PRICE_INCREASE_CONSENT_APPROVED", "The customer accepted the price increase.", null],
   ["TRANSFER", "A purchase moved to another customer because that customer restored it (transfer behaviour `transfer` or `transfer_if_no_active`).", "transfer"],
+  ["VIRTUAL_CURRENCY_TRANSACTION", "An in-app currency was credited because a purchase of a granting product was recorded. Not sent for adjustments made through the API.", "vc"],
   ["TEST", "Sent by the dashboard's \"Send test event\" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase.", {}],
 ];
 
 /** Accepted in a webhook's `event_types` filter, never sent by RevenueDot yet. */
-export const NOT_SENT = ["TEMPORARY_ENTITLEMENT_GRANT", "VIRTUAL_CURRENCY_TRANSACTION", "INVOICE_ISSUANCE", "EXPERIMENT_ENROLLMENT", "PURCHASE_REDEEMED", "SUBSCRIBER_ALIAS"];
+export const NOT_SENT = ["TEMPORARY_ENTITLEMENT_GRANT", "INVOICE_ISSUANCE", "EXPERIMENT_ENROLLMENT", "PURCHASE_REDEEMED", "SUBSCRIBER_ALIAS"];
 
 const headers = {
   "X-RevenueCat-Webhook-Signature": { required: true, schema: str(), description: "`t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\" with the webhook's signing secret>`. Signed again on every attempt.", example: "t=1790800914,v1=0a1552334e825926036f7efe21527800ea45caa63eca523c6120c6da9041ef99" },
@@ -94,6 +95,13 @@ for (const [type, description, extra] of EVENTS) {
       id: lifecycle.id, type: lifecycle.type, event_timestamp_ms: lifecycle.event_timestamp_ms, app_id: lifecycle.app_id, store: lifecycle.store, environment: lifecycle.environment,
       transferred_from: arr(str(), { description: "App user ids of the previous owner." }), transferred_to: arr(str(), { description: "App user ids of the new owner." }), subscriber_attributes: lifecycle.subscriber_attributes,
     }, ["id", "type", "event_timestamp_ms", "store", "environment", "transferred_from", "transferred_to"]);
+  } else if (extra === "vc") {
+    schema = payload({
+      id: lifecycle.id, type: lifecycle.type, event_timestamp_ms: lifecycle.event_timestamp_ms, app_id: lifecycle.app_id, app_user_id: lifecycle.app_user_id, aliases: lifecycle.aliases, store: lifecycle.store,
+      adjustments: arr(obj({ amount: int("Credited amount."), currency: obj({ code: str(), name: str(), description: nstr() }, ["code", "name"]) }, ["amount", "currency"])),
+      product_id: lifecycle.product_id, product_display_name: str("The product's display name."), purchase_environment: en(["PRODUCTION", "SANDBOX"]), source: en(["in_app_purchase"]),
+      transaction_id: lifecycle.transaction_id, virtual_currency_transaction_id: str("Starts with vatx."), subscriber_attributes: lifecycle.subscriber_attributes,
+    }, ["id", "type", "event_timestamp_ms", "app_user_id", "adjustments", "product_id", "source", "store"]);
   } else if (extra === null) {
     const pick = ["id", "type", "event_timestamp_ms", "app_id", "app_user_id", "original_app_user_id", "aliases", "product_id", "transaction_id", "original_transaction_id", "store", "environment", "currency", "country_code", "subscriber_attributes"];
     schema = payload(Object.fromEntries(pick.map((k) => [k, lifecycle[k]])), ["id", "type", "event_timestamp_ms", "app_user_id", "product_id", "store", "environment"]);

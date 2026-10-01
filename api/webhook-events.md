@@ -29,9 +29,10 @@ RevenueDot POSTs one JSON event per request to each matching webhook: `{ "api_ve
 | [`PRICE_INCREASE_CONSENT_REQUIRED`](#price_increase_consent_required) | The store asks the customer to accept a price increase. |
 | [`PRICE_INCREASE_CONSENT_APPROVED`](#price_increase_consent_approved) | The customer accepted the price increase. |
 | [`TRANSFER`](#transfer) | A purchase moved to another customer because that customer restored it (transfer behaviour `transfer` or `transfer_if_no_active`). |
+| [`VIRTUAL_CURRENCY_TRANSACTION`](#virtual_currency_transaction) | An in-app currency was credited because a purchase of a granting product was recorded. Not sent for adjustments made through the API. |
 | [`TEST`](#test) | Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase. |
 
-Accepted in a webhook's `event_types` filter but never sent yet: `TEMPORARY_ENTITLEMENT_GRANT`, `VIRTUAL_CURRENCY_TRANSACTION`, `INVOICE_ISSUANCE`, `EXPERIMENT_ENROLLMENT`, `PURCHASE_REDEEMED`, `SUBSCRIBER_ALIAS`.
+Accepted in a webhook's `event_types` filter but never sent yet: `TEMPORARY_ENTITLEMENT_GRANT`, `INVOICE_ISSUANCE`, `EXPERIMENT_ENROLLMENT`, `PURCHASE_REDEEMED`, `SUBSCRIBER_ALIAS`.
 
 ## INITIAL_PURCHASE
 
@@ -1068,6 +1069,71 @@ Example:
     "transferred_to": [
       "bob"
     ]
+  }
+}
+```
+
+## VIRTUAL_CURRENCY_TRANSACTION
+
+An in-app currency was credited because a purchase of a granting product was recorded. Not sent for adjustments made through the API.
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique event id (upper-case UUID). Deduplicate on it. |
+| `type` | string | Event type. |
+| `event_timestamp_ms` | integer | When RevenueDot recorded the event. Epoch milliseconds. |
+| `app_id` | string | RevenueDot app id. Left out for promotional grants. |
+| `app_user_id` | string | The app user id the event is about (a non-anonymous alias when there is one). |
+| `aliases` | array of string | Every app user id of the customer. |
+| `store` | `APP_STORE`, `MAC_APP_STORE`, `PLAY_STORE`, `AMAZON`, `STRIPE`, `RC_BILLING`, `PROMOTIONAL`, `TEST_STORE`, `PADDLE`, `ROKU`, `EXTERNAL` |  |
+| `adjustments` | array of object |  |
+| `adjustments[].amount` | integer | Credited amount. |
+| `adjustments[].currency` | object |  |
+| `product_id` | string | Store product id. For PRODUCT_CHANGE, the product the customer changed from. |
+| `product_display_name` | string | The product's display name. |
+| `purchase_environment` | `PRODUCTION`, `SANDBOX` |  |
+| `source` | `in_app_purchase` |  |
+| `transaction_id` | string or null | Store transaction id of this period. |
+| `virtual_currency_transaction_id` | string | Starts with vatx. |
+| `subscriber_attributes` | object |  |
+
+Example:
+
+```json
+{
+  "api_version": "1.0",
+  "event": {
+    "adjustments": [
+      {
+        "amount": 100,
+        "currency": {
+          "code": "GLD",
+          "description": "Gold coins",
+          "name": "Gold"
+        }
+      }
+    ],
+    "aliases": [
+      "$RCAnonymousID:8069238d6049ce87cc529853916d624c"
+    ],
+    "app_id": "appe8dyp6dl",
+    "app_user_id": "user_1",
+    "event_timestamp_ms": 1790800914012,
+    "product_display_name": "100 coins",
+    "product_id": "coins_100",
+    "purchase_environment": "PRODUCTION",
+    "source": "in_app_purchase",
+    "store": "APP_STORE",
+    "subscriber_attributes": {
+      "$email": {
+        "updated_at_ms": 1790800900000,
+        "value": "ana@example.com"
+      }
+    },
+    "transaction_id": "2000000123456789",
+    "virtual_currency_transaction_id": "vatx1a2b3c4d5e6f7g",
+    "type": "VIRTUAL_CURRENCY_TRANSACTION",
+    "id": "8F2B1C4D-1234-4C5D-9E6F-0A1B2C3D4E5F"
   }
 }
 ```
