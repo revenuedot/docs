@@ -82,6 +82,14 @@ export const paywallPaths = {
     get: op({ id: "getPaywallVersion", tag: "Paywalls", summary: "Get a snapshot", security: SECRET, source: R, scopes: READ, parameters: [project, pw, { name: "version_id", in: "path", required: true, schema: str() }],
       responses: { 200: ok("The snapshot.", versionOut), ...E(404) } }),
   },
+  [`${P}/paywalls/{paywall_id}/template`]: {
+    get: op({ id: "getPaywallTemplate", tag: "Paywalls", summary: "Get the template form of a paywall", security: SECRET, source: R, extension: true, scopes: READ, parameters: [project, pw],
+      description: "The dashboard's template form (headline, features, colours, package labels) that produced the draft, so the editor can reopen it. Null for paywalls made another way.",
+      responses: { 200: ok("The form.", obj({ object: en(["paywall_template"]), paywall_id: str(), template: nObj }, ["object", "paywall_id", "template"])), ...E(404) } }),
+    put: op({ id: "setPaywallTemplate", tag: "Paywalls", summary: "Store the template form of a paywall", security: SECRET, source: R, extension: true, scopes: WRITE, parameters: [project, pw],
+      requestBody: body(obj({ template: nObj }, ["template"]), { template: { template: "classic", headline: "Unlock everything" } }),
+      responses: { 200: ok("The form.", obj({ object: en(["paywall_template"]), paywall_id: str(), template: nObj }, ["object", "paywall_id", "template"])), ...v2Errors(400, 401, 403, 404) } }),
+  },
   [`${P}/media_assets`]: {
     get: op({ id: "listMediaAssets", tag: "Paywalls", summary: "List images", security: SECRET, source: R, scopes: READ, parameters: [project, ...page], responses: { 200: ok("A page of images.", listOf(media)), ...E(400, 404) } }),
     post: op({ id: "createMediaAsset", tag: "Paywalls", summary: "Upload an image", security: SECRET, source: R, scopes: WRITE, parameters: [project],

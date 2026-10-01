@@ -10303,6 +10303,126 @@ paths:
       x-source: routes/v2/paywalls.ts
       x-scopes:
         - project_configuration:offerings:read
+  /v2/projects/{project_id}/paywalls/{paywall_id}/template:
+    get:
+      operationId: getPaywallTemplate
+      tags:
+        - Paywalls
+      summary: Get the template form of a paywall
+      description: The dashboard's template form (headline, features, colours, package labels) that produced the draft, so the editor can reopen it. Null for paywalls made another way.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: paywall_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Paywall id (pw...).
+      responses:
+        "200":
+          description: The form.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - paywall_template
+                  paywall_id:
+                    type: string
+                  template:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: true
+                required:
+                  - object
+                  - paywall_id
+                  - template
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read
+      x-revenuedot-extension: true
+    put:
+      operationId: setPaywallTemplate
+      tags:
+        - Paywalls
+      summary: Store the template form of a paywall
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: paywall_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Paywall id (pw...).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                template:
+                  type:
+                    - object
+                    - "null"
+                  additionalProperties: true
+              required:
+                - template
+            example:
+              template:
+                template: classic
+                headline: Unlock everything
+      responses:
+        "200":
+          description: The form.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - paywall_template
+                  paywall_id:
+                    type: string
+                  template:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: true
+                required:
+                  - object
+                  - paywall_id
+                  - template
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+      x-revenuedot-extension: true
   /v2/projects/{project_id}/media_assets:
     get:
       operationId: listMediaAssets
