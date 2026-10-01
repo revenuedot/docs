@@ -2949,23 +2949,84 @@ Send `Authorization: Bearer sk_...` with a secret key from **API keys**. Give th
 # Paywalls
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md
-Description: Build a native paywall in the dashboard from a template, publish it to an offering, and show it in your app with RevenueCatUI's PaywallView.
+Description: Build a native paywall from a template, with the visual editor or with AI, translate it, publish it to an offering, and show it in your app with RevenueCatUI's PaywallView.
 
-A paywall is the screen that sells your offering. RevenueDot serves paywalls in the format the RevenueCat SDKs render natively (paywall components, also called Paywalls V2), so you build and change it in the dashboard and your app shows it with one view, without an app release.
+A paywall is the screen that sells your offering. RevenueDot serves paywalls in the format the RevenueCat SDKs render natively (paywall components, also called Paywalls V2). You build and change a paywall in the dashboard, and your app shows it with one view, without an app release.
 
-## Build one
+The dashboard has three ways to start, a visual editor, translations, and a server check that every published paywall decodes in the SDK.
 
-1. Create an offering with its packages (for example `$rc_monthly` and `$rc_annual`). See [Offerings](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/offerings-and-packages.md).
-2. In the dashboard, open **Paywalls**, select **New paywall** and choose the offering.
-3. Pick a template: **Classic** (headline, features, packages), **Hero image** (adds an image on top) or **Minimal** (headline and packages).
-4. Write the headline, subheadline, features and button text. Rename each package as it should appear, choose which one is selected when the paywall opens, and set the colours. The preview on the right updates as you type.
-5. Select **Save draft** to keep your work, or **Publish** to send it to apps.
+## Start a paywall
 
-Prices come from the App Store or Google Play on the device, so each package shows the customer's local price and period.
+Open **Paywalls** in the dashboard. You can start in three ways:
+
+1. **Use a template.** The gallery has ten layouts, each built on a measured 2026 result. Filter by number of screens, purchase method (in-app or web), number of packages and number of tiers. The previews use your offering's packages. Pick a template, choose the offering, add your app name, accent colour, and Terms and Privacy links, and select **Create paywall**.
+2. **Start from scratch.** You get a headline, your offering's packages and a purchase button to build on.
+3. **Generate with AI.** Describe the app and the offer, for example "A calm sleep app, explain the 7-day trial, yearly first". You can add the app name and up to three brand colours. RevenueDot returns a paywall you can edit before you save it. This option shows only when a language model is configured (see [AI on a self-hosted server](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md#ai-on-a-self-hosted-server)).
+
+| Template | What it does | Built on |
+|---|---|---|
+| Trial timeline | Explains the free trial day by day, then two plans with yearly selected | A "how your free trial works" timeline: +23% trial starts (Blinkist) |
+| Annual first | Benefits, then yearly and monthly with a savings badge | Yearly pre-selected: the yearly share of purchases went from 37% to 63% (Superwall) |
+| Feature hero | A full-width image, five benefits with icons, plans side by side | Opening on value with 3 to 5 benefit lines |
+| Free vs Pro | A short comparison table, then two plans | A simple paywall beat a long comparison chart by 111% (Superwall) |
+| Minimal | A headline, your plans and one button | Plain plan names add 10% (Superwall) |
+| Story pages | Three swipeable value pages before the plans | 2 to 3 pages converted 37% better than one (Superwall 2026) |
+| Limited offer | A countdown to the end of an offer, one plan, dark | Discount offers after a cancelled purchase made 17% of revenue (Superwall) |
+| Tiers | Two tiers in tabs (Plus and Pro), two plans each | Tiers let a customer pick a level, then a period |
+| Reviews | Rating, a user count and one review, then two plans | Reviews with price anchoring: +17% revenue per user (RevenueCat) |
+| Web checkout | The button opens web checkout instead of the store sheet | Use it only where the store rules allow external purchases |
+
+## Edit a paywall
+
+The editor has three columns:
+
+- **Layers** on the left list every component. Select a layer to edit it. You can also drag it to a new place, move it with the arrow buttons, duplicate it or remove it. **Add** inserts any component type after the selected one, or inside it when the selection is a container.
+- **The preview** in the middle shows the exact JSON your app gets, on a phone. Click any component in the preview to select it. Above the preview you choose the language, light or dark mode, whether the customer is eligible for an intro offer, and which package is selected.
+- **Properties** on the right show the settings of the selected component.
+
+Keyboard shortcuts: ⌘Z undoes and ⇧⌘Z redoes. In the layer list, ↑ and ↓ select, ⌥↑ and ⌥↓ move, ⌥→ moves into the stack above, ⌥← moves out, ⌘D duplicates and ⌫ removes.
+
+What you can set, by component:
+
+| Component | Properties |
+|---|---|
+| Text | Text per language, an intro-offer text, size, weight, alignment, colour (light and dark), background, font |
+| Image | An uploaded image or a URL, a dark-mode image, fit or fill, size, rounded or circle mask, colour overlay |
+| Icon | One of 44 built-in icons, size, colour, a circle or rounded background |
+| Stack | Vertical, horizontal or overlay; alignment, distribution, spacing, padding, margin, size; a background colour, gradient or image; border, corner radius or pill, shadow, a badge |
+| Package | Which of the offering's packages it sells, whether it is selected when the paywall opens, the card layout, and the border and background when selected |
+| Purchase button | In-app purchase, web checkout or web product selection |
+| Button | Restore purchases, close, open terms, privacy or a URL, Customer Center, offer code |
+| Sticky footer | The bar pinned to the bottom (usually the purchase button) |
+| Timeline | Steps with an icon, a title and a description; spacing; line and icon colours |
+| Tabs | Tab names, the tab that opens first, buttons or a toggle, add and remove tabs |
+| Carousel | Pages, peek, spacing, loop, auto-advance, page dots |
+| Countdown | The end date and time, count from days, hours or minutes, the content after it ends |
+| Video | A video URL, a poster image, autoplay, loop, muted, controls |
+| Web view | An https URL shown inside the paywall |
+
+Texts can use variables that the device fills in, for example `{{ product.price_per_period }}`, `{{ product.price_per_month }}`, `{{ product.relative_discount }}` and `{{ product.offer_period_with_unit }}`. Inside a countdown you can use `{{ count_days_with_zero }}`, `{{ count_hours_with_zero }}`, `{{ count_minutes_with_zero }}` and `{{ count_seconds_with_zero }}`. Prices in the preview are sample values. The app shows the store's local price.
+
+**Problems** above the preview lists anything the SDK would not decode or would show wrong, such as a text without a string, a video without a URL or a link that is not a URL. Select **Go to** to open the component. You cannot publish while there are errors.
+
+The **JSON** tab shows what the SDK receives. You can paste JSON there, for example a paywall exported from another tool, and select **Repair** to fill in what is missing.
+
+## Translate a paywall
+
+Open the **Localizations** tab. Add a language, then fill in its strings next to the default language. Empty cells show the default language's text in the app, so a paywall is never blank in a language you have not finished. Switch the language above the preview to check it. The SDK fills in the words around prices, such as "month" and "%d days", in the device's language for English, Spanish, French, German, Italian, Portuguese, Dutch, Russian, Japanese, Korean and Chinese.
+
+## Save and publish
+
+- **Save draft** keeps your work. Apps never see a draft.
+- **Publish** checks the paywall first. Then it sends the paywall to apps in the offerings response and in remote config, which iOS SDK 5.83 and later read.
+- **Save a version** (in the ⋯ menu) keeps a named copy that you can restore into the draft later.
+- **Unpublish** stops apps from receiving the paywall and keeps it as a draft.
+- An offering has at most one paywall. A paywall needs an offering before it can be published.
+- Apps fetch offerings at launch and when they come back to the foreground, so a change reaches them within one session.
 
 ## Show it in your app
 
-Add the RevenueCatUI library next to the SDK, then present the paywall. It shows the current offering's paywall.
+Add the RevenueCatUI library next to the SDK, then present the paywall. `PaywallView()` shows the current offering's paywall; pass an offering to show another one.
 
 ```swift
 import RevenueCatUI
@@ -2989,24 +3050,40 @@ await RevenueCatUI.presentPaywall();
 await RevenueCatUI.presentPaywall();
 ```
 
-## Publishing rules
+## Images, fonts and icons
 
-- An offering has at most one paywall. A paywall needs an offering before it can be published.
-- Apps only ever receive the **published** version. A draft stays private until you publish it.
-- **Unpublish** stops apps from receiving it and keeps your content as a draft.
-- Apps fetch offerings at launch and when they come back to the foreground, so a change reaches them within one session.
+Images and fonts are stored with your project. RevenueDot serves them from `/assets/{project_id}/...` on the host your apps talk to (`api.revenuedot.app` on Cloud). They are cached for a year with an `ETag`, and on Cloud repeat downloads come from Cloudflare's edge cache. Upload images in the editor, or through the API with `POST /v2/projects/{project_id}/media_assets`. Upload fonts with `POST /v2/projects/{project_id}/fonts`.
 
-## Images and fonts
+### Icons
 
-Hero images and fonts are stored with your project and served from `/assets/{project_id}/...` on your RevenueDot server, with year-long caching. Upload images in the editor, or through the API with `POST /v2/projects/{project_id}/media_assets` and fonts with `POST /v2/projects/{project_id}/fonts`.
+Icon and timeline components use 44 built-in icons, served at `/assets/icons/{name}.png` (96 × 96, tinted by the SDK) and `/assets/icons/{name}.svg`. Their names: check, check_circle, x, star, sparkles, lock, unlock, bell, crown, shield, shield_check, zap, heart, gift, clock, calendar, calendar_check, cloud, infinity, chart, trending_up, users, user, download, camera, music, book, globe, moon, sun, flame, target, leaf, dumbbell, mic, image, wand, percent, tag, no_ads, sync, devices, headphones, trophy.
+
+## AI on a self-hosted server
+
+RevenueDot Cloud generates paywalls with Cloudflare Workers AI, so you need no key. On a self-hosted server, set one of these environment variables and restart:
+
+- `OPENAI_API_KEY` (model `gpt-4.1-mini`, or set `REVENUEDOT_AI_MODEL`; `OPENAI_BASE_URL` points it at any OpenAI-compatible server)
+- `ANTHROPIC_API_KEY` (model `claude-sonnet-4-5`, or set `REVENUEDOT_AI_MODEL`)
+
+Without either, the dashboard hides "Generate with AI". Each project can generate one paywall every 5 seconds and 60 a day. The answer is always checked and repaired before you see it, so it decodes in the SDK.
 
 ## Use the API
 
-Everything the editor does is in REST API v2: create with `POST /v2/projects/{project_id}/paywalls`, change the draft with `PATCH .../paywalls/{paywall_id}` (send the `revision` you read), publish with `POST .../actions/publish`. See the [API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md).
+Everything the editor does is in REST API v2. See the [API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md).
+
+- Create from a template: `POST /v2/projects/{project_id}/paywalls` with `template_id` and `offering_id`. List the templates with `GET /v2/projects/{project_id}/paywall_templates`.
+- Change the draft: `PATCH .../paywalls/{paywall_id}` (send the `revision` you read).
+- Check without saving: `POST .../paywalls/validate` returns `errors` and `warnings`; with `repair: true` it also returns the repaired JSON.
+- Publish: `POST .../paywalls/{paywall_id}/actions/publish`. It answers 422 with the first problem when the SDK could not render the paywall.
+- Generate: `POST .../paywalls/generate` with a `prompt`.
+- Versions: `POST .../versions`, `GET .../versions` and `POST .../versions/{version_id}/actions/restore`.
 
 ## What is not built yet
 
-A free-form drag-and-drop canvas, tabs, carousels, countdowns and timelines, and translations beyond the default locale. Paywalls you build in RevenueCat's editor can be pasted as `components_config` through the API.
+- Multi-screen paywalls are pages in one screen (a carousel). Paywalls with several screens and navigation between them are served for their first screen only.
+- You cannot drag components directly on the phone. Reorder them in the layer list.
+- Video uploads are not stored with your project. A video component takes a URL.
+- Exit offers and custom variables have no editor yet. They pass through the API.
 
 ---
 
@@ -3175,6 +3252,11 @@ RevenueDot has 42 charts in the dashboard under **Analytics > Charts**, with the
 ## Filters and segments
 
 Filter and segment by app, store, product, product duration, offering, country (the purchase's storefront, else the customer's last country), platform and app version; paywall charts also by paywall, and the Customer Center chart by survey option. A filter on a purchase dimension (store, product …) does not change the new-customer counts that conversion charts divide by. A segmented chart shows the five largest values, then "Other" and the total.
+
+## Compare and save charts
+
+- **Compare to previous period** draws the window of the same length that ends the day before the current one, at the same resolution, as a dashed grey line. The table gets a "Previous period" row, and each summary number shows its change. A segmented chart compares its total. Cohort tables have no comparison.
+- **Save** stores the chart with its view: the range or dates, resolution, segment, filters, selectors, sandbox switch and comparison. Saved charts are listed at the top of the chart list for everyone in the project. Opening one brings the view back; save again to update it or to save a copy. Through the API: `GET` and `POST /v2/projects/{project_id}/saved_charts`, and `PATCH` and `DELETE /v2/projects/{project_id}/saved_charts/{saved_chart_id}`.
 
 ## Use the API
 
@@ -4456,7 +4538,7 @@ One RevenueDot server answers every API below on one port. The reference is gene
 |---|---|---|---|---|
 | SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 47 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
 | REST API v1 | `/v1/subscribers/...` | secret key | 10 | [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md) |
-| REST API v2 | `/v2/projects/...` | secret key or dashboard session | 132 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
+| REST API v2 | `/v2/projects/...` | secret key or dashboard session | 144 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
 | RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...` | secret key, session or none | 67 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
 | Webhooks (sent by RevenueDot) | your URL | HMAC signature | 17 event types | [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md) |
 
@@ -4550,6 +4632,7 @@ Permissions the operations use:
 - `audiences:audiences:read`
 - `audiences:audiences:read_write`
 - `charts_metrics:charts:read`
+- `charts_metrics:charts:read_write`
 - `charts_metrics:overview:read`
 - `customer_information:customers:read`
 - `customer_information:customers:read_write`
@@ -7486,7 +7569,7 @@ RevenueDot-only endpoints are on [Extensions](https://raw.githubusercontent.com/
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (132)
+## Operations on this page (144)
 
 - **Projects**: [List projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-projects), [Create a project](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-project)
 - **Apps**: [List apps](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-apps), [Create an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-app), [Get an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-app), [Update an app and its store credentials](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-app-and-its-store-credentials), [Delete an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-app), [Get an app's public SDK key](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-apps-public-sdk-key), [Get a StoreKit configuration file](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-storekit-configuration-file)
@@ -7498,12 +7581,12 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Subscriptions**: [Find subscriptions by store id](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#find-subscriptions-by-store-id), [Get a subscription](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-subscription), [List the entitlements a subscription unlocks](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-the-entitlements-a-subscription-unlocks), [List a subscription's payments](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-subscriptions-payments), [Cancel a subscription (Google Play)](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#cancel-a-subscription-google-play), [Refund and revoke a subscription (Google Play)](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#refund-and-revoke-a-subscription-google-play), [Extend a subscription](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#extend-a-subscription), [Refund one payment of a subscription (Google Play)](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#refund-one-payment-of-a-subscription-google-play), [Get where the customer manages a subscription](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-where-the-customer-manages-a-subscription)
 - **Purchases**: [Find one-time purchases by store id](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#find-one-time-purchases-by-store-id), [Get a one-time purchase](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-one-time-purchase), [List the entitlements a purchase unlocks](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-the-entitlements-a-purchase-unlocks), [Refund a one-time purchase (Google Play)](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#refund-a-one-time-purchase-google-play)
 - **Metrics**: [Overview metrics](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#overview-metrics), [Revenue over a date range](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#revenue-over-a-date-range)
-- **Charts**: [Get chart data](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-chart-data), [Get available options for a chart](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-available-options-for-a-chart)
+- **Charts**: [Get chart data](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-chart-data), [Get available options for a chart](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-available-options-for-a-chart), [List saved charts](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-saved-charts), [Save a chart view](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#save-a-chart-view), [Get a saved chart](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-saved-chart), [Rename or update a saved chart](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#rename-or-update-a-saved-chart), [Delete a saved chart](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-saved-chart)
 - **In-app currencies**: [List in-app currencies](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-in-app-currencies), [Create an in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-in-app-currency), [Get an in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-in-app-currency), [Update an in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-in-app-currency), [Delete an in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-in-app-currency), [Archive an in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#archive-an-in-app-currency), [Unarchive an in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#unarchive-an-in-app-currency), [List a customer's balances](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-balances), [Credit or spend in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#credit-or-spend-in-app-currency), [Change a balance without a ledger entry](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#change-a-balance-without-a-ledger-entry)
 - **Audit log**: [List audit log entries](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-audit-log-entries)
 - **Targeting**: [List audiences](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-audiences), [Create an audience](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-audience), [Preview who matches](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#preview-who-matches), [Known values for attribution and custom-attribute fields](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#known-values-for-attribution-and-custom-attribute-fields), [Get an audience](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-audience), [Update an audience](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-audience), [Delete an unused audience](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-unused-audience), [List targeting rules in order](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-targeting-rules-in-order), [Create a targeting rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-targeting-rule), [Set the evaluation order](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#set-the-evaluation-order), [Get a targeting rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-targeting-rule), [Update a targeting rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-targeting-rule), [Delete a targeting rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-targeting-rule)
 - **Experiments**: [List experiments](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-experiments), [Create an offering experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-offering-experiment), [Get an experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-experiment), [Update an experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-experiment), [Delete an experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-experiment), [Start or resume](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#start-or-resume), [Pause: enrolled customers keep their variant, nobody new joins](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#pause-enrolled-customers-keep-their-variant-nobody-new-joins), [Stop for good](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#stop-for-good), [Results per variant](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#results-per-variant)
-- **Paywalls**: [List paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-paywalls), [Create a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-paywall), [Get a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-paywall), [Update a paywall's draft](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-paywalls-draft), [Delete a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-paywall), [Publish a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#publish-a-paywall), [Unpublish a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#unpublish-a-paywall), [Attach an offering to a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#attach-an-offering-to-a-paywall), [Detach the offering from a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#detach-the-offering-from-a-paywall), [Duplicate a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#duplicate-a-paywall), [Save a named snapshot](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#save-a-named-snapshot), [Get a snapshot](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-snapshot), [Get the template form of a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-the-template-form-of-a-paywall), [Store the template form of a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#store-the-template-form-of-a-paywall), [List images](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-images), [Upload an image](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#upload-an-image), [List fonts](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-fonts), [Upload a font](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#upload-a-font), [Download a paywall image or font](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#download-a-paywall-image-or-font)
+- **Paywalls**: [List paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-paywalls), [Create a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-paywall), [Get a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-paywall), [Update a paywall's draft](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-paywalls-draft), [Delete a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-paywall), [Publish a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#publish-a-paywall), [Unpublish a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#unpublish-a-paywall), [Attach an offering to a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#attach-an-offering-to-a-paywall), [Detach the offering from a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#detach-the-offering-from-a-paywall), [Duplicate a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#duplicate-a-paywall), [List saved snapshots](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-saved-snapshots), [Save a named snapshot](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#save-a-named-snapshot), [Restore a snapshot into the draft](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#restore-a-snapshot-into-the-draft), [Get a snapshot](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-snapshot), [Get the template form of a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-the-template-form-of-a-paywall), [Store the template form of a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#store-the-template-form-of-a-paywall), [List the template gallery](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-the-template-gallery), [Validate paywall components](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#validate-paywall-components), [Whether the AI generator is available](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#whether-the-ai-generator-is-available), [Generate a paywall with AI](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#generate-a-paywall-with-ai), [List images](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-images), [Upload an image](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#upload-an-image), [List fonts](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-fonts), [Upload a font](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#upload-a-font), [Download a paywall image or font](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#download-a-paywall-image-or-font), [Download a built-in paywall icon](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#download-a-built-in-paywall-icon)
 - **Webhook integrations**: [List webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-webhooks), [Create a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-webhook), [Get a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-webhook), [Update a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-webhook), [Delete a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-webhook)
 - **Collaborators**: [List collaborators](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-collaborators)
 
@@ -9781,7 +9864,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/subscriptions/$SUBSCRIP
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
-- **503**: The store could not be reached. Retry later. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
 ### Refund and revoke a subscription (Google Play)
 
@@ -9809,7 +9892,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/subscriptions/$SUBSCRIP
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
-- **503**: The store could not be reached. Retry later. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
 ### Extend a subscription
 
@@ -9847,7 +9930,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/subscriptions/$SUBSCRIP
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
-- **503**: The store could not be reached. Retry later. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
 ### Refund one payment of a subscription (Google Play)
 
@@ -9874,7 +9957,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/subscriptions/$SUBSCRIP
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
-- **503**: The store could not be reached. Retry later. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
 ### Get where the customer manages a subscription
 
@@ -10026,7 +10109,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/purchases/$PURCHASE_ID/
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
-- **503**: The store could not be reached. Retry later. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
 ## Metrics
 
@@ -10192,6 +10275,171 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/charts/$CHART_NAME/options" -H 
 **Responses**
 
 - **200**: The options.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### List saved charts
+
+`GET /v2/projects/{project_id}/saved_charts` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/saved_charts" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: A page of saved charts.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Save a chart view
+
+`POST /v2/projects/{project_id}/saved_charts` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read_write`
+
+A named chart with the dashboard view that produced it (range, dates, resolution, segment, filters, selectors, environment, compare). Up to 200 per project.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | yes |  |
+| `chart_name` | `actives`, `actives_movement`, `actives_new`, `arr`, `churn`, `cohort_explorer`, `conversion_to_paying`, `customers_new`, `initial_conversion`, `ltv_per_customer`, `ltv_per_paying_customer`, `mrr`, `mrr_movement`, `prediction_explorer`, `refund_rate`, `refund_request`, `refunds`, `revenue`, `subscription_retention`, `subscription_status`, `trials`, `trials_movement`, `trials_new`, `customers_active`, `trial_conversion`, `trial_conversion_rate`, `trial_cancellation`, `non-subscription_purchases`, `ad_revenue`, `ad_impressions`, `ad_clicks`, `ad_monetized_customers`, `ad_arpdau`, `ad_rpm`, `ad_fill_rate`, `ad_ctr`, `paywall_encounter`, `paywall_conversion`, `paywall_ltv`, `paywall_abandonment`, `app_store_save_outcomes`, `play_store_cancel_reasons`, `customer_center_survey_responses` | yes |  |
+| `view` | object | no |  |
+| `view.range` | string | no | 7d, 30d, 90d, 12m or custom. |
+| `view.start` | string | no | Custom range start, YYYY-MM-DD. |
+| `view.end` | string | no | Custom range end. |
+| `view.res` | string | no | day, week, month, quarter or year. |
+| `view.segment` | string | no |  |
+| `view.filters` | string | no | The filters parameter's JSON. |
+| `view.sel` | string | no | The selectors parameter's JSON. |
+| `view.env` | `production`, `sandbox` | no |  |
+| `view.compare` | boolean | no | Compare to the previous period. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/saved_charts" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"name":"MRR by country","chart_name":"mrr","view":{"range":"90d","res":"week","segment":"country","compare":true}}'
+```
+
+**Responses**
+
+- **201**: The saved chart.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Get a saved chart
+
+`GET /v2/projects/{project_id}/saved_charts/{saved_chart_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `saved_chart_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/saved_charts/$SAVED_CHART_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The saved chart.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Rename or update a saved chart
+
+`PATCH /v2/projects/{project_id}/saved_charts/{saved_chart_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `saved_chart_id` | string | yes |  |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | no |  |
+| `view` | object | no |  |
+| `view.range` | string | no | 7d, 30d, 90d, 12m or custom. |
+| `view.start` | string | no | Custom range start, YYYY-MM-DD. |
+| `view.end` | string | no | Custom range end. |
+| `view.res` | string | no | day, week, month, quarter or year. |
+| `view.segment` | string | no |  |
+| `view.filters` | string | no | The filters parameter's JSON. |
+| `view.sel` | string | no | The selectors parameter's JSON. |
+| `view.env` | `production`, `sandbox` | no |  |
+| `view.compare` | boolean | no | Compare to the previous period. |
+
+**Example request**
+
+```bash
+curl -s -X PATCH "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/saved_charts/$SAVED_CHART_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The saved chart.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Delete a saved chart
+
+`DELETE /v2/projects/{project_id}/saved_charts/{saved_chart_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `saved_chart_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/saved_charts/$SAVED_CHART_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deleted.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
@@ -11517,7 +11765,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls" -H "Authorization: Be
 
 `POST /v2/projects/{project_id}/paywalls` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read_write`
 
-Either `{ offering_id }` for an empty paywall on that offering, or a full draft with `components_config` and `components_localizations`. An offering has at most one paywall. Nothing reaches the SDK until it is published.
+Either `{ offering_id }` for an empty paywall on that offering, a full draft with `components_config` and `components_localizations`, or (RevenueDot extension) `{ template_id }` for a gallery template built with the offering's packages (see `GET /paywall_templates`). An offering has at most one paywall. Nothing reaches the SDK until it is published.
 
 **Path parameters**
 
@@ -11531,7 +11779,7 @@ Either `{ offering_id }` for an empty paywall on that offering, or a full draft 
 
 ```bash
 curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls" -H "Authorization: Bearer $SECRET_KEY" \
-  -H "Content-Type: application/json" -d '{"offering_id":"ofrngm2u3h89blc"}'
+  -H "Content-Type: application/json" -d '{"offering_id":"ofrngm2u3h89blc","template_id":"trial_timeline","template_options":{"app_name":"Scanner","accent_color":"#2563eb","terms_url":"https://example.com/terms","privacy_url":"https://example.com/privacy"}}'
 ```
 
 **Responses**
@@ -11701,7 +11949,7 @@ Example 200 response:
 
 `POST /v2/projects/{project_id}/paywalls/{paywall_id}/actions/publish` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read_write`
 
-The draft becomes what the SDK receives in `paywall_components` for the paywall's offering. Needs an offering and unpublished changes.
+The draft becomes what the SDK receives in `paywall_components` for the paywall's offering (and as a workflow in remote config). Needs an offering and unpublished changes, and the components must decode in the SDKs: otherwise 422 names the first problem (`POST /paywalls/validate` lists all). Locales missing a string are served the default locale's.
 
 **Path parameters**
 
@@ -11907,6 +12155,38 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/ac
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
+### List saved snapshots
+
+`GET /v2/projects/{project_id}/paywalls/{paywall_id}/versions` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `paywall_id` | string | yes | Paywall id (pw...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/versions" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: A page of snapshots (without their content).
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
 ### Save a named snapshot
 
 `POST /v2/projects/{project_id}/paywalls/{paywall_id}/versions` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read_write`
@@ -11939,6 +12219,33 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/ve
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Restore a snapshot into the draft
+
+`POST /v2/projects/{project_id}/paywalls/{paywall_id}/versions/{version_id}/actions/restore` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
+
+The snapshot becomes the draft (the revision bumps). Publish to send it to apps.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `paywall_id` | string | yes | Paywall id (pw...). |
+| `version_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/versions/$VERSION_ID/actions/restore" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The paywall with `components`.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
 ### Get a snapshot
 
@@ -12022,6 +12329,133 @@ curl -s -X PUT "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/tem
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### List the template gallery
+
+`GET /v2/projects/{project_id}/paywall_templates` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`
+
+The ten gallery layouts with the fields the dashboard filters on. Create a paywall from one with `POST /paywalls` and `template_id`. `icon_base_url` is where the built-in icons are served.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywall_templates" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The templates.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Validate paywall components
+
+`POST /v2/projects/{project_id}/paywalls/validate` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`
+
+Checks components JSON the way the SDKs decode it, without saving: `errors` stop publishing (the SDK would fail or render it wrong), `warnings` do not. With `repair: true` it first fills missing required fields and inline texts (the same repair as the AI generator) and returns the repaired JSON and what it fixed. With `offering_id`, packages are checked against the offering.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `components_config` | object | yes |  |
+| `components_localizations` | object | yes |  |
+| `default_locale` | string | no |  |
+| `offering_id` | string or null | no |  |
+| `repair` | boolean | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/validate" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"components_config":{"base":{"stack":{"type":"stack","components":[{"type":"text","text":"Go Pro"}]}}},"components_localizations":{},"repair":true}'
+```
+
+**Responses**
+
+- **200**: The result.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Whether the AI generator is available
+
+`GET /v2/projects/{project_id}/paywalls/ai` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`
+
+RevenueDot Cloud uses Workers AI. A self-hosted server needs OPENAI_API_KEY or ANTHROPIC_API_KEY; without either, `available` is false.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/ai" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The generator.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Generate a paywall with AI
+
+`POST /v2/projects/{project_id}/paywalls/generate` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
+
+Asks the language model for a paywall, repairs its answer into components the SDKs decode and returns it without saving. Save it with `POST /paywalls`. One generation every 5 seconds and 60 a day per project.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `prompt` | string | yes |  |
+| `app_name` | string | no |  |
+| `brand_colors` | array of string | no |  |
+| `offering_id` | string or null | no |  |
+| `locale` | string | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/generate" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"prompt":"A calm sleep app, explain the 7-day trial, yearly first","app_name":"Calm","brand_colors":["#0f766e"],"offering_id":"ofrngm2u3h89blc"}'
+```
+
+**Responses**
+
+- **200**: A paywall draft.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **429**: Too many requests. Retry later. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **502**: An upstream service (the store or the language model) gave no usable answer. Retry later. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
 ### List images
 
@@ -12158,7 +12592,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/fonts" -H "Authorizatio
 
 `GET /assets/{project_id}/{object_name}` · Auth: none
 
-Public and cached for a year: object names are random and never change content. The SDK reads `asset_base_url` + object name.
+Public and cached for a year (`Cache-Control: immutable`, a strong `ETag`, 304 on `If-None-Match`): object names are random and never change content. The SDK reads `asset_base_url` + object name. On Cloud repeat downloads come from Cloudflare's edge cache.
 
 **Path parameters**
 
@@ -12177,6 +12611,29 @@ curl -s "$REVENUEDOT_URL/assets/$PROJECT_ID/$OBJECT_NAME"
 
 - **200**: The file bytes with their content type.
 - **404**: No such asset.
+
+### Download a built-in paywall icon
+
+`GET /assets/icons/{file}` · Auth: none · RevenueDot extension
+
+The icons that icon and timeline components use (`base_url` + `formats.heic`). Cached for a year.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `file` | string | yes | `{name}.png` (96 × 96, white on transparent; the SDKs tint it), `.heic` and `.webp` names serve the same PNG, or `{name}.svg`. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/assets/icons/$FILE"
+```
+
+**Responses**
+
+- **200**: The image.
+- **404**: No such icon.
 
 ## Webhook integrations
 
@@ -13788,7 +14245,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/actions/ma
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
-- **503**: The store could not be reached. Retry later. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
 ### Status of a mass extension
 
@@ -13823,7 +14280,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/mass_extensions/$R
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
-- **503**: The store could not be reached. Retry later. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
 ### Setup health
 

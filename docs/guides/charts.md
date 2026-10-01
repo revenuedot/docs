@@ -118,6 +118,11 @@ RevenueDot has 42 charts in the dashboard under **Analytics > Charts**, with the
 
 Filter and segment by app, store, product, product duration, offering, country (the purchase's storefront, else the customer's last country), platform and app version; paywall charts also by paywall, and the Customer Center chart by survey option. A filter on a purchase dimension (store, product …) does not change the new-customer counts that conversion charts divide by. A segmented chart shows the five largest values, then "Other" and the total.
 
+## Compare and save charts
+
+- **Compare to previous period** draws the window of the same length that ends the day before the current one, at the same resolution, as a dashed grey line. The table gets a "Previous period" row, and each summary number shows its change. A segmented chart compares its total. Cohort tables have no comparison.
+- **Save** stores the chart with its view: the range or dates, resolution, segment, filters, selectors, sandbox switch and comparison. Saved charts are listed at the top of the chart list for everyone in the project. Opening one brings the view back; save again to update it or to save a copy. Through the API: `GET` and `POST /v2/projects/{project_id}/saved_charts`, and `PATCH` and `DELETE /v2/projects/{project_id}/saved_charts/{saved_chart_id}`.
+
 ## Use the API
 
 ```bash

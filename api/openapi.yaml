@@ -8895,7 +8895,7 @@ paths:
       tags:
         - Paywalls
       summary: Create a paywall
-      description: Either `{ offering_id }` for an empty paywall on that offering, or a full draft with `components_config` and `components_localizations`. An offering has at most one paywall. Nothing reaches the SDK until it is published.
+      description: Either `{ offering_id }` for an empty paywall on that offering, a full draft with `components_config` and `components_localizations`, or (RevenueDot extension) `{ template_id }` for a gallery template built with the offering's packages (see `GET /paywall_templates`). An offering has at most one paywall. Nothing reaches the SDK until it is published.
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -8940,8 +8940,58 @@ paths:
                   required:
                     - components_config
                     - components_localizations
+                - type: object
+                  properties:
+                    offering_id:
+                      type:
+                        - string
+                        - "null"
+                    name:
+                      type:
+                        - string
+                        - "null"
+                    template_id:
+                      type: string
+                      description: A gallery template id, such as trial_timeline.
+                    template_options:
+                      type: object
+                      properties:
+                        app_name:
+                          type: string
+                          maxLength: 80
+                        accent_color:
+                          type: string
+                          description: Hex colour.
+                        background_color:
+                          type: string
+                          description: Hex colour.
+                        text_color:
+                          type: string
+                          description: Hex colour.
+                        terms_url:
+                          type: string
+                        privacy_url:
+                          type: string
+                        image_url:
+                          type: string
+                          description: Hero image (feature_hero), for example a media asset URL.
+                        image_width:
+                          type: integer
+                        image_height:
+                          type: integer
+                        locale:
+                          type: string
+                          description: Locale of the strings, default en_US.
+                  required:
+                    - template_id
             example:
               offering_id: ofrngm2u3h89blc
+              template_id: trial_timeline
+              template_options:
+                app_name: Scanner
+                accent_color: "#2563eb"
+                terms_url: https://example.com/terms
+                privacy_url: https://example.com/privacy
       responses:
         "201":
           description: The paywall.
@@ -9528,7 +9578,7 @@ paths:
       tags:
         - Paywalls
       summary: Publish a paywall
-      description: The draft becomes what the SDK receives in `paywall_components` for the paywall's offering. Needs an offering and unpublished changes.
+      description: "The draft becomes what the SDK receives in `paywall_components` for the paywall's offering (and as a workflow in remote config). Needs an offering and unpublished changes, and the components must decode in the SDKs: otherwise 422 names the first problem (`POST /paywalls/validate` lists all). Locales missing a string are served the default locale's."
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -10386,6 +10436,85 @@ paths:
       x-scopes:
         - project_configuration:offerings:read_write
   /v2/projects/{project_id}/paywalls/{paywall_id}/versions:
+    get:
+      operationId: listPaywallVersions
+      tags:
+        - Paywalls
+      summary: List saved snapshots
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: paywall_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Paywall id (pw...).
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/StartingAfter"
+      responses:
+        "200":
+          description: A page of snapshots (without their content).
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - paywall_version
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        revision:
+                          type: integer
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: When it was taken. Epoch milliseconds.
+                      required:
+                        - object
+                        - id
+                        - name
+                        - revision
+                        - created_at
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read
+      x-revenuedot-extension: true
     post:
       operationId: createPaywallVersion
       tags:
@@ -10496,6 +10625,167 @@ paths:
       x-source: routes/v2/paywalls.ts
       x-scopes:
         - project_configuration:offerings:read_write
+  /v2/projects/{project_id}/paywalls/{paywall_id}/versions/{version_id}/actions/restore:
+    post:
+      operationId: restorePaywallVersion
+      tags:
+        - Paywalls
+      summary: Restore a snapshot into the draft
+      description: The snapshot becomes the draft (the revision bumps). Publish to send it to apps.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: paywall_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Paywall id (pw...).
+        - name: version_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The paywall with `components`.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - paywall
+                  id:
+                    type: string
+                  name:
+                    type:
+                      - string
+                      - "null"
+                  offering_id:
+                    type:
+                      - string
+                      - "null"
+                    description: The offering whose SDK response carries this paywall.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: When it was created. Epoch milliseconds.
+                  published_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When the current published version went live. Epoch milliseconds, or null.
+                  automatically_scale_font_size:
+                    type: boolean
+                  revision:
+                    type: integer
+                    description: Bumps on every draft write; send it back to update.
+                  offering:
+                    $ref: "#/components/schemas/Offering"
+                    description: With `expand=offering`.
+                  components:
+                    type: object
+                    properties:
+                      published:
+                        oneOf:
+                          - type: object
+                            properties:
+                              revision:
+                                type:
+                                  - integer
+                                  - "null"
+                              components_config:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                              default_locale:
+                                type:
+                                  - string
+                                  - "null"
+                              components_localizations:
+                                type: object
+                                additionalProperties:
+                                  type: object
+                                  additionalProperties: true
+                              automatically_scale_font_size:
+                                type: boolean
+                              state_declarations:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                            required:
+                              - revision
+                              - components_config
+                              - default_locale
+                              - components_localizations
+                              - automatically_scale_font_size
+                              - state_declarations
+                          - type: "null"
+                      draft:
+                        oneOf:
+                          - type: object
+                            properties:
+                              revision:
+                                type:
+                                  - integer
+                                  - "null"
+                              components_config:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                              default_locale:
+                                type:
+                                  - string
+                                  - "null"
+                              components_localizations:
+                                type: object
+                                additionalProperties:
+                                  type: object
+                                  additionalProperties: true
+                              automatically_scale_font_size:
+                                type: boolean
+                              state_declarations:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                            required:
+                              - revision
+                              - components_config
+                              - default_locale
+                              - components_localizations
+                              - automatically_scale_font_size
+                              - state_declarations
+                          - type: "null"
+                    description: With `expand=components`. `draft` is null when nothing changed since publishing.
+                required:
+                  - object
+                  - id
+                  - name
+                  - offering_id
+                  - created_at
+                  - published_at
+                  - automatically_scale_font_size
+                  - revision
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+      x-revenuedot-extension: true
   /v2/projects/{project_id}/paywalls/{paywall_id}/versions/{version_id}:
     get:
       operationId: getPaywallVersion
@@ -10709,6 +10999,395 @@ paths:
           $ref: "#/components/responses/V2Error403"
         "404":
           $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/paywall_templates:
+    get:
+      operationId: listPaywallTemplates
+      tags:
+        - Paywalls
+      summary: List the template gallery
+      description: The ten gallery layouts with the fields the dashboard filters on. Create a paywall from one with `POST /paywalls` and `template_id`. `icon_base_url` is where the built-in icons are served.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: The templates.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - paywall_template
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        description:
+                          type: string
+                        screens:
+                          type: integer
+                          description: "Pages before the plans: 1, or more for swipeable pages."
+                        purchase_method:
+                          type: string
+                          enum:
+                            - in_app
+                            - web
+                        packages:
+                          type: integer
+                          description: Packages the layout shows.
+                        tiers:
+                          type: integer
+                        tags:
+                          type: array
+                          items:
+                            type: string
+                        evidence:
+                          type: string
+                          description: The measured result the layout is built on.
+                      required:
+                        - object
+                        - id
+                        - name
+                        - description
+                        - screens
+                        - purchase_method
+                        - packages
+                        - tiers
+                        - tags
+                        - evidence
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                  url:
+                    type: string
+                  icon_base_url:
+                    type: string
+                required:
+                  - object
+                  - items
+                  - icon_base_url
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/paywalls/validate:
+    post:
+      operationId: validatePaywall
+      tags:
+        - Paywalls
+      summary: Validate paywall components
+      description: "Checks components JSON the way the SDKs decode it, without saving: `errors` stop publishing (the SDK would fail or render it wrong), `warnings` do not. With `repair: true` it first fills missing required fields and inline texts (the same repair as the AI generator) and returns the repaired JSON and what it fixed. With `offering_id`, packages are checked against the offering."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                components_config:
+                  type: object
+                  additionalProperties: true
+                components_localizations:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    additionalProperties: true
+                default_locale:
+                  type: string
+                offering_id:
+                  type:
+                    - string
+                    - "null"
+                repair:
+                  type: boolean
+              required:
+                - components_config
+                - components_localizations
+            example:
+              components_config:
+                base:
+                  stack:
+                    type: stack
+                    components:
+                      - type: text
+                        text: Go Pro
+              components_localizations: {}
+              repair: true
+      responses:
+        "200":
+          description: The result.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - paywall_validation
+                  valid:
+                    type: boolean
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        path:
+                          type: string
+                          description: JSON path, such as components_config.base.stack.components[2].font_weight.
+                        message:
+                          type: string
+                        component_id:
+                          type: string
+                          description: The component the problem is in.
+                      required:
+                        - path
+                        - message
+                  warnings:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        path:
+                          type: string
+                          description: JSON path, such as components_config.base.stack.components[2].font_weight.
+                        message:
+                          type: string
+                        component_id:
+                          type: string
+                          description: The component the problem is in.
+                      required:
+                        - path
+                        - message
+                  fixes:
+                    type: array
+                    items:
+                      type: string
+                  components_config:
+                    type: object
+                    additionalProperties: true
+                  components_localizations:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      additionalProperties: true
+                  default_locale:
+                    type: string
+                required:
+                  - object
+                  - valid
+                  - errors
+                  - warnings
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/paywalls/ai:
+    get:
+      operationId: getPaywallAi
+      tags:
+        - Paywalls
+      summary: Whether the AI generator is available
+      description: RevenueDot Cloud uses Workers AI. A self-hosted server needs OPENAI_API_KEY or ANTHROPIC_API_KEY; without either, `available` is false.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: The generator.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - paywall_ai
+                  available:
+                    type: boolean
+                  provider:
+                    type:
+                      - string
+                      - "null"
+                  model:
+                    type:
+                      - string
+                      - "null"
+                  max_prompt_length:
+                    type: integer
+                required:
+                  - object
+                  - available
+                  - provider
+                  - model
+                  - max_prompt_length
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/paywalls/generate:
+    post:
+      operationId: generatePaywall
+      tags:
+        - Paywalls
+      summary: Generate a paywall with AI
+      description: Asks the language model for a paywall, repairs its answer into components the SDKs decode and returns it without saving. Save it with `POST /paywalls`. One generation every 5 seconds and 60 a day per project.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                prompt:
+                  type: string
+                  minLength: 3
+                  maxLength: 2000
+                app_name:
+                  type: string
+                brand_colors:
+                  type: array
+                  items:
+                    type: string
+                offering_id:
+                  type:
+                    - string
+                    - "null"
+                locale:
+                  type: string
+              required:
+                - prompt
+            example:
+              prompt: A calm sleep app, explain the 7-day trial, yearly first
+              app_name: Calm
+              brand_colors:
+                - "#0f766e"
+              offering_id: ofrngm2u3h89blc
+      responses:
+        "200":
+          description: A paywall draft.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - paywall_generation
+                  name:
+                    type:
+                      - string
+                      - "null"
+                  components_config:
+                    type: object
+                    additionalProperties: true
+                  components_localizations:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      additionalProperties: true
+                  default_locale:
+                    type: string
+                  fixes:
+                    type: array
+                    items:
+                      type: string
+                  warnings:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        path:
+                          type: string
+                          description: JSON path, such as components_config.base.stack.components[2].font_weight.
+                        message:
+                          type: string
+                        component_id:
+                          type: string
+                          description: The component the problem is in.
+                      required:
+                        - path
+                        - message
+                  provider:
+                    type: string
+                  model:
+                    type: string
+                required:
+                  - object
+                  - components_config
+                  - components_localizations
+                  - default_locale
+                  - fixes
+                  - warnings
+                  - provider
+                  - model
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "429":
+          $ref: "#/components/responses/V2Error429"
+        "502":
+          $ref: "#/components/responses/V2Error502"
+        "503":
+          $ref: "#/components/responses/V2Error503"
       x-source: routes/v2/paywalls.ts
       x-scopes:
         - project_configuration:offerings:read_write
@@ -11137,7 +11816,7 @@ paths:
       tags:
         - Paywalls
       summary: Download a paywall image or font
-      description: "Public and cached for a year: object names are random and never change content. The SDK reads `asset_base_url` + object name."
+      description: "Public and cached for a year (`Cache-Control: immutable`, a strong `ETag`, 304 on `If-None-Match`): object names are random and never change content. The SDK reads `asset_base_url` + object name. On Cloud repeat downloads come from Cloudflare's edge cache."
       security: []
       parameters:
         - $ref: "#/components/parameters/ProjectId"
@@ -11163,6 +11842,39 @@ paths:
                   message:
                     type: string
       x-source: routes/assets.ts
+  /assets/icons/{file}:
+    get:
+      operationId: getPaywallIcon
+      tags:
+        - Paywalls
+      summary: Download a built-in paywall icon
+      description: The icons that icon and timeline components use (`base_url` + `formats.heic`). Cached for a year.
+      security: []
+      parameters:
+        - name: file
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "`{name}.png` (96 × 96, white on transparent; the SDKs tint it), `.heic` and `.webp` names serve the same PNG, or `{name}.svg`."
+      responses:
+        "200":
+          description: The image.
+        "404":
+          description: No such icon.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/assets.ts
+      x-revenuedot-extension: true
   /v2/projects/{project_id}/audiences:
     get:
       operationId: listAudiences
@@ -14365,6 +15077,560 @@ paths:
       x-source: routes/v2/charts.ts
       x-scopes:
         - charts_metrics:charts:read
+  /v2/projects/{project_id}/saved_charts:
+    get:
+      operationId: listSavedCharts
+      tags:
+        - Charts
+      summary: List saved charts
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/StartingAfter"
+      responses:
+        "200":
+          description: A page of saved charts.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - saved_chart
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        chart_name:
+                          type: string
+                        view:
+                          type: object
+                          properties:
+                            range:
+                              type: string
+                              description: 7d, 30d, 90d, 12m or custom.
+                            start:
+                              type: string
+                              description: Custom range start, YYYY-MM-DD.
+                            end:
+                              type: string
+                              description: Custom range end.
+                            res:
+                              type: string
+                              description: day, week, month, quarter or year.
+                            segment:
+                              type: string
+                            filters:
+                              type: string
+                              description: The filters parameter's JSON.
+                            sel:
+                              type: string
+                              description: The selectors parameter's JSON.
+                            env:
+                              type: string
+                              enum:
+                                - production
+                                - sandbox
+                            compare:
+                              type: boolean
+                              description: Compare to the previous period.
+                        created_at:
+                          type: integer
+                        updated_at:
+                          type: integer
+                      required:
+                        - object
+                        - id
+                        - name
+                        - chart_name
+                        - view
+                        - created_at
+                        - updated_at
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/saved-charts.ts
+      x-scopes:
+        - charts_metrics:charts:read
+      x-revenuedot-extension: true
+    post:
+      operationId: createSavedChart
+      tags:
+        - Charts
+      summary: Save a chart view
+      description: A named chart with the dashboard view that produced it (range, dates, resolution, segment, filters, selectors, environment, compare). Up to 200 per project.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 120
+                chart_name:
+                  type: string
+                  enum:
+                    - actives
+                    - actives_movement
+                    - actives_new
+                    - arr
+                    - churn
+                    - cohort_explorer
+                    - conversion_to_paying
+                    - customers_new
+                    - initial_conversion
+                    - ltv_per_customer
+                    - ltv_per_paying_customer
+                    - mrr
+                    - mrr_movement
+                    - prediction_explorer
+                    - refund_rate
+                    - refund_request
+                    - refunds
+                    - revenue
+                    - subscription_retention
+                    - subscription_status
+                    - trials
+                    - trials_movement
+                    - trials_new
+                    - customers_active
+                    - trial_conversion
+                    - trial_conversion_rate
+                    - trial_cancellation
+                    - non-subscription_purchases
+                    - ad_revenue
+                    - ad_impressions
+                    - ad_clicks
+                    - ad_monetized_customers
+                    - ad_arpdau
+                    - ad_rpm
+                    - ad_fill_rate
+                    - ad_ctr
+                    - paywall_encounter
+                    - paywall_conversion
+                    - paywall_ltv
+                    - paywall_abandonment
+                    - app_store_save_outcomes
+                    - play_store_cancel_reasons
+                    - customer_center_survey_responses
+                view:
+                  type: object
+                  properties:
+                    range:
+                      type: string
+                      description: 7d, 30d, 90d, 12m or custom.
+                    start:
+                      type: string
+                      description: Custom range start, YYYY-MM-DD.
+                    end:
+                      type: string
+                      description: Custom range end.
+                    res:
+                      type: string
+                      description: day, week, month, quarter or year.
+                    segment:
+                      type: string
+                    filters:
+                      type: string
+                      description: The filters parameter's JSON.
+                    sel:
+                      type: string
+                      description: The selectors parameter's JSON.
+                    env:
+                      type: string
+                      enum:
+                        - production
+                        - sandbox
+                    compare:
+                      type: boolean
+                      description: Compare to the previous period.
+              required:
+                - name
+                - chart_name
+            example:
+              name: MRR by country
+              chart_name: mrr
+              view:
+                range: 90d
+                res: week
+                segment: country
+                compare: true
+      responses:
+        "201":
+          description: The saved chart.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - saved_chart
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  chart_name:
+                    type: string
+                  view:
+                    type: object
+                    properties:
+                      range:
+                        type: string
+                        description: 7d, 30d, 90d, 12m or custom.
+                      start:
+                        type: string
+                        description: Custom range start, YYYY-MM-DD.
+                      end:
+                        type: string
+                        description: Custom range end.
+                      res:
+                        type: string
+                        description: day, week, month, quarter or year.
+                      segment:
+                        type: string
+                      filters:
+                        type: string
+                        description: The filters parameter's JSON.
+                      sel:
+                        type: string
+                        description: The selectors parameter's JSON.
+                      env:
+                        type: string
+                        enum:
+                          - production
+                          - sandbox
+                      compare:
+                        type: boolean
+                        description: Compare to the previous period.
+                  created_at:
+                    type: integer
+                  updated_at:
+                    type: integer
+                required:
+                  - object
+                  - id
+                  - name
+                  - chart_name
+                  - view
+                  - created_at
+                  - updated_at
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/saved-charts.ts
+      x-scopes:
+        - charts_metrics:charts:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/saved_charts/{saved_chart_id}:
+    get:
+      operationId: getSavedChart
+      tags:
+        - Charts
+      summary: Get a saved chart
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: saved_chart_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The saved chart.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - saved_chart
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  chart_name:
+                    type: string
+                  view:
+                    type: object
+                    properties:
+                      range:
+                        type: string
+                        description: 7d, 30d, 90d, 12m or custom.
+                      start:
+                        type: string
+                        description: Custom range start, YYYY-MM-DD.
+                      end:
+                        type: string
+                        description: Custom range end.
+                      res:
+                        type: string
+                        description: day, week, month, quarter or year.
+                      segment:
+                        type: string
+                      filters:
+                        type: string
+                        description: The filters parameter's JSON.
+                      sel:
+                        type: string
+                        description: The selectors parameter's JSON.
+                      env:
+                        type: string
+                        enum:
+                          - production
+                          - sandbox
+                      compare:
+                        type: boolean
+                        description: Compare to the previous period.
+                  created_at:
+                    type: integer
+                  updated_at:
+                    type: integer
+                required:
+                  - object
+                  - id
+                  - name
+                  - chart_name
+                  - view
+                  - created_at
+                  - updated_at
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/saved-charts.ts
+      x-scopes:
+        - charts_metrics:charts:read
+      x-revenuedot-extension: true
+    patch:
+      operationId: updateSavedChart
+      tags:
+        - Charts
+      summary: Rename or update a saved chart
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: saved_chart_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 120
+                view:
+                  type: object
+                  properties:
+                    range:
+                      type: string
+                      description: 7d, 30d, 90d, 12m or custom.
+                    start:
+                      type: string
+                      description: Custom range start, YYYY-MM-DD.
+                    end:
+                      type: string
+                      description: Custom range end.
+                    res:
+                      type: string
+                      description: day, week, month, quarter or year.
+                    segment:
+                      type: string
+                    filters:
+                      type: string
+                      description: The filters parameter's JSON.
+                    sel:
+                      type: string
+                      description: The selectors parameter's JSON.
+                    env:
+                      type: string
+                      enum:
+                        - production
+                        - sandbox
+                    compare:
+                      type: boolean
+                      description: Compare to the previous period.
+      responses:
+        "200":
+          description: The saved chart.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - saved_chart
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  chart_name:
+                    type: string
+                  view:
+                    type: object
+                    properties:
+                      range:
+                        type: string
+                        description: 7d, 30d, 90d, 12m or custom.
+                      start:
+                        type: string
+                        description: Custom range start, YYYY-MM-DD.
+                      end:
+                        type: string
+                        description: Custom range end.
+                      res:
+                        type: string
+                        description: day, week, month, quarter or year.
+                      segment:
+                        type: string
+                      filters:
+                        type: string
+                        description: The filters parameter's JSON.
+                      sel:
+                        type: string
+                        description: The selectors parameter's JSON.
+                      env:
+                        type: string
+                        enum:
+                          - production
+                          - sandbox
+                      compare:
+                        type: boolean
+                        description: Compare to the previous period.
+                  created_at:
+                    type: integer
+                  updated_at:
+                    type: integer
+                required:
+                  - object
+                  - id
+                  - name
+                  - chart_name
+                  - view
+                  - created_at
+                  - updated_at
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/saved-charts.ts
+      x-scopes:
+        - charts_metrics:charts:read_write
+      x-revenuedot-extension: true
+    delete:
+      operationId: deleteSavedChart
+      tags:
+        - Charts
+      summary: Delete a saved chart
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: saved_chart_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - saved_chart
+                  id:
+                    type: string
+                  deleted_at:
+                    type: integer
+                required:
+                  - object
+                  - id
+                  - deleted_at
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/saved-charts.ts
+      x-scopes:
+        - charts_metrics:charts:read_write
+      x-revenuedot-extension: true
   /v2/projects/{project_id}/integrations/catalog:
     get:
       operationId: listIntegrationTypes
@@ -25907,8 +27173,20 @@ components:
             message: This project sent too many invites today. Try again tomorrow.
             doc_url: https://revenuedot.app/docs/api/errors#rate-limit-error
             retryable: true
+    V2Error502:
+      description: An upstream service (the store or the language model) gave no usable answer. Retry later.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/V2Error"
+          example:
+            object: error
+            type: server_error
+            message: The language model did not answer. Try again.
+            doc_url: https://revenuedot.app/docs/api/errors#server-error
+            retryable: true
     V2Error503:
-      description: The store could not be reached. Retry later.
+      description: The store could not be reached, or the feature is not configured on this server.
       content:
         application/json:
           schema:

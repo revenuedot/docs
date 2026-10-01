@@ -32,6 +32,17 @@ const media = obj({
 }, ["object", "id", "object_name", "original_name", "original_size", "original_width", "original_height", "formats", "alt_text", "is_decorative", "asset_base_url", "asset_type", "video_metadata", "transcoding_status"]);
 const font = obj({ object: en(["font"]), id: str(), name: str("PostScript name."), family_name: str(), style: en(["normal", "italic"]), weight: int(), url: str(), font_key: str("Use it in a paywall's `font_name`; the SDK finds the file through `ui_config.app.fonts`.") },
   ["object", "id", "name", "family_name", "style", "weight", "url", "font_key"]);
+const templateOptions = obj({
+  app_name: str(undefined, { maxLength: 80 }), accent_color: str("Hex colour."), background_color: str("Hex colour."), text_color: str("Hex colour."),
+  terms_url: str(), privacy_url: str(), image_url: str("Hero image (feature_hero), for example a media asset URL."), image_width: int(), image_height: int(),
+  locale: str("Locale of the strings, default en_US."),
+});
+const template = obj({
+  object: en(["paywall_template"]), id: str(), name: str(), description: str(), screens: int("Pages before the plans: 1, or more for swipeable pages."),
+  purchase_method: en(["in_app", "web"]), packages: int("Packages the layout shows."), tiers: int(), tags: arr(str()), evidence: str("The measured result the layout is built on."),
+}, ["object", "id", "name", "description", "screens", "purchase_method", "packages", "tiers", "tags", "evidence"]);
+const issue = obj({ path: str("JSON path, such as components_config.base.stack.components[2].font_weight."), message: str(), component_id: str("The component the problem is in.") }, ["path", "message"]);
+const docProps = { components_config: anyObj, components_localizations: { type: "object", additionalProperties: anyObj }, default_locale: str() };
 const upload = (types, max) => body(obj({ filename: str(undefined, { minLength: 1, maxLength: 255 }), content_type: en(types), file_data_base64: str("Base64 file bytes.", { minLength: 1, maxLength: max }) }, ["filename", "content_type", "file_data_base64"]));
 
 export const paywallPaths = {
@@ -39,8 +50,12 @@ export const paywallPaths = {
     get: op({ id: "listPaywalls", tag: "Paywalls", summary: "List paywalls", security: SECRET, source: R, scopes: READ, parameters: [project, ...page, { name: "expand", in: "query", schema: arr(en(["items.offering"])), style: "form", explode: true }],
       responses: { 200: ok("A page of paywalls.", listOf(paywall)), ...E(400, 404) } }),
     post: op({ id: "createPaywall", tag: "Paywalls", summary: "Create a paywall", security: SECRET, source: R, scopes: WRITE, parameters: [project],
-      description: "Either `{ offering_id }` for an empty paywall on that offering, or a full draft with `components_config` and `components_localizations`. An offering has at most one paywall. Nothing reaches the SDK until it is published.",
-      requestBody: body({ anyOf: [obj({ offering_id: str(), automatically_scale_font_size: bool() }, ["offering_id"]), obj({ offering_id: nstr(), name: nstr(), components_config: anyObj, components_localizations: { type: "object", additionalProperties: anyObj }, default_locale: str(), automatically_scale_font_size: bool() }, ["components_config", "components_localizations"])] }, { offering_id: "ofrngm2u3h89blc" }),
+      description: "Either `{ offering_id }` for an empty paywall on that offering, a full draft with `components_config` and `components_localizations`, or (RevenueDot extension) `{ template_id }` for a gallery template built with the offering's packages (see `GET /paywall_templates`). An offering has at most one paywall. Nothing reaches the SDK until it is published.",
+      requestBody: body({ anyOf: [
+        obj({ offering_id: str(), automatically_scale_font_size: bool() }, ["offering_id"]),
+        obj({ offering_id: nstr(), name: nstr(), components_config: anyObj, components_localizations: { type: "object", additionalProperties: anyObj }, default_locale: str(), automatically_scale_font_size: bool() }, ["components_config", "components_localizations"]),
+        obj({ offering_id: nstr(), name: nstr(), template_id: str("A gallery template id, such as trial_timeline."), template_options: templateOptions }, ["template_id"]),
+      ] }, { offering_id: "ofrngm2u3h89blc", template_id: "trial_timeline", template_options: { app_name: "Scanner", accent_color: "#2563eb", terms_url: "https://example.com/terms", privacy_url: "https://example.com/privacy" } }),
       responses: { 201: ok("The paywall.", paywall, example), ...v2Errors(400, 401, 403, 404, 409) } }),
   },
   [`${P}/paywalls/{paywall_id}`]: {
@@ -55,7 +70,7 @@ export const paywallPaths = {
   },
   [`${P}/paywalls/{paywall_id}/actions/publish`]: {
     post: op({ id: "publishPaywall", tag: "Paywalls", summary: "Publish a paywall", security: SECRET, source: R, scopes: WRITE, parameters: [project, pw],
-      description: "The draft becomes what the SDK receives in `paywall_components` for the paywall's offering. Needs an offering and unpublished changes.", responses: { 200: ok("The paywall.", paywall, example), ...E(404, 422) } }),
+      description: "The draft becomes what the SDK receives in `paywall_components` for the paywall's offering (and as a workflow in remote config). Needs an offering and unpublished changes, and the components must decode in the SDKs: otherwise 422 names the first problem (`POST /paywalls/validate` lists all). Locales missing a string are served the default locale's.", responses: { 200: ok("The paywall.", paywall, example), ...E(404, 422) } }),
   },
   [`${P}/paywalls/{paywall_id}/actions/unpublish`]: {
     post: op({ id: "unpublishPaywall", tag: "Paywalls", summary: "Unpublish a paywall", security: SECRET, source: R, scopes: WRITE, parameters: [project, pw],
@@ -75,8 +90,14 @@ export const paywallPaths = {
       responses: { 201: ok("The new paywall.", paywall), ...v2Errors(400, 401, 403, 404, 409) } }),
   },
   [`${P}/paywalls/{paywall_id}/versions`]: {
+    get: op({ id: "listPaywallVersions", tag: "Paywalls", summary: "List saved snapshots", security: SECRET, source: R, extension: true, scopes: READ, parameters: [project, pw, ...page],
+      responses: { 200: ok("A page of snapshots (without their content).", listOf(obj({ object: en(["paywall_version"]), id: str(), name: str(), revision: int(), created_at: ms("When it was taken.") }, ["object", "id", "name", "revision", "created_at"]))), ...E(400, 404) } }),
     post: op({ id: "createPaywallVersion", tag: "Paywalls", summary: "Save a named snapshot", security: SECRET, source: R, scopes: WRITE, parameters: [project, pw],
       requestBody: body(obj({ name: str(undefined, { minLength: 1, maxLength: 255 }) }, ["name"]), { name: "Before the summer test" }), responses: { 201: ok("The snapshot.", versionOut), ...v2Errors(400, 401, 403, 404, 422) } }),
+  },
+  [`${P}/paywalls/{paywall_id}/versions/{version_id}/actions/restore`]: {
+    post: op({ id: "restorePaywallVersion", tag: "Paywalls", summary: "Restore a snapshot into the draft", security: SECRET, source: R, extension: true, scopes: WRITE, parameters: [project, pw, { name: "version_id", in: "path", required: true, schema: str() }],
+      description: "The snapshot becomes the draft (the revision bumps). Publish to send it to apps.", responses: { 200: ok("The paywall with `components`.", paywall), ...E(404) } }),
   },
   [`${P}/paywalls/{paywall_id}/versions/{version_id}`]: {
     get: op({ id: "getPaywallVersion", tag: "Paywalls", summary: "Get a snapshot", security: SECRET, source: R, scopes: READ, parameters: [project, pw, { name: "version_id", in: "path", required: true, schema: str() }],
@@ -89,6 +110,28 @@ export const paywallPaths = {
     put: op({ id: "setPaywallTemplate", tag: "Paywalls", summary: "Store the template form of a paywall", security: SECRET, source: R, extension: true, scopes: WRITE, parameters: [project, pw],
       requestBody: body(obj({ template: nObj }, ["template"]), { template: { template: "classic", headline: "Unlock everything" } }),
       responses: { 200: ok("The form.", obj({ object: en(["paywall_template"]), paywall_id: str(), template: nObj }, ["object", "paywall_id", "template"])), ...v2Errors(400, 401, 403, 404) } }),
+  },
+  [`${P}/paywall_templates`]: {
+    get: op({ id: "listPaywallTemplates", tag: "Paywalls", summary: "List the template gallery", security: SECRET, source: R, extension: true, scopes: READ, parameters: [project],
+      description: "The ten gallery layouts with the fields the dashboard filters on. Create a paywall from one with `POST /paywalls` and `template_id`. `icon_base_url` is where the built-in icons are served.",
+      responses: { 200: ok("The templates.", obj({ object: en(["list"]), items: arr(template), next_page: nstr(), url: str(), icon_base_url: str() }, ["object", "items", "icon_base_url"])), ...E(404) } }),
+  },
+  [`${P}/paywalls/validate`]: {
+    post: op({ id: "validatePaywall", tag: "Paywalls", summary: "Validate paywall components", security: SECRET, source: R, extension: true, scopes: READ, parameters: [project],
+      description: "Checks components JSON the way the SDKs decode it, without saving: `errors` stop publishing (the SDK would fail or render it wrong), `warnings` do not. With `repair: true` it first fills missing required fields and inline texts (the same repair as the AI generator) and returns the repaired JSON and what it fixed. With `offering_id`, packages are checked against the offering.",
+      requestBody: body(obj({ ...docProps, offering_id: nstr(), repair: bool() }, ["components_config", "components_localizations"]), { components_config: { base: { stack: { type: "stack", components: [{ type: "text", text: "Go Pro" }] } } }, components_localizations: {}, repair: true }),
+      responses: { 200: ok("The result.", obj({ object: en(["paywall_validation"]), valid: bool(), errors: arr(issue), warnings: arr(issue), fixes: arr(str()), ...docProps }, ["object", "valid", "errors", "warnings"])), ...v2Errors(400, 401, 403, 404) } }),
+  },
+  [`${P}/paywalls/ai`]: {
+    get: op({ id: "getPaywallAi", tag: "Paywalls", summary: "Whether the AI generator is available", security: SECRET, source: R, extension: true, scopes: READ, parameters: [project],
+      description: "RevenueDot Cloud uses Workers AI. A self-hosted server needs OPENAI_API_KEY or ANTHROPIC_API_KEY; without either, `available` is false.",
+      responses: { 200: ok("The generator.", obj({ object: en(["paywall_ai"]), available: bool(), provider: nstr(), model: nstr(), max_prompt_length: int() }, ["object", "available", "provider", "model", "max_prompt_length"])), ...E(404) } }),
+  },
+  [`${P}/paywalls/generate`]: {
+    post: op({ id: "generatePaywall", tag: "Paywalls", summary: "Generate a paywall with AI", security: SECRET, source: R, extension: true, scopes: WRITE, parameters: [project],
+      description: "Asks the language model for a paywall, repairs its answer into components the SDKs decode and returns it without saving. Save it with `POST /paywalls`. One generation every 5 seconds and 60 a day per project.",
+      requestBody: body(obj({ prompt: str(undefined, { minLength: 3, maxLength: 2000 }), app_name: str(), brand_colors: arr(str()), offering_id: nstr(), locale: str() }, ["prompt"]), { prompt: "A calm sleep app, explain the 7-day trial, yearly first", app_name: "Calm", brand_colors: ["#0f766e"], offering_id: "ofrngm2u3h89blc" }),
+      responses: { 200: ok("A paywall draft.", obj({ object: en(["paywall_generation"]), name: nstr(), ...docProps, fixes: arr(str()), warnings: arr(issue), provider: str(), model: str() }, ["object", "components_config", "components_localizations", "default_locale", "fixes", "warnings", "provider", "model"])), ...v2Errors(400, 401, 403, 404, 429, 502, 503) } }),
   },
   [`${P}/media_assets`]: {
     get: op({ id: "listMediaAssets", tag: "Paywalls", summary: "List images", security: SECRET, source: R, scopes: READ, parameters: [project, ...page], responses: { 200: ok("A page of images.", listOf(media)), ...E(400, 404) } }),
@@ -104,7 +147,13 @@ export const paywallPaths = {
   "/assets/{project_id}/{object_name}": {
     get: op({ id: "getAsset", tag: "Paywalls", summary: "Download a paywall image or font", security: NONE, source: "routes/assets.ts",
       parameters: [project, { name: "object_name", in: "path", required: true, schema: str() }],
-      description: "Public and cached for a year: object names are random and never change content. The SDK reads `asset_base_url` + object name.",
+      description: "Public and cached for a year (`Cache-Control: immutable`, a strong `ETag`, 304 on `If-None-Match`): object names are random and never change content. The SDK reads `asset_base_url` + object name. On Cloud repeat downloads come from Cloudflare's edge cache.",
       responses: { 200: { description: "The file bytes with their content type." }, 404: ok("No such asset.", obj({ object: str(), type: str(), message: str() })) } }),
+  },
+  "/assets/icons/{file}": {
+    get: op({ id: "getPaywallIcon", tag: "Paywalls", summary: "Download a built-in paywall icon", security: NONE, source: "routes/assets.ts", extension: true,
+      parameters: [{ name: "file", in: "path", required: true, schema: str(), description: "`{name}.png` (96 × 96, white on transparent; the SDKs tint it), `.heic` and `.webp` names serve the same PNG, or `{name}.svg`." }],
+      description: "The icons that icon and timeline components use (`base_url` + `formats.heic`). Cached for a year.",
+      responses: { 200: { description: "The image." }, 404: ok("No such icon.", obj({ object: str(), type: str(), message: str() })) } }),
   },
 };
