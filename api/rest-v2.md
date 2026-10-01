@@ -13,7 +13,7 @@ RevenueDot-only endpoints are on [Extensions](extensions.md).
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (89)
+## Operations on this page (106)
 
 - **Projects**: [List projects](#list-projects), [Create a project](#create-a-project)
 - **Apps**: [List apps](#list-apps), [Create an app](#create-an-app), [Get an app](#get-an-app), [Update an app and its store credentials](#update-an-app-and-its-store-credentials), [Delete an app](#delete-an-app), [Get an app's public SDK key](#get-an-apps-public-sdk-key), [Get a StoreKit configuration file](#get-a-storekit-configuration-file)
@@ -27,6 +27,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Metrics**: [Overview metrics](#overview-metrics), [Revenue over a date range](#revenue-over-a-date-range)
 - **In-app currencies**: [List in-app currencies](#list-in-app-currencies), [Create an in-app currency](#create-an-in-app-currency), [Get an in-app currency](#get-an-in-app-currency), [Update an in-app currency](#update-an-in-app-currency), [Delete an in-app currency](#delete-an-in-app-currency), [Archive an in-app currency](#archive-an-in-app-currency), [Unarchive an in-app currency](#unarchive-an-in-app-currency), [List a customer's balances](#list-a-customers-balances), [Credit or spend in-app currency](#credit-or-spend-in-app-currency), [Change a balance without a ledger entry](#change-a-balance-without-a-ledger-entry)
 - **Audit log**: [List audit log entries](#list-audit-log-entries)
+- **Paywalls**: [List paywalls](#list-paywalls), [Create a paywall](#create-a-paywall), [Get a paywall](#get-a-paywall), [Update a paywall's draft](#update-a-paywalls-draft), [Delete a paywall](#delete-a-paywall), [Publish a paywall](#publish-a-paywall), [Unpublish a paywall](#unpublish-a-paywall), [Attach an offering to a paywall](#attach-an-offering-to-a-paywall), [Detach the offering from a paywall](#detach-the-offering-from-a-paywall), [Duplicate a paywall](#duplicate-a-paywall), [Save a named snapshot](#save-a-named-snapshot), [Get a snapshot](#get-a-snapshot), [List images](#list-images), [Upload an image](#upload-an-image), [List fonts](#list-fonts), [Upload a font](#upload-a-font), [Download a paywall image or font](#download-a-paywall-image-or-font)
 - **Webhook integrations**: [List webhooks](#list-webhooks), [Create a webhook](#create-a-webhook), [Get a webhook](#get-a-webhook), [Update a webhook](#update-a-webhook), [Delete a webhook](#delete-a-webhook)
 - **Collaborators**: [List collaborators](#list-collaborators)
 
@@ -3262,6 +3263,649 @@ Example 200 response:
   "url": "/v2/projects/{project_id}/audit_logs"
 }
 ```
+
+## Paywalls
+
+Paywall components the SDK renders, their publishing and versions, and the images and fonts they use.
+
+### List paywalls
+
+`GET /v2/projects/{project_id}/paywalls` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+| `expand` | array of `items.offering` | no |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: A page of paywalls.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Create a paywall
+
+`POST /v2/projects/{project_id}/paywalls` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read_write`
+
+Either `{ offering_id }` for an empty paywall on that offering, or a full draft with `components_config` and `components_localizations`. An offering has at most one paywall. Nothing reaches the SDK until it is published.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"offering_id":"ofrngm2u3h89blc"}'
+```
+
+**Responses**
+
+- **201**: The paywall.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
+
+Example 201 response:
+
+```json
+{
+  "object": "paywall",
+  "id": "pw1a2b3c4d5e6f7g8",
+  "name": "Go Pro",
+  "offering_id": "ofrngm2u3h89blc",
+  "created_at": 1790800901115,
+  "published_at": 1790801342625,
+  "automatically_scale_font_size": true,
+  "revision": 3
+}
+```
+
+### Get a paywall
+
+`GET /v2/projects/{project_id}/paywalls/{paywall_id}` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `paywall_id` | string | yes | Paywall id (pw...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `expand` | array of `offering`, `components` | no |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The paywall.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "paywall",
+  "id": "pw1a2b3c4d5e6f7g8",
+  "name": "Go Pro",
+  "offering_id": "ofrngm2u3h89blc",
+  "created_at": 1790800901115,
+  "published_at": 1790801342625,
+  "automatically_scale_font_size": true,
+  "revision": 3
+}
+```
+
+### Update a paywall's draft
+
+`PATCH /v2/projects/{project_id}/paywalls/{paywall_id}` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read_write`
+
+Send the `revision` you read. A different revision answers 409 so two editors never overwrite each other. The draft starts from the published version when there are no unpublished changes.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `paywall_id` | string | yes | Paywall id (pw...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `revision` | integer | yes |  |
+| `components_config` | object | no |  |
+| `components_localizations` | object | no |  |
+| `default_locale` | string | no |  |
+| `offering_id` | string or null | no |  |
+| `name` | string or null | no |  |
+| `automatically_scale_font_size` | boolean | no |  |
+| `exit_offers` | object or null | no |  |
+| `state_declarations` | object or null | no |  |
+| `play_store_product_change_mode` | object or null | no |  |
+
+**Example request**
+
+```bash
+curl -s -X PATCH "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"revision":3,"components_localizations":{"en_US":{"headline":"Go Pro"}}}'
+```
+
+**Responses**
+
+- **200**: The paywall.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "paywall",
+  "id": "pw1a2b3c4d5e6f7g8",
+  "name": "Go Pro",
+  "offering_id": "ofrngm2u3h89blc",
+  "created_at": 1790800901115,
+  "published_at": 1790801342625,
+  "automatically_scale_font_size": true,
+  "revision": 3
+}
+```
+
+### Delete a paywall
+
+`DELETE /v2/projects/{project_id}/paywalls/{paywall_id}` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `paywall_id` | string | yes | Paywall id (pw...). |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deleted. Returns [Deleted](#deleted).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "paywall",
+  "id": "pw1a2b3c4d5e6f7g8",
+  "deleted_at": 1790801342625
+}
+```
+
+### Publish a paywall
+
+`POST /v2/projects/{project_id}/paywalls/{paywall_id}/actions/publish` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read_write`
+
+The draft becomes what the SDK receives in `paywall_components` for the paywall's offering. Needs an offering and unpublished changes.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `paywall_id` | string | yes | Paywall id (pw...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/actions/publish" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The paywall.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "paywall",
+  "id": "pw1a2b3c4d5e6f7g8",
+  "name": "Go Pro",
+  "offering_id": "ofrngm2u3h89blc",
+  "created_at": 1790800901115,
+  "published_at": 1790801342625,
+  "automatically_scale_font_size": true,
+  "revision": 3
+}
+```
+
+### Unpublish a paywall
+
+`POST /v2/projects/{project_id}/paywalls/{paywall_id}/actions/unpublish` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read_write`
+
+The SDK stops receiving it. The content is kept as the draft.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `paywall_id` | string | yes | Paywall id (pw...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/actions/unpublish" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The paywall.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "paywall",
+  "id": "pw1a2b3c4d5e6f7g8",
+  "name": "Go Pro",
+  "offering_id": "ofrngm2u3h89blc",
+  "created_at": 1790800901115,
+  "published_at": 1790801342625,
+  "automatically_scale_font_size": true,
+  "revision": 3
+}
+```
+
+### Attach an offering to a paywall
+
+`POST /v2/projects/{project_id}/paywalls/{paywall_id}/actions/attach_offering` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `paywall_id` | string | yes | Paywall id (pw...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `offering_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/actions/attach_offering" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"offering_id":"ofrngm2u3h89blc"}'
+```
+
+**Responses**
+
+- **200**: The paywall.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "paywall",
+  "id": "pw1a2b3c4d5e6f7g8",
+  "name": "Go Pro",
+  "offering_id": "ofrngm2u3h89blc",
+  "created_at": 1790800901115,
+  "published_at": 1790801342625,
+  "automatically_scale_font_size": true,
+  "revision": 3
+}
+```
+
+### Detach the offering from a paywall
+
+`POST /v2/projects/{project_id}/paywalls/{paywall_id}/actions/detach_offering` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `paywall_id` | string | yes | Paywall id (pw...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/actions/detach_offering" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The paywall.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "paywall",
+  "id": "pw1a2b3c4d5e6f7g8",
+  "name": "Go Pro",
+  "offering_id": "ofrngm2u3h89blc",
+  "created_at": 1790800901115,
+  "published_at": 1790801342625,
+  "automatically_scale_font_size": true,
+  "revision": 3
+}
+```
+
+### Duplicate a paywall
+
+`POST /v2/projects/{project_id}/paywalls/{paywall_id}/actions/duplicate` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read_write`
+
+Copies the draft (default) or the published version into a new unpublished paywall, optionally on a new offering.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `paywall_id` | string | yes | Paywall id (pw...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | no |  |
+| `source_version` | `draft`, `published` | no |  |
+| `offering` | object | no |  |
+| `offering.lookup_key` | string | yes |  |
+| `offering.display_name` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/actions/duplicate" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"source_version":"published","offering":{"lookup_key":"summer","display_name":"Summer sale"}}'
+```
+
+**Responses**
+
+- **201**: The new paywall.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
+
+### Save a named snapshot
+
+`POST /v2/projects/{project_id}/paywalls/{paywall_id}/versions` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `paywall_id` | string | yes | Paywall id (pw...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/versions" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"name":"Before the summer test"}'
+```
+
+**Responses**
+
+- **201**: The snapshot.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### Get a snapshot
+
+`GET /v2/projects/{project_id}/paywalls/{paywall_id}/versions/{version_id}` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `paywall_id` | string | yes | Paywall id (pw...). |
+| `version_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/versions/$VERSION_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The snapshot.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### List images
+
+`GET /v2/projects/{project_id}/media_assets` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/media_assets" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: A page of images.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Upload an image
+
+`POST /v2/projects/{project_id}/media_assets` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read_write`
+
+Up to about 2 MB. Width and height are read from PNG, JPEG and WebP files. A project holds up to 200 assets.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `filename` | string | yes |  |
+| `content_type` | `image/jpeg`, `image/png`, `image/avif`, `image/heic`, `image/heif`, `image/webp` | yes |  |
+| `file_data_base64` | string | yes | Base64 file bytes. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/media_assets" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **201**: The image.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### List fonts
+
+`GET /v2/projects/{project_id}/fonts` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/fonts" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: A page of fonts.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Upload a font
+
+`POST /v2/projects/{project_id}/fonts` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read_write`
+
+A .ttf or .otf file. Its PostScript name, family, style and weight are read from the file.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `filename` | string | yes |  |
+| `content_type` | `font/ttf`, `font/otf` | yes |  |
+| `file_data_base64` | string | yes | Base64 file bytes. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/fonts" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **201**: The font.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Download a paywall image or font
+
+`GET /assets/{project_id}/{object_name}` · Auth: none
+
+Public and cached for a year: object names are random and never change content. The SDK reads `asset_base_url` + object name.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `object_name` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/assets/$PROJECT_ID/$OBJECT_NAME"
+```
+
+**Responses**
+
+- **200**: The file bytes with their content type.
+- **404**: No such asset.
 
 ## Webhook integrations
 

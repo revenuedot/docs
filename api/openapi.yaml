@@ -108,6 +108,9 @@ tags:
   - name: Audit log
     description: Who changed what in a project.
     x-page: rest-v2
+  - name: Paywalls
+    description: Paywall components the SDK renders, their publishing and versions, and the images and fonts they use.
+    x-page: rest-v2
   - name: Webhook integrations
     description: Where events are sent.
     x-page: rest-v2
@@ -8414,6 +8417,2342 @@ paths:
       x-source: routes/v2/audit.ts
       x-scopes:
         - project_configuration:audit_logs:read
+  /v2/projects/{project_id}/paywalls:
+    get:
+      operationId: listPaywalls
+      tags:
+        - Paywalls
+      summary: List paywalls
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/StartingAfter"
+        - name: expand
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - items.offering
+          style: form
+          explode: true
+      responses:
+        "200":
+          description: A page of paywalls.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - paywall
+                        id:
+                          type: string
+                        name:
+                          type:
+                            - string
+                            - "null"
+                        offering_id:
+                          type:
+                            - string
+                            - "null"
+                          description: The offering whose SDK response carries this paywall.
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: When it was created. Epoch milliseconds.
+                        published_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: When the current published version went live. Epoch milliseconds, or null.
+                        automatically_scale_font_size:
+                          type: boolean
+                        revision:
+                          type: integer
+                          description: Bumps on every draft write; send it back to update.
+                        offering:
+                          $ref: "#/components/schemas/Offering"
+                          description: With `expand=offering`.
+                        components:
+                          type: object
+                          properties:
+                            published:
+                              oneOf:
+                                - type: object
+                                  properties:
+                                    revision:
+                                      type:
+                                        - integer
+                                        - "null"
+                                    components_config:
+                                      type:
+                                        - object
+                                        - "null"
+                                      additionalProperties: true
+                                    default_locale:
+                                      type:
+                                        - string
+                                        - "null"
+                                    components_localizations:
+                                      type: object
+                                      additionalProperties:
+                                        type: object
+                                        additionalProperties: true
+                                    automatically_scale_font_size:
+                                      type: boolean
+                                    state_declarations:
+                                      type:
+                                        - object
+                                        - "null"
+                                      additionalProperties: true
+                                  required:
+                                    - revision
+                                    - components_config
+                                    - default_locale
+                                    - components_localizations
+                                    - automatically_scale_font_size
+                                    - state_declarations
+                                - type: "null"
+                            draft:
+                              oneOf:
+                                - type: object
+                                  properties:
+                                    revision:
+                                      type:
+                                        - integer
+                                        - "null"
+                                    components_config:
+                                      type:
+                                        - object
+                                        - "null"
+                                      additionalProperties: true
+                                    default_locale:
+                                      type:
+                                        - string
+                                        - "null"
+                                    components_localizations:
+                                      type: object
+                                      additionalProperties:
+                                        type: object
+                                        additionalProperties: true
+                                    automatically_scale_font_size:
+                                      type: boolean
+                                    state_declarations:
+                                      type:
+                                        - object
+                                        - "null"
+                                      additionalProperties: true
+                                  required:
+                                    - revision
+                                    - components_config
+                                    - default_locale
+                                    - components_localizations
+                                    - automatically_scale_font_size
+                                    - state_declarations
+                                - type: "null"
+                          description: With `expand=components`. `draft` is null when nothing changed since publishing.
+                      required:
+                        - object
+                        - id
+                        - name
+                        - offering_id
+                        - created_at
+                        - published_at
+                        - automatically_scale_font_size
+                        - revision
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read
+    post:
+      operationId: createPaywall
+      tags:
+        - Paywalls
+      summary: Create a paywall
+      description: Either `{ offering_id }` for an empty paywall on that offering, or a full draft with `components_config` and `components_localizations`. An offering has at most one paywall. Nothing reaches the SDK until it is published.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              anyOf:
+                - type: object
+                  properties:
+                    offering_id:
+                      type: string
+                    automatically_scale_font_size:
+                      type: boolean
+                  required:
+                    - offering_id
+                - type: object
+                  properties:
+                    offering_id:
+                      type:
+                        - string
+                        - "null"
+                    name:
+                      type:
+                        - string
+                        - "null"
+                    components_config:
+                      type: object
+                      additionalProperties: true
+                    components_localizations:
+                      type: object
+                      additionalProperties:
+                        type: object
+                        additionalProperties: true
+                    default_locale:
+                      type: string
+                    automatically_scale_font_size:
+                      type: boolean
+                  required:
+                    - components_config
+                    - components_localizations
+            example:
+              offering_id: ofrngm2u3h89blc
+      responses:
+        "201":
+          description: The paywall.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - paywall
+                  id:
+                    type: string
+                  name:
+                    type:
+                      - string
+                      - "null"
+                  offering_id:
+                    type:
+                      - string
+                      - "null"
+                    description: The offering whose SDK response carries this paywall.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: When it was created. Epoch milliseconds.
+                  published_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When the current published version went live. Epoch milliseconds, or null.
+                  automatically_scale_font_size:
+                    type: boolean
+                  revision:
+                    type: integer
+                    description: Bumps on every draft write; send it back to update.
+                  offering:
+                    $ref: "#/components/schemas/Offering"
+                    description: With `expand=offering`.
+                  components:
+                    type: object
+                    properties:
+                      published:
+                        oneOf:
+                          - type: object
+                            properties:
+                              revision:
+                                type:
+                                  - integer
+                                  - "null"
+                              components_config:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                              default_locale:
+                                type:
+                                  - string
+                                  - "null"
+                              components_localizations:
+                                type: object
+                                additionalProperties:
+                                  type: object
+                                  additionalProperties: true
+                              automatically_scale_font_size:
+                                type: boolean
+                              state_declarations:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                            required:
+                              - revision
+                              - components_config
+                              - default_locale
+                              - components_localizations
+                              - automatically_scale_font_size
+                              - state_declarations
+                          - type: "null"
+                      draft:
+                        oneOf:
+                          - type: object
+                            properties:
+                              revision:
+                                type:
+                                  - integer
+                                  - "null"
+                              components_config:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                              default_locale:
+                                type:
+                                  - string
+                                  - "null"
+                              components_localizations:
+                                type: object
+                                additionalProperties:
+                                  type: object
+                                  additionalProperties: true
+                              automatically_scale_font_size:
+                                type: boolean
+                              state_declarations:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                            required:
+                              - revision
+                              - components_config
+                              - default_locale
+                              - components_localizations
+                              - automatically_scale_font_size
+                              - state_declarations
+                          - type: "null"
+                    description: With `expand=components`. `draft` is null when nothing changed since publishing.
+                required:
+                  - object
+                  - id
+                  - name
+                  - offering_id
+                  - created_at
+                  - published_at
+                  - automatically_scale_font_size
+                  - revision
+              example:
+                object: paywall
+                id: pw1a2b3c4d5e6f7g8
+                name: Go Pro
+                offering_id: ofrngm2u3h89blc
+                created_at: 1790800901115
+                published_at: 1790801342625
+                automatically_scale_font_size: true
+                revision: 3
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "409":
+          $ref: "#/components/responses/V2Error409"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+  /v2/projects/{project_id}/paywalls/{paywall_id}:
+    get:
+      operationId: getPaywall
+      tags:
+        - Paywalls
+      summary: Get a paywall
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: paywall_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Paywall id (pw...).
+        - name: expand
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - offering
+                - components
+          style: form
+          explode: true
+      responses:
+        "200":
+          description: The paywall.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - paywall
+                  id:
+                    type: string
+                  name:
+                    type:
+                      - string
+                      - "null"
+                  offering_id:
+                    type:
+                      - string
+                      - "null"
+                    description: The offering whose SDK response carries this paywall.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: When it was created. Epoch milliseconds.
+                  published_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When the current published version went live. Epoch milliseconds, or null.
+                  automatically_scale_font_size:
+                    type: boolean
+                  revision:
+                    type: integer
+                    description: Bumps on every draft write; send it back to update.
+                  offering:
+                    $ref: "#/components/schemas/Offering"
+                    description: With `expand=offering`.
+                  components:
+                    type: object
+                    properties:
+                      published:
+                        oneOf:
+                          - type: object
+                            properties:
+                              revision:
+                                type:
+                                  - integer
+                                  - "null"
+                              components_config:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                              default_locale:
+                                type:
+                                  - string
+                                  - "null"
+                              components_localizations:
+                                type: object
+                                additionalProperties:
+                                  type: object
+                                  additionalProperties: true
+                              automatically_scale_font_size:
+                                type: boolean
+                              state_declarations:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                            required:
+                              - revision
+                              - components_config
+                              - default_locale
+                              - components_localizations
+                              - automatically_scale_font_size
+                              - state_declarations
+                          - type: "null"
+                      draft:
+                        oneOf:
+                          - type: object
+                            properties:
+                              revision:
+                                type:
+                                  - integer
+                                  - "null"
+                              components_config:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                              default_locale:
+                                type:
+                                  - string
+                                  - "null"
+                              components_localizations:
+                                type: object
+                                additionalProperties:
+                                  type: object
+                                  additionalProperties: true
+                              automatically_scale_font_size:
+                                type: boolean
+                              state_declarations:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                            required:
+                              - revision
+                              - components_config
+                              - default_locale
+                              - components_localizations
+                              - automatically_scale_font_size
+                              - state_declarations
+                          - type: "null"
+                    description: With `expand=components`. `draft` is null when nothing changed since publishing.
+                required:
+                  - object
+                  - id
+                  - name
+                  - offering_id
+                  - created_at
+                  - published_at
+                  - automatically_scale_font_size
+                  - revision
+              example:
+                object: paywall
+                id: pw1a2b3c4d5e6f7g8
+                name: Go Pro
+                offering_id: ofrngm2u3h89blc
+                created_at: 1790800901115
+                published_at: 1790801342625
+                automatically_scale_font_size: true
+                revision: 3
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read
+    patch:
+      operationId: updatePaywall
+      tags:
+        - Paywalls
+      summary: Update a paywall's draft
+      description: Send the `revision` you read. A different revision answers 409 so two editors never overwrite each other. The draft starts from the published version when there are no unpublished changes.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: paywall_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Paywall id (pw...).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revision:
+                  type: integer
+                components_config:
+                  type: object
+                  additionalProperties: true
+                components_localizations:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    additionalProperties: true
+                default_locale:
+                  type: string
+                offering_id:
+                  type:
+                    - string
+                    - "null"
+                name:
+                  type:
+                    - string
+                    - "null"
+                automatically_scale_font_size:
+                  type: boolean
+                exit_offers:
+                  type:
+                    - object
+                    - "null"
+                  additionalProperties: true
+                state_declarations:
+                  type:
+                    - object
+                    - "null"
+                  additionalProperties: true
+                play_store_product_change_mode:
+                  type:
+                    - object
+                    - "null"
+                  additionalProperties: true
+              required:
+                - revision
+            example:
+              revision: 3
+              components_localizations:
+                en_US:
+                  headline: Go Pro
+      responses:
+        "200":
+          description: The paywall.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - paywall
+                  id:
+                    type: string
+                  name:
+                    type:
+                      - string
+                      - "null"
+                  offering_id:
+                    type:
+                      - string
+                      - "null"
+                    description: The offering whose SDK response carries this paywall.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: When it was created. Epoch milliseconds.
+                  published_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When the current published version went live. Epoch milliseconds, or null.
+                  automatically_scale_font_size:
+                    type: boolean
+                  revision:
+                    type: integer
+                    description: Bumps on every draft write; send it back to update.
+                  offering:
+                    $ref: "#/components/schemas/Offering"
+                    description: With `expand=offering`.
+                  components:
+                    type: object
+                    properties:
+                      published:
+                        oneOf:
+                          - type: object
+                            properties:
+                              revision:
+                                type:
+                                  - integer
+                                  - "null"
+                              components_config:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                              default_locale:
+                                type:
+                                  - string
+                                  - "null"
+                              components_localizations:
+                                type: object
+                                additionalProperties:
+                                  type: object
+                                  additionalProperties: true
+                              automatically_scale_font_size:
+                                type: boolean
+                              state_declarations:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                            required:
+                              - revision
+                              - components_config
+                              - default_locale
+                              - components_localizations
+                              - automatically_scale_font_size
+                              - state_declarations
+                          - type: "null"
+                      draft:
+                        oneOf:
+                          - type: object
+                            properties:
+                              revision:
+                                type:
+                                  - integer
+                                  - "null"
+                              components_config:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                              default_locale:
+                                type:
+                                  - string
+                                  - "null"
+                              components_localizations:
+                                type: object
+                                additionalProperties:
+                                  type: object
+                                  additionalProperties: true
+                              automatically_scale_font_size:
+                                type: boolean
+                              state_declarations:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                            required:
+                              - revision
+                              - components_config
+                              - default_locale
+                              - components_localizations
+                              - automatically_scale_font_size
+                              - state_declarations
+                          - type: "null"
+                    description: With `expand=components`. `draft` is null when nothing changed since publishing.
+                required:
+                  - object
+                  - id
+                  - name
+                  - offering_id
+                  - created_at
+                  - published_at
+                  - automatically_scale_font_size
+                  - revision
+              example:
+                object: paywall
+                id: pw1a2b3c4d5e6f7g8
+                name: Go Pro
+                offering_id: ofrngm2u3h89blc
+                created_at: 1790800901115
+                published_at: 1790801342625
+                automatically_scale_font_size: true
+                revision: 3
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "409":
+          $ref: "#/components/responses/V2Error409"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+    delete:
+      operationId: deletePaywall
+      tags:
+        - Paywalls
+      summary: Delete a paywall
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: paywall_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Paywall id (pw...).
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deleted"
+              example:
+                object: paywall
+                id: pw1a2b3c4d5e6f7g8
+                deleted_at: 1790801342625
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+  /v2/projects/{project_id}/paywalls/{paywall_id}/actions/publish:
+    post:
+      operationId: publishPaywall
+      tags:
+        - Paywalls
+      summary: Publish a paywall
+      description: The draft becomes what the SDK receives in `paywall_components` for the paywall's offering. Needs an offering and unpublished changes.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: paywall_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Paywall id (pw...).
+      responses:
+        "200":
+          description: The paywall.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - paywall
+                  id:
+                    type: string
+                  name:
+                    type:
+                      - string
+                      - "null"
+                  offering_id:
+                    type:
+                      - string
+                      - "null"
+                    description: The offering whose SDK response carries this paywall.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: When it was created. Epoch milliseconds.
+                  published_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When the current published version went live. Epoch milliseconds, or null.
+                  automatically_scale_font_size:
+                    type: boolean
+                  revision:
+                    type: integer
+                    description: Bumps on every draft write; send it back to update.
+                  offering:
+                    $ref: "#/components/schemas/Offering"
+                    description: With `expand=offering`.
+                  components:
+                    type: object
+                    properties:
+                      published:
+                        oneOf:
+                          - type: object
+                            properties:
+                              revision:
+                                type:
+                                  - integer
+                                  - "null"
+                              components_config:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                              default_locale:
+                                type:
+                                  - string
+                                  - "null"
+                              components_localizations:
+                                type: object
+                                additionalProperties:
+                                  type: object
+                                  additionalProperties: true
+                              automatically_scale_font_size:
+                                type: boolean
+                              state_declarations:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                            required:
+                              - revision
+                              - components_config
+                              - default_locale
+                              - components_localizations
+                              - automatically_scale_font_size
+                              - state_declarations
+                          - type: "null"
+                      draft:
+                        oneOf:
+                          - type: object
+                            properties:
+                              revision:
+                                type:
+                                  - integer
+                                  - "null"
+                              components_config:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                              default_locale:
+                                type:
+                                  - string
+                                  - "null"
+                              components_localizations:
+                                type: object
+                                additionalProperties:
+                                  type: object
+                                  additionalProperties: true
+                              automatically_scale_font_size:
+                                type: boolean
+                              state_declarations:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                            required:
+                              - revision
+                              - components_config
+                              - default_locale
+                              - components_localizations
+                              - automatically_scale_font_size
+                              - state_declarations
+                          - type: "null"
+                    description: With `expand=components`. `draft` is null when nothing changed since publishing.
+                required:
+                  - object
+                  - id
+                  - name
+                  - offering_id
+                  - created_at
+                  - published_at
+                  - automatically_scale_font_size
+                  - revision
+              example:
+                object: paywall
+                id: pw1a2b3c4d5e6f7g8
+                name: Go Pro
+                offering_id: ofrngm2u3h89blc
+                created_at: 1790800901115
+                published_at: 1790801342625
+                automatically_scale_font_size: true
+                revision: 3
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+  /v2/projects/{project_id}/paywalls/{paywall_id}/actions/unpublish:
+    post:
+      operationId: unpublishPaywall
+      tags:
+        - Paywalls
+      summary: Unpublish a paywall
+      description: The SDK stops receiving it. The content is kept as the draft.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: paywall_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Paywall id (pw...).
+      responses:
+        "200":
+          description: The paywall.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - paywall
+                  id:
+                    type: string
+                  name:
+                    type:
+                      - string
+                      - "null"
+                  offering_id:
+                    type:
+                      - string
+                      - "null"
+                    description: The offering whose SDK response carries this paywall.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: When it was created. Epoch milliseconds.
+                  published_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When the current published version went live. Epoch milliseconds, or null.
+                  automatically_scale_font_size:
+                    type: boolean
+                  revision:
+                    type: integer
+                    description: Bumps on every draft write; send it back to update.
+                  offering:
+                    $ref: "#/components/schemas/Offering"
+                    description: With `expand=offering`.
+                  components:
+                    type: object
+                    properties:
+                      published:
+                        oneOf:
+                          - type: object
+                            properties:
+                              revision:
+                                type:
+                                  - integer
+                                  - "null"
+                              components_config:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                              default_locale:
+                                type:
+                                  - string
+                                  - "null"
+                              components_localizations:
+                                type: object
+                                additionalProperties:
+                                  type: object
+                                  additionalProperties: true
+                              automatically_scale_font_size:
+                                type: boolean
+                              state_declarations:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                            required:
+                              - revision
+                              - components_config
+                              - default_locale
+                              - components_localizations
+                              - automatically_scale_font_size
+                              - state_declarations
+                          - type: "null"
+                      draft:
+                        oneOf:
+                          - type: object
+                            properties:
+                              revision:
+                                type:
+                                  - integer
+                                  - "null"
+                              components_config:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                              default_locale:
+                                type:
+                                  - string
+                                  - "null"
+                              components_localizations:
+                                type: object
+                                additionalProperties:
+                                  type: object
+                                  additionalProperties: true
+                              automatically_scale_font_size:
+                                type: boolean
+                              state_declarations:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                            required:
+                              - revision
+                              - components_config
+                              - default_locale
+                              - components_localizations
+                              - automatically_scale_font_size
+                              - state_declarations
+                          - type: "null"
+                    description: With `expand=components`. `draft` is null when nothing changed since publishing.
+                required:
+                  - object
+                  - id
+                  - name
+                  - offering_id
+                  - created_at
+                  - published_at
+                  - automatically_scale_font_size
+                  - revision
+              example:
+                object: paywall
+                id: pw1a2b3c4d5e6f7g8
+                name: Go Pro
+                offering_id: ofrngm2u3h89blc
+                created_at: 1790800901115
+                published_at: 1790801342625
+                automatically_scale_font_size: true
+                revision: 3
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+  /v2/projects/{project_id}/paywalls/{paywall_id}/actions/attach_offering:
+    post:
+      operationId: attachPaywallOffering
+      tags:
+        - Paywalls
+      summary: Attach an offering to a paywall
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: paywall_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Paywall id (pw...).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                offering_id:
+                  type: string
+              required:
+                - offering_id
+            example:
+              offering_id: ofrngm2u3h89blc
+      responses:
+        "200":
+          description: The paywall.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - paywall
+                  id:
+                    type: string
+                  name:
+                    type:
+                      - string
+                      - "null"
+                  offering_id:
+                    type:
+                      - string
+                      - "null"
+                    description: The offering whose SDK response carries this paywall.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: When it was created. Epoch milliseconds.
+                  published_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When the current published version went live. Epoch milliseconds, or null.
+                  automatically_scale_font_size:
+                    type: boolean
+                  revision:
+                    type: integer
+                    description: Bumps on every draft write; send it back to update.
+                  offering:
+                    $ref: "#/components/schemas/Offering"
+                    description: With `expand=offering`.
+                  components:
+                    type: object
+                    properties:
+                      published:
+                        oneOf:
+                          - type: object
+                            properties:
+                              revision:
+                                type:
+                                  - integer
+                                  - "null"
+                              components_config:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                              default_locale:
+                                type:
+                                  - string
+                                  - "null"
+                              components_localizations:
+                                type: object
+                                additionalProperties:
+                                  type: object
+                                  additionalProperties: true
+                              automatically_scale_font_size:
+                                type: boolean
+                              state_declarations:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                            required:
+                              - revision
+                              - components_config
+                              - default_locale
+                              - components_localizations
+                              - automatically_scale_font_size
+                              - state_declarations
+                          - type: "null"
+                      draft:
+                        oneOf:
+                          - type: object
+                            properties:
+                              revision:
+                                type:
+                                  - integer
+                                  - "null"
+                              components_config:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                              default_locale:
+                                type:
+                                  - string
+                                  - "null"
+                              components_localizations:
+                                type: object
+                                additionalProperties:
+                                  type: object
+                                  additionalProperties: true
+                              automatically_scale_font_size:
+                                type: boolean
+                              state_declarations:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                            required:
+                              - revision
+                              - components_config
+                              - default_locale
+                              - components_localizations
+                              - automatically_scale_font_size
+                              - state_declarations
+                          - type: "null"
+                    description: With `expand=components`. `draft` is null when nothing changed since publishing.
+                required:
+                  - object
+                  - id
+                  - name
+                  - offering_id
+                  - created_at
+                  - published_at
+                  - automatically_scale_font_size
+                  - revision
+              example:
+                object: paywall
+                id: pw1a2b3c4d5e6f7g8
+                name: Go Pro
+                offering_id: ofrngm2u3h89blc
+                created_at: 1790800901115
+                published_at: 1790801342625
+                automatically_scale_font_size: true
+                revision: 3
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "409":
+          $ref: "#/components/responses/V2Error409"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+  /v2/projects/{project_id}/paywalls/{paywall_id}/actions/detach_offering:
+    post:
+      operationId: detachPaywallOffering
+      tags:
+        - Paywalls
+      summary: Detach the offering from a paywall
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: paywall_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Paywall id (pw...).
+      responses:
+        "200":
+          description: The paywall.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - paywall
+                  id:
+                    type: string
+                  name:
+                    type:
+                      - string
+                      - "null"
+                  offering_id:
+                    type:
+                      - string
+                      - "null"
+                    description: The offering whose SDK response carries this paywall.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: When it was created. Epoch milliseconds.
+                  published_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When the current published version went live. Epoch milliseconds, or null.
+                  automatically_scale_font_size:
+                    type: boolean
+                  revision:
+                    type: integer
+                    description: Bumps on every draft write; send it back to update.
+                  offering:
+                    $ref: "#/components/schemas/Offering"
+                    description: With `expand=offering`.
+                  components:
+                    type: object
+                    properties:
+                      published:
+                        oneOf:
+                          - type: object
+                            properties:
+                              revision:
+                                type:
+                                  - integer
+                                  - "null"
+                              components_config:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                              default_locale:
+                                type:
+                                  - string
+                                  - "null"
+                              components_localizations:
+                                type: object
+                                additionalProperties:
+                                  type: object
+                                  additionalProperties: true
+                              automatically_scale_font_size:
+                                type: boolean
+                              state_declarations:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                            required:
+                              - revision
+                              - components_config
+                              - default_locale
+                              - components_localizations
+                              - automatically_scale_font_size
+                              - state_declarations
+                          - type: "null"
+                      draft:
+                        oneOf:
+                          - type: object
+                            properties:
+                              revision:
+                                type:
+                                  - integer
+                                  - "null"
+                              components_config:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                              default_locale:
+                                type:
+                                  - string
+                                  - "null"
+                              components_localizations:
+                                type: object
+                                additionalProperties:
+                                  type: object
+                                  additionalProperties: true
+                              automatically_scale_font_size:
+                                type: boolean
+                              state_declarations:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                            required:
+                              - revision
+                              - components_config
+                              - default_locale
+                              - components_localizations
+                              - automatically_scale_font_size
+                              - state_declarations
+                          - type: "null"
+                    description: With `expand=components`. `draft` is null when nothing changed since publishing.
+                required:
+                  - object
+                  - id
+                  - name
+                  - offering_id
+                  - created_at
+                  - published_at
+                  - automatically_scale_font_size
+                  - revision
+              example:
+                object: paywall
+                id: pw1a2b3c4d5e6f7g8
+                name: Go Pro
+                offering_id: ofrngm2u3h89blc
+                created_at: 1790800901115
+                published_at: 1790801342625
+                automatically_scale_font_size: true
+                revision: 3
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+  /v2/projects/{project_id}/paywalls/{paywall_id}/actions/duplicate:
+    post:
+      operationId: duplicatePaywall
+      tags:
+        - Paywalls
+      summary: Duplicate a paywall
+      description: Copies the draft (default) or the published version into a new unpublished paywall, optionally on a new offering.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: paywall_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Paywall id (pw...).
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                source_version:
+                  type: string
+                  enum:
+                    - draft
+                    - published
+                offering:
+                  type: object
+                  properties:
+                    lookup_key:
+                      type: string
+                    display_name:
+                      type: string
+                  required:
+                    - lookup_key
+                    - display_name
+            example:
+              source_version: published
+              offering:
+                lookup_key: summer
+                display_name: Summer sale
+      responses:
+        "201":
+          description: The new paywall.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - paywall
+                  id:
+                    type: string
+                  name:
+                    type:
+                      - string
+                      - "null"
+                  offering_id:
+                    type:
+                      - string
+                      - "null"
+                    description: The offering whose SDK response carries this paywall.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: When it was created. Epoch milliseconds.
+                  published_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When the current published version went live. Epoch milliseconds, or null.
+                  automatically_scale_font_size:
+                    type: boolean
+                  revision:
+                    type: integer
+                    description: Bumps on every draft write; send it back to update.
+                  offering:
+                    $ref: "#/components/schemas/Offering"
+                    description: With `expand=offering`.
+                  components:
+                    type: object
+                    properties:
+                      published:
+                        oneOf:
+                          - type: object
+                            properties:
+                              revision:
+                                type:
+                                  - integer
+                                  - "null"
+                              components_config:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                              default_locale:
+                                type:
+                                  - string
+                                  - "null"
+                              components_localizations:
+                                type: object
+                                additionalProperties:
+                                  type: object
+                                  additionalProperties: true
+                              automatically_scale_font_size:
+                                type: boolean
+                              state_declarations:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                            required:
+                              - revision
+                              - components_config
+                              - default_locale
+                              - components_localizations
+                              - automatically_scale_font_size
+                              - state_declarations
+                          - type: "null"
+                      draft:
+                        oneOf:
+                          - type: object
+                            properties:
+                              revision:
+                                type:
+                                  - integer
+                                  - "null"
+                              components_config:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                              default_locale:
+                                type:
+                                  - string
+                                  - "null"
+                              components_localizations:
+                                type: object
+                                additionalProperties:
+                                  type: object
+                                  additionalProperties: true
+                              automatically_scale_font_size:
+                                type: boolean
+                              state_declarations:
+                                type:
+                                  - object
+                                  - "null"
+                                additionalProperties: true
+                            required:
+                              - revision
+                              - components_config
+                              - default_locale
+                              - components_localizations
+                              - automatically_scale_font_size
+                              - state_declarations
+                          - type: "null"
+                    description: With `expand=components`. `draft` is null when nothing changed since publishing.
+                required:
+                  - object
+                  - id
+                  - name
+                  - offering_id
+                  - created_at
+                  - published_at
+                  - automatically_scale_font_size
+                  - revision
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "409":
+          $ref: "#/components/responses/V2Error409"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+  /v2/projects/{project_id}/paywalls/{paywall_id}/versions:
+    post:
+      operationId: createPaywallVersion
+      tags:
+        - Paywalls
+      summary: Save a named snapshot
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: paywall_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Paywall id (pw...).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+              required:
+                - name
+            example:
+              name: Before the summer test
+      responses:
+        "201":
+          description: The snapshot.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - paywall_version
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  revision:
+                    type: integer
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: When it was taken. Epoch milliseconds.
+                  components_config:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: true
+                  components_localizations:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: true
+                  default_locale:
+                    type:
+                      - string
+                      - "null"
+                  automatically_scale_font_size:
+                    type: boolean
+                  exit_offers:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: true
+                  state_declarations:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: true
+                  play_store_product_change_mode:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: true
+                required:
+                  - object
+                  - id
+                  - name
+                  - revision
+                  - created_at
+                  - components_config
+                  - components_localizations
+                  - default_locale
+                  - automatically_scale_font_size
+                  - exit_offers
+                  - state_declarations
+                  - play_store_product_change_mode
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+  /v2/projects/{project_id}/paywalls/{paywall_id}/versions/{version_id}:
+    get:
+      operationId: getPaywallVersion
+      tags:
+        - Paywalls
+      summary: Get a snapshot
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: paywall_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Paywall id (pw...).
+        - name: version_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The snapshot.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - paywall_version
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  revision:
+                    type: integer
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: When it was taken. Epoch milliseconds.
+                  components_config:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: true
+                  components_localizations:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: true
+                  default_locale:
+                    type:
+                      - string
+                      - "null"
+                  automatically_scale_font_size:
+                    type: boolean
+                  exit_offers:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: true
+                  state_declarations:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: true
+                  play_store_product_change_mode:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: true
+                required:
+                  - object
+                  - id
+                  - name
+                  - revision
+                  - created_at
+                  - components_config
+                  - components_localizations
+                  - default_locale
+                  - automatically_scale_font_size
+                  - exit_offers
+                  - state_declarations
+                  - play_store_product_change_mode
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read
+  /v2/projects/{project_id}/media_assets:
+    get:
+      operationId: listMediaAssets
+      tags:
+        - Paywalls
+      summary: List images
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/StartingAfter"
+      responses:
+        "200":
+          description: A page of images.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - media_asset
+                        id:
+                          type: string
+                        object_name:
+                          type: string
+                          description: Append to `asset_base_url` to download it.
+                        original_name:
+                          type: string
+                        original_size:
+                          type: integer
+                          description: Kilobytes.
+                        original_width:
+                          type:
+                            - integer
+                            - "null"
+                        original_height:
+                          type:
+                            - integer
+                            - "null"
+                        formats:
+                          type:
+                            - object
+                            - "null"
+                          additionalProperties: true
+                        alt_text:
+                          type:
+                            - string
+                            - "null"
+                        is_decorative:
+                          type: boolean
+                        asset_base_url:
+                          type:
+                            - string
+                            - "null"
+                        asset_type:
+                          type: string
+                          enum:
+                            - image
+                            - video
+                        video_metadata:
+                          type:
+                            - object
+                            - "null"
+                          additionalProperties: true
+                        transcoding_status:
+                          type:
+                            - string
+                            - "null"
+                      required:
+                        - object
+                        - id
+                        - object_name
+                        - original_name
+                        - original_size
+                        - original_width
+                        - original_height
+                        - formats
+                        - alt_text
+                        - is_decorative
+                        - asset_base_url
+                        - asset_type
+                        - video_metadata
+                        - transcoding_status
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read
+    post:
+      operationId: createMediaAsset
+      tags:
+        - Paywalls
+      summary: Upload an image
+      description: Up to about 2 MB. Width and height are read from PNG, JPEG and WebP files. A project holds up to 200 assets.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                filename:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                content_type:
+                  type: string
+                  enum:
+                    - image/jpeg
+                    - image/png
+                    - image/avif
+                    - image/heic
+                    - image/heif
+                    - image/webp
+                file_data_base64:
+                  type: string
+                  description: Base64 file bytes.
+                  minLength: 1
+                  maxLength: 2796204
+              required:
+                - filename
+                - content_type
+                - file_data_base64
+      responses:
+        "201":
+          description: The image.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - media_asset
+                  id:
+                    type: string
+                  object_name:
+                    type: string
+                    description: Append to `asset_base_url` to download it.
+                  original_name:
+                    type: string
+                  original_size:
+                    type: integer
+                    description: Kilobytes.
+                  original_width:
+                    type:
+                      - integer
+                      - "null"
+                  original_height:
+                    type:
+                      - integer
+                      - "null"
+                  formats:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: true
+                  alt_text:
+                    type:
+                      - string
+                      - "null"
+                  is_decorative:
+                    type: boolean
+                  asset_base_url:
+                    type:
+                      - string
+                      - "null"
+                  asset_type:
+                    type: string
+                    enum:
+                      - image
+                      - video
+                  video_metadata:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: true
+                  transcoding_status:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - object
+                  - id
+                  - object_name
+                  - original_name
+                  - original_size
+                  - original_width
+                  - original_height
+                  - formats
+                  - alt_text
+                  - is_decorative
+                  - asset_base_url
+                  - asset_type
+                  - video_metadata
+                  - transcoding_status
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+  /v2/projects/{project_id}/fonts:
+    get:
+      operationId: listFonts
+      tags:
+        - Paywalls
+      summary: List fonts
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/StartingAfter"
+      responses:
+        "200":
+          description: A page of fonts.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - font
+                        id:
+                          type: string
+                        name:
+                          type: string
+                          description: PostScript name.
+                        family_name:
+                          type: string
+                        style:
+                          type: string
+                          enum:
+                            - normal
+                            - italic
+                        weight:
+                          type: integer
+                        url:
+                          type: string
+                        font_key:
+                          type: string
+                          description: Use it in a paywall's `font_name`; the SDK finds the file through `ui_config.app.fonts`.
+                      required:
+                        - object
+                        - id
+                        - name
+                        - family_name
+                        - style
+                        - weight
+                        - url
+                        - font_key
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read
+    post:
+      operationId: createFont
+      tags:
+        - Paywalls
+      summary: Upload a font
+      description: A .ttf or .otf file. Its PostScript name, family, style and weight are read from the file.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                filename:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                content_type:
+                  type: string
+                  enum:
+                    - font/ttf
+                    - font/otf
+                file_data_base64:
+                  type: string
+                  description: Base64 file bytes.
+                  minLength: 1
+                  maxLength: 6990508
+              required:
+                - filename
+                - content_type
+                - file_data_base64
+      responses:
+        "201":
+          description: The font.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - font
+                  id:
+                    type: string
+                  name:
+                    type: string
+                    description: PostScript name.
+                  family_name:
+                    type: string
+                  style:
+                    type: string
+                    enum:
+                      - normal
+                      - italic
+                  weight:
+                    type: integer
+                  url:
+                    type: string
+                  font_key:
+                    type: string
+                    description: Use it in a paywall's `font_name`; the SDK finds the file through `ui_config.app.fonts`.
+                required:
+                  - object
+                  - id
+                  - name
+                  - family_name
+                  - style
+                  - weight
+                  - url
+                  - font_key
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+  /assets/{project_id}/{object_name}:
+    get:
+      operationId: getAsset
+      tags:
+        - Paywalls
+      summary: Download a paywall image or font
+      description: "Public and cached for a year: object names are random and never change content. The SDK reads `asset_base_url` + object name."
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: object_name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The file bytes with their content type.
+        "404":
+          description: No such asset.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/assets.ts
   /auth/config:
     get:
       operationId: authConfig
