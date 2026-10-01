@@ -125,7 +125,7 @@ A RevenueCatUI paywall's web checkout button also works on iOS. It opens a Strip
 
 Use a test-mode restricted key (`rk_test_...`). Purchases are then sandbox data, kept out of production charts, and webhooks carry `environment: SANDBOX`. Pay with [Stripe's test cards](https://docs.stripe.com/testing), such as `4242 4242 4242 4242`. For production, create a second Stripe app with a live key, its own webhook endpoint and its own web products, because Stripe keeps test and live products apart.
 
-**Status.** The web billing code passes its tests against an in-memory copy of Stripe's API. No real Stripe account has run these flows yet. Run a test-mode purchase before you send buyers. Not built yet: "Connect with Stripe" OAuth (paste a restricted key for now), Paddle as a web provider, an embedded checkout on your own page, and Apple Pay domain registration for a custom domain.
+**Before you send buyers,** run a purchase in Stripe test mode. Not built yet: "Connect with Stripe" OAuth (paste a restricted key for now), Paddle as a web provider, an embedded checkout on your own page, and Apple Pay domain registration for a custom domain.
 
 ## Design rules that protect you
 
