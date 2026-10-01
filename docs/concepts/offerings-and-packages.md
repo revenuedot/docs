@@ -45,9 +45,16 @@ curl -s -X POST "$B/packages/$PACKAGE_ID/actions/attach_products" -H "$H" -H "Co
 - **Show one customer a different offering:** `POST .../customers/{customer_id}/actions/assign_offering` with `{"offering_id": "ofrng..."}` (v2), or `POST /v1/subscribers/{app_user_id}/offerings/{offering}/override` (v1). That customer's `current_offering_id` becomes this offering. Send `null` (v2) or `DELETE /v1/subscribers/{app_user_id}/offerings/override` to undo it.
 - **Retire an offering:** archive it (`.../actions/archive`). The current offering cannot be archived; make another one current first.
 
-Experiments, targeting rules and server-driven paywalls are not built yet (planned for Tier 2). The SDK's paywall components get no paywall from RevenueDot today.
+**Paywalls, targeting and experiments** also change what customers see without an app update:
+- **Paywalls:** build a paywall in the dashboard from a template, in the visual editor or with AI, and publish it to an offering. RevenueDot sends it in the offerings response and in remote config, and RevenueCatUI's `PaywallView` renders it. An offering has at most one paywall. See [Paywalls](../guides/paywalls.md).
+- **Targeting:** an audience is a set of conditions such as country, platform, app version or active entitlements. A targeting rule gives that audience its own current offering and its own offerings for placements, which the app reads with `offerings.current` and `currentOffering(forPlacement:)`. See [Targeting and experiments](../guides/targeting-and-experiments.md).
+- **Experiments:** an experiment splits customers between two offerings, keeps each customer in the same variant, and reports conversions, revenue and the chance that the treatment converts better. See [Targeting and experiments](../guides/targeting-and-experiments.md#experiments).
+
+An offering assigned to one customer through the API wins over targeting rules and experiments.
 
 ## Related
 - [Products and entitlements](products-and-entitlements.md)
+- [Paywalls](../guides/paywalls.md)
+- [Targeting and experiments](../guides/targeting-and-experiments.md)
 - [REST API v2: offerings and packages](../../api/rest-v2.md)
 - [SDK endpoints: offerings](../../api/sdk-endpoints.md)

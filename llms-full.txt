@@ -537,10 +537,17 @@ curl -s -X POST "$B/packages/$PACKAGE_ID/actions/attach_products" -H "$H" -H "Co
 - **Show one customer a different offering:** `POST .../customers/{customer_id}/actions/assign_offering` with `{"offering_id": "ofrng..."}` (v2), or `POST /v1/subscribers/{app_user_id}/offerings/{offering}/override` (v1). That customer's `current_offering_id` becomes this offering. Send `null` (v2) or `DELETE /v1/subscribers/{app_user_id}/offerings/override` to undo it.
 - **Retire an offering:** archive it (`.../actions/archive`). The current offering cannot be archived; make another one current first.
 
-Experiments, targeting rules and server-driven paywalls are not built yet (planned for Tier 2). The SDK's paywall components get no paywall from RevenueDot today.
+**Paywalls, targeting and experiments** also change what customers see without an app update:
+- **Paywalls:** build a paywall in the dashboard from a template, in the visual editor or with AI, and publish it to an offering. RevenueDot sends it in the offerings response and in remote config, and RevenueCatUI's `PaywallView` renders it. An offering has at most one paywall. See [Paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md).
+- **Targeting:** an audience is a set of conditions such as country, platform, app version or active entitlements. A targeting rule gives that audience its own current offering and its own offerings for placements, which the app reads with `offerings.current` and `currentOffering(forPlacement:)`. See [Targeting and experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/targeting-and-experiments.md).
+- **Experiments:** an experiment splits customers between two offerings, keeps each customer in the same variant, and reports conversions, revenue and the chance that the treatment converts better. See [Targeting and experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/targeting-and-experiments.md#experiments).
+
+An offering assigned to one customer through the API wins over targeting rules and experiments.
 
 ## Related
 - [Products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md)
+- [Paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md)
+- [Targeting and experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/targeting-and-experiments.md)
 - [REST API v2: offerings and packages](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md)
 - [SDK endpoints: offerings](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md)
 
@@ -6226,9 +6233,9 @@ Work through these steps in order. RevenueCat keeps running until the last secti
 # What differs between RevenueDot and RevenueCat?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/what-differs.md
-Description: Every known difference as of 2026-09-30, from failed signature checks with the stock SDK to webhook events not sent yet and features planned for later tiers, with sources.
+Description: Every known difference as of 2026-10-01, from failed signature checks with the stock SDK to the few SDK calls that answer with a fixed reply and the features still planned, with sources.
 
-RevenueDot answers the RevenueCat SDKs, REST API v1 and v2, and webhook payloads in RevenueCat's shapes, so purchases, entitlements, offerings and customer info work the same. The differences are: stock SDKs report failed signature checks, a few SDK features answer empty because they are not built yet, some webhook event types are never sent, and paywalls, experiments, charts and several stores are planned for later tiers. This page lists every known difference as of 2026-09-30.
+RevenueDot answers the RevenueCat SDKs, REST API v1 and v2, and webhook payloads in RevenueCat's shapes. Purchases, entitlements, offerings, paywalls, targeting and placements, experiments, Customer Center, virtual currencies and charts work the same, and the Amazon Appstore and Stripe stores, web billing and the lifecycle tools are built. The differences are: stock SDKs report failed signature checks, a few SDK calls answer with a fixed reply, two webhook event types are never sent, and a short list of features is still planned. This page lists every known difference as of 2026-10-01.
 
 ## SDK behaviour
 **Signature checks (Trusted Entitlements)**
@@ -6244,19 +6251,20 @@ RevenueDot answers the RevenueCat SDKs, REST API v1 and v2, and webhook payloads
 - Flutter web ignores `setProxyURL`, so web calls still go to RevenueCat.
 - The RevenueDot forks fix all three. Source: [`prd/sdk-forks/PRD.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/sdk-forks/PRD.md), section 2.
 
-**SDK features that answer empty today**
-| SDK feature | What RevenueDot answers | Effect in the app |
-|---|---|---|
-| Customer Center | `GET /v1/customercenter/{id}` answers 404 with code 7259; support tickets answer `{"sent": false}` | The Customer Center screen shows its error state |
-| Virtual currencies | `{"virtual_currencies": {}}` | Balances are always empty |
-| Paywalls built in RevenueCat's editor | Offerings carry no paywall | Remote paywall designs do not appear |
-| Targeting and placements | Offerings carry no placements | Every user gets the current offering |
-| Remote config (`/v1/config/...`) | 204, no body | Nothing to apply |
-| Analytics and diagnostics (`/v1/events`, `/v1/diagnostics`) | Accepted, then dropped | No effect |
-| purchases-js Web Billing checkout (`rcb_` keys) | 400 with code 7000; branding answers the app's name | The checkout fails with an error and is not retried. Sell on the web with RevenueDot's [hosted checkout](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md) instead |
-| SDK health report | Always "passed" | No effect |
+**SDK calls that answer with a fixed reply**
+Every other SDK call does the real work, including Customer Center (configuration and support tickets), virtual currency balances, paywalls in the offerings response and in remote config, targeting and placements, and the paywall, Customer Center and ad events sent to `/v1/events`, which feed the [charts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md).
 
-Source: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/routes/sdk.ts).
+| SDK call | What RevenueDot answers | Effect in the app |
+|---|---|---|
+| Remote config fallback (`GET /v1/config/{domain}`) | 204, no body | None. The SDKs read remote config, including published paywalls, from `POST /v1/config/{domain}`, which answers with real data. The `GET` form is only for RevenueCat's fallback host, which the SDK never uses with a proxy URL |
+| Diagnostics (`POST /v1/diagnostics`) | 200 `{}`, then dropped | No effect |
+| purchases-js Web Billing checkout (`rcb_` keys, `/rcbilling/v1/checkout/*`) | 400 with code 7000 (7877 for a checkout session id); branding answers the app's name | The checkout fails with an error and is not retried. Sell on the web with RevenueDot's [hosted checkout](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md) instead |
+| Rewarded ad verification (`pollRewardVerification`) for ad networks other than AdMob | `status: pending` | AdMob rewards are verified with Google's signed callback (see [Ads](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/ads.md)). Callbacks from AppLovin MAX, ironSource and Unity Ads are not built, so their rewards never read as verified |
+| StoreKit 1 introductory-offer eligibility (`POST /v1/subscribers/{id}/intro_eligibility`) | `null` for every product | Eligibility reads as unknown on StoreKit 1. StoreKit 2 checks eligibility on the device |
+| SDK health report | Always "passed", with no checks | No effect |
+| Identity-provider login (`/auth/login`, `/auth/token`, `/auth/revoke`) | No route | None for normal apps. Only the SDKs' internal token-login mode calls these, and no public SDK API turns it on |
+
+Sources: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/routes/sdk.ts) and the [SDK endpoint inventory](https://github.com/revenuedot/revenuedot/blob/main/prd/sdk-api/PRD.md#endpoint-inventory) (55 routed calls: 32 real, 23 fixed replies).
 
 **Attribution and promotional offers work**
 - `setAttributes` and the reserved setters, `collectDeviceIdentifiers` (RevenueDot fills in `$ip` and `$deviceVersion`), the deprecated Apple Search Ads `addAttributionData` and `enableAdServicesAttributionTokenCollection` are stored as the reserved attributes, such as `$mediaSource`, `$campaign` and the `$appleAds*` ids. RevenueDot looks the AdServices token up with Apple's attribution API. Apple returns campaign ids, not names.
@@ -6311,26 +6319,29 @@ Details: [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/
 
 Source: [`prd/migration/PRD.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/migration/PRD.md).
 
-## Features not built yet, by tier
+## Features still planned, by tier
+Built since the first release: [paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md) with a visual editor and an AI generator, [targeting and experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/targeting-and-experiments.md), 43 [charts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md) (RevenueCat's 42 plus App Store Save Outcomes), Customer Center, virtual currencies, the [Amazon Appstore](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md) and [Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md) stores, [web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md), [Refund Control](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/refund-control.md), [retention offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/retention.md), [win-back campaigns](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-campaigns.md), the [support view](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/support-integrations.md), [ads](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/ads.md), all 37 [integrations](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md) and [RevenueDot AI](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/revenuedot-ai.md).
+
 **Tier 1 (the current build), not finished**
 - SDK fork packages are partly published: `@revenuedot/purchases-js`, `@revenuedot/purchases-typescript-internal` and `@revenuedot/purchases-js-hybrid-mappings` on npm, `app.revenuedot.purchases` on Maven Central and `RevenueDotPurchases` and `RevenueDotPurchasesUI` on CocoaPods. The React Native, Flutter, Capacitor, Cordova, Unity and Kotlin Multiplatform packages are not published yet.
-- Real App Store and Google Play sandbox purchases have not run end to end; store handling is tested against mocked Apple and Google APIs.
+- Real App Store, Google Play, Amazon Appstore and Stripe sandbox purchases have not run end to end. Store handling is tested against mocked store APIs, and Test Store purchases pass with the unmodified RevenueCat iOS and Android SDKs on a simulator and an emulator.
 
-**Tier 2 (planned)**
-- Paywalls with several screens and navigation between them, exit offers and custom variables.
-- Lifecycle: refund control (Apple consumption information), retention offers, win-back campaigns and the support view.
-- RevenueDot AI, an in-app assistant.
+**Tier 2, still planned**
+- Paywalls with several screens and navigation between them. Today a multi-page paywall is one screen with swipeable pages. Video uploads are not built (a video takes a URL), and exit offers and custom variables have no editor yet; they pass through the API.
+- A dashboard editor for the Customer Center configuration. Today you set it through the API.
+- Memory and custom instructions for RevenueDot AI.
 - Moving between self-host and cloud in one step, and a full export.
 - Cloud billing plans.
 
-**Tier 3 (planned)**
+**Tier 3, still planned**
 - SSO/SAML, SCIM, custom roles, several organizations, data-location controls and compliance exports.
 - High-availability self-host (Helm, Terraform, clustering).
-- Web billing on your own Stripe account (hosted checkout, purchase links, funnels, redemption links, web discounts and custom domains) is built; see [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md). Still planned: "Connect with Stripe" (OAuth), Paddle as a web provider, an embedded checkout, funnel A/B tests and automatic TLS for custom domains on Cloud.
-- Failed-payment recovery, refund defense and win-back flows.
-- Paddle, Roku and Galaxy stores; forwarding attribution to ad networks; benchmarks.
+- Web billing: "Connect with Stripe" (OAuth), Paddle as a web provider, an embedded checkout inside purchases-js, funnel A/B tests and automatic TLS for custom domains on Cloud.
+- Failed-payment recovery.
+- RevenueDot AI tools that write to App Store Connect and Google Play.
+- Paddle, Roku and Galaxy stores; ad reward callbacks from AppLovin MAX, ironSource and Unity Ads; benchmarks.
 
-Source: [`prd/SCOPE.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/SCOPE.md).
+Sources: [`prd/SCOPE.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/SCOPE.md) and [`docs/STATUS.md`](https://github.com/revenuedot/revenuedot/blob/main/docs/STATUS.md).
 
 ## Related
 - [Migrate from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md)
