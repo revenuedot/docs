@@ -13,7 +13,7 @@ Responses under `/v1` and `/rcbilling` are signed when the server has a signing 
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (47)
+## Operations on this page (62)
 
 - **Server**: [Server name and docs link](#server-name-and-docs-link), [Health check](#health-check), [Connectivity probe](#connectivity-probe)
 - **Customer info**: [Get customer info](#get-customer-info)
@@ -23,6 +23,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Attributes**: [Set customer attributes](#set-customer-attributes)
 - **SDK support**: [Intro offer eligibility (StoreKit 1)](#intro-offer-eligibility-storekit-1), [Sign a promotional offer (iOS)](#sign-a-promotional-offer-ios), [Attribution data (deprecated iOS call)](#attribution-data-deprecated-ios-call), [Apple AdServices token](#apple-adservices-token), [SDK health report availability](#sdk-health-report-availability), [SDK health report](#sdk-health-report), [Product to entitlement mapping (offline entitlements)](#product-to-entitlement-mapping-offline-entitlements), [Customer Center configuration](#customer-center-configuration), [Customer Center support ticket (not built)](#customer-center-support-ticket-not-built), [Virtual currency balances](#virtual-currency-balances), [Redeem a web purchase (not available)](#redeem-a-web-purchase-not-available), [Register an Apple external purchase token (iOS)](#register-an-apple-external-purchase-token-ios), [Rewarded ad verification (not available)](#rewarded-ad-verification-not-available), [Amazon receipt details](#amazon-receipt-details), [Paywall workflows (web SDK)](#paywall-workflows-web-sdk), [One paywall workflow (web SDK)](#one-paywall-workflow-web-sdk), [Restore eligibility (StoreKit 2)](#restore-eligibility-storekit-2), [Remote config fallback (none)](#remote-config-fallback-none), [Remote config: paywalls and UI settings](#remote-config-paywalls-and-ui-settings), [Download a remote-config blob](#download-a-remote-config-blob), [SDK paywall, Customer Center and ad events](#sdk-paywall-customer-center-and-ad-events), [SDK diagnostics (accepted, not stored)](#sdk-diagnostics-accepted-not-stored)
 - **Web Billing**: [Web offering products](#web-offering-products), [Start a hosted web checkout (not available)](#start-a-hosted-web-checkout-not-available), [Web Billing purchase (not available)](#web-billing-purchase-not-available), [Prepare a Web Billing checkout (not available)](#prepare-a-web-billing-checkout-not-available), [Start a Web Billing checkout (not available)](#start-a-web-billing-checkout-not-available), [Web Billing checkout status](#web-billing-checkout-status), [Refresh Web Billing checkout pricing](#refresh-web-billing-checkout-pricing), [Complete a Web Billing checkout](#complete-a-web-billing-checkout), [Web checkout branding](#web-checkout-branding)
+- **Subscriber tokens**: [Get customer info (subscriber token)](#get-customer-info-subscriber-token), [Get offerings (subscriber token)](#get-offerings-subscriber-token), [Intro offer eligibility (StoreKit 1) (subscriber token)](#intro-offer-eligibility-storekit-1-subscriber-token), [Attribution data (deprecated iOS call) (subscriber token)](#attribution-data-deprecated-ios-call-subscriber-token), [Set customer attributes (subscriber token)](#set-customer-attributes-subscriber-token), [Apple AdServices token (subscriber token)](#apple-adservices-token-subscriber-token), [SDK health report (subscriber token)](#sdk-health-report-subscriber-token), [Customer Center configuration (subscriber token)](#customer-center-configuration-subscriber-token), [Customer Center support ticket (not built) (subscriber token)](#customer-center-support-ticket-not-built-subscriber-token), [Virtual currency balances (subscriber token)](#virtual-currency-balances-subscriber-token), [Restore eligibility (StoreKit 2) (subscriber token)](#restore-eligibility-storekit-2-subscriber-token), [Rewarded ad verification (not available) (subscriber token)](#rewarded-ad-verification-not-available-subscriber-token), [Web offering products (subscriber token)](#web-offering-products-subscriber-token), [Test Store product details (subscriber token)](#test-store-product-details-subscriber-token), [Spend in-app currency as the subscriber](#spend-in-app-currency-as-the-subscriber)
 - **Store notifications**: [App Store Server Notifications v2](#app-store-server-notifications-v2), [Google Play real-time developer notifications (Pub/Sub push)](#google-play-real-time-developer-notifications-pubsub-push), [Amazon Appstore Real-time Notifications (SNS)](#amazon-appstore-real-time-notifications-sns), [Stripe webhooks](#stripe-webhooks)
 - **Response signing**: [Public key for response signatures](#public-key-for-response-signatures)
 
@@ -860,7 +861,8 @@ Example 200 response:
 
 `GET /v1/product_entitlement_mapping` · Auth: public app key or secret key
 
-Lets the SDK grant entitlements while the server cannot be reached.
+Lets the SDK grant entitlements on the device while the server answers 5xx (offline entitlements). The SDK fetches it every 25 hours.
+A public key gets only its own app's products, keyed the way that SDK looks them up: App Store products by product id (`product:monthly` for a monthly billing plan), Google Play products by `subscription:base_plan` and by the bare subscription id, which carries every base plan's entitlements because Android purchases do not name their base plan. Consumables are left out. A secret key gets the whole project. See [Offline entitlements](../docs/guides/offline-entitlements.md).
 
 **Example request**
 
@@ -1535,6 +1537,591 @@ Example 200 response:
   "support_email": null,
   "gateway_tax_collection_enabled": false,
   "brand_font_config": null
+}
+```
+
+## Subscriber tokens
+
+The SDK endpoints for one customer, authorized by a subscriber access token from `POST /v2/projects/{project_id}/apps/{app_id}/authenticate` instead of the app key. The RevenueCat SDKs call these paths in their internal token mode.
+
+### Get customer info (subscriber token)
+
+`GET /v1/customer` · Auth: none
+
+The subscriber-token form of `GET /v1/subscribers/{app_user_id}`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Headers**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `X-Nonce` | string | no | Base64 nonce the SDK sends when entitlement verification is on; it is part of the signed message. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/customer"
+```
+
+**Responses**
+
+- **200**: Customer info. Returns [CustomerInfo](#customerinfo).
+- **201**: Customer info of a customer created by this call. Returns [CustomerInfo](#customerinfo).
+- **400**: Bad request. For receipts, a 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. Returns [V1Error](#v1error).
+- **401**: Unknown API key. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "request_date": "2026-09-30T20:41:54Z",
+  "request_date_ms": 1790800914034,
+  "subscriber": {
+    "entitlements": {
+      "pro": {
+        "expires_date": "2026-10-30T20:41:54Z",
+        "grace_period_expires_date": null,
+        "product_identifier": "pro_monthly",
+        "purchase_date": "2026-09-30T20:41:54Z"
+      }
+    },
+    "first_seen": "2026-09-30T20:41:54Z",
+    "last_seen": "2026-09-30T20:41:54Z",
+    "management_url": null,
+    "non_subscriptions": {},
+    "original_app_user_id": "user_1",
+    "original_application_version": null,
+    "original_purchase_date": "2026-09-30T20:41:54Z",
+    "other_purchases": {},
+    "subscriptions": {
+      "pro_monthly": {
+        "auto_resume_date": null,
+        "billing_issues_detected_at": null,
+        "display_name": null,
+        "expires_date": "2026-10-30T20:41:54Z",
+        "grace_period_expires_date": null,
+        "is_sandbox": true,
+        "management_url": null,
+        "original_purchase_date": "2026-09-30T20:41:54Z",
+        "ownership_type": "PURCHASED",
+        "period_type": "normal",
+        "purchase_date": "2026-09-30T20:41:54Z",
+        "refunded_at": null,
+        "store": "test_store",
+        "store_transaction_id": "test_1790800914000_quickstart",
+        "unsubscribe_detected_at": null,
+        "price": {
+          "amount": 9.99,
+          "currency": "USD"
+        }
+      }
+    }
+  }
+}
+```
+
+### Get offerings (subscriber token)
+
+`GET /v1/customer/offerings` · Auth: none
+
+The subscriber-token form of `GET /v1/subscribers/{app_user_id}/offerings`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/customer/offerings"
+```
+
+**Responses**
+
+- **200**: Offerings. Returns [Offerings](#offerings).
+- **401**: Unknown API key. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "current_offering_id": "default",
+  "offerings": [
+    {
+      "description": "Standard plans",
+      "identifier": "default",
+      "metadata": null,
+      "packages": [
+        {
+          "identifier": "$rc_monthly",
+          "platform_product_identifier": "pro_monthly"
+        },
+        {
+          "identifier": "$rc_annual",
+          "platform_product_identifier": "pro_annual"
+        },
+        {
+          "identifier": "$rc_lifetime",
+          "platform_product_identifier": "pro_lifetime"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Intro offer eligibility (StoreKit 1) (subscriber token)
+
+`POST /v1/customer/intro_eligibility` · Auth: none
+
+The subscriber-token form of `POST /v1/subscribers/{app_user_id}/intro_eligibility`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `product_identifiers` | array of string | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/customer/intro_eligibility"
+```
+
+**Responses**
+
+- **200**: Eligibility per product.
+- **401**: Unknown API key. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "pro_monthly": null
+}
+```
+
+### Attribution data (deprecated iOS call) (subscriber token)
+
+`POST /v1/customer/attribution` · Auth: none
+
+The subscriber-token form of `POST /v1/subscribers/{app_user_id}/attribution`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `network` | integer | yes | The SDK's AttributionNetwork: 0 Apple Search Ads. |
+| `data` | object | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/customer/attribution" \
+  -H "Content-Type: application/json" -d '{"network":0,"data":{"rc_idfv":"4CEE1BEE-3C19-4591-9E34-1AD968D7B609","Version3.1":{"iad-attribution":"true","iad-campaign-name":"Spring","iad-keyword":"scanner"}}}'
+```
+
+**Responses**
+
+- **200**: Stored.
+- **400**: Bad request. For receipts, a 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. Returns [V1Error](#v1error).
+- **401**: Unknown API key. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{}
+```
+
+### Set customer attributes (subscriber token)
+
+`POST /v1/customer/attributes` · Auth: none
+
+The subscriber-token form of `POST /v1/subscribers/{app_user_id}/attributes`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `attributes` | object | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/customer/attributes" \
+  -H "Content-Type: application/json" -d '{"attributes":{"$email":{"value":"ana@example.com","updated_at_ms":1790800914000}}}'
+```
+
+**Responses**
+
+- **200**: Saved.
+- **400**: Some attributes were not saved. Returns [V1Error](#v1error).
+- **401**: Unknown API key. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{}
+```
+
+### Apple AdServices token (subscriber token)
+
+`POST /v1/customer/adservices_attribution` · Auth: none
+
+The subscriber-token form of `POST /v1/subscribers/{app_user_id}/adservices_attribution`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `aad_attribution_token` | string | yes | The token from AAAttribution.attributionToken(). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/customer/adservices_attribution" \
+  -H "Content-Type: application/json" -d '{"aad_attribution_token":"wD3Ma…"}'
+```
+
+**Responses**
+
+- **200**: Accepted; the lookup runs after the answer.
+- **400**: No token. Returns [V1Error](#v1error).
+- **401**: Unknown API key. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{}
+```
+
+### SDK health report (subscriber token)
+
+`GET /v1/customer/health_report` · Auth: none
+
+The subscriber-token form of `GET /v1/subscribers/{app_user_id}/health_report`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/customer/health_report"
+```
+
+**Responses**
+
+- **200**: Always passed.
+- **401**: Unknown API key. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "status": "passed",
+  "project_id": "proj18pzzkao",
+  "app_id": "appvnrm0a5h",
+  "checks": []
+}
+```
+
+### Customer Center configuration (subscriber token)
+
+`GET /v1/customer/customercenter` · Auth: none
+
+The subscriber-token form of `GET /v1/customercenter/{app_user_id}`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/customer/customercenter"
+```
+
+**Responses**
+
+- **200**: The configuration.
+- **401**: Unknown API key. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "customer_center": {
+    "screens": {
+      "MANAGEMENT": {
+        "type": "MANAGEMENT",
+        "title": "Manage subscription",
+        "paths": []
+      }
+    },
+    "support": {
+      "email": "support@example.com"
+    }
+  }
+}
+```
+
+### Customer Center support ticket (not built) (subscriber token)
+
+`POST /v1/customer/customercenter/support/create-ticket` · Auth: none
+
+The subscriber-token form of `POST /v1/customercenter/support/create-ticket`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/customer/customercenter/support/create-ticket"
+```
+
+**Responses**
+
+- **200**: Not sent.
+- **401**: Unknown API key. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "sent": false
+}
+```
+
+### Virtual currency balances (subscriber token)
+
+`GET /v1/customer/virtual_currencies` · Auth: none
+
+The subscriber-token form of `GET /v1/subscribers/{app_user_id}/virtual_currencies`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/customer/virtual_currencies"
+```
+
+**Responses**
+
+- **200**: Balances.
+- **401**: Unknown API key. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "virtual_currencies": {
+    "GLD": {
+      "balance": 700,
+      "name": "Gold",
+      "code": "GLD",
+      "description": null
+    }
+  }
+}
+```
+
+### Restore eligibility (StoreKit 2) (subscriber token)
+
+`POST /v1/customer/restore/eligibility` · Auth: none
+
+The subscriber-token form of `POST /v1/subscribers/{app_user_id}/restore/eligibility`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/customer/restore/eligibility"
+```
+
+**Responses**
+
+- **200**: Always allowed.
+- **401**: Unknown API key. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "is_purchase_allowed_by_restore_behavior": true
+}
+```
+
+### Rewarded ad verification (not available) (subscriber token)
+
+`GET /v1/customer/ads/reward_verifications/{client_transaction_id}` · Auth: none
+
+The subscriber-token form of `GET /v1/subscribers/{app_user_id}/ads/reward_verifications/{client_transaction_id}`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `client_transaction_id` | string | yes | From `generateRewardVerificationToken`. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/customer/ads/reward_verifications/$CLIENT_TRANSACTION_ID"
+```
+
+**Responses**
+
+- **200**: Failed.
+- **401**: Unknown API key. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "status": "failed",
+  "reward": null,
+  "failure_reason": "not_supported",
+  "message": "Server-side reward verification is not available on RevenueDot."
+}
+```
+
+### Web offering products (subscriber token)
+
+`GET /rcbilling/v1/customer/offering_products` · Auth: none
+
+The subscriber-token form of `GET /rcbilling/v1/subscribers/{app_user_id}/offering_products`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/rcbilling/v1/customer/offering_products"
+```
+
+**Responses**
+
+- **200**: No web offerings.
+- **401**: Unknown API key. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "offerings": {}
+}
+```
+
+### Test Store product details (subscriber token)
+
+`GET /rcbilling/v1/customer/products` · Auth: none
+
+The subscriber-token form of `GET /rcbilling/v1/subscribers/{app_user_id}/products`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `id` | array of string | no | Product ids; repeat the parameter. None lists every product of the app. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/rcbilling/v1/customer/products"
+```
+
+**Responses**
+
+- **200**: Product details.
+- **401**: Unknown API key. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "product_details": [
+    {
+      "identifier": "pro_monthly",
+      "product_type": "subscription",
+      "title": "Pro monthly",
+      "description": null,
+      "current_price": {
+        "amount": 0,
+        "amount_micros": 0,
+        "currency": "USD"
+      },
+      "normal_period_duration": "P1M",
+      "default_purchase_option_id": "base",
+      "default_subscription_option_id": "base",
+      "purchase_options": {
+        "base": {
+          "id": "base",
+          "price_id": "base",
+          "base": {
+            "period_duration": "P1M",
+            "cycle_count": 1,
+            "price": {
+              "amount": 0,
+              "amount_micros": 0,
+              "currency": "USD"
+            }
+          },
+          "base_price": null,
+          "trial": null,
+          "intro_price": null
+        }
+      },
+      "subscription_options": {
+        "base": {
+          "id": "base",
+          "price_id": "base",
+          "base": {
+            "period_duration": "P1M",
+            "cycle_count": 1,
+            "price": {
+              "amount": 0,
+              "amount_micros": 0,
+              "currency": "USD"
+            }
+          },
+          "base_price": null,
+          "trial": null,
+          "intro_price": null
+        }
+      }
+    }
+  ]
+}
+```
+
+### Spend in-app currency as the subscriber
+
+`POST /v1/customer/virtual_currencies/spend` · Auth: none
+
+Takes the amounts off the subscriber's balances, all or nothing. A balance cannot go below zero (422, code 7000); an unknown currency or a malformed body is 400 with code 7226. No webhook is sent, as for balance changes through the API.
+
+**Headers**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `Idempotency-Key` | string | no | A retry with the same key spends nothing again. |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `adjustments` | object | yes | Amount to spend per currency code. |
+| `reference` | string or null | no | Your own note, kept in the ledger. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/customer/virtual_currencies/spend" \
+  -H "Content-Type: application/json" -d '{"adjustments":{"GLD":5},"reference":"sword"}'
+```
+
+**Responses**
+
+- **200**: The balances after the spend.
+- **400**: Bad request. For receipts, a 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. Returns [V1Error](#v1error).
+- **401**: Unknown API key. Returns [V1Error](#v1error).
+- **422**: The request is valid but cannot be done in this state. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "virtual_currencies": {
+    "GLD": {
+      "balance": 95,
+      "name": "Gold",
+      "code": "GLD",
+      "description": null
+    }
+  }
 }
 ```
 

@@ -10,6 +10,7 @@ import { targetingPaths } from "./targeting.mjs";
 import { chartPaths } from "./charts.mjs";
 import { integrationPaths } from "./integrations.mjs";
 import { webhooks } from "./webhooks.mjs";
+import { v2RestPaths } from "./v2-rest.mjs";
 
 /**
  * Tags in reading order. `x-page` is the generated Markdown page (api/<page>.md) the tag's operations go to.
@@ -23,6 +24,7 @@ export const TAGS = [
   ["Attributes", "sdk-endpoints", "Customer attributes such as `$email`."],
   ["SDK support", "sdk-endpoints", "Endpoints the SDK calls for features RevenueDot answers minimally, so the SDK keeps working."],
   ["Web Billing", "sdk-endpoints", "Web checkout calls from the iOS SDK and purchases-js. RevenueDot takes no web payments, so a checkout answers an error the SDK shows as a failed purchase."],
+  ["Subscriber tokens", "sdk-endpoints", "The SDK endpoints for one customer, authorized by a subscriber access token from `POST /v2/projects/{project_id}/apps/{app_id}/authenticate` instead of the app key. The RevenueCat SDKs call these paths in their internal token mode."],
   ["Store notifications", "sdk-endpoints", "Where App Store Connect and Google Pub/Sub send server notifications."],
   ["Response signing", "sdk-endpoints", "Trusted Entitlements: the public key responses are signed with."],
   ["Customers (v1)", "rest-v1", "Secret-key customer operations."],
@@ -46,6 +48,7 @@ export const TAGS = [
   ["Experiments", "rest-v2", "Offering A/B tests and their results."],
   ["Paywalls", "rest-v2", "Paywall components the SDK renders, their publishing and versions, and the images and fonts they use."],
   ["Webhook integrations", "rest-v2", "Where events are sent."],
+  ["Discounts and invoices", "rest-v2", "RevenueCat Billing (Web Billing) objects. RevenueDot does not have that billing engine, so these operations answer on purpose: writes 422, lists empty, single reads 404."],
   ["Collaborators", "rest-v2", "Dashboard users of the project."],
   ["Dashboard auth", "extensions", "Sign-up, sign-in, password reset, email confirmation, invites and account settings for the dashboard. The session cookie also authorizes REST API v2."],
   ["Members and invites", "extensions", "Invite people to a project by email, change their role, remove them. Dashboard session only."],
@@ -87,7 +90,7 @@ export function buildDocument() {
       { url: "https://{host}", description: "Your self-hosted RevenueDot", variables: { host: { default: "revenuedot.example.com" } } },
     ],
     tags: tags(),
-    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...extensionPaths },
+    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...extensionPaths },
     webhooks,
     components: { schemas, parameters, responses, securitySchemes },
     security: [{ secretApiKey: [] }],

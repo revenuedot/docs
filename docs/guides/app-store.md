@@ -72,13 +72,16 @@ Set these in the app's `app_store` object with `POST /v2/projects/{project_id}/a
 | `app_apple_id` | Your app's Apple ID (a number). Production notifications for another app ID are refused |
 | `xcode_certificate` | The StoreKit test certificate exported from Xcode (PEM). Lets RevenueDot accept purchases made with a StoreKit configuration file in the simulator. See [sandbox testing](sandbox-testing.md) |
 | `allow_unsigned_receipts` | Development only: accept StoreKit 1 receipts without the In-App Purchase key |
-| `app_store_connect_api_key`, `_id`, `_issuer`, `app_store_connect_vendor_number` | A separate App Store Connect API key. Stored for a later product import; not used yet |
+| `app_store_connect_api_key`, `_id`, `_issuer`, `app_store_connect_vendor_number` | A separate App Store Connect API key with the App Manager role. Used to create products in App Store Connect (below) |
 | `shared_secret` | The legacy app-specific shared secret. Stored but not used: RevenueDot does not call Apple's deprecated verifyReceipt endpoint |
 
 ## What you can do from the server afterwards
 - **Extend a subscription** by 1 to 90 days: `POST /v2/projects/{project_id}/subscriptions/{subscription_id}/actions/extend` with `extend_by_days` and `extend_reason_code`.
 - **Extend every active subscriber of a product**, for example after an outage: `POST /v2/projects/{project_id}/apps/{app_id}/actions/mass_extend`.
 - **Refunds** are Apple's decision; customers ask Apple. RevenueDot records Apple's `REFUND` notification as a `CANCELLATION` with a negative price.
+- **Restore a purchase from its order id**, for a customer who sends you Apple's receipt email: `POST /v2/projects/{project_id}/customers/{customer_id}/actions/restore_purchase_by_order_id` with `{"order_id":"MK5TTTVWJH"}`. RevenueDot looks the order up with Apple (needs the In-App Purchase key) and gives the customer its subscriptions and purchases, under the project's transfer behaviour.
+- **Create a product in App Store Connect** from your catalog: `POST /v2/projects/{project_id}/products/{product_id}/create_in_store`. A subscription needs `{"store_information":{"duration":"ONE_MONTH","subscription_group_name":"Pro"}}`; the group is reused by name or created. Other product types need no body. Add prices, a review screenshot and localizations in App Store Connect before you submit. Needs the App Store Connect API key above.
+- **Win-back offers** work with no server setup beyond the In-App Purchase key and notifications. See [Win-back offers](win-back-offers.md).
 
 ## Related
 - [iOS SDK guide](../sdks/ios.md)

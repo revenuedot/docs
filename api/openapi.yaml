@@ -54,6 +54,9 @@ tags:
   - name: Web Billing
     description: Web checkout calls from the iOS SDK and purchases-js. RevenueDot takes no web payments, so a checkout answers an error the SDK shows as a failed purchase.
     x-page: sdk-endpoints
+  - name: Subscriber tokens
+    description: The SDK endpoints for one customer, authorized by a subscriber access token from `POST /v2/projects/{project_id}/apps/{app_id}/authenticate` instead of the app key. The RevenueCat SDKs call these paths in their internal token mode.
+    x-page: sdk-endpoints
   - name: Store notifications
     description: Where App Store Connect and Google Pub/Sub send server notifications.
     x-page: sdk-endpoints
@@ -122,6 +125,9 @@ tags:
     x-page: rest-v2
   - name: Webhook integrations
     description: Where events are sent.
+    x-page: rest-v2
+  - name: Discounts and invoices
+    description: "RevenueCat Billing (Web Billing) objects. RevenueDot does not have that billing engine, so these operations answer on purpose: writes 422, lists empty, single reads 404."
     x-page: rest-v2
   - name: Collaborators
     description: Dashboard users of the project.
@@ -1148,7 +1154,9 @@ paths:
       tags:
         - SDK support
       summary: Product to entitlement mapping (offline entitlements)
-      description: Lets the SDK grant entitlements while the server cannot be reached.
+      description: |-
+        Lets the SDK grant entitlements on the device while the server answers 5xx (offline entitlements). The SDK fetches it every 25 hours.
+        A public key gets only its own app's products, keyed the way that SDK looks them up: App Store products by product id (`product:monthly` for a monthly billing plan), Google Play products by `subscription:base_plan` and by the bare subscription id, which carries every base plan's entitlements because Android purchases do not name their base plan. Consumables are left out. A secret key gets the whole project. See [Offline entitlements](../docs/guides/offline-entitlements.md).
       security:
         - publicApiKey: []
         - secretApiKey: []
@@ -3049,6 +3057,712 @@ paths:
         "503":
           $ref: "#/components/responses/V1Error503"
       x-source: routes/rest-v1.ts
+  /v1/customer:
+    get:
+      operationId: getCustomerInfoWithToken
+      tags:
+        - Subscriber tokens
+      summary: Get customer info (subscriber token)
+      description: "The subscriber-token form of `GET /v1/subscribers/{app_user_id}`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224."
+      security:
+        - subscriberToken: []
+      parameters:
+        - $ref: "#/components/parameters/XNonce"
+      responses:
+        "200":
+          description: Customer info.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerInfo"
+              example:
+                request_date: 2026-09-30T20:41:54Z
+                request_date_ms: 1790800914034
+                subscriber:
+                  entitlements:
+                    pro:
+                      expires_date: 2026-10-30T20:41:54Z
+                      grace_period_expires_date: null
+                      product_identifier: pro_monthly
+                      purchase_date: 2026-09-30T20:41:54Z
+                  first_seen: 2026-09-30T20:41:54Z
+                  last_seen: 2026-09-30T20:41:54Z
+                  management_url: null
+                  non_subscriptions: {}
+                  original_app_user_id: user_1
+                  original_application_version: null
+                  original_purchase_date: 2026-09-30T20:41:54Z
+                  other_purchases: {}
+                  subscriptions:
+                    pro_monthly:
+                      auto_resume_date: null
+                      billing_issues_detected_at: null
+                      display_name: null
+                      expires_date: 2026-10-30T20:41:54Z
+                      grace_period_expires_date: null
+                      is_sandbox: true
+                      management_url: null
+                      original_purchase_date: 2026-09-30T20:41:54Z
+                      ownership_type: PURCHASED
+                      period_type: normal
+                      purchase_date: 2026-09-30T20:41:54Z
+                      refunded_at: null
+                      store: test_store
+                      store_transaction_id: test_1790800914000_quickstart
+                      unsubscribe_detected_at: null
+                      price:
+                        amount: 9.99
+                        currency: USD
+        "201":
+          description: Customer info of a customer created by this call.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerInfo"
+              example:
+                request_date: 2026-09-30T20:41:54Z
+                request_date_ms: 1790800914034
+                subscriber:
+                  entitlements:
+                    pro:
+                      expires_date: 2026-10-30T20:41:54Z
+                      grace_period_expires_date: null
+                      product_identifier: pro_monthly
+                      purchase_date: 2026-09-30T20:41:54Z
+                  first_seen: 2026-09-30T20:41:54Z
+                  last_seen: 2026-09-30T20:41:54Z
+                  management_url: null
+                  non_subscriptions: {}
+                  original_app_user_id: user_1
+                  original_application_version: null
+                  original_purchase_date: 2026-09-30T20:41:54Z
+                  other_purchases: {}
+                  subscriptions:
+                    pro_monthly:
+                      auto_resume_date: null
+                      billing_issues_detected_at: null
+                      display_name: null
+                      expires_date: 2026-10-30T20:41:54Z
+                      grace_period_expires_date: null
+                      is_sandbox: true
+                      management_url: null
+                      original_purchase_date: 2026-09-30T20:41:54Z
+                      ownership_type: PURCHASED
+                      period_type: normal
+                      purchase_date: 2026-09-30T20:41:54Z
+                      refunded_at: null
+                      store: test_store
+                      store_transaction_id: test_1790800914000_quickstart
+                      unsubscribe_detected_at: null
+                      price:
+                        amount: 9.99
+                        currency: USD
+        "400":
+          $ref: "#/components/responses/V1Error400"
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+  /v1/customer/offerings:
+    get:
+      operationId: getOfferingsWithToken
+      tags:
+        - Subscriber tokens
+      summary: Get offerings (subscriber token)
+      description: "The subscriber-token form of `GET /v1/subscribers/{app_user_id}/offerings`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224."
+      security:
+        - subscriberToken: []
+      responses:
+        "200":
+          description: Offerings.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Offerings"
+              example:
+                current_offering_id: default
+                offerings:
+                  - description: Standard plans
+                    identifier: default
+                    metadata: null
+                    packages:
+                      - identifier: $rc_monthly
+                        platform_product_identifier: pro_monthly
+                      - identifier: $rc_annual
+                        platform_product_identifier: pro_annual
+                      - identifier: $rc_lifetime
+                        platform_product_identifier: pro_lifetime
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+  /v1/customer/intro_eligibility:
+    post:
+      operationId: introEligibilityWithToken
+      tags:
+        - Subscriber tokens
+      summary: Intro offer eligibility (StoreKit 1) (subscriber token)
+      description: "The subscriber-token form of `POST /v1/subscribers/{app_user_id}/intro_eligibility`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224."
+      security:
+        - subscriberToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                product_identifiers:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "200":
+          description: Eligibility per product.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: "null"
+              example:
+                pro_monthly: null
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+  /v1/customer/attribution:
+    post:
+      operationId: postAttributionWithToken
+      tags:
+        - Subscriber tokens
+      summary: Attribution data (deprecated iOS call) (subscriber token)
+      description: "The subscriber-token form of `POST /v1/subscribers/{app_user_id}/attribution`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224."
+      security:
+        - subscriberToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                network:
+                  type: integer
+                  description: "The SDK's AttributionNetwork: 0 Apple Search Ads."
+                data:
+                  type: object
+              required:
+                - network
+                - data
+            example:
+              network: 0
+              data:
+                rc_idfv: 4CEE1BEE-3C19-4591-9E34-1AD968D7B609
+                Version3.1:
+                  iad-attribution: "true"
+                  iad-campaign-name: Spring
+                  iad-keyword: scanner
+      responses:
+        "200":
+          description: Stored.
+          content:
+            application/json:
+              schema:
+                type: object
+              example: {}
+        "400":
+          $ref: "#/components/responses/V1Error400"
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+  /v1/customer/attributes:
+    post:
+      operationId: postAttributesWithToken
+      tags:
+        - Subscriber tokens
+      summary: Set customer attributes (subscriber token)
+      description: "The subscriber-token form of `POST /v1/subscribers/{app_user_id}/attributes`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224."
+      security:
+        - subscriberToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                attributes:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    properties:
+                      value:
+                        type:
+                          - string
+                          - "null"
+                      updated_at_ms:
+                        type: integer
+              required:
+                - attributes
+            example:
+              attributes:
+                $email:
+                  value: ana@example.com
+                  updated_at_ms: 1790800914000
+      responses:
+        "200":
+          description: Saved.
+          content:
+            application/json:
+              schema:
+                type: object
+              example: {}
+        "400":
+          description: Some attributes were not saved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+              example:
+                code: 7263
+                message: Some subscriber attributes keys were unable to be saved.
+                attribute_errors:
+                  - key_name: $email
+                    message: Email address is not a valid email.
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+  /v1/customer/adservices_attribution:
+    post:
+      operationId: postAdServicesAttributionWithToken
+      tags:
+        - Subscriber tokens
+      summary: Apple AdServices token (subscriber token)
+      description: "The subscriber-token form of `POST /v1/subscribers/{app_user_id}/adservices_attribution`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224."
+      security:
+        - subscriberToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                aad_attribution_token:
+                  type: string
+                  description: The token from AAAttribution.attributionToken().
+              required:
+                - aad_attribution_token
+            example:
+              aad_attribution_token: wD3Ma…
+      responses:
+        "200":
+          description: Accepted; the lookup runs after the answer.
+          content:
+            application/json:
+              schema:
+                type: object
+              example: {}
+        "400":
+          description: No token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+              example:
+                code: 7226
+                message: aad_attribution_token is required.
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+  /v1/customer/health_report:
+    get:
+      operationId: healthReportWithToken
+      tags:
+        - Subscriber tokens
+      summary: SDK health report (subscriber token)
+      security:
+        - subscriberToken: []
+      responses:
+        "200":
+          description: Always passed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  project_id:
+                    type:
+                      - string
+                      - "null"
+                  app_id:
+                    type:
+                      - string
+                      - "null"
+                  checks:
+                    type: array
+                    items:
+                      type: object
+              example:
+                status: passed
+                project_id: proj18pzzkao
+                app_id: appvnrm0a5h
+                checks: []
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+      description: "The subscriber-token form of `GET /v1/subscribers/{app_user_id}/health_report`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224."
+  /v1/customer/customercenter:
+    get:
+      operationId: customerCenterWithToken
+      tags:
+        - Subscriber tokens
+      summary: Customer Center configuration (subscriber token)
+      description: "The subscriber-token form of `GET /v1/customercenter/{app_user_id}`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224."
+      security:
+        - subscriberToken: []
+      responses:
+        "200":
+          description: The configuration.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  customer_center:
+                    type: object
+                    additionalProperties: true
+                required:
+                  - customer_center
+              example:
+                customer_center:
+                  screens:
+                    MANAGEMENT:
+                      type: MANAGEMENT
+                      title: Manage subscription
+                      paths: []
+                  support:
+                    email: support@example.com
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+  /v1/customer/customercenter/support/create-ticket:
+    post:
+      operationId: createSupportTicketWithToken
+      tags:
+        - Subscriber tokens
+      summary: Customer Center support ticket (not built) (subscriber token)
+      security:
+        - subscriberToken: []
+      responses:
+        "200":
+          description: Not sent.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sent:
+                    type: boolean
+              example:
+                sent: false
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+      description: "The subscriber-token form of `POST /v1/customercenter/support/create-ticket`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224."
+  /v1/customer/virtual_currencies:
+    get:
+      operationId: virtualCurrenciesWithToken
+      tags:
+        - Subscriber tokens
+      summary: Virtual currency balances (subscriber token)
+      description: "The subscriber-token form of `GET /v1/subscribers/{app_user_id}/virtual_currencies`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224."
+      security:
+        - subscriberToken: []
+      responses:
+        "200":
+          description: Balances.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  virtual_currencies:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        balance:
+                          type: integer
+                        name:
+                          type: string
+                        code:
+                          type: string
+                        description:
+                          type:
+                            - string
+                            - "null"
+                      required:
+                        - balance
+                        - name
+                        - code
+                required:
+                  - virtual_currencies
+              example:
+                virtual_currencies:
+                  GLD:
+                    balance: 700
+                    name: Gold
+                    code: GLD
+                    description: null
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+  /v1/customer/restore/eligibility:
+    post:
+      operationId: restoreEligibilityWithToken
+      tags:
+        - Subscriber tokens
+      summary: Restore eligibility (StoreKit 2) (subscriber token)
+      security:
+        - subscriberToken: []
+      responses:
+        "200":
+          description: Always allowed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  is_purchase_allowed_by_restore_behavior:
+                    type: boolean
+              example:
+                is_purchase_allowed_by_restore_behavior: true
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+      description: "The subscriber-token form of `POST /v1/subscribers/{app_user_id}/restore/eligibility`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224."
+  /v1/customer/ads/reward_verifications/{client_transaction_id}:
+    get:
+      operationId: rewardVerificationWithToken
+      tags:
+        - Subscriber tokens
+      summary: Rewarded ad verification (not available) (subscriber token)
+      description: "The subscriber-token form of `GET /v1/subscribers/{app_user_id}/ads/reward_verifications/{client_transaction_id}`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224."
+      security:
+        - subscriberToken: []
+      parameters:
+        - name: client_transaction_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: From `generateRewardVerificationToken`.
+      responses:
+        "200":
+          description: Failed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - pending
+                      - verified
+                      - failed
+                  reward:
+                    type: "null"
+                  failure_reason:
+                    type: string
+                  message:
+                    type: string
+              example:
+                status: failed
+                reward: null
+                failure_reason: not_supported
+                message: Server-side reward verification is not available on RevenueDot.
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+  /rcbilling/v1/customer/offering_products:
+    get:
+      operationId: webOfferingProductsWithToken
+      tags:
+        - Subscriber tokens
+      summary: Web offering products (subscriber token)
+      description: "The subscriber-token form of `GET /rcbilling/v1/subscribers/{app_user_id}/offering_products`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224."
+      security:
+        - subscriberToken: []
+      responses:
+        "200":
+          description: No web offerings.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  offerings:
+                    type: object
+              example:
+                offerings: {}
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+  /rcbilling/v1/customer/products:
+    get:
+      operationId: webProductsWithToken
+      tags:
+        - Subscriber tokens
+      summary: Test Store product details (subscriber token)
+      description: "The subscriber-token form of `GET /rcbilling/v1/subscribers/{app_user_id}/products`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224."
+      security:
+        - subscriberToken: []
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+          description: Product ids; repeat the parameter. None lists every product of the app.
+      responses:
+        "200":
+          description: Product details.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  product_details:
+                    type: array
+                    items:
+                      type: object
+              example:
+                product_details:
+                  - identifier: pro_monthly
+                    product_type: subscription
+                    title: Pro monthly
+                    description: null
+                    current_price:
+                      amount: 0
+                      amount_micros: 0
+                      currency: USD
+                    normal_period_duration: P1M
+                    default_purchase_option_id: base
+                    default_subscription_option_id: base
+                    purchase_options:
+                      base:
+                        id: base
+                        price_id: base
+                        base:
+                          period_duration: P1M
+                          cycle_count: 1
+                          price:
+                            amount: 0
+                            amount_micros: 0
+                            currency: USD
+                        base_price: null
+                        trial: null
+                        intro_price: null
+                    subscription_options:
+                      base:
+                        id: base
+                        price_id: base
+                        base:
+                          period_duration: P1M
+                          cycle_count: 1
+                          price:
+                            amount: 0
+                            amount_micros: 0
+                            currency: USD
+                        base_price: null
+                        trial: null
+                        intro_price: null
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+  /v1/customer/virtual_currencies/spend:
+    post:
+      operationId: spendVirtualCurrencyWithToken
+      tags:
+        - Subscriber tokens
+      summary: Spend in-app currency as the subscriber
+      description: Takes the amounts off the subscriber's balances, all or nothing. A balance cannot go below zero (422, code 7000); an unknown currency or a malformed body is 400 with code 7226. No webhook is sent, as for balance changes through the API.
+      security:
+        - subscriberToken: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          schema:
+            type: string
+          description: A retry with the same key spends nothing again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                adjustments:
+                  type: object
+                  additionalProperties:
+                    type: integer
+                    minimum: 1
+                  description: Amount to spend per currency code.
+                reference:
+                  type:
+                    - string
+                    - "null"
+                  description: Your own note, kept in the ledger.
+              required:
+                - adjustments
+            example:
+              adjustments:
+                GLD: 5
+              reference: sword
+      responses:
+        "200":
+          description: The balances after the spend.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  virtual_currencies:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        balance:
+                          type: integer
+                        name:
+                          type: string
+                        code:
+                          type: string
+                        description:
+                          type:
+                            - string
+                            - "null"
+                required:
+                  - virtual_currencies
+              example:
+                virtual_currencies:
+                  GLD:
+                    balance: 95
+                    name: Gold
+                    code: GLD
+                    description: null
+        "400":
+          $ref: "#/components/responses/V1Error400"
+        "401":
+          $ref: "#/components/responses/V1Error401"
+        "422":
+          $ref: "#/components/responses/V1Error422"
+      x-source: routes/sdk.ts
   /v2/projects:
     get:
       operationId: listProjects
@@ -8707,6 +9421,727 @@ paths:
       x-source: routes/v2/audit.ts
       x-scopes:
         - project_configuration:audit_logs:read
+  /v2/projects/{project_id}/customers/{customer_id}/actions/restore_purchase_by_order_id:
+    post:
+      operationId: restorePurchaseByOrderId
+      tags:
+        - Customers
+      summary: Restore a purchase by its store order id
+      description: |-
+        Finds the purchase an order id paid for and gives it to the customer, like a restore from the device: the project's transfer behaviour applies, and a purchase that moves records a `TRANSFER` event.
+
+        - **Google Play** order ids (`GPA.1234-5678-9012-34567`, renewals with `..0`, `..1`): `orders.batchGet` on each Play app with a service account gives the purchase token, which is verified and acknowledged like a receipt. The service account needs the "View financial data" permission.
+        - **App Store** order ids (the id on the customer's receipt email, such as `MK5TTTVWJH`): Apple's Look Up Order ID on each App Store app with an In-App Purchase key, production first, then the sandbox. Only the order's own subscriptions and purchases are restored. RevenueCat's operation takes Google Play order ids only; App Store order ids are a RevenueDot addition.
+
+        404 when no store knows the order, 422 `unprocessable_entity_error` when no app has the credentials the lookup needs, 422 `store_error` with `retryable: true` while the store cannot be reached, 409 when the project's transfer behaviour is `keep` and another customer owns the purchase.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/CustomerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                order_id:
+                  type: string
+                  description: The store order id.
+                  minLength: 1
+                  maxLength: 255
+              required:
+                - order_id
+            example:
+              order_id: GPA.3372-4157-7914-56870
+      responses:
+        "200":
+          description: The customer after the restore.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "409":
+          $ref: "#/components/responses/V2Error409"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/store-ops.ts
+      x-scopes:
+        - customer_information:customers:read_write
+  /v2/projects/{project_id}/products/{product_id}/create_in_store:
+    post:
+      operationId: createProductInStore
+      tags:
+        - Products
+      summary: Create the product in its store
+      description: |-
+        Creates a catalog product in the store its app belongs to. The product's display name becomes the store name.
+
+        - **App Store** (needs the app's App Store Connect API key with the App Manager role: `app_store_connect_api_key`, `app_store_connect_api_key_id`, `app_store_connect_api_key_issuer`). A subscription needs `store_information` with `duration` and `subscription_group_name` (or `subscription_group_id`); the group is reused by name or created. Consumables, non-consumables and non-renewing subscriptions need no body. Add prices, a review screenshot and localizations in App Store Connect before submitting.
+        - **Google Play** (a RevenueDot addition; needs the service account with "Manage store presence"): a subscription with one listing in the app's default language. Add its base plans and prices in Play Console. One-time products answer 422, because Google needs a price to create them.
+
+        409 when the store already has the product id, 422 without the credentials or for another store, 422 `store_error` with `retryable: true` while the store is down.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product id (prod...).
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                store_information:
+                  oneOf:
+                    - type: object
+                      properties:
+                        duration:
+                          type: string
+                          enum:
+                            - ONE_WEEK
+                            - ONE_MONTH
+                            - TWO_MONTHS
+                            - THREE_MONTHS
+                            - SIX_MONTHS
+                            - ONE_YEAR
+                        subscription_group_name:
+                          type: string
+                        subscription_group_id:
+                          type:
+                            - string
+                            - "null"
+                          description: An existing subscription group's id in App Store Connect.
+                      required:
+                        - duration
+                        - subscription_group_name
+                    - type: object
+                      properties: {}
+                  description: App Store subscriptions only.
+            example:
+              store_information:
+                duration: ONE_MONTH
+                subscription_group_name: Pro
+      responses:
+        "201":
+          description: The product in the store.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  created_product:
+                    type: object
+                    properties:
+                      object:
+                        type: string
+                        enum:
+                          - store_product
+                      id:
+                        type: string
+                        description: "The product's id in the store: the App Store Connect id, or the Google Play product id."
+                      name:
+                        type:
+                          - string
+                          - "null"
+                        description: The name in the store.
+                      product_identifier:
+                        type: string
+                        description: The product identifier in the store.
+                    required:
+                      - object
+                      - id
+                      - product_identifier
+                required:
+                  - created_product
+              example:
+                created_product:
+                  object: store_product
+                  id: "6743920115"
+                  name: Pro Monthly
+                  product_identifier: pro_monthly
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "409":
+          $ref: "#/components/responses/V2Error409"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/store-ops.ts
+      x-scopes:
+        - project_configuration:products:read_write
+  /v2/projects/{project_id}/apps/{app_id}/authenticate:
+    post:
+      operationId: authenticateSubscriber
+      tags:
+        - Apps
+      summary: Issue a subscriber access token
+      description: "A short-lived access token (one hour) for one app user id of one app. Send it as `Authorization: Bearer rdat_...` to the [subscriber token endpoints](sdk-endpoints.md) (`/v1/customer`, `/v1/customer/offerings` ...), which answer for that app user id, or to any SDK endpoint for that app user id. It cannot be refreshed: ask for a new one. Only a hash of the token is stored."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/AppId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                app_user_id:
+                  type: string
+                  description: The app user id the token speaks for.
+                  minLength: 1
+                  maxLength: 100
+              required:
+                - app_user_id
+            example:
+              app_user_id: user_1
+      responses:
+        "200":
+          description: The token.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - authentication
+                  access_token:
+                    type: string
+                    description: Starts with rdat_.
+                  expires_at:
+                    type: integer
+                    description: Epoch milliseconds.
+                    format: int64
+                required:
+                  - object
+                  - access_token
+                  - expires_at
+              example:
+                object: authentication
+                access_token: rdat_3f0c1d0b9e8a7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c2b
+                expires_at: 1790804514034
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/subscriber-auth.ts
+      x-scopes:
+        - iam:authorization:issue_token
+  /v2/projects/{project_id}/customers/{customer_id}/win_back_offers:
+    get:
+      operationId: listWinBackOfferEligibility
+      tags:
+        - Customers
+      summary: List the win-back offers Apple lets a customer redeem
+      description: One item per App Store subscription of the customer, with the win-back offer ids from Apple's renewal info, best first. RevenueDot reads the renewal info when the app posts a receipt, when Apple sends a notification, and after store actions; it needs the app's In-App Purchase key. See [Win-back offers](../docs/guides/win-back-offers.md).
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/CustomerId"
+      responses:
+        "200":
+          description: The customer's App Store subscriptions.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - win_back_offer_eligibility
+                        subscription_id:
+                          type: string
+                        product_id:
+                          type: string
+                        store:
+                          type: string
+                          enum:
+                            - app_store
+                            - mac_app_store
+                        offer_ids:
+                          type: array
+                          items:
+                            type: string
+                          description: Win-back offer identifiers Apple says the customer may redeem now. Empty when none.
+                        updated_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: When the list was last read from Apple. Epoch milliseconds, or null.
+                      required:
+                        - object
+                        - subscription_id
+                        - product_id
+                        - store
+                        - offer_ids
+                        - updated_at
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+              example:
+                object: list
+                items:
+                  - object: win_back_offer_eligibility
+                    subscription_id: sub_4kq0x2m9a7c1d8e3
+                    product_id: pro_monthly
+                    store: app_store
+                    offer_ids:
+                      - comeback_50
+                    updated_at: 1790800914034
+                next_page: null
+                url: /v2/projects/proj18pzzkao/customers/user_1/win_back_offers
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/store-ops.ts
+      x-scopes:
+        - customer_information:subscriptions:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/discounts:
+    get:
+      operationId: listDiscounts
+      tags:
+        - Discounts and invoices
+      summary: List discounts
+      description: Always an empty list. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/StartingAfter"
+      responses:
+        "200":
+          description: Always an empty list.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+              example:
+                object: list
+                items: []
+                next_page: null
+                url: /v2/projects/proj18pzzkao/discounts
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+      x-source: routes/v2/billing-excluded.ts
+      x-scopes:
+        - project_configuration:discounts:read
+    post:
+      operationId: createDiscount
+      tags:
+        - Discounts and invoices
+      summary: Create a discount
+      description: Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/billing-excluded.ts
+      x-scopes:
+        - project_configuration:discounts:read_write
+  /v2/projects/{project_id}/discounts/{discount_id}:
+    get:
+      operationId: getDiscount
+      tags:
+        - Discounts and invoices
+      summary: Get a discount
+      description: "Answers 404 `resource_missing`: there is no discount. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: discount_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Discount id.
+      responses:
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/billing-excluded.ts
+      x-scopes:
+        - project_configuration:discounts:read
+    patch:
+      operationId: updateDiscount
+      tags:
+        - Discounts and invoices
+      summary: Update a discount
+      description: Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: discount_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Discount id.
+      responses:
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/billing-excluded.ts
+      x-scopes:
+        - project_configuration:discounts:read_write
+    delete:
+      operationId: deleteDiscount
+      tags:
+        - Discounts and invoices
+      summary: Delete a discount
+      description: Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: discount_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Discount id.
+      responses:
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/billing-excluded.ts
+      x-scopes:
+        - project_configuration:discounts:read_write
+  /v2/projects/{project_id}/discounts/{discount_id}/actions/enable:
+    post:
+      operationId: enableDiscount
+      tags:
+        - Discounts and invoices
+      summary: Enable a discount
+      description: Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: discount_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Discount id.
+      responses:
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/billing-excluded.ts
+      x-scopes:
+        - project_configuration:discounts:read_write
+  /v2/projects/{project_id}/discounts/{discount_id}/actions/disable:
+    post:
+      operationId: disableDiscount
+      tags:
+        - Discounts and invoices
+      summary: Disable a discount
+      description: Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: discount_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Discount id.
+      responses:
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/billing-excluded.ts
+      x-scopes:
+        - project_configuration:discounts:read_write
+  /v2/projects/{project_id}/discounts/{discount_id}/discount_codes:
+    get:
+      operationId: listDiscountCodes
+      tags:
+        - Discounts and invoices
+      summary: List a discount's codes
+      description: "Answers 404 `resource_missing`: there is no discount. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: discount_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Discount id.
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/StartingAfter"
+      responses:
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/billing-excluded.ts
+      x-scopes:
+        - project_configuration:discounts:read
+    post:
+      operationId: createDiscountCodes
+      tags:
+        - Discounts and invoices
+      summary: Create discount codes
+      description: Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: discount_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Discount id.
+      responses:
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/billing-excluded.ts
+      x-scopes:
+        - project_configuration:discounts:read_write
+  /v2/projects/{project_id}/discounts/{discount_id}/discount_codes/{discount_code}:
+    delete:
+      operationId: deleteDiscountCode
+      tags:
+        - Discounts and invoices
+      summary: Delete a discount code
+      description: Answers 422 `unprocessable_entity_error`. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any. No body is read.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: discount_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Discount id.
+        - name: discount_code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/billing-excluded.ts
+      x-scopes:
+        - project_configuration:discounts:read_write
+  /v2/projects/{project_id}/customers/{customer_id}/invoices:
+    get:
+      operationId: listCustomerInvoices
+      tags:
+        - Discounts and invoices
+      summary: List a customer's invoices
+      description: Always an empty list for a known customer; 404 for an unknown one. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/StartingAfter"
+      responses:
+        "200":
+          description: Always an empty list.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+              example:
+                object: list
+                items: []
+                next_page: null
+                url: /v2/projects/proj18pzzkao/customers/user_1/invoices
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/billing-excluded.ts
+      x-scopes:
+        - customer_information:invoices:read
+  /v2/projects/{project_id}/customers/{customer_id}/invoices/{invoice_id}/file:
+    get:
+      operationId: getInvoiceFile
+      tags:
+        - Discounts and invoices
+      summary: Download an invoice
+      description: "Answers 404 `resource_missing`: there is no invoice. RevenueDot does not have RevenueCat Billing (Web Billing), the billing engine these objects belong to, so it never has any."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/CustomerId"
+        - name: invoice_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/billing-excluded.ts
+      x-scopes:
+        - customer_information:invoices:read
   /v2/projects/{project_id}/paywalls:
     get:
       operationId: listPaywalls
@@ -20160,7 +21595,10 @@ webhooks:
                       type: number
                       description: Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store).
                     offer_code:
-                      type: "null"
+                      type:
+                        - string
+                        - "null"
+                      description: The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md).
                   required:
                     - id
                     - type
@@ -20376,7 +21814,10 @@ webhooks:
                       type: number
                       description: Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store).
                     offer_code:
-                      type: "null"
+                      type:
+                        - string
+                        - "null"
+                      description: The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md).
                     is_trial_conversion:
                       type: boolean
                       description: True for the first paid period after a free trial.
@@ -20596,7 +22037,10 @@ webhooks:
                       type: number
                       description: Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store).
                     offer_code:
-                      type: "null"
+                      type:
+                        - string
+                        - "null"
+                      description: The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md).
                     cancel_reason:
                       type: string
                       enum:
@@ -20861,7 +22305,10 @@ webhooks:
                       type: number
                       description: Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store).
                     offer_code:
-                      type: "null"
+                      type:
+                        - string
+                        - "null"
+                      description: The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md).
                   required:
                     - id
                     - type
@@ -21077,7 +22524,10 @@ webhooks:
                       type: number
                       description: Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store).
                     offer_code:
-                      type: "null"
+                      type:
+                        - string
+                        - "null"
+                      description: The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md).
                   required:
                     - id
                     - type
@@ -21293,7 +22743,10 @@ webhooks:
                       type: number
                       description: Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store).
                     offer_code:
-                      type: "null"
+                      type:
+                        - string
+                        - "null"
+                      description: The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md).
                     auto_resume_at_ms:
                       type:
                         - integer
@@ -21515,7 +22968,10 @@ webhooks:
                       type: number
                       description: Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store).
                     offer_code:
-                      type: "null"
+                      type:
+                        - string
+                        - "null"
+                      description: The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md).
                     expiration_reason:
                       type: string
                       enum:
@@ -21742,7 +23198,10 @@ webhooks:
                       type: number
                       description: Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store).
                     offer_code:
-                      type: "null"
+                      type:
+                        - string
+                        - "null"
+                      description: The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md).
                     grace_period_expiration_at_ms:
                       type:
                         - integer
@@ -21964,7 +23423,10 @@ webhooks:
                       type: number
                       description: Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store).
                     offer_code:
-                      type: "null"
+                      type:
+                        - string
+                        - "null"
+                      description: The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md).
                     new_product_id:
                       type: string
                       description: The product the customer changed to.
@@ -22184,7 +23646,10 @@ webhooks:
                       type: number
                       description: Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store).
                     offer_code:
-                      type: "null"
+                      type:
+                        - string
+                        - "null"
+                      description: The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md).
                   required:
                     - id
                     - type
@@ -22400,7 +23865,10 @@ webhooks:
                       type: number
                       description: Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store).
                     offer_code:
-                      type: "null"
+                      type:
+                        - string
+                        - "null"
+                      description: The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md).
                   required:
                     - id
                     - type
@@ -23120,6 +24588,104 @@ webhooks:
         "200":
           description: Only HTTP 200 counts as delivered. Anything else, or no answer within 60 seconds, is retried after 5, 10, 20, 40 and 80 minutes.
       x-source: services/events.ts
+  SUBSCRIBER_ALIAS:
+    post:
+      operationId: webhookSubscriberAlias
+      tags:
+        - Webhook events
+      summary: SUBSCRIBER_ALIAS
+      description: "A new app user id joined an existing customer: `logIn` onto an anonymous customer, `logIn` that merged an anonymous customer into an existing one, Android's alias call, or a restore that merged two customers. RevenueCat deprecated this event and sends it only to older projects, so RevenueDot delivers it only to webhooks whose `event_types` filter names `subscriber_alias`; it always appears in the customer's event history."
+      parameters:
+        - name: X-RevenueCat-Webhook-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+          description: "`t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\" with the webhook's signing secret>`. Signed again on every attempt."
+          example: t=1790800914,v1=0a1552334e825926036f7efe21527800ea45caa63eca523c6120c6da9041ef99
+        - name: Authorization
+          in: header
+          required: false
+          schema:
+            type: string
+          description: The webhook's `authorization_header`, verbatim, when you set one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - api_version
+                - event
+              properties:
+                api_version:
+                  type: string
+                  const: "1.0"
+                event:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      description: Unique event id (upper-case UUID). Deduplicate on it.
+                    type:
+                      type: string
+                      description: Event type.
+                    event_timestamp_ms:
+                      type: integer
+                      description: When RevenueDot recorded the event. Epoch milliseconds.
+                    app_id:
+                      type: string
+                      description: RevenueDot app id. Left out for promotional grants.
+                    app_user_id:
+                      type: string
+                      description: The app user id the app uses now.
+                    original_app_user_id:
+                      type: string
+                      description: The customer's first app user id.
+                    aliases:
+                      type: array
+                      items:
+                        type: string
+                      description: Every app user id of the customer.
+                    subscriber_attributes:
+                      type: object
+                      additionalProperties:
+                        type: object
+                        properties:
+                          value:
+                            type:
+                              - string
+                              - "null"
+                          updated_at_ms:
+                            type: integer
+                  required:
+                    - id
+                    - type
+                    - event_timestamp_ms
+                    - app_user_id
+                    - original_app_user_id
+                    - aliases
+            example:
+              api_version: "1.0"
+              event:
+                aliases:
+                  - $RCAnonymousID:0123456789abcdef0123456789abcdef
+                  - user_1
+                app_id: appvnrm0a5h
+                app_user_id: user_1
+                event_timestamp_ms: 1790800925011
+                original_app_user_id: $RCAnonymousID:0123456789abcdef0123456789abcdef
+                subscriber_attributes:
+                  $email:
+                    value: ana@example.com
+                    updated_at_ms: 1790800901000
+                type: SUBSCRIBER_ALIAS
+                id: 5B3C2D1E-0F9A-4B8C-9D7E-6F5A4B3C2D1E
+      responses:
+        "200":
+          description: Only HTTP 200 counts as delivered. Anything else, or no answer within 60 seconds, is retried after 5, 10, 20, 40 and 80 minutes.
+      x-source: services/events.ts
   TEST:
     post:
       operationId: webhookTest
@@ -23286,7 +24852,10 @@ webhooks:
                       type: number
                       description: Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store).
                     offer_code:
-                      type: "null"
+                      type:
+                        - string
+                        - "null"
+                      description: The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md).
                   required:
                     - id
                     - type
@@ -23803,7 +25372,7 @@ components:
             rate_limit_error: "Too many requests of one kind: project invites (50 per project per day). The error is `retryable`; try again later. The dashboard's password reset and email verification endpoints answer 429 with the same `type`."
             authentication_error: No API key, an unknown key, or no dashboard session (401).
             authorization_error: The key lacks a permission, a public app key was used, or the action needs a dashboard admin (403).
-            store_error: "The App Store or Google Play refused the action (422) or could not be reached (503, `retryable: true`)."
+            store_error: "The App Store or Google Play refused the action, or could not be reached (`retryable: true`). Always 422."
             server_error: "RevenueDot failed (500, `retryable: true`). Retry with backoff."
             resource_locked_error: Reserved for RevenueCat compatibility. RevenueDot does not send it today.
             unprocessable_entity_error: The request is valid but not possible in this state or for this store (422), for example archiving the current offering or refunding an App Store purchase.
@@ -25915,9 +27484,9 @@ components:
             $ref: "#/components/schemas/V2Error"
           example:
             object: error
-            type: store_error
-            message: Google Play could not be reached.
-            doc_url: https://revenuedot.app/docs/api/errors#store-error
+            type: server_error
+            message: The server could not complete the request. Try again.
+            doc_url: https://revenuedot.app/docs/api/errors#server-error
             retryable: true
     V1Error400:
       description: Bad request. For receipts, a 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction.
@@ -25955,6 +27524,15 @@ components:
           example:
             code: 7259
             message: Subscriber not found.
+    V1Error422:
+      description: The request is valid but cannot be done in this state.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/V1Error"
+          example:
+            code: 7000
+            message: Balance of GLD is 3; spending 5 would take it below zero.
     V1Error500:
       description: Server error. The SDK keeps the purchase and retries.
       content:
@@ -25987,6 +27565,10 @@ components:
       in: cookie
       name: rd_session
       description: The dashboard session cookie from `POST /auth/login`. It authorizes `/v2` for every project the user belongs to.
+    subscriberToken:
+      type: http
+      scheme: bearer
+      description: A subscriber access token (`rdat_...`) from `POST /v2/projects/{project_id}/apps/{app_id}/authenticate`. It speaks for one app user id of one app for one hour. An expired token, or a path or body naming another app user id, answers 401 with code 7224.
     googlePubSubOidc:
       type: http
       scheme: bearer

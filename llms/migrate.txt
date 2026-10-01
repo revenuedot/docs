@@ -694,7 +694,7 @@ Source: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenued
 ## API
 - **Keys:** the same prefixes as RevenueCat. Public app keys are `appl_`, `mac_`, `goog_`, `test_`, `amzn_`, `strp_`, `rcb_`, `pdl_` and `roku_`; secret keys are `sk_` and belong to one project. See [Projects, apps and API keys](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md).
 - **REST API v1:** all 15 endpoints, with RevenueCat's shapes. See [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md).
-- **REST API v2:** projects, apps, products, entitlements, offerings, packages, customers, subscriptions, purchases and webhook integrations, with RevenueCat's shapes, pagination and errors. The rest of RevenueCat's v2 API, the audit log and team roles are planned for Tier 2. See [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md).
+- **REST API v2:** every one of RevenueCat's 128 v2 operations has a route, with RevenueCat's shapes, pagination and errors. 116 do the real work. The 12 that exist only for RevenueCat Billing (discounts and invoices) answer on purpose: writes 422, lists empty, single reads 404. `restore_purchase_by_order_id` also accepts App Store order ids; `create_in_store` also creates Google Play subscriptions. See [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md).
 - **Extensions that RevenueCat's API does not have:** the import endpoints, `notification_forward_url` on apps, `POST /v2/projects/{project_id}/test_purchases`, store settings and credential checks, mass subscription extension, and webhook delivery logs with retry. See [REST API extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md).
 - **Dashboard sessions** can call `/v2` for every project you belong to; a secret key covers one project.
 - **The importer** is RevenueDot's own; see [The importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md).
@@ -703,8 +703,8 @@ Source: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenued
 - **Payload:** RevenueCat's shape, `{ "api_version": "1.0", "event": { ... } }`, sent as a `POST` with JSON.
 - **Headers:** an optional `Authorization` header you configure, plus `X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256>` signed with your `whsec_...` secret, and `User-Agent: RevenueDot-Webhooks/1.0`.
 - **Delivery:** only HTTP 200 counts as delivered. Failed deliveries retry after 5, 10, 20, 40 and 80 minutes, then stop. Each attempt times out after 60 seconds. You can retry by hand in the dashboard or the API.
-- **Event types sent today:** `INITIAL_PURCHASE`, `RENEWAL`, `CANCELLATION`, `UNCANCELLATION`, `NON_RENEWING_PURCHASE`, `SUBSCRIPTION_PAUSED`, `EXPIRATION`, `BILLING_ISSUE`, `PRODUCT_CHANGE`, `SUBSCRIPTION_EXTENDED`, `REFUND_REVERSED`, `TRANSFER`, `PRICE_INCREASE_CONSENT_REQUIRED`, `PRICE_INCREASE_CONSENT_APPROVED` and `TEST`.
-- **Accepted in filters but never sent yet:** `TEMPORARY_ENTITLEMENT_GRANT`, `INVOICE_ISSUANCE`, `PURCHASE_REDEEMED` and `SUBSCRIBER_ALIAS`.
+- **Event types sent today (18 of 21):** `INITIAL_PURCHASE`, `RENEWAL`, `CANCELLATION`, `UNCANCELLATION`, `NON_RENEWING_PURCHASE`, `SUBSCRIPTION_PAUSED`, `EXPIRATION`, `BILLING_ISSUE`, `PRODUCT_CHANGE`, `SUBSCRIPTION_EXTENDED`, `REFUND_REVERSED`, `TRANSFER`, `PRICE_INCREASE_CONSENT_REQUIRED`, `PRICE_INCREASE_CONSENT_APPROVED`, `VIRTUAL_CURRENCY_TRANSACTION`, `EXPERIMENT_ENROLLMENT`, `TEST`, and `SUBSCRIBER_ALIAS` to webhooks whose filter names it.
+- **Accepted in filters but never sent:** `TEMPORARY_ENTITLEMENT_GRANT` (RevenueDot never grants unverified access during a store outage), `INVOICE_ISSUANCE` (RevenueCat Billing only) and `PURCHASE_REDEEMED` (no web purchase redemption links).
 - **Refunds** arrive as `CANCELLATION` with `cancel_reason: "CUSTOMER_SUPPORT"` and a negative price.
 - **Imported history sends no webhooks**, unless you import with `--emit-events`.
 - **Integrations:** webhooks are the only integration today. Slack, Segment, Amplitude, Mixpanel, PostHog, Firebase, BigQuery, AppsFlyer, Adjust and Meta are planned for Tier 2.
@@ -721,17 +721,16 @@ Source: [`prd/migration/PRD.md`](https://github.com/revenuedot/revenuedot/blob/m
 
 ## Features not built yet, by tier
 **Tier 1 (the current build), not finished**
-- SDK fork packages are built but not published to any registry.
+- SDK fork packages are partly published: `@revenuedot/purchases-js`, `@revenuedot/purchases-typescript-internal` and `@revenuedot/purchases-js-hybrid-mappings` on npm, `app.revenuedot.purchases` on Maven Central and `RevenueDotPurchases` and `RevenueDotPurchasesUI` on CocoaPods. The React Native, Flutter, Capacitor, Cordova, Unity and Kotlin Multiplatform packages are not published yet.
 - Real App Store and Google Play sandbox purchases have not run end to end; store handling is tested against mocked Apple and Google APIs.
 
 **Tier 2 (planned)**
-- The full REST API v2, the audit log and team roles.
-- All 21 webhook event types and the integrations listed above; scheduled data exports to S3, R2 or GCS.
-- All 42 charts, with the SQL published.
-- Paywalls: serving the paywall designs the SDKs render, a visual editor and an asset CDN.
-- Targeting, placements and experiments (offering A/B tests).
-- Customer Center configuration, virtual currencies, offline entitlements, promotional-offer signing and win-back offers.
+- The integrations not listed above (RevenueDot has 12 of RevenueCat's 37).
+- Paywalls with several screens and navigation between them, exit offers and custom variables.
+- Lifecycle: refund control (Apple consumption information), retention offers, win-back campaigns and the support view.
+- RevenueDot AI, an in-app assistant.
 - Moving between self-host and cloud in one step, and a full export.
+- Cloud billing plans.
 
 **Tier 3 (planned)**
 - SSO/SAML, SCIM, custom roles, several organizations, data-location controls and compliance exports.

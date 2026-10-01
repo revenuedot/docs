@@ -27,7 +27,7 @@ curl -s -X POST -H "Authorization: Bearer $SECRET_KEY" \
 3. **The app filter excludes it.** If `app_id` is set, events from other apps are skipped.
 4. **The webhook did not exist yet.** Deliveries are queued when the event happens, for the webhooks that exist then. A webhook you add later does not get older events.
 5. **No event happened.** An imported customer produces no events unless the import ran with `--emit-events`. A purchase RevenueDot has not seen, reported only by a store notification, produces nothing unless `track_new_purchases` is on. See [Why are store notifications not arriving?](store-notifications-not-arriving.md)
-6. **The event type is never sent yet.** RevenueDot accepts `TEMPORARY_ENTITLEMENT_GRANT`, `INVOICE_ISSUANCE`, `PURCHASE_REDEEMED` and `SUBSCRIBER_ALIAS` in filters, but does not produce them yet. See [Known issues](known-issues.md).
+6. **The event type is never sent, or only on request.** RevenueDot accepts `TEMPORARY_ENTITLEMENT_GRANT`, `INVOICE_ISSUANCE` and `PURCHASE_REDEEMED` in filters but never produces them, and sends `SUBSCRIBER_ALIAS` only to webhooks whose filter names it. See [Webhooks](../guides/webhooks.md).
 
 ## Deliveries that fail
 1. **Your backend answers something other than 200.** Only 200 counts as delivered. A 201, 204 or redirect is a failure and is retried. Answer 200 as soon as you have stored the event, and do slow work afterwards.

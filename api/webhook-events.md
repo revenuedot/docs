@@ -31,9 +31,10 @@ RevenueDot POSTs one JSON event per request to each matching webhook: `{ "api_ve
 | [`TRANSFER`](#transfer) | A purchase moved to another customer because that customer restored it (transfer behaviour `transfer` or `transfer_if_no_active`). |
 | [`VIRTUAL_CURRENCY_TRANSACTION`](#virtual_currency_transaction) | An in-app currency was credited because a purchase of a granting product was recorded. Not sent for adjustments made through the API. |
 | [`EXPERIMENT_ENROLLMENT`](#experiment_enrollment) | A customer was enrolled in an offering experiment. Sent once per customer and experiment. |
+| [`SUBSCRIBER_ALIAS`](#subscriber_alias) | A new app user id joined an existing customer: `logIn` onto an anonymous customer, `logIn` that merged an anonymous customer into an existing one, Android's alias call, or a restore that merged two customers. RevenueCat deprecated this event and sends it only to older projects, so RevenueDot delivers it only to webhooks whose `event_types` filter names `subscriber_alias`; it always appears in the customer's event history. |
 | [`TEST`](#test) | Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase. |
 
-Accepted in a webhook's `event_types` filter but never sent yet: `TEMPORARY_ENTITLEMENT_GRANT`, `INVOICE_ISSUANCE`, `PURCHASE_REDEEMED`, `SUBSCRIBER_ALIAS`.
+Accepted in a webhook's `event_types` filter but never sent, because RevenueDot never has the fact behind them: `TEMPORARY_ENTITLEMENT_GRANT` (RevenueDot never grants access it has not verified with the store; during a store outage the SDK keeps the purchase and grants access on the device from the [offline entitlement mapping](../docs/guides/offline-entitlements.md)), `INVOICE_ISSUANCE` (only RevenueCat Billing issues invoices) and `PURCHASE_REDEEMED` (RevenueDot issues no web purchase redemption links). That makes 18 of RevenueCat's 21 event types sent.
 
 ## INITIAL_PURCHASE
 
@@ -68,7 +69,7 @@ The first purchase of a subscription, including a free trial start.
 | `takehome_percentage` | number | 1 minus the estimated store commission. |
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
-| `offer_code` | null |  |
+| `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md). |
 
 Example:
 
@@ -145,7 +146,7 @@ A new paid period: a renewal, a trial converting (`is_trial_conversion: true`), 
 | `takehome_percentage` | number | 1 minus the estimated store commission. |
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
-| `offer_code` | null |  |
+| `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md). |
 | `is_trial_conversion` | boolean | True for the first paid period after a free trial. |
 
 Example:
@@ -224,7 +225,7 @@ Auto-renew was turned off, or the purchase was refunded. Access continues to `ex
 | `takehome_percentage` | number | 1 minus the estimated store commission. |
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
-| `offer_code` | null |  |
+| `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md). |
 | `cancel_reason` | `UNSUBSCRIBE`, `BILLING_ERROR`, `DEVELOPER_INITIATED`, `PRICE_INCREASE`, `CUSTOMER_SUPPORT`, `UNKNOWN` |  |
 
 Example (auto-renew turned off):
@@ -346,7 +347,7 @@ Auto-renew was turned back on before the subscription expired.
 | `takehome_percentage` | number | 1 minus the estimated store commission. |
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
-| `offer_code` | null |  |
+| `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md). |
 
 Example:
 
@@ -423,7 +424,7 @@ A one-time purchase: consumable, non-consumable or lifetime.
 | `takehome_percentage` | number | 1 minus the estimated store commission. |
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
-| `offer_code` | null |  |
+| `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md). |
 
 Example:
 
@@ -500,7 +501,7 @@ A Google Play subscription is scheduled to pause. It will not renew at the end o
 | `takehome_percentage` | number | 1 minus the estimated store commission. |
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
-| `offer_code` | null |  |
+| `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md). |
 | `auto_resume_at_ms` | integer or null | When it resumes. Epoch milliseconds. |
 
 Example:
@@ -579,7 +580,7 @@ Access ended: the period ran out, billing retry gave up or the subscription paus
 | `takehome_percentage` | number | 1 minus the estimated store commission. |
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
-| `offer_code` | null |  |
+| `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md). |
 | `expiration_reason` | `UNSUBSCRIBE`, `BILLING_ERROR`, `DEVELOPER_INITIATED`, `PRICE_INCREASE`, `CUSTOMER_SUPPORT`, `UNKNOWN`, `SUBSCRIPTION_PAUSED` |  |
 
 Example:
@@ -658,7 +659,7 @@ A renewal charge failed. The store retries; access may continue in a grace perio
 | `takehome_percentage` | number | 1 minus the estimated store commission. |
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
-| `offer_code` | null |  |
+| `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md). |
 | `grace_period_expiration_at_ms` | integer or null | End of the grace period, or null when there is none. Epoch milliseconds. |
 
 Example:
@@ -737,7 +738,7 @@ The customer changed product: an upgrade now, or a downgrade or crossgrade sched
 | `takehome_percentage` | number | 1 minus the estimated store commission. |
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
-| `offer_code` | null |  |
+| `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md). |
 | `new_product_id` | string | The product the customer changed to. |
 
 Example:
@@ -816,7 +817,7 @@ The current period got longer without a new payment: an App Store renewal extens
 | `takehome_percentage` | number | 1 minus the estimated store commission. |
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
-| `offer_code` | null |  |
+| `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md). |
 
 Example:
 
@@ -893,7 +894,7 @@ A refund was reversed and access is back.
 | `takehome_percentage` | number | 1 minus the estimated store commission. |
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
-| `offer_code` | null |  |
+| `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md). |
 
 Example:
 
@@ -1178,6 +1179,47 @@ Example:
 }
 ```
 
+## SUBSCRIBER_ALIAS
+
+A new app user id joined an existing customer: `logIn` onto an anonymous customer, `logIn` that merged an anonymous customer into an existing one, Android's alias call, or a restore that merged two customers. RevenueCat deprecated this event and sends it only to older projects, so RevenueDot delivers it only to webhooks whose `event_types` filter names `subscriber_alias`; it always appears in the customer's event history.
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique event id (upper-case UUID). Deduplicate on it. |
+| `type` | string | Event type. |
+| `event_timestamp_ms` | integer | When RevenueDot recorded the event. Epoch milliseconds. |
+| `app_id` | string | RevenueDot app id. Left out for promotional grants. |
+| `app_user_id` | string | The app user id the app uses now. |
+| `original_app_user_id` | string | The customer's first app user id. |
+| `aliases` | array of string | Every app user id of the customer. |
+| `subscriber_attributes` | object |  |
+
+Example:
+
+```json
+{
+  "api_version": "1.0",
+  "event": {
+    "aliases": [
+      "$RCAnonymousID:0123456789abcdef0123456789abcdef",
+      "user_1"
+    ],
+    "app_id": "appvnrm0a5h",
+    "app_user_id": "user_1",
+    "event_timestamp_ms": 1790800925011,
+    "original_app_user_id": "$RCAnonymousID:0123456789abcdef0123456789abcdef",
+    "subscriber_attributes": {
+      "$email": {
+        "value": "ana@example.com",
+        "updated_at_ms": 1790800901000
+      }
+    },
+    "type": "SUBSCRIBER_ALIAS",
+    "id": "5B3C2D1E-0F9A-4B8C-9D7E-6F5A4B3C2D1E"
+  }
+}
+```
+
 ## TEST
 
 Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase.
@@ -1211,7 +1253,7 @@ Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id
 | `takehome_percentage` | number | 1 minus the estimated store commission. |
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
-| `offer_code` | null |  |
+| `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md). |
 
 Example:
 
