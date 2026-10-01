@@ -13,7 +13,7 @@ RevenueDot-only endpoints are on [Extensions](extensions.md).
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (160)
+## Operations on this page (161)
 
 - **Projects**: [List projects](#list-projects), [Create a project](#create-a-project)
 - **Apps**: [List apps](#list-apps), [Create an app](#create-an-app), [Get an app](#get-an-app), [Update an app and its store credentials](#update-an-app-and-its-store-credentials), [Delete an app](#delete-an-app), [Get an app's public SDK key](#get-an-apps-public-sdk-key), [Get a StoreKit configuration file](#get-a-storekit-configuration-file), [Issue a subscriber access token](#issue-a-subscriber-access-token)
@@ -30,7 +30,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Audit log**: [List audit log entries](#list-audit-log-entries)
 - **Targeting**: [List audiences](#list-audiences), [Create an audience](#create-an-audience), [Preview who matches](#preview-who-matches), [Known values for attribution and custom-attribute fields](#known-values-for-attribution-and-custom-attribute-fields), [Get an audience](#get-an-audience), [Update an audience](#update-an-audience), [Delete an unused audience](#delete-an-unused-audience), [List targeting rules in order](#list-targeting-rules-in-order), [Create a targeting rule](#create-a-targeting-rule), [Set the evaluation order](#set-the-evaluation-order), [Get a targeting rule](#get-a-targeting-rule), [Update a targeting rule](#update-a-targeting-rule), [Delete a targeting rule](#delete-a-targeting-rule)
 - **Experiments**: [List experiments](#list-experiments), [Create an offering experiment](#create-an-offering-experiment), [Get an experiment](#get-an-experiment), [Update an experiment](#update-an-experiment), [Delete an experiment](#delete-an-experiment), [Start or resume](#start-or-resume), [Pause: enrolled customers keep their variant, nobody new joins](#pause-enrolled-customers-keep-their-variant-nobody-new-joins), [Stop for good](#stop-for-good), [Results per variant](#results-per-variant)
-- **Paywalls**: [List paywalls](#list-paywalls), [Create a paywall](#create-a-paywall), [Get a paywall](#get-a-paywall), [Update a paywall's draft](#update-a-paywalls-draft), [Delete a paywall](#delete-a-paywall), [Publish a paywall](#publish-a-paywall), [Unpublish a paywall](#unpublish-a-paywall), [Attach an offering to a paywall](#attach-an-offering-to-a-paywall), [Detach the offering from a paywall](#detach-the-offering-from-a-paywall), [Duplicate a paywall](#duplicate-a-paywall), [List saved snapshots](#list-saved-snapshots), [Save a named snapshot](#save-a-named-snapshot), [Restore a snapshot into the draft](#restore-a-snapshot-into-the-draft), [Get a snapshot](#get-a-snapshot), [Get the template form of a paywall](#get-the-template-form-of-a-paywall), [Store the template form of a paywall](#store-the-template-form-of-a-paywall), [List the template gallery](#list-the-template-gallery), [Validate paywall components](#validate-paywall-components), [Whether the AI generator is available](#whether-the-ai-generator-is-available), [Generate a paywall with AI](#generate-a-paywall-with-ai), [List images](#list-images), [Upload an image](#upload-an-image), [List fonts](#list-fonts), [Upload a font](#upload-a-font), [Download a paywall image or font](#download-a-paywall-image-or-font), [Download a built-in paywall icon](#download-a-built-in-paywall-icon)
+- **Paywalls**: [List paywalls](#list-paywalls), [Create a paywall](#create-a-paywall), [Get a paywall](#get-a-paywall), [Update a paywall's draft](#update-a-paywalls-draft), [Delete a paywall](#delete-a-paywall), [Publish a paywall](#publish-a-paywall), [Unpublish a paywall](#unpublish-a-paywall), [Attach an offering to a paywall](#attach-an-offering-to-a-paywall), [Detach the offering from a paywall](#detach-the-offering-from-a-paywall), [Duplicate a paywall](#duplicate-a-paywall), [List saved snapshots](#list-saved-snapshots), [Save a named snapshot](#save-a-named-snapshot), [Restore a snapshot into the draft](#restore-a-snapshot-into-the-draft), [Get a snapshot](#get-a-snapshot), [Get the template form of a paywall](#get-the-template-form-of-a-paywall), [Store the template form of a paywall](#store-the-template-form-of-a-paywall), [List the template gallery](#list-the-template-gallery), [Validate paywall components](#validate-paywall-components), [Whether the AI generator is available](#whether-the-ai-generator-is-available), [Generate a paywall with AI](#generate-a-paywall-with-ai), [List images](#list-images), [Upload an image](#upload-an-image), [List fonts](#list-fonts), [Upload a font](#upload-a-font), [Download a paywall image or font](#download-a-paywall-image-or-font), [Download a built-in paywall icon](#download-a-built-in-paywall-icon), [Delete an uploaded font](#delete-an-uploaded-font)
 - **Webhook integrations**: [List webhooks](#list-webhooks), [Create a webhook](#create-a-webhook), [Get a webhook](#get-a-webhook), [Update a webhook](#update-a-webhook), [Delete a webhook](#delete-a-webhook)
 - **Discounts**: [List discounts](#list-discounts), [Create a discount](#create-a-discount), [Get a discount](#get-a-discount), [Update a discount](#update-a-discount), [Delete a discount](#delete-a-discount), [Enable a discount](#enable-a-discount), [Disable a discount](#disable-a-discount), [List a discount's codes](#list-a-discounts-codes), [Create discount codes](#create-discount-codes), [Delete a discount code](#delete-a-discount-code)
 - **Invoices**: [List a customer's invoices](#list-a-customers-invoices), [Download an invoice](#download-an-invoice)
@@ -5267,6 +5267,32 @@ curl -s "$REVENUEDOT_URL/assets/icons/$FILE"
 
 - **200**: The image.
 - **404**: No such icon.
+
+### Delete an uploaded font
+
+`DELETE /v2/projects/{project_id}/fonts/{font_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
+
+Paywalls that still name the font show the system font in the SDKs.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `font_id` | string | yes | Starts with fnt. |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/fonts/$FONT_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deleted.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
 ## Webhook integrations
 

@@ -120,6 +120,9 @@ When \`new_app_user_id\` exists, an anonymous-only current customer is merged in
       responses: { 200: empty(), ...v1Errors(400, 401) } }),
   },
   "/v1/subscribers/{app_user_id}/attributes": {
+    get: op({ id: "getAttributes", tag: "Attributes", summary: "Read customer attributes", security: [{ subscriberToken: [] }, { secretApiKey: [] }], source: SDK, parameters: [user], extension: true,
+      description: "The attributes the SDK or your server set, with when each was set. Needs a subscriber access token for this app user id (the app reads its own attributes after an [Auth](../docs/guides/auth.md) sign-in) or a secret key. An app's public key alone answers 401 with code 7224: attributes can hold an email address or a phone number. An unknown app user id answers an empty object.",
+      responses: { 200: ok("The attributes.", obj({ subscriber_attributes: { type: "object", additionalProperties: obj({ value: nstr(), updated_at_ms: int() }) } }, ["subscriber_attributes"]), { subscriber_attributes: { $displayName: { value: "Ana", updated_at_ms: 1790800914000 }, plan_goal: { value: "sleep", updated_at_ms: 1790800914000 } } }), ...v1Errors(401) } }),
     post: op({ id: "postAttributes", tag: "Attributes", summary: "Set customer attributes", security: PUBLIC_OR_SECRET, source: SDK, parameters: [user],
       description: "Saves attributes such as `$email`, `$displayName` or your own keys. A null value deletes the attribute. An invalid `$email` is refused with 7263; the other attributes are saved. `collectDeviceIdentifiers()` sends `$ip` and `$deviceVersion` as `\"true\"`: RevenueDot stores the request's IP address and the device and OS from the SDK's headers instead.",
       requestBody: body(obj({ attributes: { type: "object", additionalProperties: obj({ value: nstr(), updated_at_ms: int() }) } }, ["attributes"]), { attributes: { $email: { value: "ana@example.com", updated_at_ms: 1790800914000 } } }),
@@ -505,6 +508,7 @@ const ALTERNATES = [
   ["/v1/customer/intro_eligibility", "/v1/subscribers/{app_user_id}/intro_eligibility", "post", "introEligibilityWithToken"],
   ["/v1/customer/attribution", "/v1/subscribers/{app_user_id}/attribution", "post", "postAttributionWithToken"],
   ["/v1/customer/attributes", "/v1/subscribers/{app_user_id}/attributes", "post", "postAttributesWithToken"],
+  ["/v1/customer/attributes", "/v1/subscribers/{app_user_id}/attributes", "get", "getAttributesWithToken"],
   ["/v1/customer/adservices_attribution", "/v1/subscribers/{app_user_id}/adservices_attribution", "post", "postAdServicesAttributionWithToken"],
   ["/v1/customer/health_report", "/v1/subscribers/{app_user_id}/health_report", "get", "healthReportWithToken"],
   ["/v1/customer/customercenter", "/v1/customercenter/{app_user_id}", "get", "customerCenterWithToken"],
@@ -521,6 +525,7 @@ for (const [path, original, method, id] of ALTERNATES) {
   if (!base) throw new Error(`sdk.mjs: no ${method.toUpperCase()} ${original} to build ${path} from`);
   const parameters = (base.parameters ?? []).filter((p) => !isUser(p));
   sdkPaths[path] = {
+    ...(sdkPaths[path] ?? {}),
     [method]: {
       ...base, operationId: id, tags: ["Subscriber tokens"], security: SUBSCRIBER, summary: `${base.summary} (subscriber token)`,
       description: `The subscriber-token form of \`${method.toUpperCase()} ${original}\`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.`,

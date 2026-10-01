@@ -13,17 +13,18 @@ Responses under `/v1` and `/rcbilling` are signed when the server has a signing 
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (62)
+## Operations on this page (70)
 
 - **Server**: [Server name and docs link](#server-name-and-docs-link), [Health check](#health-check), [Connectivity probe](#connectivity-probe)
 - **Customer info**: [Get customer info](#get-customer-info)
 - **Receipts**: [Post a purchase or restore](#post-a-purchase-or-restore)
 - **Offerings (SDK)**: [Get offerings](#get-offerings), [Get offerings without a user](#get-offerings-without-a-user), [Test Store product details](#test-store-product-details)
 - **Identity**: [Log in (identify)](#log-in-identify), [Alias two app user ids](#alias-two-app-user-ids)
-- **Attributes**: [Set customer attributes](#set-customer-attributes)
+- **Attributes**: [Read customer attributes](#read-customer-attributes), [Set customer attributes](#set-customer-attributes)
 - **SDK support**: [Intro offer eligibility (StoreKit 1)](#intro-offer-eligibility-storekit-1), [Sign a promotional offer (iOS)](#sign-a-promotional-offer-ios), [Attribution data (deprecated iOS call)](#attribution-data-deprecated-ios-call), [Apple AdServices token](#apple-adservices-token), [SDK health report availability](#sdk-health-report-availability), [SDK health report](#sdk-health-report), [Product to entitlement mapping (offline entitlements)](#product-to-entitlement-mapping-offline-entitlements), [Customer Center configuration](#customer-center-configuration), [Customer Center support ticket](#customer-center-support-ticket), [Virtual currency balances](#virtual-currency-balances), [Redeem a web purchase](#redeem-a-web-purchase), [Register an Apple external purchase token (iOS)](#register-an-apple-external-purchase-token-ios), [Rewarded ad verification status](#rewarded-ad-verification-status), [Amazon receipt details](#amazon-receipt-details), [Paywall workflows (web SDK)](#paywall-workflows-web-sdk), [One paywall workflow (web SDK)](#one-paywall-workflow-web-sdk), [Restore eligibility (StoreKit 2)](#restore-eligibility-storekit-2), [Remote config fallback (none)](#remote-config-fallback-none), [Remote config: paywalls and UI settings](#remote-config-paywalls-and-ui-settings), [Download a remote-config blob](#download-a-remote-config-blob), [SDK paywall, Customer Center and ad events](#sdk-paywall-customer-center-and-ad-events), [SDK diagnostics (accepted, not stored)](#sdk-diagnostics-accepted-not-stored)
 - **Web Billing**: [Web offering products](#web-offering-products), [Start a hosted web checkout](#start-a-hosted-web-checkout), [Web Billing purchase (not available)](#web-billing-purchase-not-available), [Prepare a Web Billing checkout (not available)](#prepare-a-web-billing-checkout-not-available), [Start a Web Billing checkout (not available)](#start-a-web-billing-checkout-not-available), [Web Billing checkout status](#web-billing-checkout-status), [Refresh Web Billing checkout pricing](#refresh-web-billing-checkout-pricing), [Complete a Web Billing checkout](#complete-a-web-billing-checkout), [Web checkout branding](#web-checkout-branding)
-- **Subscriber tokens**: [Get customer info (subscriber token)](#get-customer-info-subscriber-token), [Get offerings (subscriber token)](#get-offerings-subscriber-token), [Intro offer eligibility (StoreKit 1) (subscriber token)](#intro-offer-eligibility-storekit-1-subscriber-token), [Attribution data (deprecated iOS call) (subscriber token)](#attribution-data-deprecated-ios-call-subscriber-token), [Set customer attributes (subscriber token)](#set-customer-attributes-subscriber-token), [Apple AdServices token (subscriber token)](#apple-adservices-token-subscriber-token), [SDK health report (subscriber token)](#sdk-health-report-subscriber-token), [Customer Center configuration (subscriber token)](#customer-center-configuration-subscriber-token), [Customer Center support ticket (subscriber token)](#customer-center-support-ticket-subscriber-token), [Virtual currency balances (subscriber token)](#virtual-currency-balances-subscriber-token), [Restore eligibility (StoreKit 2) (subscriber token)](#restore-eligibility-storekit-2-subscriber-token), [Rewarded ad verification status (subscriber token)](#rewarded-ad-verification-status-subscriber-token), [Web offering products (subscriber token)](#web-offering-products-subscriber-token), [Test Store product details (subscriber token)](#test-store-product-details-subscriber-token), [Spend in-app currency as the subscriber](#spend-in-app-currency-as-the-subscriber)
+- **Subscriber tokens**: [Get customer info (subscriber token)](#get-customer-info-subscriber-token), [Get offerings (subscriber token)](#get-offerings-subscriber-token), [Intro offer eligibility (StoreKit 1) (subscriber token)](#intro-offer-eligibility-storekit-1-subscriber-token), [Attribution data (deprecated iOS call) (subscriber token)](#attribution-data-deprecated-ios-call-subscriber-token), [Read customer attributes (subscriber token)](#read-customer-attributes-subscriber-token), [Set customer attributes (subscriber token)](#set-customer-attributes-subscriber-token), [Apple AdServices token (subscriber token)](#apple-adservices-token-subscriber-token), [SDK health report (subscriber token)](#sdk-health-report-subscriber-token), [Customer Center configuration (subscriber token)](#customer-center-configuration-subscriber-token), [Customer Center support ticket (subscriber token)](#customer-center-support-ticket-subscriber-token), [Virtual currency balances (subscriber token)](#virtual-currency-balances-subscriber-token), [Restore eligibility (StoreKit 2) (subscriber token)](#restore-eligibility-storekit-2-subscriber-token), [Rewarded ad verification status (subscriber token)](#rewarded-ad-verification-status-subscriber-token), [Web offering products (subscriber token)](#web-offering-products-subscriber-token), [Test Store product details (subscriber token)](#test-store-product-details-subscriber-token), [Spend in-app currency as the subscriber](#spend-in-app-currency-as-the-subscriber)
+- **Auth sign-in**: [Sign in with an identity provider's ID token](#sign-in-with-an-identity-providers-id-token), [Refresh the access token](#refresh-the-access-token), [Sign out](#sign-out), [Refresh the access token](#refresh-the-access-token), [Sign out](#sign-out), [Public key of RevenueDot's ID and access tokens](#public-key-of-revenuedots-id-and-access-tokens)
 - **Store notifications**: [App Store Server Notifications v2](#app-store-server-notifications-v2), [Google Play real-time developer notifications (Pub/Sub push)](#google-play-real-time-developer-notifications-pubsub-push), [Amazon Appstore Real-time Notifications (SNS)](#amazon-appstore-real-time-notifications-sns), [Stripe webhooks](#stripe-webhooks)
 - **Response signing**: [Public key for response signatures](#public-key-for-response-signatures)
 
@@ -592,6 +593,46 @@ Example 200 response:
 ## Attributes
 
 Customer attributes such as `$email`.
+
+### Read customer attributes
+
+`GET /v1/subscribers/{app_user_id}/attributes` · Auth: secret key · RevenueDot extension
+
+The attributes the SDK or your server set, with when each was set. Needs a subscriber access token for this app user id (the app reads its own attributes after an [Auth](../docs/guides/auth.md) sign-in) or a secret key. An app's public key alone answers 401 with code 7224: attributes can hold an email address or a phone number. An unknown app user id answers an empty object.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `app_user_id` | string | yes | App user id, URL-encoded (anonymous ids look like `$RCAnonymousID:...`). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/subscribers/user_1/attributes" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The attributes.
+- **401**: Unknown API key. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "subscriber_attributes": {
+    "$displayName": {
+      "value": "Ana",
+      "updated_at_ms": 1790800914000
+    },
+    "plan_goal": {
+      "value": "sleep",
+      "updated_at_ms": 1790800914000
+    }
+  }
+}
+```
 
 ### Set customer attributes
 
@@ -1841,6 +1882,40 @@ Example 200 response:
 {}
 ```
 
+### Read customer attributes (subscriber token)
+
+`GET /v1/customer/attributes` · Auth: none · RevenueDot extension
+
+The subscriber-token form of `GET /v1/subscribers/{app_user_id}/attributes`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224.
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/customer/attributes"
+```
+
+**Responses**
+
+- **200**: The attributes.
+- **401**: Unknown API key. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "subscriber_attributes": {
+    "$displayName": {
+      "value": "Ana",
+      "updated_at_ms": 1790800914000
+    },
+    "plan_goal": {
+      "value": "sleep",
+      "updated_at_ms": 1790800914000
+    }
+  }
+}
+```
+
 ### Set customer attributes (subscriber token)
 
 `POST /v1/customer/attributes` · Auth: none
@@ -2247,6 +2322,218 @@ Example 200 response:
       "description": null
     }
   }
+}
+```
+
+## Auth sign-in
+
+Sign app users in with a Firebase or OpenID Connect ID token and get a subscriber access token for the `/v1/customer/*` paths, in the wire format of the RevenueCat SDKs' token login. See [Auth](../docs/guides/auth.md).
+
+### Sign in with an identity provider's ID token
+
+`POST /v1/auth/login` · Auth: public app key · RevenueDot extension
+
+For apps without their own backend ([Auth](../docs/guides/auth.md)): the app sends the ID token its identity provider gave it, with its public SDK key. RevenueDot verifies the token with the provider's published keys, maps it to an app user id (the first sign-in creates the link; later ones reuse it), merges an anonymous `link_to_id` like `logIn`, and returns tokens. The RevenueCat SDKs' token login sends the same body to `POST /auth/login`. CORS is open, for web apps.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `method` | `firebase`, `oidc`, `google`, `apple`, `facebook`, `anonymous` | yes | `firebase` uses the project's Firebase provider; the others its OpenID Connect providers (the token's `iss` picks one). `anonymous` needs `allow_anonymous`. |
+| `scope` | string | no | The SDK sends `openid offline_access`. |
+| `id_token` | string | no | The provider's ID token. Not for `anonymous`. |
+| `link_to_id` | string | no | The app user id the app used before signing in. An anonymous id (`$RCAnonymousID:…`) merges into the signed-in user like `logIn`; any other id is ignored. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/auth/login" -H "Authorization: Bearer $PUBLIC_KEY" \
+  -H "Content-Type: application/json" -d '{"method":"firebase","scope":"openid offline_access","id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6…","link_to_id":"$RCAnonymousID:9f3c1a0e2b7d4c5a8e6f1b2d3c4a5e6f"}'
+```
+
+**Responses**
+
+- **200**: Signed in.
+- **400**: Malformed body (7226). Returns [V1Error](#v1error).
+- **401**: The SDK key is unknown (7225) or the ID token fails verification (7224). Returns [V1Error](#v1error).
+- **403**: Auth is off, or no enabled provider answers this method (7224). Returns [V1Error](#v1error).
+- **503**: The provider's keys could not be loaded, or the server has no key to sign tokens with. Retry. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "access_token": "eyJhbGciOiJFZERTQSIsInR5cCI6ImF0K2p3dCIsImtpZCI6IjNmMmMxYTlkMGU4YjRjNzEifQ.eyJpc3MiOiJodHRwczovL2FwaS5yZXZlbnVlZG90LmFwcCIsInN1YiI6IlhrMmY5UXBMMGFaIiwicmMuYXBwX3VzZXJfaWQiOiJYazJmOVFwTDBhWiIsImFtciI6WyJmaXJlYmFzZSJdfQ.…",
+  "refresh_token": "rdrf_9b0c…",
+  "id_token": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.…",
+  "scope": "openid offline_access",
+  "expires_in": 3600,
+  "token_type": "Bearer"
+}
+```
+
+### Refresh the access token
+
+`POST /v1/auth/token` · Auth: public app key · RevenueDot extension
+
+The refresh token is replaced: the old one stops working, and using it again answers 401 with 7224.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `grant_type` | `refresh_token` | yes |  |
+| `refresh_token` | string | yes |  |
+| `scope` | string | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/auth/token" -H "Authorization: Bearer $PUBLIC_KEY" \
+  -H "Content-Type: application/json" -d '{"grant_type":"refresh_token","refresh_token":"rdrf_9b0c…"}'
+```
+
+**Responses**
+
+- **200**: New tokens.
+- **400**: Bad request. For receipts, a 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. Returns [V1Error](#v1error).
+- **401**: Unknown API key. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "access_token": "eyJhbGciOiJFZERTQSIsInR5cCI6ImF0K2p3dCIsImtpZCI6IjNmMmMxYTlkMGU4YjRjNzEifQ.eyJpc3MiOiJodHRwczovL2FwaS5yZXZlbnVlZG90LmFwcCIsInN1YiI6IlhrMmY5UXBMMGFaIiwicmMuYXBwX3VzZXJfaWQiOiJYazJmOVFwTDBhWiIsImFtciI6WyJmaXJlYmFzZSJdfQ.…",
+  "refresh_token": "rdrf_9b0c…",
+  "id_token": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.…",
+  "scope": "openid offline_access",
+  "expires_in": 3600,
+  "token_type": "Bearer"
+}
+```
+
+### Sign out
+
+`POST /v1/auth/revoke` · Auth: public app key · RevenueDot extension
+
+A refresh token ends its session and every access token it issued; an access token (`token_type_hint: access_token`) stops working alone. An unknown token is not an error (RFC 7009).
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+| `token_type_hint` | `refresh_token`, `access_token` | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/auth/revoke" -H "Authorization: Bearer $PUBLIC_KEY" \
+  -H "Content-Type: application/json" -d '{"token":"rdrf_9b0c…","token_type_hint":"refresh_token"}'
+```
+
+**Responses**
+
+- **200**: Done.
+- **400**: Bad request. For receipts, a 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. Returns [V1Error](#v1error).
+- **401**: Unknown API key. Returns [V1Error](#v1error).
+
+### Refresh the access token
+
+`POST /auth/token` · Auth: public app key · RevenueDot extension
+
+The refresh token is replaced: the old one stops working, and using it again answers 401 with 7224.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `grant_type` | `refresh_token` | yes |  |
+| `refresh_token` | string | yes |  |
+| `scope` | string | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/auth/token" -H "Authorization: Bearer $PUBLIC_KEY" \
+  -H "Content-Type: application/json" -d '{"grant_type":"refresh_token","refresh_token":"rdrf_9b0c…"}'
+```
+
+**Responses**
+
+- **200**: New tokens.
+- **400**: Bad request. For receipts, a 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. Returns [V1Error](#v1error).
+- **401**: Unknown API key. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "access_token": "eyJhbGciOiJFZERTQSIsInR5cCI6ImF0K2p3dCIsImtpZCI6IjNmMmMxYTlkMGU4YjRjNzEifQ.eyJpc3MiOiJodHRwczovL2FwaS5yZXZlbnVlZG90LmFwcCIsInN1YiI6IlhrMmY5UXBMMGFaIiwicmMuYXBwX3VzZXJfaWQiOiJYazJmOVFwTDBhWiIsImFtciI6WyJmaXJlYmFzZSJdfQ.…",
+  "refresh_token": "rdrf_9b0c…",
+  "id_token": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.…",
+  "scope": "openid offline_access",
+  "expires_in": 3600,
+  "token_type": "Bearer"
+}
+```
+
+### Sign out
+
+`POST /auth/revoke` · Auth: public app key · RevenueDot extension
+
+A refresh token ends its session and every access token it issued; an access token (`token_type_hint: access_token`) stops working alone. An unknown token is not an error (RFC 7009).
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+| `token_type_hint` | `refresh_token`, `access_token` | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/auth/revoke" -H "Authorization: Bearer $PUBLIC_KEY" \
+  -H "Content-Type: application/json" -d '{"token":"rdrf_9b0c…","token_type_hint":"refresh_token"}'
+```
+
+**Responses**
+
+- **200**: Done.
+- **400**: Bad request. For receipts, a 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. Returns [V1Error](#v1error).
+- **401**: Unknown API key. Returns [V1Error](#v1error).
+
+### Public key of RevenueDot's ID and access tokens
+
+`GET /.well-known/jwks.json` · Auth: none · RevenueDot extension
+
+One Ed25519 key (`OKP`), derived from the server's signing key. Backends verify an Auth `id_token` with it (match `kid`, check `iss` and `aud`). Empty `keys` when the server has no signing or encryption key.
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/.well-known/jwks.json"
+```
+
+**Responses**
+
+- **200**: The key set.
+
+Example 200 response:
+
+```json
+{
+  "keys": [
+    {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "gXdn2hmqR_TbdtQwK02laE0YgFz0Rtf918LICLrgZhg",
+      "kid": "3f2c1a9d0e8b4c71",
+      "alg": "EdDSA",
+      "use": "sig"
+    }
+  ]
 }
 ```
 

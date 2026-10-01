@@ -147,6 +147,9 @@ export const schemas = {
     allOf: [ref("Project"), obj({
       transfer_behavior: en(["transfer", "transfer_if_no_active", "keep", "share"], "What happens when a purchase already owned by another customer is restored. Default transfer."),
       sandbox_transfer_behavior: { type: ["string", "null"], enum: ["transfer", "transfer_if_no_active", "keep", "share", null], description: "Override for sandbox purchases; null uses transfer_behavior." },
+      sandbox_testing_access: en(["anybody", "allowlist", "nobody"], "Who unlocks entitlements and in-app currency with sandbox purchases (Test Store purchases included). `allowlist`: only customers with an app user id in `sandbox_testers`. Others' sandbox purchases are recorded and sent to webhooks but unlock nothing. Default anybody."),
+      sandbox_testers: arr(str(), { description: "App user ids allowed to test when `sandbox_testing_access` is `allowlist`. Up to 500." }),
+      owner: { type: ["object", "null"], properties: { id: str("User id."), email: str(), name: nstr() }, description: "The project's owner, the only one who can transfer ownership. Null when no owner is recorded." },
     }, ["transfer_behavior", "sandbox_transfer_behavior"])],
   },
   App: obj({
@@ -338,6 +341,7 @@ export const schemas = {
   CustomerSummary: obj({
     object: { type: "string", const: "customer_summary" }, id: str("The id you asked for."), original_app_user_id: str(), aliases: arr(str()),
     total_revenue_in_usd: num(), sandbox_revenue_in_usd: num(), country: nstr(), platform: nstr(), stores: arr(str()), offering_override: nstr(),
+    blocked: bool("One of the customer's app user ids is blocked: no entitlements anywhere."),
     active_entitlements: arr({ type: "object" }), granted_entitlements: arr({ type: "object" }), subscriptions: arr({ type: "object" }), purchases: arr({ type: "object" }),
   }, ["object", "id", "original_app_user_id"]),
   ImportResult: obj({
@@ -393,6 +397,6 @@ export const securitySchemes = {
   publicApiKey: { type: "http", scheme: "bearer", description: "A public app key (`appl_`, `mac_`, `goog_`, `test_`, `amzn_`, `strp_`, `rcb_`, `pdl_`, `roku_`). Safe to ship in an app. The SDK sends it on every request." },
   secretApiKey: { type: "http", scheme: "bearer", description: "A project secret key (`sk_...`). Server side only. Its `permissions` limit what it can do." },
   dashboardSession: { type: "apiKey", in: "cookie", name: "rd_session", description: "The dashboard session cookie from `POST /auth/login`. It authorizes `/v2` for every project the user belongs to." },
-  subscriberToken: { type: "http", scheme: "bearer", description: "A subscriber access token (`rdat_...`) from `POST /v2/projects/{project_id}/apps/{app_id}/authenticate`. It speaks for one app user id of one app for one hour. An expired token, or a path or body naming another app user id, answers 401 with code 7224." },
+  subscriberToken: { type: "http", scheme: "bearer", description: "A subscriber access token: `rdat_...` from `POST /v2/projects/{project_id}/apps/{app_id}/authenticate`, or the JWT `access_token` of an Auth sign-in (`POST /v1/auth/login`). It speaks for one app user id of one app for one hour. An expired or revoked token, or a path or body naming another app user id, answers 401 with code 7224." },
   googlePubSubOidc: { type: "http", scheme: "bearer", bearerFormat: "JWT", description: "Google-signed OIDC token of a Pub/Sub push subscription. Checked only when the app's `pubsub_audience` credential is set." },
 };

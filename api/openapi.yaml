@@ -57,6 +57,9 @@ tags:
   - name: Subscriber tokens
     description: The SDK endpoints for one customer, authorized by a subscriber access token from `POST /v2/projects/{project_id}/apps/{app_id}/authenticate` instead of the app key. The RevenueCat SDKs call these paths in their internal token mode.
     x-page: sdk-endpoints
+  - name: Auth sign-in
+    description: Sign app users in with a Firebase or OpenID Connect ID token and get a subscriber access token for the `/v1/customer/*` paths, in the wire format of the RevenueCat SDKs' token login. See [Auth](../docs/guides/auth.md).
+    x-page: sdk-endpoints
   - name: Store notifications
     description: Where App Store Connect and Google Pub/Sub send server notifications.
     x-page: sdk-endpoints
@@ -142,7 +145,19 @@ tags:
     description: Invite people to a project by email, change their role, remove them. Dashboard session only.
     x-page: extensions
   - name: Project settings
-    description: Project name, transfer behaviour and deletion.
+    description: Project name, transfer behaviour, sandbox testing access, ownership and deletion. See [Project settings](../docs/guides/project-settings.md).
+    x-page: extensions
+  - name: Brand
+    description: Colour and gradient presets for the paywall editor and the SDKs' named colours.
+    x-page: extensions
+  - name: Blocked customers
+    description: App user ids that lose access to paid features on every platform.
+    x-page: extensions
+  - name: Verified Metrics
+    description: A public page with a project's aggregate production numbers, its settings, image and JSON.
+    x-page: extensions
+  - name: Auth
+    description: Identity providers for Auth (Firebase, OpenID Connect), the project switch, a token tester, and signed-in identities with their balances for your backend. See [Auth](../docs/guides/auth.md).
     x-page: extensions
   - name: Store setup
     description: Notification URLs, credential checks, setup health and App Store mass extensions.
@@ -835,6 +850,50 @@ paths:
           $ref: "#/components/responses/V1Error401"
       x-source: routes/sdk.ts
   /v1/subscribers/{app_user_id}/attributes:
+    get:
+      operationId: getAttributes
+      tags:
+        - Attributes
+      summary: Read customer attributes
+      description: "The attributes the SDK or your server set, with when each was set. Needs a subscriber access token for this app user id (the app reads its own attributes after an [Auth](../docs/guides/auth.md) sign-in) or a secret key. An app's public key alone answers 401 with code 7224: attributes can hold an email address or a phone number. An unknown app user id answers an empty object."
+      security:
+        - subscriberToken: []
+        - secretApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/AppUserId"
+      responses:
+        "200":
+          description: The attributes.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  subscriber_attributes:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        value:
+                          type:
+                            - string
+                            - "null"
+                        updated_at_ms:
+                          type: integer
+                required:
+                  - subscriber_attributes
+              example:
+                subscriber_attributes:
+                  $displayName:
+                    value: Ana
+                    updated_at_ms: 1790800914000
+                  plan_goal:
+                    value: sleep
+                    updated_at_ms: 1790800914000
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+      x-revenuedot-extension: true
     post:
       operationId: postAttributes
       tags:
@@ -3632,6 +3691,47 @@ paths:
         "401":
           $ref: "#/components/responses/V1Error401"
       x-source: routes/sdk.ts
+    get:
+      operationId: getAttributesWithToken
+      tags:
+        - Subscriber tokens
+      summary: Read customer attributes (subscriber token)
+      description: "The subscriber-token form of `GET /v1/subscribers/{app_user_id}/attributes`: same body and answer, for the app user id of the token. An app key, an expired token or another user's token answers 401 with code 7224."
+      security:
+        - subscriberToken: []
+      responses:
+        "200":
+          description: The attributes.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  subscriber_attributes:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        value:
+                          type:
+                            - string
+                            - "null"
+                        updated_at_ms:
+                          type: integer
+                required:
+                  - subscriber_attributes
+              example:
+                subscriber_attributes:
+                  $displayName:
+                    value: Ana
+                    updated_at_ms: 1790800914000
+                  plan_goal:
+                    value: sleep
+                    updated_at_ms: 1790800914000
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/sdk.ts
+      x-revenuedot-extension: true
   /v1/customer/adservices_attribution:
     post:
       operationId: postAdServicesAttributionWithToken
@@ -4276,6 +4376,12 @@ paths:
                 icon_url_large: null
                 transfer_behavior: transfer
                 sandbox_transfer_behavior: null
+                sandbox_testing_access: anybody
+                sandbox_testers: []
+                owner:
+                  id: usr_8f2kq0x1m3zv7a2b
+                  email: founder@example.com
+                  name: Ana
         "401":
           $ref: "#/components/responses/V2Error401"
         "403":
@@ -4290,8 +4396,8 @@ paths:
       operationId: updateProject
       tags:
         - Project settings
-      summary: Update a project's name and transfer behaviour
-      description: See [who owns a restored purchase](../docs/concepts/customers-and-app-user-ids.md#who-owns-a-restored-purchase).
+      summary: Update a project's name, transfer behaviour and sandbox testing access
+      description: See [who owns a restored purchase](../docs/concepts/customers-and-app-user-ids.md#who-owns-a-restored-purchase) and [sandbox testing access](../docs/guides/project-settings.md#sandbox-testing-access). Duplicate and blank `sandbox_testers` are dropped.
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -4324,8 +4430,23 @@ paths:
                     - keep
                     - share
                     - null
+                sandbox_testing_access:
+                  type: string
+                  enum:
+                    - anybody
+                    - allowlist
+                    - nobody
+                sandbox_testers:
+                  type: array
+                  items:
+                    type: string
+                    maxLength: 100
+                  maxItems: 500
             example:
-              transfer_behavior: transfer_if_no_active
+              sandbox_testing_access: allowlist
+              sandbox_testers:
+                - qa_tester_1
+                - qa_tester_2
       responses:
         "200":
           description: The project.
@@ -31774,6 +31895,3357 @@ paths:
           description: Unknown card.
       x-source: routes/share.ts
       x-revenuedot-extension: true
+  /v2/projects/{project_id}/actions/transfer_ownership:
+    post:
+      operationId: transferProjectOwnership
+      tags:
+        - Project settings
+      summary: Transfer project ownership to an admin
+      description: Only the owner (any admin when the owner has left the project) signed in to the dashboard. The new owner must already be a collaborator with the Admin role (422 otherwise). The previous owner stays an admin. Both get an email; `email_sent` is false when either could not be sent. Recorded in the audit log as `project_transfer_ownership`.
+      security:
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                  description: The new owner's user id, from the collaborators list.
+              required:
+                - user_id
+            example:
+              user_id: usr_8f2kq0x1m3zv7a2b
+      responses:
+        "200":
+          description: The project with its new owner.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ProjectSettings"
+                  - type: object
+                    properties:
+                      email_sent:
+                        type: boolean
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/setup.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/brand:
+    get:
+      operationId: getBrand
+      tags:
+        - Brand
+      summary: Colour and gradient presets
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: The presets.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - brand
+                  color_presets:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key:
+                          type: string
+                          description: a-z, 0-9 and _; the name in `ui_config.app.colors`. Unique across colour and gradient presets.
+                        name:
+                          type: string
+                          maxLength: 60
+                        light:
+                          type: string
+                          description: "`#RRGGBB` or `#RRGGBBAA`; answers are lower case with alpha."
+                        dark:
+                          type:
+                            - string
+                            - "null"
+                          description: "Null: the light colour in dark mode too."
+                      required:
+                        - key
+                        - name
+                        - light
+                    maxItems: 50
+                  gradient_presets:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key:
+                          type: string
+                          description: Unique across colour and gradient presets.
+                        name:
+                          type: string
+                        type:
+                          type: string
+                          enum:
+                            - linear
+                            - radial
+                        degrees:
+                          type: integer
+                          description: Linear only, 0 to 360. Default 180.
+                        points:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              color:
+                                type: string
+                                description: "`#RRGGBB` or `#RRGGBBAA`; answers are lower case with alpha."
+                              percent:
+                                type: integer
+                                description: 0 to 100.
+                            required:
+                              - color
+                              - percent
+                          minItems: 2
+                          maxItems: 10
+                        dark_points:
+                          type:
+                            - array
+                            - "null"
+                          items:
+                            type: object
+                            properties:
+                              color:
+                                type: string
+                                description: "`#RRGGBB` or `#RRGGBBAA`; answers are lower case with alpha."
+                              percent:
+                                type: integer
+                                description: 0 to 100.
+                            required:
+                              - color
+                              - percent
+                          description: "Null: the light stops in dark mode too."
+                      required:
+                        - key
+                        - name
+                        - type
+                        - points
+                    maxItems: 50
+                required:
+                  - object
+                  - color_presets
+                  - gradient_presets
+              example:
+                object: brand
+                color_presets:
+                  - key: ink
+                    name: Ink
+                    light: "#0a0a0aff"
+                    dark: "#fafafaff"
+                  - key: gold
+                    name: Brand gold
+                    light: "#f7b500ff"
+                    dark: null
+                gradient_presets:
+                  - key: sunrise
+                    name: Sunrise
+                    type: linear
+                    degrees: 135
+                    points:
+                      - color: "#f7b500ff"
+                        percent: 0
+                      - color: "#c2410cff"
+                        percent: 100
+                    dark_points: null
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/project-settings.ts
+      x-scopes:
+        - project_configuration:projects:read
+      x-revenuedot-extension: true
+    post:
+      operationId: updateBrand
+      tags:
+        - Brand
+      summary: Replace colour or gradient presets
+      description: "Send a whole list to replace it; a list you leave out is kept. The paywall editor shows the presets in its colour pickers, and the SDKs receive every preset as a named colour in the offerings' `ui_config.app.colors` (a paywall colour `{\"type\": \"alias\", \"value\": \"<key>\"}` uses it). A deleted preset that a paywall names this way draws nothing in the SDK, so presets picked in the editor are copied as values."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                color_presets:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      key:
+                        type: string
+                        description: a-z, 0-9 and _; the name in `ui_config.app.colors`. Unique across colour and gradient presets.
+                      name:
+                        type: string
+                        maxLength: 60
+                      light:
+                        type: string
+                        description: "`#RRGGBB` or `#RRGGBBAA`; answers are lower case with alpha."
+                      dark:
+                        type:
+                          - string
+                          - "null"
+                        description: "Null: the light colour in dark mode too."
+                    required:
+                      - key
+                      - name
+                      - light
+                  maxItems: 50
+                gradient_presets:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      key:
+                        type: string
+                        description: Unique across colour and gradient presets.
+                      name:
+                        type: string
+                      type:
+                        type: string
+                        enum:
+                          - linear
+                          - radial
+                      degrees:
+                        type: integer
+                        description: Linear only, 0 to 360. Default 180.
+                      points:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            color:
+                              type: string
+                              description: "`#RRGGBB` or `#RRGGBBAA`; answers are lower case with alpha."
+                            percent:
+                              type: integer
+                              description: 0 to 100.
+                          required:
+                            - color
+                            - percent
+                        minItems: 2
+                        maxItems: 10
+                      dark_points:
+                        type:
+                          - array
+                          - "null"
+                        items:
+                          type: object
+                          properties:
+                            color:
+                              type: string
+                              description: "`#RRGGBB` or `#RRGGBBAA`; answers are lower case with alpha."
+                            percent:
+                              type: integer
+                              description: 0 to 100.
+                          required:
+                            - color
+                            - percent
+                        description: "Null: the light stops in dark mode too."
+                    required:
+                      - key
+                      - name
+                      - type
+                      - points
+                  maxItems: 50
+            example:
+              color_presets:
+                - key: ink
+                  name: Ink
+                  light: "#0A0A0A"
+                  dark: "#FAFAFA"
+      responses:
+        "200":
+          description: The presets.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - brand
+                  color_presets:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key:
+                          type: string
+                          description: a-z, 0-9 and _; the name in `ui_config.app.colors`. Unique across colour and gradient presets.
+                        name:
+                          type: string
+                          maxLength: 60
+                        light:
+                          type: string
+                          description: "`#RRGGBB` or `#RRGGBBAA`; answers are lower case with alpha."
+                        dark:
+                          type:
+                            - string
+                            - "null"
+                          description: "Null: the light colour in dark mode too."
+                      required:
+                        - key
+                        - name
+                        - light
+                    maxItems: 50
+                  gradient_presets:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key:
+                          type: string
+                          description: Unique across colour and gradient presets.
+                        name:
+                          type: string
+                        type:
+                          type: string
+                          enum:
+                            - linear
+                            - radial
+                        degrees:
+                          type: integer
+                          description: Linear only, 0 to 360. Default 180.
+                        points:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              color:
+                                type: string
+                                description: "`#RRGGBB` or `#RRGGBBAA`; answers are lower case with alpha."
+                              percent:
+                                type: integer
+                                description: 0 to 100.
+                            required:
+                              - color
+                              - percent
+                          minItems: 2
+                          maxItems: 10
+                        dark_points:
+                          type:
+                            - array
+                            - "null"
+                          items:
+                            type: object
+                            properties:
+                              color:
+                                type: string
+                                description: "`#RRGGBB` or `#RRGGBBAA`; answers are lower case with alpha."
+                              percent:
+                                type: integer
+                                description: 0 to 100.
+                            required:
+                              - color
+                              - percent
+                          description: "Null: the light stops in dark mode too."
+                      required:
+                        - key
+                        - name
+                        - type
+                        - points
+                    maxItems: 50
+                required:
+                  - object
+                  - color_presets
+                  - gradient_presets
+              example:
+                object: brand
+                color_presets:
+                  - key: ink
+                    name: Ink
+                    light: "#0a0a0aff"
+                    dark: "#fafafaff"
+                  - key: gold
+                    name: Brand gold
+                    light: "#f7b500ff"
+                    dark: null
+                gradient_presets:
+                  - key: sunrise
+                    name: Sunrise
+                    type: linear
+                    degrees: 135
+                    points:
+                      - color: "#f7b500ff"
+                        percent: 0
+                      - color: "#c2410cff"
+                        percent: 100
+                    dark_points: null
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/project-settings.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/fonts/{font_id}:
+    delete:
+      operationId: deleteFont
+      tags:
+        - Paywalls
+      summary: Delete an uploaded font
+      description: Paywalls that still name the font show the system font in the SDKs.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: font_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Starts with fnt.
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - font
+                  id:
+                    type: string
+                  deleted_at:
+                    type: integer
+                    format: int64
+                    description: When it was deleted. Epoch milliseconds.
+                required:
+                  - object
+                  - id
+                  - deleted_at
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/paywalls.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/blocked_customers:
+    get:
+      operationId: listBlockedCustomers
+      tags:
+        - Blocked customers
+      summary: List blocked app user ids
+      description: Newest first.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Part of an app user id.
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/StartingAfter"
+      responses:
+        "200":
+          description: Blocked app user ids.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - blocked_customer
+                        id:
+                          type: string
+                          description: The app user id.
+                        app_user_id:
+                          type: string
+                        note:
+                          type:
+                            - string
+                            - "null"
+                          description: Why, for your team.
+                        blocked_at:
+                          type: integer
+                          format: int64
+                          description: When it was blocked. Epoch milliseconds.
+                        blocked_by:
+                          type:
+                            - object
+                            - "null"
+                          properties:
+                            type:
+                              type: string
+                              enum:
+                                - user
+                                - api_key
+                            id:
+                              type: string
+                            email:
+                              type:
+                                - string
+                                - "null"
+                              description: The dashboard user's email.
+                          description: Who blocked it.
+                        customer_exists:
+                          type: boolean
+                          description: Whether a customer has this app user id yet.
+                      required:
+                        - object
+                        - app_user_id
+                        - blocked_at
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+              example:
+                object: list
+                items:
+                  - object: blocked_customer
+                    id: user_4471
+                    app_user_id: user_4471
+                    note: Chargeback abuse
+                    blocked_at: 1790894800000
+                    blocked_by:
+                      type: user
+                      id: usr_8f2kq0x1m3zv7a2b
+                      email: support@example.com
+                    customer_exists: true
+                next_page: null
+                url: /v2/projects/proj1a2b3c4d/blocked_customers
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/project-settings.ts
+      x-scopes:
+        - customer_information:customers:read
+      x-revenuedot-extension: true
+    post:
+      operationId: blockCustomer
+      tags:
+        - Blocked customers
+      summary: Block an app user id
+      description: "The customer with this app user id (any of its aliases) loses access to paid features on every platform: customer info has no entitlements, API v2 `active_entitlements` is empty, targeting sees none, and purchases credit no in-app currency. Purchases are still recorded and webhooks are still sent, with their usual `entitlement_ids`; if you grant access from webhooks, check this list. The id need not exist yet. 201 when blocked now, 200 when it already was."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                app_user_id:
+                  type: string
+                  maxLength: 100
+                note:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 500
+              required:
+                - app_user_id
+            example:
+              app_user_id: user_4471
+              note: Chargeback abuse
+      responses:
+        "200":
+          description: Already blocked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - blocked_customer
+                  id:
+                    type: string
+                    description: The app user id.
+                  app_user_id:
+                    type: string
+                  note:
+                    type:
+                      - string
+                      - "null"
+                    description: Why, for your team.
+                  blocked_at:
+                    type: integer
+                    format: int64
+                    description: When it was blocked. Epoch milliseconds.
+                  blocked_by:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      type:
+                        type: string
+                        enum:
+                          - user
+                          - api_key
+                      id:
+                        type: string
+                      email:
+                        type:
+                          - string
+                          - "null"
+                        description: The dashboard user's email.
+                    description: Who blocked it.
+                  customer_exists:
+                    type: boolean
+                    description: Whether a customer has this app user id yet.
+                required:
+                  - object
+                  - app_user_id
+                  - blocked_at
+              example:
+                object: blocked_customer
+                id: user_4471
+                app_user_id: user_4471
+                note: Chargeback abuse
+                blocked_at: 1790894800000
+                blocked_by:
+                  type: user
+                  id: usr_8f2kq0x1m3zv7a2b
+                  email: support@example.com
+                customer_exists: true
+        "201":
+          description: Blocked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - blocked_customer
+                  id:
+                    type: string
+                    description: The app user id.
+                  app_user_id:
+                    type: string
+                  note:
+                    type:
+                      - string
+                      - "null"
+                    description: Why, for your team.
+                  blocked_at:
+                    type: integer
+                    format: int64
+                    description: When it was blocked. Epoch milliseconds.
+                  blocked_by:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      type:
+                        type: string
+                        enum:
+                          - user
+                          - api_key
+                      id:
+                        type: string
+                      email:
+                        type:
+                          - string
+                          - "null"
+                        description: The dashboard user's email.
+                    description: Who blocked it.
+                  customer_exists:
+                    type: boolean
+                    description: Whether a customer has this app user id yet.
+                required:
+                  - object
+                  - app_user_id
+                  - blocked_at
+              example:
+                object: blocked_customer
+                id: user_4471
+                app_user_id: user_4471
+                note: Chargeback abuse
+                blocked_at: 1790894800000
+                blocked_by:
+                  type: user
+                  id: usr_8f2kq0x1m3zv7a2b
+                  email: support@example.com
+                customer_exists: true
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/project-settings.ts
+      x-scopes:
+        - customer_information:customers:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/blocked_customers/{app_user_id}:
+    get:
+      operationId: getBlockedCustomer
+      tags:
+        - Blocked customers
+      summary: Is this app user id blocked?
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: app_user_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: URL-encoded.
+      responses:
+        "200":
+          description: Blocked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - blocked_customer
+                  id:
+                    type: string
+                    description: The app user id.
+                  app_user_id:
+                    type: string
+                  note:
+                    type:
+                      - string
+                      - "null"
+                    description: Why, for your team.
+                  blocked_at:
+                    type: integer
+                    format: int64
+                    description: When it was blocked. Epoch milliseconds.
+                  blocked_by:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      type:
+                        type: string
+                        enum:
+                          - user
+                          - api_key
+                      id:
+                        type: string
+                      email:
+                        type:
+                          - string
+                          - "null"
+                        description: The dashboard user's email.
+                    description: Who blocked it.
+                  customer_exists:
+                    type: boolean
+                    description: Whether a customer has this app user id yet.
+                required:
+                  - object
+                  - app_user_id
+                  - blocked_at
+              example:
+                object: blocked_customer
+                id: user_4471
+                app_user_id: user_4471
+                note: Chargeback abuse
+                blocked_at: 1790894800000
+                blocked_by:
+                  type: user
+                  id: usr_8f2kq0x1m3zv7a2b
+                  email: support@example.com
+                customer_exists: true
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/project-settings.ts
+      x-scopes:
+        - customer_information:customers:read
+      x-revenuedot-extension: true
+    delete:
+      operationId: unblockCustomer
+      tags:
+        - Blocked customers
+      summary: Unblock an app user id
+      description: Access comes back at once.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: app_user_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: URL-encoded.
+      responses:
+        "200":
+          description: Unblocked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - blocked_customer
+                  id:
+                    type: string
+                  app_user_id:
+                    type: string
+                  unblocked_at:
+                    type: integer
+                    format: int64
+                    description: When. Epoch milliseconds.
+                required:
+                  - object
+                  - app_user_id
+                  - unblocked_at
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/project-settings.ts
+      x-scopes:
+        - customer_information:customers:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/verified_metrics:
+    get:
+      operationId: getVerifiedMetrics
+      tags:
+        - Verified Metrics
+      summary: Verified Metrics page settings
+      description: "A project that never saved the page gets a draft: a free slug from the project name, all six metrics shown."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: The settings.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - verified_metrics
+                  status:
+                    type: string
+                    enum:
+                      - never_published
+                      - published
+                      - inactive
+                  slug:
+                    type: string
+                    description: "3 to 40 characters: a-z, 0-9 and single dashes, not at either end. Unique on the server; a few words such as `admin` are reserved."
+                  display_name:
+                    type: string
+                    maxLength: 60
+                  chart_type:
+                    type: string
+                    enum:
+                      - number_sparkline
+                    description: Number & sparklines, the only type.
+                  metrics:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          enum:
+                            - mrr
+                            - revenue
+                            - active_subscriptions
+                            - active_trials
+                            - new_customers
+                            - active_users
+                        visible:
+                          type: boolean
+                      required:
+                        - id
+                        - visible
+                    minItems: 6
+                    maxItems: 6
+                    description: The 6 overview metrics in display order, each once.
+                  show_icon:
+                    type: boolean
+                  icon_asset_id:
+                    type:
+                      - string
+                      - "null"
+                    description: An image uploaded with `POST /v2/projects/{project_id}/media_assets`.
+                  show_store_links:
+                    type: boolean
+                  app_store_url:
+                    type:
+                      - string
+                      - "null"
+                    description: https on apps.apple.com.
+                  play_store_url:
+                    type:
+                      - string
+                      - "null"
+                    description: https on play.google.com.
+                  url:
+                    type: string
+                    description: The public page, on the API host.
+                  published_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last publish. Epoch milliseconds, or null.
+                  updated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last save. Epoch milliseconds, or null.
+                required:
+                  - object
+                  - status
+                  - slug
+                  - display_name
+                  - metrics
+                  - url
+              example:
+                object: verified_metrics
+                status: published
+                slug: scanner
+                display_name: Scanner
+                chart_type: number_sparkline
+                metrics:
+                  - id: mrr
+                    visible: true
+                  - id: revenue
+                    visible: true
+                  - id: active_subscriptions
+                    visible: true
+                  - id: active_trials
+                    visible: true
+                  - id: new_customers
+                    visible: false
+                  - id: active_users
+                    visible: false
+                show_icon: false
+                icon_asset_id: null
+                show_store_links: true
+                app_store_url: https://apps.apple.com/app/id1234567890
+                play_store_url: null
+                url: https://api.revenuedot.app/verified/scanner
+                published_at: 1790894800000
+                updated_at: 1790894800000
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/project-settings.ts
+      x-scopes:
+        - project_configuration:projects:read
+      x-revenuedot-extension: true
+    post:
+      operationId: updateVerifiedMetrics
+      tags:
+        - Verified Metrics
+      summary: Save Verified Metrics page settings
+      description: A published page shows the change within 15 minutes (the cached copies are dropped on Cloud at once). 409 when another project uses the slug.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                slug:
+                  type: string
+                  description: "3 to 40 characters: a-z, 0-9 and single dashes, not at either end. Unique on the server; a few words such as `admin` are reserved."
+                display_name:
+                  type: string
+                  maxLength: 60
+                chart_type:
+                  type: string
+                  enum:
+                    - number_sparkline
+                  description: Number & sparklines, the only type.
+                metrics:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        enum:
+                          - mrr
+                          - revenue
+                          - active_subscriptions
+                          - active_trials
+                          - new_customers
+                          - active_users
+                      visible:
+                        type: boolean
+                    required:
+                      - id
+                      - visible
+                  minItems: 6
+                  maxItems: 6
+                  description: The 6 overview metrics in display order, each once.
+                show_icon:
+                  type: boolean
+                icon_asset_id:
+                  type:
+                    - string
+                    - "null"
+                  description: An image uploaded with `POST /v2/projects/{project_id}/media_assets`.
+                show_store_links:
+                  type: boolean
+                app_store_url:
+                  type:
+                    - string
+                    - "null"
+                  description: https on apps.apple.com.
+                play_store_url:
+                  type:
+                    - string
+                    - "null"
+                  description: https on play.google.com.
+            example:
+              display_name: Scanner Pro
+              show_store_links: true
+              app_store_url: https://apps.apple.com/app/id1234567890
+      responses:
+        "200":
+          description: The settings.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - verified_metrics
+                  status:
+                    type: string
+                    enum:
+                      - never_published
+                      - published
+                      - inactive
+                  slug:
+                    type: string
+                    description: "3 to 40 characters: a-z, 0-9 and single dashes, not at either end. Unique on the server; a few words such as `admin` are reserved."
+                  display_name:
+                    type: string
+                    maxLength: 60
+                  chart_type:
+                    type: string
+                    enum:
+                      - number_sparkline
+                    description: Number & sparklines, the only type.
+                  metrics:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          enum:
+                            - mrr
+                            - revenue
+                            - active_subscriptions
+                            - active_trials
+                            - new_customers
+                            - active_users
+                        visible:
+                          type: boolean
+                      required:
+                        - id
+                        - visible
+                    minItems: 6
+                    maxItems: 6
+                    description: The 6 overview metrics in display order, each once.
+                  show_icon:
+                    type: boolean
+                  icon_asset_id:
+                    type:
+                      - string
+                      - "null"
+                    description: An image uploaded with `POST /v2/projects/{project_id}/media_assets`.
+                  show_store_links:
+                    type: boolean
+                  app_store_url:
+                    type:
+                      - string
+                      - "null"
+                    description: https on apps.apple.com.
+                  play_store_url:
+                    type:
+                      - string
+                      - "null"
+                    description: https on play.google.com.
+                  url:
+                    type: string
+                    description: The public page, on the API host.
+                  published_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last publish. Epoch milliseconds, or null.
+                  updated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last save. Epoch milliseconds, or null.
+                required:
+                  - object
+                  - status
+                  - slug
+                  - display_name
+                  - metrics
+                  - url
+              example:
+                object: verified_metrics
+                status: published
+                slug: scanner
+                display_name: Scanner
+                chart_type: number_sparkline
+                metrics:
+                  - id: mrr
+                    visible: true
+                  - id: revenue
+                    visible: true
+                  - id: active_subscriptions
+                    visible: true
+                  - id: active_trials
+                    visible: true
+                  - id: new_customers
+                    visible: false
+                  - id: active_users
+                    visible: false
+                show_icon: false
+                icon_asset_id: null
+                show_store_links: true
+                app_store_url: https://apps.apple.com/app/id1234567890
+                play_store_url: null
+                url: https://api.revenuedot.app/verified/scanner
+                published_at: 1790894800000
+                updated_at: 1790894800000
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "409":
+          $ref: "#/components/responses/V2Error409"
+      x-source: routes/v2/project-settings.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/verified_metrics/slug_availability:
+    get:
+      operationId: checkVerifiedSlug
+      tags:
+        - Verified Metrics
+      summary: Whether a slug is free
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: slug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The answer.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - slug_availability
+                  slug:
+                    type: string
+                  available:
+                    type: boolean
+                  reason:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - object
+                  - slug
+                  - available
+              example:
+                object: slug_availability
+                slug: scanner
+                available: true
+                reason: null
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/project-settings.ts
+      x-scopes:
+        - project_configuration:projects:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/verified_metrics/actions/publish:
+    post:
+      operationId: publishVerifiedMetrics
+      tags:
+        - Verified Metrics
+      summary: Publish the page
+      description: Takes the same fields as the update, saves them and publishes. The page then answers at `/verified/{slug}`.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                slug:
+                  type: string
+                  description: "3 to 40 characters: a-z, 0-9 and single dashes, not at either end. Unique on the server; a few words such as `admin` are reserved."
+                display_name:
+                  type: string
+                  maxLength: 60
+                chart_type:
+                  type: string
+                  enum:
+                    - number_sparkline
+                  description: Number & sparklines, the only type.
+                metrics:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        enum:
+                          - mrr
+                          - revenue
+                          - active_subscriptions
+                          - active_trials
+                          - new_customers
+                          - active_users
+                      visible:
+                        type: boolean
+                    required:
+                      - id
+                      - visible
+                  minItems: 6
+                  maxItems: 6
+                  description: The 6 overview metrics in display order, each once.
+                show_icon:
+                  type: boolean
+                icon_asset_id:
+                  type:
+                    - string
+                    - "null"
+                  description: An image uploaded with `POST /v2/projects/{project_id}/media_assets`.
+                show_store_links:
+                  type: boolean
+                app_store_url:
+                  type:
+                    - string
+                    - "null"
+                  description: https on apps.apple.com.
+                play_store_url:
+                  type:
+                    - string
+                    - "null"
+                  description: https on play.google.com.
+            example:
+              slug: scanner
+      responses:
+        "200":
+          description: The settings, published.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - verified_metrics
+                  status:
+                    type: string
+                    enum:
+                      - never_published
+                      - published
+                      - inactive
+                  slug:
+                    type: string
+                    description: "3 to 40 characters: a-z, 0-9 and single dashes, not at either end. Unique on the server; a few words such as `admin` are reserved."
+                  display_name:
+                    type: string
+                    maxLength: 60
+                  chart_type:
+                    type: string
+                    enum:
+                      - number_sparkline
+                    description: Number & sparklines, the only type.
+                  metrics:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          enum:
+                            - mrr
+                            - revenue
+                            - active_subscriptions
+                            - active_trials
+                            - new_customers
+                            - active_users
+                        visible:
+                          type: boolean
+                      required:
+                        - id
+                        - visible
+                    minItems: 6
+                    maxItems: 6
+                    description: The 6 overview metrics in display order, each once.
+                  show_icon:
+                    type: boolean
+                  icon_asset_id:
+                    type:
+                      - string
+                      - "null"
+                    description: An image uploaded with `POST /v2/projects/{project_id}/media_assets`.
+                  show_store_links:
+                    type: boolean
+                  app_store_url:
+                    type:
+                      - string
+                      - "null"
+                    description: https on apps.apple.com.
+                  play_store_url:
+                    type:
+                      - string
+                      - "null"
+                    description: https on play.google.com.
+                  url:
+                    type: string
+                    description: The public page, on the API host.
+                  published_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last publish. Epoch milliseconds, or null.
+                  updated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last save. Epoch milliseconds, or null.
+                required:
+                  - object
+                  - status
+                  - slug
+                  - display_name
+                  - metrics
+                  - url
+              example:
+                object: verified_metrics
+                status: published
+                slug: scanner
+                display_name: Scanner
+                chart_type: number_sparkline
+                metrics:
+                  - id: mrr
+                    visible: true
+                  - id: revenue
+                    visible: true
+                  - id: active_subscriptions
+                    visible: true
+                  - id: active_trials
+                    visible: true
+                  - id: new_customers
+                    visible: false
+                  - id: active_users
+                    visible: false
+                show_icon: false
+                icon_asset_id: null
+                show_store_links: true
+                app_store_url: https://apps.apple.com/app/id1234567890
+                play_store_url: null
+                url: https://api.revenuedot.app/verified/scanner
+                published_at: 1790894800000
+                updated_at: 1790894800000
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "409":
+          $ref: "#/components/responses/V2Error409"
+      x-source: routes/v2/project-settings.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/verified_metrics/actions/unpublish:
+    post:
+      operationId: unpublishVerifiedMetrics
+      tags:
+        - Verified Metrics
+      summary: Unpublish the page
+      description: The page answers 404 at once; the status becomes `inactive`. 422 when it is not published.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: The settings.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - verified_metrics
+                  status:
+                    type: string
+                    enum:
+                      - never_published
+                      - published
+                      - inactive
+                  slug:
+                    type: string
+                    description: "3 to 40 characters: a-z, 0-9 and single dashes, not at either end. Unique on the server; a few words such as `admin` are reserved."
+                  display_name:
+                    type: string
+                    maxLength: 60
+                  chart_type:
+                    type: string
+                    enum:
+                      - number_sparkline
+                    description: Number & sparklines, the only type.
+                  metrics:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          enum:
+                            - mrr
+                            - revenue
+                            - active_subscriptions
+                            - active_trials
+                            - new_customers
+                            - active_users
+                        visible:
+                          type: boolean
+                      required:
+                        - id
+                        - visible
+                    minItems: 6
+                    maxItems: 6
+                    description: The 6 overview metrics in display order, each once.
+                  show_icon:
+                    type: boolean
+                  icon_asset_id:
+                    type:
+                      - string
+                      - "null"
+                    description: An image uploaded with `POST /v2/projects/{project_id}/media_assets`.
+                  show_store_links:
+                    type: boolean
+                  app_store_url:
+                    type:
+                      - string
+                      - "null"
+                    description: https on apps.apple.com.
+                  play_store_url:
+                    type:
+                      - string
+                      - "null"
+                    description: https on play.google.com.
+                  url:
+                    type: string
+                    description: The public page, on the API host.
+                  published_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last publish. Epoch milliseconds, or null.
+                  updated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last save. Epoch milliseconds, or null.
+                required:
+                  - object
+                  - status
+                  - slug
+                  - display_name
+                  - metrics
+                  - url
+              example:
+                object: verified_metrics
+                status: inactive
+                slug: scanner
+                display_name: Scanner
+                chart_type: number_sparkline
+                metrics:
+                  - id: mrr
+                    visible: true
+                  - id: revenue
+                    visible: true
+                  - id: active_subscriptions
+                    visible: true
+                  - id: active_trials
+                    visible: true
+                  - id: new_customers
+                    visible: false
+                  - id: active_users
+                    visible: false
+                show_icon: false
+                icon_asset_id: null
+                show_store_links: true
+                app_store_url: https://apps.apple.com/app/id1234567890
+                play_store_url: null
+                url: https://api.revenuedot.app/verified/scanner
+                published_at: 1790894800000
+                updated_at: 1790894800000
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/project-settings.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /verified/{slug}:
+    get:
+      operationId: verifiedPage
+      tags:
+        - Verified Metrics
+      summary: The public Verified Metrics page
+      description: "HTML with no scripts: the display name, the visible metrics with 28-day sparklines, optional icon and store links, and link-preview tags pointing at `og.png`. Only aggregate production numbers: no customers, no sandbox data, no project id. `Cache-Control: public, max-age=300, s-maxage=900`, an ETag (304 on `If-None-Match`), and on Cloud a copy in the edge cache keyed by the page's version, so a saved page shows its changes at once. The slug is case-insensitive. 404 with `no-store` when the slug is unknown or not published."
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The page's slug.
+      responses:
+        "200":
+          description: The page.
+          content:
+            text/html:
+              schema:
+                type: string
+        "404":
+          description: Not published.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/verified.ts
+      x-revenuedot-extension: true
+  /verified/{slug}/metrics.json:
+    get:
+      operationId: verifiedPageData
+      tags:
+        - Verified Metrics
+      summary: The page's numbers as JSON
+      description: Same caching as the page. `computed_at` is when the numbers were computed. `icon_url` is `/verified/{slug}/icon?v=<asset id>` when the page shows an icon.
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The page's slug.
+      responses:
+        "200":
+          description: The numbers.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - verified_metrics_page
+                  url:
+                    type: string
+                  slug:
+                    type: string
+                  display_name:
+                    type: string
+                  chart_type:
+                    type: string
+                  computed_at:
+                    type: integer
+                    format: int64
+                    description: When the numbers were computed. Epoch milliseconds.
+                  icon_url:
+                    type:
+                      - string
+                      - "null"
+                  store_links:
+                    type: object
+                    properties:
+                      app_store:
+                        type:
+                          - string
+                          - "null"
+                      play_store:
+                        type:
+                          - string
+                          - "null"
+                  metrics:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          enum:
+                            - mrr
+                            - revenue
+                            - active_subscriptions
+                            - active_trials
+                            - new_customers
+                            - active_users
+                        name:
+                          type: string
+                        unit:
+                          type: string
+                          enum:
+                            - $
+                            - "#"
+                        caption:
+                          type: string
+                        value:
+                          type: number
+                        sparkline:
+                          type: array
+                          items:
+                            type: number
+                          description: One value per UTC day, oldest first (28 days; empty for active customers).
+              example:
+                object: verified_metrics_page
+                url: https://api.revenuedot.app/verified/scanner
+                slug: scanner
+                display_name: Scanner
+                chart_type: number_sparkline
+                computed_at: 1790894800000
+                icon_url: null
+                store_links:
+                  app_store: https://apps.apple.com/app/id1234567890
+                  play_store: null
+                metrics:
+                  - id: mrr
+                    name: MRR
+                    unit: $
+                    caption: Monthly recurring revenue
+                    value: 93.4
+                    sparkline:
+                      - 88.1
+                      - 90.2
+                      - 93.4
+        "404":
+          description: Not published.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/verified.ts
+      x-revenuedot-extension: true
+  /verified/{slug}/icon:
+    get:
+      operationId: verifiedPageIcon
+      tags:
+        - Verified Metrics
+      summary: The page's project icon
+      description: The uploaded image the page shows as its icon, served by slug so the page never names the project. Same caching as the page; 404 when the page is not published or shows no icon.
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The page's slug.
+      responses:
+        "200":
+          description: The image (PNG, JPEG or WebP).
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Not published, or no icon.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/verified.ts
+      x-revenuedot-extension: true
+  /verified/{slug}/og.png:
+    get:
+      operationId: verifiedPageImage
+      tags:
+        - Verified Metrics
+      summary: The page's 1200×630 link preview
+      description: "A PNG drawn on the server: the display name and up to three visible metrics with sparklines."
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The page's slug.
+      responses:
+        "200":
+          description: The image.
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Not published.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/verified.ts
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/auth/settings:
+    get:
+      operationId: getAuthSettings
+      tags:
+        - Auth
+      summary: Auth on or off
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: The settings.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - auth_settings
+                  enabled:
+                    type: boolean
+                    description: Sign-ins are refused while false.
+                  allow_anonymous:
+                    type: boolean
+                    description: "Allow `method: anonymous` sign-ins, which create an anonymous app user id."
+                required:
+                  - object
+                  - enabled
+                  - allow_anonymous
+              example:
+                object: auth_settings
+                enabled: true
+                allow_anonymous: false
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/auth.ts
+      x-scopes:
+        - project_configuration:projects:read
+      x-revenuedot-extension: true
+    post:
+      operationId: updateAuthSettings
+      tags:
+        - Auth
+      summary: Turn Auth or anonymous sign-in on or off
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                allow_anonymous:
+                  type: boolean
+            example:
+              enabled: true
+      responses:
+        "200":
+          description: The settings.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - auth_settings
+                  enabled:
+                    type: boolean
+                    description: Sign-ins are refused while false.
+                  allow_anonymous:
+                    type: boolean
+                    description: "Allow `method: anonymous` sign-ins, which create an anonymous app user id."
+                required:
+                  - object
+                  - enabled
+                  - allow_anonymous
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/auth.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/auth/providers:
+    get:
+      operationId: listAuthProviders
+      tags:
+        - Auth
+      summary: List identity providers
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/StartingAfter"
+      responses:
+        "200":
+          description: Providers.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - auth_provider
+                        id:
+                          type: string
+                          description: Starts with idp.
+                        kind:
+                          type: string
+                          enum:
+                            - firebase
+                            - oidc
+                        name:
+                          type: string
+                        issuer:
+                          type: string
+                        audiences:
+                          type: array
+                          items:
+                            type: string
+                        firebase_project_id:
+                          type:
+                            - string
+                            - "null"
+                        jwks_url:
+                          type:
+                            - string
+                            - "null"
+                          description: Where the keys come from; null while discovery has not run.
+                        jwks_source:
+                          type: string
+                          enum:
+                            - configured
+                            - firebase
+                            - discovery
+                        app_user_id_claim:
+                          type: string
+                        app_user_id_prefix:
+                          type: string
+                        enabled:
+                          type: boolean
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: Creation time. Epoch milliseconds.
+                        updated_at:
+                          type: integer
+                          format: int64
+                          description: Last change. Epoch milliseconds.
+                      required:
+                        - object
+                        - id
+                        - kind
+                        - issuer
+                        - audiences
+                        - app_user_id_claim
+                        - enabled
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+              example:
+                object: list
+                items:
+                  - object: auth_provider
+                    id: idp_4f1c9a2b7e3d
+                    kind: firebase
+                    name: Firebase (scanner-1a2b3)
+                    issuer: https://securetoken.google.com/scanner-1a2b3
+                    audiences:
+                      - scanner-1a2b3
+                    firebase_project_id: scanner-1a2b3
+                    jwks_url: https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com
+                    jwks_source: firebase
+                    app_user_id_claim: sub
+                    app_user_id_prefix: ""
+                    enabled: true
+                    created_at: 1790894800000
+                    updated_at: 1790894800000
+                next_page: null
+                url: /v2/projects/proj1a2b3c4d/auth/providers
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/auth.ts
+      x-scopes:
+        - project_configuration:projects:read
+      x-revenuedot-extension: true
+    post:
+      operationId: createAuthProvider
+      tags:
+        - Auth
+      summary: Add a Firebase or OpenID Connect provider
+      description: "Up to 10 per project. Google, Apple, Auth0, Clerk, Supabase and Cognito are OpenID Connect providers: Google's issuer is `https://accounts.google.com`, Apple's `https://appleid.apple.com`."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - firebase
+                    - oidc
+                name:
+                  type: string
+                  maxLength: 60
+                firebase_project_id:
+                  type: string
+                  description: Firebase only. Tokens must have `iss` https://securetoken.google.com/<id> and `aud` <id>.
+                issuer:
+                  type: string
+                  description: "OpenID Connect only: exactly the tokens' `iss`."
+                audiences:
+                  type: array
+                  items:
+                    type: string
+                  maxItems: 10
+                  description: "OpenID Connect only: client ids a token's `aud` must name one of."
+                jwks_url:
+                  type:
+                    - string
+                    - "null"
+                  description: "OpenID Connect only. Null: `jwks_uri` from `<issuer>/.well-known/openid-configuration`. On Cloud it must be a public https URL."
+                app_user_id_claim:
+                  type: string
+                  description: The claim that becomes the app user id. Default `sub`.
+                app_user_id_prefix:
+                  type: string
+                  description: Put in front of the claim, such as `firebase:`. Default empty.
+                enabled:
+                  type: boolean
+              required:
+                - kind
+            example:
+              kind: oidc
+              issuer: https://scanner.eu.auth0.com/
+              audiences:
+                - sBk2x9Lq0aZ
+              app_user_id_prefix: "auth0:"
+      responses:
+        "201":
+          description: The provider.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - auth_provider
+                  id:
+                    type: string
+                    description: Starts with idp.
+                  kind:
+                    type: string
+                    enum:
+                      - firebase
+                      - oidc
+                  name:
+                    type: string
+                  issuer:
+                    type: string
+                  audiences:
+                    type: array
+                    items:
+                      type: string
+                  firebase_project_id:
+                    type:
+                      - string
+                      - "null"
+                  jwks_url:
+                    type:
+                      - string
+                      - "null"
+                    description: Where the keys come from; null while discovery has not run.
+                  jwks_source:
+                    type: string
+                    enum:
+                      - configured
+                      - firebase
+                      - discovery
+                  app_user_id_claim:
+                    type: string
+                  app_user_id_prefix:
+                    type: string
+                  enabled:
+                    type: boolean
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Creation time. Epoch milliseconds.
+                  updated_at:
+                    type: integer
+                    format: int64
+                    description: Last change. Epoch milliseconds.
+                required:
+                  - object
+                  - id
+                  - kind
+                  - issuer
+                  - audiences
+                  - app_user_id_claim
+                  - enabled
+              example:
+                object: auth_provider
+                id: idp_4f1c9a2b7e3d
+                kind: firebase
+                name: Firebase (scanner-1a2b3)
+                issuer: https://securetoken.google.com/scanner-1a2b3
+                audiences:
+                  - scanner-1a2b3
+                firebase_project_id: scanner-1a2b3
+                jwks_url: https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com
+                jwks_source: firebase
+                app_user_id_claim: sub
+                app_user_id_prefix: ""
+                enabled: true
+                created_at: 1790894800000
+                updated_at: 1790894800000
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/auth.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/auth/providers/{provider_id}:
+    get:
+      operationId: getAuthProvider
+      tags:
+        - Auth
+      summary: Get an identity provider
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: provider_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Starts with idp.
+      responses:
+        "200":
+          description: The provider.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - auth_provider
+                  id:
+                    type: string
+                    description: Starts with idp.
+                  kind:
+                    type: string
+                    enum:
+                      - firebase
+                      - oidc
+                  name:
+                    type: string
+                  issuer:
+                    type: string
+                  audiences:
+                    type: array
+                    items:
+                      type: string
+                  firebase_project_id:
+                    type:
+                      - string
+                      - "null"
+                  jwks_url:
+                    type:
+                      - string
+                      - "null"
+                    description: Where the keys come from; null while discovery has not run.
+                  jwks_source:
+                    type: string
+                    enum:
+                      - configured
+                      - firebase
+                      - discovery
+                  app_user_id_claim:
+                    type: string
+                  app_user_id_prefix:
+                    type: string
+                  enabled:
+                    type: boolean
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Creation time. Epoch milliseconds.
+                  updated_at:
+                    type: integer
+                    format: int64
+                    description: Last change. Epoch milliseconds.
+                required:
+                  - object
+                  - id
+                  - kind
+                  - issuer
+                  - audiences
+                  - app_user_id_claim
+                  - enabled
+              example:
+                object: auth_provider
+                id: idp_4f1c9a2b7e3d
+                kind: firebase
+                name: Firebase (scanner-1a2b3)
+                issuer: https://securetoken.google.com/scanner-1a2b3
+                audiences:
+                  - scanner-1a2b3
+                firebase_project_id: scanner-1a2b3
+                jwks_url: https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com
+                jwks_source: firebase
+                app_user_id_claim: sub
+                app_user_id_prefix: ""
+                enabled: true
+                created_at: 1790894800000
+                updated_at: 1790894800000
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/auth.ts
+      x-scopes:
+        - project_configuration:projects:read
+      x-revenuedot-extension: true
+    post:
+      operationId: updateAuthProvider
+      tags:
+        - Auth
+      summary: Update or turn off an identity provider
+      description: Send only what changes. People who already signed in keep their app user id when the mapping changes.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: provider_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Starts with idp.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 60
+                firebase_project_id:
+                  type: string
+                  description: Firebase only. Tokens must have `iss` https://securetoken.google.com/<id> and `aud` <id>.
+                issuer:
+                  type: string
+                  description: "OpenID Connect only: exactly the tokens' `iss`."
+                audiences:
+                  type: array
+                  items:
+                    type: string
+                  maxItems: 10
+                  description: "OpenID Connect only: client ids a token's `aud` must name one of."
+                jwks_url:
+                  type:
+                    - string
+                    - "null"
+                  description: "OpenID Connect only. Null: `jwks_uri` from `<issuer>/.well-known/openid-configuration`. On Cloud it must be a public https URL."
+                app_user_id_claim:
+                  type: string
+                  description: The claim that becomes the app user id. Default `sub`.
+                app_user_id_prefix:
+                  type: string
+                  description: Put in front of the claim, such as `firebase:`. Default empty.
+                enabled:
+                  type: boolean
+            example:
+              enabled: false
+      responses:
+        "200":
+          description: The provider.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - auth_provider
+                  id:
+                    type: string
+                    description: Starts with idp.
+                  kind:
+                    type: string
+                    enum:
+                      - firebase
+                      - oidc
+                  name:
+                    type: string
+                  issuer:
+                    type: string
+                  audiences:
+                    type: array
+                    items:
+                      type: string
+                  firebase_project_id:
+                    type:
+                      - string
+                      - "null"
+                  jwks_url:
+                    type:
+                      - string
+                      - "null"
+                    description: Where the keys come from; null while discovery has not run.
+                  jwks_source:
+                    type: string
+                    enum:
+                      - configured
+                      - firebase
+                      - discovery
+                  app_user_id_claim:
+                    type: string
+                  app_user_id_prefix:
+                    type: string
+                  enabled:
+                    type: boolean
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Creation time. Epoch milliseconds.
+                  updated_at:
+                    type: integer
+                    format: int64
+                    description: Last change. Epoch milliseconds.
+                required:
+                  - object
+                  - id
+                  - kind
+                  - issuer
+                  - audiences
+                  - app_user_id_claim
+                  - enabled
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/auth.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+    delete:
+      operationId: deleteAuthProvider
+      tags:
+        - Auth
+      summary: Delete an identity provider
+      description: Ends every session it signed in and removes its identity links. App user ids, purchases and balances stay.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: provider_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Starts with idp.
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - auth_provider
+                  id:
+                    type: string
+                  deleted_at:
+                    type: integer
+                    format: int64
+                    description: When. Epoch milliseconds.
+                required:
+                  - object
+                  - id
+                  - deleted_at
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/auth.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/auth/providers/{provider_id}/actions/test:
+    post:
+      operationId: testAuthProvider
+      tags:
+        - Auth
+      summary: Check an ID token without signing in
+      description: "Runs every check of a sign-in and reports the app user id it would sign in as. Nothing is stored. A token that fails answers 200 with `valid: false` and the reason."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: provider_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Starts with idp.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id_token:
+                  type: string
+              required:
+                - id_token
+            example:
+              id_token: eyJhbGciOiJSUzI1NiIsImtpZCI6…
+      responses:
+        "200":
+          description: The result.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - auth_token_test
+                  valid:
+                    type: boolean
+                  subject:
+                    type:
+                      - string
+                      - "null"
+                  app_user_id:
+                    type:
+                      - string
+                      - "null"
+                  linked:
+                    type: boolean
+                    description: Whether this identity signed in before.
+                  claims:
+                    type:
+                      - object
+                      - "null"
+                    description: The standard claims and the mapped claim.
+                  error:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - object
+                  - valid
+              example:
+                object: auth_token_test
+                valid: true
+                subject: Xk2f9QpL0aZ
+                app_user_id: Xk2f9QpL0aZ
+                linked: false
+                claims:
+                  iss: https://securetoken.google.com/scanner-1a2b3
+                  aud: scanner-1a2b3
+                  sub: Xk2f9QpL0aZ
+                  exp: 1790898400
+                error: null
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/auth.ts
+      x-scopes:
+        - project_configuration:projects:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/auth/identities:
+    get:
+      operationId: listAuthIdentities
+      tags:
+        - Auth
+      summary: List signed-in identities
+      description: Most recent sign-in first.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: provider_id
+          in: query
+          schema:
+            type: string
+        - name: subject
+          in: query
+          schema:
+            type: string
+        - name: app_user_id
+          in: query
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/StartingAfter"
+      responses:
+        "200":
+          description: Identities.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - auth_identity
+                        provider_id:
+                          type: string
+                        subject:
+                          type: string
+                          description: The token's `sub`.
+                        app_user_id:
+                          type: string
+                        logins:
+                          type: integer
+                          description: Sign-ins so far.
+                        last_login_at:
+                          type: integer
+                          format: int64
+                          description: Last sign-in. Epoch milliseconds.
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: First sign-in. Epoch milliseconds.
+                      required:
+                        - object
+                        - provider_id
+                        - subject
+                        - app_user_id
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+              example:
+                object: list
+                items:
+                  - object: auth_identity
+                    provider_id: idp_4f1c9a2b7e3d
+                    subject: Xk2f9QpL0aZ
+                    app_user_id: Xk2f9QpL0aZ
+                    logins: 12
+                    last_login_at: 1790894800000
+                    created_at: 1790800000000
+                next_page: null
+                url: /v2/projects/proj1a2b3c4d/auth/identities
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/auth.ts
+      x-scopes:
+        - customer_information:customers:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/auth/identities/{provider_id}/{subject}:
+    get:
+      operationId: getAuthIdentity
+      tags:
+        - Auth
+      summary: Read a signed-in user's balances and entitlements by identity
+      description: "For your backend: look up a user by the provider's user id (a Firebase uid, an Auth0 `sub`) and read their in-app currency balances and active entitlements, without knowing the app user id."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: provider_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Starts with idp.
+        - name: subject
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The provider's user id (`sub`), URL-encoded.
+      responses:
+        "200":
+          description: The identity.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - type: object
+                    properties:
+                      object:
+                        type: string
+                        enum:
+                          - auth_identity
+                      provider_id:
+                        type: string
+                      subject:
+                        type: string
+                        description: The token's `sub`.
+                      app_user_id:
+                        type: string
+                      logins:
+                        type: integer
+                        description: Sign-ins so far.
+                      last_login_at:
+                        type: integer
+                        format: int64
+                        description: Last sign-in. Epoch milliseconds.
+                      created_at:
+                        type: integer
+                        format: int64
+                        description: First sign-in. Epoch milliseconds.
+                    required:
+                      - object
+                      - provider_id
+                      - subject
+                      - app_user_id
+                  - type: object
+                    properties:
+                      customer_id:
+                        type:
+                          - string
+                          - "null"
+                        description: The customer's original app user id, or null before their first SDK call.
+                      active_entitlements:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            lookup_key:
+                              type: string
+                            expires_at:
+                              type:
+                                - integer
+                                - "null"
+                              format: int64
+                              description: When access ends. Epoch milliseconds, or null.
+                      virtual_currencies:
+                        type: object
+                        additionalProperties:
+                          type: object
+                          properties:
+                            balance:
+                              type: integer
+                            name:
+                              type: string
+                            code:
+                              type: string
+              example:
+                object: auth_identity
+                provider_id: idp_4f1c9a2b7e3d
+                subject: Xk2f9QpL0aZ
+                app_user_id: Xk2f9QpL0aZ
+                logins: 12
+                last_login_at: 1790894800000
+                created_at: 1790800000000
+                customer_id: Xk2f9QpL0aZ
+                active_entitlements:
+                  - lookup_key: pro
+                    expires_at: 1793486800000
+                virtual_currencies:
+                  GEMS:
+                    balance: 40
+                    name: Gems
+                    code: GEMS
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/auth.ts
+      x-scopes:
+        - customer_information:customers:read
+      x-revenuedot-extension: true
+    delete:
+      operationId: deleteAuthIdentity
+      tags:
+        - Auth
+      summary: Unlink an identity and sign it out
+      description: Ends its sessions at once. The next sign-in maps the identity again with the provider's current mapping.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: provider_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Starts with idp.
+        - name: subject
+          in: path
+          required: true
+          schema:
+            type: string
+          description: URL-encoded.
+      responses:
+        "200":
+          description: Unlinked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - auth_identity
+                  provider_id:
+                    type: string
+                  subject:
+                    type: string
+                  deleted_at:
+                    type: integer
+                    format: int64
+                    description: When. Epoch milliseconds.
+                required:
+                  - object
+                  - provider_id
+                  - subject
+                  - deleted_at
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/auth.ts
+      x-scopes:
+        - customer_information:customers:read_write
+      x-revenuedot-extension: true
+  /v1/auth/login:
+    post:
+      operationId: authLogin
+      tags:
+        - Auth sign-in
+      summary: Sign in with an identity provider's ID token
+      description: "For apps without their own backend ([Auth](../docs/guides/auth.md)): the app sends the ID token its identity provider gave it, with its public SDK key. RevenueDot verifies the token with the provider's published keys, maps it to an app user id (the first sign-in creates the link; later ones reuse it), merges an anonymous `link_to_id` like `logIn`, and returns tokens. The RevenueCat SDKs' token login sends the same body to `POST /auth/login`. CORS is open, for web apps."
+      security:
+        - publicApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                method:
+                  type: string
+                  enum:
+                    - firebase
+                    - oidc
+                    - google
+                    - apple
+                    - facebook
+                    - anonymous
+                  description: "`firebase` uses the project's Firebase provider; the others its OpenID Connect providers (the token's `iss` picks one). `anonymous` needs `allow_anonymous`."
+                scope:
+                  type: string
+                  description: The SDK sends `openid offline_access`.
+                id_token:
+                  type: string
+                  description: The provider's ID token. Not for `anonymous`.
+                link_to_id:
+                  type: string
+                  description: The app user id the app used before signing in. An anonymous id (`$RCAnonymousID:…`) merges into the signed-in user like `logIn`; any other id is ignored.
+              required:
+                - method
+            example:
+              method: firebase
+              scope: openid offline_access
+              id_token: eyJhbGciOiJSUzI1NiIsImtpZCI6…
+              link_to_id: $RCAnonymousID:9f3c1a0e2b7d4c5a8e6f1b2d3c4a5e6f
+      responses:
+        "200":
+          description: Signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    description: "A subscriber access token for one hour: an Ed25519-signed JWT (`typ: at+jwt`) whose `rc.app_user_id` is the app user id. Send it as `Authorization: Bearer` on `/v1/customer/*`. The server looks it up by hash; its claims are informational."
+                  refresh_token:
+                    type: string
+                    description: "`rdrf_…`, 30 days, replaced on every refresh."
+                  id_token:
+                    type: string
+                    description: Ed25519 JWT with `iss` (this server), `sub` and `rc.app_user_id` (the app user id), `aud` (the app id), `amr` (the sign-in method), `idp` (the provider id), `iat`, `exp`. Verify it with `GET /.well-known/jwks.json`.
+                  scope:
+                    type: string
+                  expires_in:
+                    type: integer
+                    description: Seconds the access token lasts (3600).
+                  token_type:
+                    type: string
+                    enum:
+                      - Bearer
+                required:
+                  - access_token
+                  - refresh_token
+                  - id_token
+                  - scope
+                  - expires_in
+              example:
+                access_token: eyJhbGciOiJFZERTQSIsInR5cCI6ImF0K2p3dCIsImtpZCI6IjNmMmMxYTlkMGU4YjRjNzEifQ.eyJpc3MiOiJodHRwczovL2FwaS5yZXZlbnVlZG90LmFwcCIsInN1YiI6IlhrMmY5UXBMMGFaIiwicmMuYXBwX3VzZXJfaWQiOiJYazJmOVFwTDBhWiIsImFtciI6WyJmaXJlYmFzZSJdfQ.…
+                refresh_token: rdrf_9b0c…
+                id_token: eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.…
+                scope: openid offline_access
+                expires_in: 3600
+                token_type: Bearer
+        "400":
+          description: Malformed body (7226).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+              example:
+                code: 7226
+                message: "method is required: firebase, oidc or anonymous."
+        "401":
+          description: The SDK key is unknown (7225) or the ID token fails verification (7224).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+              example:
+                code: 7224
+                message: The ID token has expired.
+        "403":
+          description: Auth is off, or no enabled provider answers this method (7224).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+              example:
+                code: 7224
+                message: Auth is turned off for this project. Turn it on in the dashboard under Auth.
+        "503":
+          description: The provider's keys could not be loaded, or the server has no key to sign tokens with. Retry.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V1Error"
+              example:
+                code: 7110
+                message: "The provider's signing keys could not be loaded: HTTP 503 Try again in a minute."
+      x-source: routes/identity.ts
+      x-revenuedot-extension: true
+  /v1/auth/token:
+    post:
+      operationId: authRefresh
+      tags:
+        - Auth sign-in
+      summary: Refresh the access token
+      description: "The refresh token is replaced: the old one stops working, and using it again answers 401 with 7224."
+      security:
+        - publicApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                grant_type:
+                  type: string
+                  enum:
+                    - refresh_token
+                refresh_token:
+                  type: string
+                scope:
+                  type: string
+              required:
+                - grant_type
+                - refresh_token
+            example:
+              grant_type: refresh_token
+              refresh_token: rdrf_9b0c…
+      responses:
+        "200":
+          description: New tokens.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    description: "A subscriber access token for one hour: an Ed25519-signed JWT (`typ: at+jwt`) whose `rc.app_user_id` is the app user id. Send it as `Authorization: Bearer` on `/v1/customer/*`. The server looks it up by hash; its claims are informational."
+                  refresh_token:
+                    type: string
+                    description: "`rdrf_…`, 30 days, replaced on every refresh."
+                  id_token:
+                    type: string
+                    description: Ed25519 JWT with `iss` (this server), `sub` and `rc.app_user_id` (the app user id), `aud` (the app id), `amr` (the sign-in method), `idp` (the provider id), `iat`, `exp`. Verify it with `GET /.well-known/jwks.json`.
+                  scope:
+                    type: string
+                  expires_in:
+                    type: integer
+                    description: Seconds the access token lasts (3600).
+                  token_type:
+                    type: string
+                    enum:
+                      - Bearer
+                required:
+                  - access_token
+                  - refresh_token
+                  - id_token
+                  - scope
+                  - expires_in
+              example:
+                access_token: eyJhbGciOiJFZERTQSIsInR5cCI6ImF0K2p3dCIsImtpZCI6IjNmMmMxYTlkMGU4YjRjNzEifQ.eyJpc3MiOiJodHRwczovL2FwaS5yZXZlbnVlZG90LmFwcCIsInN1YiI6IlhrMmY5UXBMMGFaIiwicmMuYXBwX3VzZXJfaWQiOiJYazJmOVFwTDBhWiIsImFtciI6WyJmaXJlYmFzZSJdfQ.…
+                refresh_token: rdrf_9b0c…
+                id_token: eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.…
+                scope: openid offline_access
+                expires_in: 3600
+                token_type: Bearer
+        "400":
+          $ref: "#/components/responses/V1Error400"
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/identity.ts
+      x-revenuedot-extension: true
+  /v1/auth/revoke:
+    post:
+      operationId: authRevoke
+      tags:
+        - Auth sign-in
+      summary: Sign out
+      description: "A refresh token ends its session and every access token it issued; an access token (`token_type_hint: access_token`) stops working alone. An unknown token is not an error (RFC 7009)."
+      security:
+        - publicApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                token_type_hint:
+                  type: string
+                  enum:
+                    - refresh_token
+                    - access_token
+              required:
+                - token
+            example:
+              token: rdrf_9b0c…
+              token_type_hint: refresh_token
+      responses:
+        "200":
+          description: Done.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+        "400":
+          $ref: "#/components/responses/V1Error400"
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/identity.ts
+      x-revenuedot-extension: true
+  /auth/token:
+    post:
+      operationId: authRefreshSdk
+      tags:
+        - Auth sign-in
+      summary: Refresh the access token
+      description: "The refresh token is replaced: the old one stops working, and using it again answers 401 with 7224."
+      security:
+        - publicApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                grant_type:
+                  type: string
+                  enum:
+                    - refresh_token
+                refresh_token:
+                  type: string
+                scope:
+                  type: string
+              required:
+                - grant_type
+                - refresh_token
+            example:
+              grant_type: refresh_token
+              refresh_token: rdrf_9b0c…
+      responses:
+        "200":
+          description: New tokens.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    description: "A subscriber access token for one hour: an Ed25519-signed JWT (`typ: at+jwt`) whose `rc.app_user_id` is the app user id. Send it as `Authorization: Bearer` on `/v1/customer/*`. The server looks it up by hash; its claims are informational."
+                  refresh_token:
+                    type: string
+                    description: "`rdrf_…`, 30 days, replaced on every refresh."
+                  id_token:
+                    type: string
+                    description: Ed25519 JWT with `iss` (this server), `sub` and `rc.app_user_id` (the app user id), `aud` (the app id), `amr` (the sign-in method), `idp` (the provider id), `iat`, `exp`. Verify it with `GET /.well-known/jwks.json`.
+                  scope:
+                    type: string
+                  expires_in:
+                    type: integer
+                    description: Seconds the access token lasts (3600).
+                  token_type:
+                    type: string
+                    enum:
+                      - Bearer
+                required:
+                  - access_token
+                  - refresh_token
+                  - id_token
+                  - scope
+                  - expires_in
+              example:
+                access_token: eyJhbGciOiJFZERTQSIsInR5cCI6ImF0K2p3dCIsImtpZCI6IjNmMmMxYTlkMGU4YjRjNzEifQ.eyJpc3MiOiJodHRwczovL2FwaS5yZXZlbnVlZG90LmFwcCIsInN1YiI6IlhrMmY5UXBMMGFaIiwicmMuYXBwX3VzZXJfaWQiOiJYazJmOVFwTDBhWiIsImFtciI6WyJmaXJlYmFzZSJdfQ.…
+                refresh_token: rdrf_9b0c…
+                id_token: eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.…
+                scope: openid offline_access
+                expires_in: 3600
+                token_type: Bearer
+        "400":
+          $ref: "#/components/responses/V1Error400"
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/identity.ts
+      x-revenuedot-extension: true
+  /auth/revoke:
+    post:
+      operationId: authRevokeSdk
+      tags:
+        - Auth sign-in
+      summary: Sign out
+      description: "A refresh token ends its session and every access token it issued; an access token (`token_type_hint: access_token`) stops working alone. An unknown token is not an error (RFC 7009)."
+      security:
+        - publicApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                token_type_hint:
+                  type: string
+                  enum:
+                    - refresh_token
+                    - access_token
+              required:
+                - token
+            example:
+              token: rdrf_9b0c…
+              token_type_hint: refresh_token
+      responses:
+        "200":
+          description: Done.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+        "400":
+          $ref: "#/components/responses/V1Error400"
+        "401":
+          $ref: "#/components/responses/V1Error401"
+      x-source: routes/identity.ts
+      x-revenuedot-extension: true
+  /.well-known/jwks.json:
+    get:
+      operationId: identityJwks
+      tags:
+        - Auth sign-in
+      summary: Public key of RevenueDot's ID and access tokens
+      description: One Ed25519 key (`OKP`), derived from the server's signing key. Backends verify an Auth `id_token` with it (match `kid`, check `iss` and `aud`). Empty `keys` when the server has no signing or encryption key.
+      security: []
+      responses:
+        "200":
+          description: The key set.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kty:
+                          type: string
+                          enum:
+                            - OKP
+                        crv:
+                          type: string
+                          enum:
+                            - Ed25519
+                        x:
+                          type: string
+                        kid:
+                          type: string
+                        alg:
+                          type: string
+                          enum:
+                            - EdDSA
+                        use:
+                          type: string
+                          enum:
+                            - sig
+                required:
+                  - keys
+              example:
+                keys:
+                  - kty: OKP
+                    crv: Ed25519
+                    x: gXdn2hmqR_TbdtQwK02laE0YgFz0Rtf918LICLrgZhg
+                    kid: 3f2c1a9d0e8b4c71
+                    alg: EdDSA
+                    use: sig
+      x-source: routes/identity.ts
+      x-revenuedot-extension: true
   /auth/config:
     get:
       operationId: authConfig
@@ -31907,6 +35379,7 @@ paths:
       tags:
         - Dashboard auth
       summary: Sign in
+      description: "The dashboard's sign-in. A request with an `Authorization` header is an app's Auth sign-in instead: see `POST /v1/auth/login`, which takes the same body at this path for the RevenueCat SDKs' token login."
       security: []
       requestBody:
         required: true
@@ -39424,6 +42897,33 @@ components:
                 - share
                 - null
               description: Override for sandbox purchases; null uses transfer_behavior.
+            sandbox_testing_access:
+              type: string
+              enum:
+                - anybody
+                - allowlist
+                - nobody
+              description: "Who unlocks entitlements and in-app currency with sandbox purchases (Test Store purchases included). `allowlist`: only customers with an app user id in `sandbox_testers`. Others' sandbox purchases are recorded and sent to webhooks but unlock nothing. Default anybody."
+            sandbox_testers:
+              type: array
+              items:
+                type: string
+              description: App user ids allowed to test when `sandbox_testing_access` is `allowlist`. Up to 500.
+            owner:
+              type:
+                - object
+                - "null"
+              properties:
+                id:
+                  type: string
+                  description: User id.
+                email:
+                  type: string
+                name:
+                  type:
+                    - string
+                    - "null"
+              description: The project's owner, the only one who can transfer ownership. Null when no owner is recorded.
           required:
             - transfer_behavior
             - sandbox_transfer_behavior
@@ -41177,6 +44677,9 @@ components:
           type:
             - string
             - "null"
+        blocked:
+          type: boolean
+          description: "One of the customer's app user ids is blocked: no entitlements anywhere."
         active_entitlements:
           type: array
           items:
@@ -42490,7 +45993,7 @@ components:
     subscriberToken:
       type: http
       scheme: bearer
-      description: A subscriber access token (`rdat_...`) from `POST /v2/projects/{project_id}/apps/{app_id}/authenticate`. It speaks for one app user id of one app for one hour. An expired token, or a path or body naming another app user id, answers 401 with code 7224.
+      description: "A subscriber access token: `rdat_...` from `POST /v2/projects/{project_id}/apps/{app_id}/authenticate`, or the JWT `access_token` of an Auth sign-in (`POST /v1/auth/login`). It speaks for one app user id of one app for one hour. An expired or revoked token, or a path or body naming another app user id, answers 401 with code 7224."
     googlePubSubOidc:
       type: http
       scheme: bearer

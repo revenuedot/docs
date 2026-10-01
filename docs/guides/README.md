@@ -1,6 +1,6 @@
 ---
 title: Which guide do I need?
-description: Step-by-step guides for stores, web billing, webhooks, integrations and data exports, ads and rewarded ads, refunds, retention and win-back, support, customer lists, testing, your team, alerts, and running RevenueDot on your own servers.
+description: Step-by-step guides for stores, web billing, webhooks, integrations and data exports, ads and rewarded ads, refunds, retention and win-back, support, customer lists, testing, your team, project settings, sign-in with Auth, alerts, and running RevenueDot on your own servers.
 ---
 
 # Which guide do I need?
@@ -31,6 +31,8 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Back up and restore | [Backups](backups.md) |
 | Check everything before real customers arrive | [Going to production](going-to-production.md) |
 | Invite teammates to a project and set their roles | [Invite your team](team.md) |
+| Limit sandbox testing, hand a project to another admin, keep brand colours and fonts, block abusive users, or publish verified revenue numbers | [Project settings](project-settings.md) |
+| Sign users in with Firebase or OpenID Connect and read their purchases and balances without a backend | [Auth](auth.md) |
 | Build a paywall and show it in my app | [Paywalls](paywalls.md) |
 | Show different offerings to different customers, or A/B test two | [Targeting and experiments](targeting-and-experiments.md) |
 | Read MRR, revenue, churn, conversion and LTV, and know how each is calculated | [Charts](charts.md) |

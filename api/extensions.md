@@ -11,11 +11,15 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (166)
+## Operations on this page (193)
 
 - **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects), [Update account settings](#update-account-settings), [Email a password reset link](#email-a-password-reset-link), [Check a password reset link](#check-a-password-reset-link), [Set a new password from a reset link](#set-a-new-password-from-a-reset-link), [Confirm an email address](#confirm-an-email-address), [Send a new confirmation email](#send-a-new-confirmation-email), [Look up an invite](#look-up-an-invite), [Accept an invite](#accept-an-invite)
 - **Members and invites**: [List open invites](#list-open-invites), [Invite someone by email](#invite-someone-by-email), [Resend an invite](#resend-an-invite), [Revoke an invite](#revoke-an-invite), [Change a member's role](#change-a-members-role), [Remove a member, or leave the project](#remove-a-member-or-leave-the-project)
-- **Project settings**: [Get a project with its settings](#get-a-project-with-its-settings), [Update a project's name and transfer behaviour](#update-a-projects-name-and-transfer-behaviour), [Delete a project and everything in it](#delete-a-project-and-everything-in-it), [Get the Customer Center configuration of the project](#get-the-customer-center-configuration-of-the-project), [Set the Customer Center configuration](#set-the-customer-center-configuration)
+- **Project settings**: [Get a project with its settings](#get-a-project-with-its-settings), [Update a project's name, transfer behaviour and sandbox testing access](#update-a-projects-name-transfer-behaviour-and-sandbox-testing-access), [Delete a project and everything in it](#delete-a-project-and-everything-in-it), [Get the Customer Center configuration of the project](#get-the-customer-center-configuration-of-the-project), [Set the Customer Center configuration](#set-the-customer-center-configuration), [Transfer project ownership to an admin](#transfer-project-ownership-to-an-admin)
+- **Brand**: [Colour and gradient presets](#colour-and-gradient-presets), [Replace colour or gradient presets](#replace-colour-or-gradient-presets)
+- **Blocked customers**: [List blocked app user ids](#list-blocked-app-user-ids), [Block an app user id](#block-an-app-user-id), [Is this app user id blocked?](#is-this-app-user-id-blocked), [Unblock an app user id](#unblock-an-app-user-id)
+- **Verified Metrics**: [Verified Metrics page settings](#verified-metrics-page-settings), [Save Verified Metrics page settings](#save-verified-metrics-page-settings), [Whether a slug is free](#whether-a-slug-is-free), [Publish the page](#publish-the-page), [Unpublish the page](#unpublish-the-page), [The public Verified Metrics page](#the-public-verified-metrics-page), [The page's numbers as JSON](#the-pages-numbers-as-json), [The page's project icon](#the-pages-project-icon), [The page's 1200×630 link preview](#the-pages-1200630-link-preview)
+- **Auth**: [Auth on or off](#auth-on-or-off), [Turn Auth or anonymous sign-in on or off](#turn-auth-or-anonymous-sign-in-on-or-off), [List identity providers](#list-identity-providers), [Add a Firebase or OpenID Connect provider](#add-a-firebase-or-openid-connect-provider), [Get an identity provider](#get-an-identity-provider), [Update or turn off an identity provider](#update-or-turn-off-an-identity-provider), [Delete an identity provider](#delete-an-identity-provider), [Check an ID token without signing in](#check-an-id-token-without-signing-in), [List signed-in identities](#list-signed-in-identities), [Read a signed-in user's balances and entitlements by identity](#read-a-signed-in-users-balances-and-entitlements-by-identity), [Unlink an identity and sign it out](#unlink-an-identity-and-sign-it-out)
 - **Store setup**: [Store setup state of an app](#store-setup-state-of-an-app), [Check store credentials with Apple, Google, Amazon or Stripe](#check-store-credentials-with-apple-google-amazon-or-stripe), [Extend every active App Store subscriber of a product](#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](#status-of-a-mass-extension), [Setup health](#setup-health)
 - **API keys**: [List secret keys](#list-secret-keys), [Create a secret key](#create-a-secret-key), [Delete a secret key](#delete-a-secret-key)
 - **Webhook deliveries**: [Send a TEST event to one webhook](#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](#whether-each-webhook-is-enabled), [Delivery log of a webhook](#delivery-log-of-a-webhook), [Retry a delivery now](#retry-a-delivery-now)
@@ -111,6 +115,8 @@ Example 201 response:
 ### Sign in
 
 `POST /auth/login` · Auth: none · RevenueDot extension
+
+The dashboard's sign-in. A request with an `Authorization` header is an app's Auth sign-in instead: see `POST /v1/auth/login`, which takes the same body at this path for the RevenueCat SDKs' token login.
 
 **Request body** (`application/json`)
 
@@ -732,7 +738,7 @@ Example 200 response:
 
 ## Project settings
 
-Project name, transfer behaviour and deletion.
+Project name, transfer behaviour, sandbox testing access, ownership and deletion. See [Project settings](../docs/guides/project-settings.md).
 
 ### Get a project with its settings
 
@@ -768,15 +774,22 @@ Example 200 response:
   "icon_url": null,
   "icon_url_large": null,
   "transfer_behavior": "transfer",
-  "sandbox_transfer_behavior": null
+  "sandbox_transfer_behavior": null,
+  "sandbox_testing_access": "anybody",
+  "sandbox_testers": [],
+  "owner": {
+    "id": "usr_8f2kq0x1m3zv7a2b",
+    "email": "founder@example.com",
+    "name": "Ana"
+  }
 }
 ```
 
-### Update a project's name and transfer behaviour
+### Update a project's name, transfer behaviour and sandbox testing access
 
 `POST /v2/projects/{project_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
 
-See [who owns a restored purchase](../docs/concepts/customers-and-app-user-ids.md#who-owns-a-restored-purchase).
+See [who owns a restored purchase](../docs/concepts/customers-and-app-user-ids.md#who-owns-a-restored-purchase) and [sandbox testing access](../docs/guides/project-settings.md#sandbox-testing-access). Duplicate and blank `sandbox_testers` are dropped.
 
 **Path parameters**
 
@@ -791,12 +804,14 @@ See [who owns a restored purchase](../docs/concepts/customers-and-app-user-ids.m
 | `name` | string | no |  |
 | `transfer_behavior` | `transfer`, `transfer_if_no_active`, `keep`, `share` | no |  |
 | `sandbox_transfer_behavior` | `transfer`, `transfer_if_no_active`, `keep`, `share`, null | no |  |
+| `sandbox_testing_access` | `anybody`, `allowlist`, `nobody` | no |  |
+| `sandbox_testers` | array of string | no |  |
 
 **Example request**
 
 ```bash
 curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID" -H "Authorization: Bearer $SECRET_KEY" \
-  -H "Content-Type: application/json" -d '{"transfer_behavior":"transfer_if_no_active"}'
+  -H "Content-Type: application/json" -d '{"sandbox_testing_access":"allowlist","sandbox_testers":["qa_tester_1","qa_tester_2"]}'
 ```
 
 **Responses**
@@ -896,6 +911,1373 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_center_config"
 
 - **200**: The merged configuration.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Transfer project ownership to an admin
+
+`POST /v2/projects/{project_id}/actions/transfer_ownership` · Auth: dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Only the owner (any admin when the owner has left the project) signed in to the dashboard. The new owner must already be a collaborator with the Admin role (422 otherwise). The previous owner stays an admin. Both get an email; `email_sent` is false when either could not be sent. Recorded in the audit log as `project_transfer_ownership`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `user_id` | string | yes | The new owner's user id, from the collaborators list. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/actions/transfer_ownership" \
+  -H "Content-Type: application/json" -d '{"user_id":"usr_8f2kq0x1m3zv7a2b"}'
+```
+
+**Responses**
+
+- **200**: The project with its new owner.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+## Brand
+
+Colour and gradient presets for the paywall editor and the SDKs' named colours.
+
+### Colour and gradient presets
+
+`GET /v2/projects/{project_id}/brand` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/brand" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The presets.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "brand",
+  "color_presets": [
+    {
+      "key": "ink",
+      "name": "Ink",
+      "light": "#0a0a0aff",
+      "dark": "#fafafaff"
+    },
+    {
+      "key": "gold",
+      "name": "Brand gold",
+      "light": "#f7b500ff",
+      "dark": null
+    }
+  ],
+  "gradient_presets": [
+    {
+      "key": "sunrise",
+      "name": "Sunrise",
+      "type": "linear",
+      "degrees": 135,
+      "points": [
+        {
+          "color": "#f7b500ff",
+          "percent": 0
+        },
+        {
+          "color": "#c2410cff",
+          "percent": 100
+        }
+      ],
+      "dark_points": null
+    }
+  ]
+}
+```
+
+### Replace colour or gradient presets
+
+`POST /v2/projects/{project_id}/brand` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Send a whole list to replace it; a list you leave out is kept. The paywall editor shows the presets in its colour pickers, and the SDKs receive every preset as a named colour in the offerings' `ui_config.app.colors` (a paywall colour `{"type": "alias", "value": "<key>"}` uses it). A deleted preset that a paywall names this way draws nothing in the SDK, so presets picked in the editor are copied as values.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `color_presets` | array of object | no |  |
+| `color_presets[].key` | string | yes | a-z, 0-9 and _; the name in `ui_config.app.colors`. Unique across colour and gradient presets. |
+| `color_presets[].name` | string | yes |  |
+| `color_presets[].light` | string | yes | `#RRGGBB` or `#RRGGBBAA`; answers are lower case with alpha. |
+| `color_presets[].dark` | string or null | no | Null: the light colour in dark mode too. |
+| `gradient_presets` | array of object | no |  |
+| `gradient_presets[].key` | string | yes | Unique across colour and gradient presets. |
+| `gradient_presets[].name` | string | yes |  |
+| `gradient_presets[].type` | `linear`, `radial` | yes |  |
+| `gradient_presets[].degrees` | integer | no | Linear only, 0 to 360. Default 180. |
+| `gradient_presets[].points` | array of object | yes |  |
+| `gradient_presets[].points[].color` | string | yes | `#RRGGBB` or `#RRGGBBAA`; answers are lower case with alpha. |
+| `gradient_presets[].points[].percent` | integer | yes | 0 to 100. |
+| `gradient_presets[].dark_points` | array of object | no | Null: the light stops in dark mode too. |
+| `gradient_presets[].dark_points[].color` | string | yes | `#RRGGBB` or `#RRGGBBAA`; answers are lower case with alpha. |
+| `gradient_presets[].dark_points[].percent` | integer | yes | 0 to 100. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/brand" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"color_presets":[{"key":"ink","name":"Ink","light":"#0A0A0A","dark":"#FAFAFA"}]}'
+```
+
+**Responses**
+
+- **200**: The presets.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "brand",
+  "color_presets": [
+    {
+      "key": "ink",
+      "name": "Ink",
+      "light": "#0a0a0aff",
+      "dark": "#fafafaff"
+    },
+    {
+      "key": "gold",
+      "name": "Brand gold",
+      "light": "#f7b500ff",
+      "dark": null
+    }
+  ],
+  "gradient_presets": [
+    {
+      "key": "sunrise",
+      "name": "Sunrise",
+      "type": "linear",
+      "degrees": 135,
+      "points": [
+        {
+          "color": "#f7b500ff",
+          "percent": 0
+        },
+        {
+          "color": "#c2410cff",
+          "percent": 100
+        }
+      ],
+      "dark_points": null
+    }
+  ]
+}
+```
+
+## Blocked customers
+
+App user ids that lose access to paid features on every platform.
+
+### List blocked app user ids
+
+`GET /v2/projects/{project_id}/blocked_customers` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read`
+
+Newest first.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `search` | string | no | Part of an app user id. |
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/blocked_customers" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Blocked app user ids.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "items": [
+    {
+      "object": "blocked_customer",
+      "id": "user_4471",
+      "app_user_id": "user_4471",
+      "note": "Chargeback abuse",
+      "blocked_at": 1790894800000,
+      "blocked_by": {
+        "type": "user",
+        "id": "usr_8f2kq0x1m3zv7a2b",
+        "email": "support@example.com"
+      },
+      "customer_exists": true
+    }
+  ],
+  "next_page": null,
+  "url": "/v2/projects/proj1a2b3c4d/blocked_customers"
+}
+```
+
+### Block an app user id
+
+`POST /v2/projects/{project_id}/blocked_customers` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read_write`
+
+The customer with this app user id (any of its aliases) loses access to paid features on every platform: customer info has no entitlements, API v2 `active_entitlements` is empty, targeting sees none, and purchases credit no in-app currency. Purchases are still recorded and webhooks are still sent, with their usual `entitlement_ids`; if you grant access from webhooks, check this list. The id need not exist yet. 201 when blocked now, 200 when it already was.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `app_user_id` | string | yes |  |
+| `note` | string or null | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/blocked_customers" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"app_user_id":"user_4471","note":"Chargeback abuse"}'
+```
+
+**Responses**
+
+- **200**: Already blocked.
+- **201**: Blocked.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "blocked_customer",
+  "id": "user_4471",
+  "app_user_id": "user_4471",
+  "note": "Chargeback abuse",
+  "blocked_at": 1790894800000,
+  "blocked_by": {
+    "type": "user",
+    "id": "usr_8f2kq0x1m3zv7a2b",
+    "email": "support@example.com"
+  },
+  "customer_exists": true
+}
+```
+
+### Is this app user id blocked?
+
+`GET /v2/projects/{project_id}/blocked_customers/{app_user_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_user_id` | string | yes | URL-encoded. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/blocked_customers/user_1" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Blocked.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "blocked_customer",
+  "id": "user_4471",
+  "app_user_id": "user_4471",
+  "note": "Chargeback abuse",
+  "blocked_at": 1790894800000,
+  "blocked_by": {
+    "type": "user",
+    "id": "usr_8f2kq0x1m3zv7a2b",
+    "email": "support@example.com"
+  },
+  "customer_exists": true
+}
+```
+
+### Unblock an app user id
+
+`DELETE /v2/projects/{project_id}/blocked_customers/{app_user_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read_write`
+
+Access comes back at once.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_user_id` | string | yes | URL-encoded. |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/blocked_customers/user_1" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Unblocked.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+## Verified Metrics
+
+A public page with a project's aggregate production numbers, its settings, image and JSON.
+
+### Verified Metrics page settings
+
+`GET /v2/projects/{project_id}/verified_metrics` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+A project that never saved the page gets a draft: a free slug from the project name, all six metrics shown.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/verified_metrics" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The settings.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "verified_metrics",
+  "status": "published",
+  "slug": "scanner",
+  "display_name": "Scanner",
+  "chart_type": "number_sparkline",
+  "metrics": [
+    {
+      "id": "mrr",
+      "visible": true
+    },
+    {
+      "id": "revenue",
+      "visible": true
+    },
+    {
+      "id": "active_subscriptions",
+      "visible": true
+    },
+    {
+      "id": "active_trials",
+      "visible": true
+    },
+    {
+      "id": "new_customers",
+      "visible": false
+    },
+    {
+      "id": "active_users",
+      "visible": false
+    }
+  ],
+  "show_icon": false,
+  "icon_asset_id": null,
+  "show_store_links": true,
+  "app_store_url": "https://apps.apple.com/app/id1234567890",
+  "play_store_url": null,
+  "url": "https://api.revenuedot.app/verified/scanner",
+  "published_at": 1790894800000,
+  "updated_at": 1790894800000
+}
+```
+
+### Save Verified Metrics page settings
+
+`POST /v2/projects/{project_id}/verified_metrics` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+A published page shows the change within 15 minutes (the cached copies are dropped on Cloud at once). 409 when another project uses the slug.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `slug` | string | no | 3 to 40 characters: a-z, 0-9 and single dashes, not at either end. Unique on the server; a few words such as `admin` are reserved. |
+| `display_name` | string | no |  |
+| `chart_type` | `number_sparkline` | no | Number & sparklines, the only type. |
+| `metrics` | array of object | no | The 6 overview metrics in display order, each once. |
+| `metrics[].id` | `mrr`, `revenue`, `active_subscriptions`, `active_trials`, `new_customers`, `active_users` | yes |  |
+| `metrics[].visible` | boolean | yes |  |
+| `show_icon` | boolean | no |  |
+| `icon_asset_id` | string or null | no | An image uploaded with `POST /v2/projects/{project_id}/media_assets`. |
+| `show_store_links` | boolean | no |  |
+| `app_store_url` | string or null | no | https on apps.apple.com. |
+| `play_store_url` | string or null | no | https on play.google.com. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/verified_metrics" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"display_name":"Scanner Pro","show_store_links":true,"app_store_url":"https://apps.apple.com/app/id1234567890"}'
+```
+
+**Responses**
+
+- **200**: The settings.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "verified_metrics",
+  "status": "published",
+  "slug": "scanner",
+  "display_name": "Scanner",
+  "chart_type": "number_sparkline",
+  "metrics": [
+    {
+      "id": "mrr",
+      "visible": true
+    },
+    {
+      "id": "revenue",
+      "visible": true
+    },
+    {
+      "id": "active_subscriptions",
+      "visible": true
+    },
+    {
+      "id": "active_trials",
+      "visible": true
+    },
+    {
+      "id": "new_customers",
+      "visible": false
+    },
+    {
+      "id": "active_users",
+      "visible": false
+    }
+  ],
+  "show_icon": false,
+  "icon_asset_id": null,
+  "show_store_links": true,
+  "app_store_url": "https://apps.apple.com/app/id1234567890",
+  "play_store_url": null,
+  "url": "https://api.revenuedot.app/verified/scanner",
+  "published_at": 1790894800000,
+  "updated_at": 1790894800000
+}
+```
+
+### Whether a slug is free
+
+`GET /v2/projects/{project_id}/verified_metrics/slug_availability` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `slug` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/verified_metrics/slug_availability" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The answer.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "slug_availability",
+  "slug": "scanner",
+  "available": true,
+  "reason": null
+}
+```
+
+### Publish the page
+
+`POST /v2/projects/{project_id}/verified_metrics/actions/publish` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Takes the same fields as the update, saves them and publishes. The page then answers at `/verified/{slug}`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `slug` | string | no | 3 to 40 characters: a-z, 0-9 and single dashes, not at either end. Unique on the server; a few words such as `admin` are reserved. |
+| `display_name` | string | no |  |
+| `chart_type` | `number_sparkline` | no | Number & sparklines, the only type. |
+| `metrics` | array of object | no | The 6 overview metrics in display order, each once. |
+| `metrics[].id` | `mrr`, `revenue`, `active_subscriptions`, `active_trials`, `new_customers`, `active_users` | yes |  |
+| `metrics[].visible` | boolean | yes |  |
+| `show_icon` | boolean | no |  |
+| `icon_asset_id` | string or null | no | An image uploaded with `POST /v2/projects/{project_id}/media_assets`. |
+| `show_store_links` | boolean | no |  |
+| `app_store_url` | string or null | no | https on apps.apple.com. |
+| `play_store_url` | string or null | no | https on play.google.com. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/verified_metrics/actions/publish" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"slug":"scanner"}'
+```
+
+**Responses**
+
+- **200**: The settings, published.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "verified_metrics",
+  "status": "published",
+  "slug": "scanner",
+  "display_name": "Scanner",
+  "chart_type": "number_sparkline",
+  "metrics": [
+    {
+      "id": "mrr",
+      "visible": true
+    },
+    {
+      "id": "revenue",
+      "visible": true
+    },
+    {
+      "id": "active_subscriptions",
+      "visible": true
+    },
+    {
+      "id": "active_trials",
+      "visible": true
+    },
+    {
+      "id": "new_customers",
+      "visible": false
+    },
+    {
+      "id": "active_users",
+      "visible": false
+    }
+  ],
+  "show_icon": false,
+  "icon_asset_id": null,
+  "show_store_links": true,
+  "app_store_url": "https://apps.apple.com/app/id1234567890",
+  "play_store_url": null,
+  "url": "https://api.revenuedot.app/verified/scanner",
+  "published_at": 1790894800000,
+  "updated_at": 1790894800000
+}
+```
+
+### Unpublish the page
+
+`POST /v2/projects/{project_id}/verified_metrics/actions/unpublish` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+The page answers 404 at once; the status becomes `inactive`. 422 when it is not published.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/verified_metrics/actions/unpublish" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The settings.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "verified_metrics",
+  "status": "inactive",
+  "slug": "scanner",
+  "display_name": "Scanner",
+  "chart_type": "number_sparkline",
+  "metrics": [
+    {
+      "id": "mrr",
+      "visible": true
+    },
+    {
+      "id": "revenue",
+      "visible": true
+    },
+    {
+      "id": "active_subscriptions",
+      "visible": true
+    },
+    {
+      "id": "active_trials",
+      "visible": true
+    },
+    {
+      "id": "new_customers",
+      "visible": false
+    },
+    {
+      "id": "active_users",
+      "visible": false
+    }
+  ],
+  "show_icon": false,
+  "icon_asset_id": null,
+  "show_store_links": true,
+  "app_store_url": "https://apps.apple.com/app/id1234567890",
+  "play_store_url": null,
+  "url": "https://api.revenuedot.app/verified/scanner",
+  "published_at": 1790894800000,
+  "updated_at": 1790894800000
+}
+```
+
+### The public Verified Metrics page
+
+`GET /verified/{slug}` · Auth: none · RevenueDot extension
+
+HTML with no scripts: the display name, the visible metrics with 28-day sparklines, optional icon and store links, and link-preview tags pointing at `og.png`. Only aggregate production numbers: no customers, no sandbox data, no project id. `Cache-Control: public, max-age=300, s-maxage=900`, an ETag (304 on `If-None-Match`), and on Cloud a copy in the edge cache keyed by the page's version, so a saved page shows its changes at once. The slug is case-insensitive. 404 with `no-store` when the slug is unknown or not published.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `slug` | string | yes | The page's slug. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/verified/$SLUG"
+```
+
+**Responses**
+
+- **200**: The page.
+- **404**: Not published.
+
+### The page's numbers as JSON
+
+`GET /verified/{slug}/metrics.json` · Auth: none · RevenueDot extension
+
+Same caching as the page. `computed_at` is when the numbers were computed. `icon_url` is `/verified/{slug}/icon?v=<asset id>` when the page shows an icon.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `slug` | string | yes | The page's slug. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/verified/$SLUG/metrics.json"
+```
+
+**Responses**
+
+- **200**: The numbers.
+- **404**: Not published.
+
+Example 200 response:
+
+```json
+{
+  "object": "verified_metrics_page",
+  "url": "https://api.revenuedot.app/verified/scanner",
+  "slug": "scanner",
+  "display_name": "Scanner",
+  "chart_type": "number_sparkline",
+  "computed_at": 1790894800000,
+  "icon_url": null,
+  "store_links": {
+    "app_store": "https://apps.apple.com/app/id1234567890",
+    "play_store": null
+  },
+  "metrics": [
+    {
+      "id": "mrr",
+      "name": "MRR",
+      "unit": "$",
+      "caption": "Monthly recurring revenue",
+      "value": 93.4,
+      "sparkline": [
+        88.1,
+        90.2,
+        93.4
+      ]
+    }
+  ]
+}
+```
+
+### The page's project icon
+
+`GET /verified/{slug}/icon` · Auth: none · RevenueDot extension
+
+The uploaded image the page shows as its icon, served by slug so the page never names the project. Same caching as the page; 404 when the page is not published or shows no icon.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `slug` | string | yes | The page's slug. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/verified/$SLUG/icon"
+```
+
+**Responses**
+
+- **200**: The image (PNG, JPEG or WebP).
+- **404**: Not published, or no icon.
+
+### The page's 1200×630 link preview
+
+`GET /verified/{slug}/og.png` · Auth: none · RevenueDot extension
+
+A PNG drawn on the server: the display name and up to three visible metrics with sparklines.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `slug` | string | yes | The page's slug. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/verified/$SLUG/og.png"
+```
+
+**Responses**
+
+- **200**: The image.
+- **404**: Not published.
+
+## Auth
+
+Identity providers for Auth (Firebase, OpenID Connect), the project switch, a token tester, and signed-in identities with their balances for your backend. See [Auth](../docs/guides/auth.md).
+
+### Auth on or off
+
+`GET /v2/projects/{project_id}/auth/settings` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/auth/settings" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The settings.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "auth_settings",
+  "enabled": true,
+  "allow_anonymous": false
+}
+```
+
+### Turn Auth or anonymous sign-in on or off
+
+`POST /v2/projects/{project_id}/auth/settings` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `enabled` | boolean | no |  |
+| `allow_anonymous` | boolean | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/auth/settings" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"enabled":true}'
+```
+
+**Responses**
+
+- **200**: The settings.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### List identity providers
+
+`GET /v2/projects/{project_id}/auth/providers` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/auth/providers" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Providers.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "items": [
+    {
+      "object": "auth_provider",
+      "id": "idp_4f1c9a2b7e3d",
+      "kind": "firebase",
+      "name": "Firebase (scanner-1a2b3)",
+      "issuer": "https://securetoken.google.com/scanner-1a2b3",
+      "audiences": [
+        "scanner-1a2b3"
+      ],
+      "firebase_project_id": "scanner-1a2b3",
+      "jwks_url": "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com",
+      "jwks_source": "firebase",
+      "app_user_id_claim": "sub",
+      "app_user_id_prefix": "",
+      "enabled": true,
+      "created_at": 1790894800000,
+      "updated_at": 1790894800000
+    }
+  ],
+  "next_page": null,
+  "url": "/v2/projects/proj1a2b3c4d/auth/providers"
+}
+```
+
+### Add a Firebase or OpenID Connect provider
+
+`POST /v2/projects/{project_id}/auth/providers` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Up to 10 per project. Google, Apple, Auth0, Clerk, Supabase and Cognito are OpenID Connect providers: Google's issuer is `https://accounts.google.com`, Apple's `https://appleid.apple.com`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `kind` | `firebase`, `oidc` | yes |  |
+| `name` | string | no |  |
+| `firebase_project_id` | string | no | Firebase only. Tokens must have `iss` https://securetoken.google.com/<id> and `aud` <id>. |
+| `issuer` | string | no | OpenID Connect only: exactly the tokens' `iss`. |
+| `audiences` | array of string | no | OpenID Connect only: client ids a token's `aud` must name one of. |
+| `jwks_url` | string or null | no | OpenID Connect only. Null: `jwks_uri` from `<issuer>/.well-known/openid-configuration`. On Cloud it must be a public https URL. |
+| `app_user_id_claim` | string | no | The claim that becomes the app user id. Default `sub`. |
+| `app_user_id_prefix` | string | no | Put in front of the claim, such as `firebase:`. Default empty. |
+| `enabled` | boolean | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/auth/providers" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"kind":"oidc","issuer":"https://scanner.eu.auth0.com/","audiences":["sBk2x9Lq0aZ"],"app_user_id_prefix":"auth0:"}'
+```
+
+**Responses**
+
+- **201**: The provider.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+Example 201 response:
+
+```json
+{
+  "object": "auth_provider",
+  "id": "idp_4f1c9a2b7e3d",
+  "kind": "firebase",
+  "name": "Firebase (scanner-1a2b3)",
+  "issuer": "https://securetoken.google.com/scanner-1a2b3",
+  "audiences": [
+    "scanner-1a2b3"
+  ],
+  "firebase_project_id": "scanner-1a2b3",
+  "jwks_url": "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com",
+  "jwks_source": "firebase",
+  "app_user_id_claim": "sub",
+  "app_user_id_prefix": "",
+  "enabled": true,
+  "created_at": 1790894800000,
+  "updated_at": 1790894800000
+}
+```
+
+### Get an identity provider
+
+`GET /v2/projects/{project_id}/auth/providers/{provider_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `provider_id` | string | yes | Starts with idp. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/auth/providers/$PROVIDER_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The provider.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "auth_provider",
+  "id": "idp_4f1c9a2b7e3d",
+  "kind": "firebase",
+  "name": "Firebase (scanner-1a2b3)",
+  "issuer": "https://securetoken.google.com/scanner-1a2b3",
+  "audiences": [
+    "scanner-1a2b3"
+  ],
+  "firebase_project_id": "scanner-1a2b3",
+  "jwks_url": "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com",
+  "jwks_source": "firebase",
+  "app_user_id_claim": "sub",
+  "app_user_id_prefix": "",
+  "enabled": true,
+  "created_at": 1790894800000,
+  "updated_at": 1790894800000
+}
+```
+
+### Update or turn off an identity provider
+
+`POST /v2/projects/{project_id}/auth/providers/{provider_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Send only what changes. People who already signed in keep their app user id when the mapping changes.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `provider_id` | string | yes | Starts with idp. |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | no |  |
+| `firebase_project_id` | string | no | Firebase only. Tokens must have `iss` https://securetoken.google.com/<id> and `aud` <id>. |
+| `issuer` | string | no | OpenID Connect only: exactly the tokens' `iss`. |
+| `audiences` | array of string | no | OpenID Connect only: client ids a token's `aud` must name one of. |
+| `jwks_url` | string or null | no | OpenID Connect only. Null: `jwks_uri` from `<issuer>/.well-known/openid-configuration`. On Cloud it must be a public https URL. |
+| `app_user_id_claim` | string | no | The claim that becomes the app user id. Default `sub`. |
+| `app_user_id_prefix` | string | no | Put in front of the claim, such as `firebase:`. Default empty. |
+| `enabled` | boolean | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/auth/providers/$PROVIDER_ID" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"enabled":false}'
+```
+
+**Responses**
+
+- **200**: The provider.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Delete an identity provider
+
+`DELETE /v2/projects/{project_id}/auth/providers/{provider_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Ends every session it signed in and removes its identity links. App user ids, purchases and balances stay.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `provider_id` | string | yes | Starts with idp. |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/auth/providers/$PROVIDER_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deleted.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Check an ID token without signing in
+
+`POST /v2/projects/{project_id}/auth/providers/{provider_id}/actions/test` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+Runs every check of a sign-in and reports the app user id it would sign in as. Nothing is stored. A token that fails answers 200 with `valid: false` and the reason.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `provider_id` | string | yes | Starts with idp. |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `id_token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/auth/providers/$PROVIDER_ID/actions/test" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"id_token":"eyJhbGciOiJSUzI1NiIsImtpZCI6…"}'
+```
+
+**Responses**
+
+- **200**: The result.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "auth_token_test",
+  "valid": true,
+  "subject": "Xk2f9QpL0aZ",
+  "app_user_id": "Xk2f9QpL0aZ",
+  "linked": false,
+  "claims": {
+    "iss": "https://securetoken.google.com/scanner-1a2b3",
+    "aud": "scanner-1a2b3",
+    "sub": "Xk2f9QpL0aZ",
+    "exp": 1790898400
+  },
+  "error": null
+}
+```
+
+### List signed-in identities
+
+`GET /v2/projects/{project_id}/auth/identities` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read`
+
+Most recent sign-in first.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `provider_id` | string | no |  |
+| `subject` | string | no |  |
+| `app_user_id` | string | no |  |
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/auth/identities" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Identities.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "items": [
+    {
+      "object": "auth_identity",
+      "provider_id": "idp_4f1c9a2b7e3d",
+      "subject": "Xk2f9QpL0aZ",
+      "app_user_id": "Xk2f9QpL0aZ",
+      "logins": 12,
+      "last_login_at": 1790894800000,
+      "created_at": 1790800000000
+    }
+  ],
+  "next_page": null,
+  "url": "/v2/projects/proj1a2b3c4d/auth/identities"
+}
+```
+
+### Read a signed-in user's balances and entitlements by identity
+
+`GET /v2/projects/{project_id}/auth/identities/{provider_id}/{subject}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read`
+
+For your backend: look up a user by the provider's user id (a Firebase uid, an Auth0 `sub`) and read their in-app currency balances and active entitlements, without knowing the app user id.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `provider_id` | string | yes | Starts with idp. |
+| `subject` | string | yes | The provider's user id (`sub`), URL-encoded. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/auth/identities/$PROVIDER_ID/$SUBJECT" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The identity.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "auth_identity",
+  "provider_id": "idp_4f1c9a2b7e3d",
+  "subject": "Xk2f9QpL0aZ",
+  "app_user_id": "Xk2f9QpL0aZ",
+  "logins": 12,
+  "last_login_at": 1790894800000,
+  "created_at": 1790800000000,
+  "customer_id": "Xk2f9QpL0aZ",
+  "active_entitlements": [
+    {
+      "lookup_key": "pro",
+      "expires_at": 1793486800000
+    }
+  ],
+  "virtual_currencies": {
+    "GEMS": {
+      "balance": 40,
+      "name": "Gems",
+      "code": "GEMS"
+    }
+  }
+}
+```
+
+### Unlink an identity and sign it out
+
+`DELETE /v2/projects/{project_id}/auth/identities/{provider_id}/{subject}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read_write`
+
+Ends its sessions at once. The next sign-in maps the identity again with the provider's current mapping.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `provider_id` | string | yes | Starts with idp. |
+| `subject` | string | yes | URL-encoded. |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/auth/identities/$PROVIDER_ID/$SUBJECT" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Unlinked.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
@@ -7462,6 +8844,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `platform` | string or null | no |  |
 | `stores` | array of string | no |  |
 | `offering_override` | string or null | no |  |
+| `blocked` | boolean | no | One of the customer's app user ids is blocked: no entitlements anywhere. |
 | `active_entitlements` | array of object | no |  |
 | `granted_entitlements` | array of object | no |  |
 | `subscriptions` | array of object | no |  |
@@ -7720,6 +9103,12 @@ One screen of a funnel. Every step has `id` (1-40 lower-case letters, digits, `-
 | `icon_url_large` | string or null | no | Always null. |
 | `transfer_behavior` | `transfer`, `transfer_if_no_active`, `keep`, `share` | yes | What happens when a purchase already owned by another customer is restored. Default transfer. |
 | `sandbox_transfer_behavior` | `transfer`, `transfer_if_no_active`, `keep`, `share`, null | yes | Override for sandbox purchases; null uses transfer_behavior. |
+| `sandbox_testing_access` | `anybody`, `allowlist`, `nobody` | no | Who unlocks entitlements and in-app currency with sandbox purchases (Test Store purchases included). `allowlist`: only customers with an app user id in `sandbox_testers`. Others' sandbox purchases are recorded and sent to webhooks but unlock nothing. Default anybody. |
+| `sandbox_testers` | array of string | no | App user ids allowed to test when `sandbox_testing_access` is `allowlist`. Up to 500. |
+| `owner` | object or null | no | The project's owner, the only one who can transfer ownership. Null when no owner is recorded. |
+| `owner.id` | string | no | User id. |
+| `owner.email` | string | no |  |
+| `owner.name` | string or null | no |  |
 
 ### PublicApiKey
 
