@@ -1,15 +1,15 @@
 ---
 title: What is RevenueDot?
-description: RevenueDot is an open-source, self-hostable backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Point the SDK's proxy URL at it and keep your app code.
+description: RevenueDot is an open-source backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on RevenueDot Cloud or self-host it, point the SDK's proxy URL at it and keep your app code.
 ---
 
 # What is RevenueDot?
 
-RevenueDot is an open-source (AGPL-3.0) server for in-app purchases and subscriptions that works with the RevenueCat SDK. You run it yourself with Docker and Postgres, or use **RevenueDot Cloud**: sign up at [app.revenuedot.app](https://app.revenuedot.app) and use `https://api.revenuedot.app`. An app that already uses the RevenueCat SDK points the SDK at RevenueDot with one setting, the **proxy URL**, and keeps its purchase code.
+RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. The quickest start is **RevenueDot Cloud**: [create a free account](https://app.revenuedot.app/signup) and use `https://api.revenuedot.app`. Cloud is free up to $10,000 in monthly tracked revenue. You can also run the same server yourself with Docker and Postgres. An app that already uses the RevenueCat SDK points the SDK at RevenueDot with one setting, the **proxy URL**, and keeps its purchase code.
 
 ```swift
-// Point the SDK at your RevenueDot server; nothing else in the app changes.
-Purchases.proxyURL = URL(string: "https://revenuedot.example.com")!
+// Point the SDK at RevenueDot Cloud, or at your own server; nothing else in the app changes.
+Purchases.proxyURL = URL(string: "https://api.revenuedot.app")!
 Purchases.configure(with: Configuration.Builder(withAPIKey: "appl_...").with(entitlementVerificationMode: .disabled).build())
 ```
 
@@ -26,16 +26,16 @@ Purchases.configure(with: Configuration.Builder(withAPIKey: "appl_...").with(ent
 | | RevenueDot |
 |---|---|
 | Source code | Open source: the server and dashboard are AGPL-3.0 ([repository](https://github.com/revenuedot/revenuedot)) |
-| Where it runs | Your own servers (one Docker image plus Postgres), or RevenueDot Cloud at `https://api.revenuedot.app` |
-| Price | Free to self-host. RevenueDot Cloud is live with open sign-up, and every account is on the free plan |
+| Where it runs | RevenueDot Cloud at `https://api.revenuedot.app`, or your own servers (one Docker image plus Postgres) |
+| Price | RevenueDot Cloud is free up to $10,000 in monthly tracked revenue, and sign-up is open. Paid Cloud plans have not shipped. Self-hosting is free |
 | App changes | Set the SDK's proxy URL and turn off its response-signature check, or install the RevenueDot fork of the SDK |
-| Data | Self-hosted: purchases, customers and receipts stay in your own Postgres |
+| Data | On Cloud, RevenueDot runs the database for you. Self-hosted, purchases, customers and receipts stay in your own Postgres |
 
 RevenueDot is not affiliated with, endorsed by or sponsored by RevenueCat, Inc. "RevenueCat" is a trademark of RevenueCat, Inc. and is used here only to describe compatibility.
 
 ## How the pieces fit
 ```text
- Your app (RevenueCat SDK, proxyURL = your server)
+ Your app (RevenueCat SDK, proxyURL = RevenueDot)
       │  GET /v1/subscribers/{id}, GET .../offerings, POST /v1/receipts
       ▼
  RevenueDot server ◀──── App Store Server Notifications v2, Google Play real-time notifications
@@ -50,10 +50,10 @@ RevenueDot is not affiliated with, endorsed by or sponsored by RevenueCat, Inc. 
 4. Later changes, such as renewals and refunds, arrive as store notifications. RevenueDot updates the customer and sends webhooks.
 
 ## Where to go next
-- **Try it in 5 minutes:** [Quickstart](quickstart.md), or sign up for RevenueDot Cloud at [app.revenuedot.app](https://app.revenuedot.app).
+- **Try it in 5 minutes:** [create a free RevenueDot Cloud account](https://app.revenuedot.app/signup), then follow the [Quickstart](quickstart.md).
 - **Choose how your app connects:** [proxy mode, fork packages or your existing keys](connect-your-app.md).
 - **Learn the model:** [Concepts](../concepts/README.md).
 - **Move a live app:** [Migrate from RevenueCat](../migrate/README.md).
 - **Connect your SDK:** [SDK guides](../sdks/README.md).
-- **Run it for real:** [Self-hosting](../guides/self-hosting.md) and [Going to production](../guides/going-to-production.md).
+- **Run it yourself:** [Self-hosting](../guides/self-hosting.md) and [Going to production](../guides/going-to-production.md).
 - **Look something up:** [API reference](../../api/README.md), [Help center](../help/README.md), [Blog](../../blog/README.md).

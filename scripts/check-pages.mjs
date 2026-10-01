@@ -4,7 +4,7 @@
 // Docs: https://revenuedot.app/docs   Migrate from RevenueCat: https://revenuedot.app/docs/migrate
 import { pages, proseLines, readPage } from "./lib/pages.mjs";
 
-export const ABOUT = "**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0), self-hostable backend for in-app purchases and subscriptions that works with the RevenueCat SDK.";
+export const ABOUT = "**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK.";
 const problems = [];
 const list = pages();
 for (const rel of list) {

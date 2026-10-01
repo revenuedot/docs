@@ -75,7 +75,7 @@ We would rather you hear this from us than find out in production.
 The full list, with a workaround for each item, is in [Known issues](../docs/help/known-issues.md).
 
 ## How to try it
-The fastest way is RevenueDot Cloud: sign up at [app.revenuedot.app](https://app.revenuedot.app) (free plan) and point your SDK's proxy URL at `https://api.revenuedot.app`.
+The fastest way is RevenueDot Cloud: [create a free account](https://app.revenuedot.app/signup) (free up to $10,000 in monthly tracked revenue) and point your SDK's proxy URL at `https://api.revenuedot.app`.
 
 To run it yourself you need Docker, `curl` and `jq`. The quickstart takes about five minutes, and most of that is the first image build:
 
@@ -96,8 +96,8 @@ Our next milestones, in order:
 1. Real App Store and Google Play sandbox purchases, end to end.
 2. Published SDK forks, a published importer and a published MCP package.
 
-RevenueDot Cloud is already live at [app.revenuedot.app](https://app.revenuedot.app), and the native iOS and Android SDKs load and buy Test Store products.
+RevenueDot Cloud is already live, with [open sign-up](https://app.revenuedot.app/signup), and the native iOS and Android SDKs load and buy Test Store products.
 
 The build plan is public in the repository. RevenueDot is not affiliated with RevenueCat. "RevenueCat" is a trademark of RevenueCat, Inc., and we use it only to describe compatibility.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0), self-hostable backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Point the SDK's proxy URL at your RevenueDot server and keep your app code, your offerings and your customers. Start with the [quickstart](../docs/getting-started/quickstart.md) or read the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

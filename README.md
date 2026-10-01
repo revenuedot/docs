@@ -1,13 +1,14 @@
 # RevenueDot docs
 
-**Open documentation for [RevenueDot](https://revenuedot.app), the open-source, self-hostable backend for in-app purchases that works with the RevenueCat SDK.** Everything here is public Markdown: getting started, concepts, SDK guides, store setup, webhooks, self-hosting, migration from RevenueCat, the API reference, a help center and a blog.
+**Open documentation for [RevenueDot](https://revenuedot.app), the open-source backend for in-app purchases that works with the RevenueCat SDK.** Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Everything here is public Markdown: getting started, concepts, SDK guides, store setup, webhooks, self-hosting, migration from RevenueCat, the API reference, a help center and a blog.
 
 > Every page says what works today and what is planned.
 
 The pages are published at [revenuedot.app/docs](https://revenuedot.app/docs) and [revenuedot.app/blog](https://revenuedot.app/blog), with [llms.txt](https://revenuedot.app/llms.txt) at the site root. Every push to `main` runs the checks below and redeploys the site ([`.github/workflows/deploy-site.yml`](.github/workflows/deploy-site.yml)).
 
 ## Start here
-- [What is RevenueDot?](docs/getting-started/README.md) and the [5-minute quickstart](docs/getting-started/quickstart.md)
+- [What is RevenueDot?](docs/getting-started/README.md) and the [5-minute quickstart](docs/getting-started/quickstart.md) on RevenueDot Cloud
+- [Self-hosting](docs/guides/self-hosting.md): run the same server with Docker and Postgres
 - [Connect your app](docs/getting-started/connect-your-app.md): proxy mode, fork packages, or your existing keys
 - [Migrate from RevenueCat](docs/migrate/README.md)
 - [API reference](api/README.md), generated from [api/openapi.yaml](api/openapi.yaml)

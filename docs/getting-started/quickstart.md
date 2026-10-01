@@ -1,15 +1,80 @@
 ---
-title: How do I run RevenueDot and make a first purchase in 5 minutes?
-description: Start the server with Docker Compose, seed a Test Store app with one script, buy a subscription with curl, then point the RevenueCat SDK at your server.
+title: How do I make a first purchase with RevenueDot in 5 minutes?
+description: Create a free RevenueDot Cloud account, add a Test Store app with a product and an entitlement, make a test purchase from the dashboard, then point the RevenueCat SDK at https://api.revenuedot.app. You can also run the same server yourself with Docker.
 ---
 
-# How do I run RevenueDot and make a first purchase in 5 minutes?
+# How do I make a first purchase with RevenueDot in 5 minutes?
 
-Start the server with Docker, seed it with a Test Store app, make a purchase with `curl`, then point an SDK at it. You need no App Store or Google Play account. Most of the 5 minutes is the first image build.
+Create a free account on **RevenueDot Cloud**, add a Test Store app with one product and one entitlement, make a test purchase from the dashboard, then point an SDK at `https://api.revenuedot.app`. You need no server, no App Store account and no Google Play account. Cloud is free up to $10,000 in monthly tracked revenue.
 
-You need Docker with Compose v2, plus `git`, `curl` and `jq`. To skip running a server, sign up for RevenueDot Cloud at [app.revenuedot.app](https://app.revenuedot.app) and use `https://api.revenuedot.app` wherever this page says `http://localhost:8787`.
+To run the server on your own machine instead, skip to [Run it yourself](#run-it-yourself).
 
-## 1. Start RevenueDot
+## 1. Create a free account
+1. Open [app.revenuedot.app/signup](https://app.revenuedot.app/signup).
+2. Enter your email, a password of at least 8 characters, and a name for your first project. A project holds your apps, products and customers.
+3. Open the email from RevenueDot and click the link to confirm your address. The link works for 24 hours. Cloud needs a confirmed address before you can create secret API keys or invite teammates.
+
+The dashboard opens on **Overview**, with a six-step setup checklist. To sign in later, use [app.revenuedot.app/login](https://app.revenuedot.app/login).
+
+## 2. Add a Test Store app, a product and an entitlement
+The **Test Store** is RevenueDot's built-in store for testing. Its purchases unlock entitlements and send webhooks like real ones, and they are always sandbox data.
+
+Do it in the dashboard:
+1. **Apps:** add an app of type **Test Store**.
+2. **Product catalog, Products:** add a product for the Test Store app, for example `pro_monthly`, a subscription that lasts one month.
+3. **Product catalog, Entitlements:** add an entitlement called `pro` and attach the product. Your app checks this entitlement to unlock paid features.
+4. **Product catalog, Offerings:** add an offering called `default`, give it a package with the product, and make it current. The SDK reads this offering to build the paywall.
+
+Or seed all of it with one script. It needs `curl` and `jq`, and it uses only the public API. It signs in with the account you just made, then adds a Test Store app, three products, a `pro` entitlement, a `default` offering and a secret key. Run it after you confirm your email, because Cloud creates secret keys only for confirmed accounts:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/revenuedot/examples/main/selfhost/docker-compose/seed.sh
+RD_URL=https://api.revenuedot.app RD_EMAIL=you@example.com RD_PASSWORD='your password' bash seed.sh
+```
+
+The script prints the project id, the Test Store key (`test_...`) and a secret key (`sk_...`). Keep the secret key on your server only. Sign in to the dashboard at [app.revenuedot.app/login](https://app.revenuedot.app/login), even though the script prints the API address.
+
+## 3. Make a test purchase from the dashboard
+On **Overview**, click **Make a test purchase**. Keep the app user ID `test_user_1`, pick the product and click **Purchase**.
+
+The purchase runs through the same steps as a real one. Open **Customers** and click `test_user_1`: the customer has the `pro` entitlement, active for one month, and the purchase events are listed.
+
+## 4. Point an SDK at RevenueDot Cloud
+Copy the Test Store key (it starts with `test_`) from **API keys**. Use it as the SDK's API key, and use `https://api.revenuedot.app` as the SDK's proxy URL. Set the proxy URL before you configure the SDK, and turn off the response-signature check where the SDK has one.
+
+```swift
+// iOS: Point the SDK at RevenueDot Cloud; nothing else in the app changes.
+Purchases.proxyURL = URL(string: "https://api.revenuedot.app")!
+Purchases.configure(with: Configuration.Builder(withAPIKey: "test_...").with(entitlementVerificationMode: .disabled).build())
+```
+```kotlin
+// Android: Point the SDK at RevenueDot Cloud; nothing else in the app changes.
+Purchases.proxyURL = URL("https://api.revenuedot.app")
+Purchases.configure(PurchasesConfiguration.Builder(context, "test_...").entitlementVerificationMode(EntitlementVerificationMode.DISABLED).build())
+```
+```ts
+// React Native / Expo: Point the SDK at RevenueDot Cloud; nothing else in the app changes.
+await Purchases.setProxyURL("https://api.revenuedot.app");
+Purchases.configure({ apiKey: "test_..." });
+```
+
+The shortest way to see it in an app is the [purchases-js web example](https://github.com/revenuedot/examples/tree/main/web/purchases-js-vite), which runs in a browser:
+
+```bash
+git clone https://github.com/revenuedot/examples.git && cd examples/web/purchases-js-vite
+npm install
+printf "VITE_REVENUEDOT_URL=https://api.revenuedot.app\nVITE_REVENUEDOT_API_KEY=test_...\n" > .env.local
+npm run dev                    # open http://localhost:5199, click Buy, then "Test valid purchase"
+```
+
+Per-platform details, including Flutter, Capacitor, Kotlin Multiplatform, Unity and Cordova, are in the [SDK guides](../sdks/README.md). To use the RevenueDot fork packages instead, see [How do I connect my app?](connect-your-app.md).
+
+Give each Test Store product a price in the dashboard (Product catalog, Edit product, Test Store price) so the paywall shows it. A product without one shows 0. Real prices come from the App Store and Google Play. See [Test Store](../guides/test-store.md).
+
+## Run it yourself
+RevenueDot is open source, and the server on Cloud is the same code you can run. You need Docker with Compose v2, plus `git`, `curl` and `jq`. Most of the 5 minutes is the first image build.
+
+### 1. Start RevenueDot
 ```bash
 git clone https://github.com/revenuedot/revenuedot.git
 cd revenuedot
@@ -23,7 +88,7 @@ curl http://localhost:8787/v1/health
 
 One container serves the SDK API, the REST API and the dashboard on port 8787. To use another host port, set `REVENUEDOT_PORT=8797` in `.env`. The dashboard is at `http://localhost:8787/login`; the bare `/` path returns a small JSON document.
 
-## 2. Seed a project with a Test Store app
+### 2. Seed a project with a Test Store app
 The seed script uses only the public API. It creates a dashboard account and project, a Test Store app, three products, a `pro` entitlement, a `default` offering and a secret key.
 
 ```bash
@@ -48,7 +113,7 @@ export SECRET_KEY=sk_...   # the secret key printed above
 
 To see what the script does, or to do it by hand, read [the seed script](https://github.com/revenuedot/examples/blob/main/selfhost/docker-compose/seed.sh). Each step is one REST API v2 call. You can also do everything in the dashboard.
 
-## 3. Ask for offerings, as the SDK does
+### 3. Ask for offerings, as the SDK does
 ```bash
 curl -s -H "Authorization: Bearer $TEST_KEY" http://localhost:8787/v1/subscribers/user_1/offerings
 ```
@@ -56,7 +121,7 @@ curl -s -H "Authorization: Bearer $TEST_KEY" http://localhost:8787/v1/subscriber
 {"current_offering_id":"default","offerings":[{"description":"Standard plans","identifier":"default","metadata":null,"packages":[{"identifier":"$rc_monthly","platform_product_identifier":"pro_monthly"},{"identifier":"$rc_annual","platform_product_identifier":"pro_annual"},{"identifier":"$rc_lifetime","platform_product_identifier":"pro_lifetime"}]}]}
 ```
 
-## 4. Make a Test Store purchase
+### 4. Make a Test Store purchase
 In an app, the SDK makes this call for you after the user confirms the Test Store dialog. The Test Store accepts any `fetch_token` of the form `test_<purchase time in ms>_<id>`.
 
 ```bash
@@ -88,37 +153,12 @@ curl -s -H "Authorization: Bearer $SECRET_KEY" \
   "http://localhost:8787/v2/projects/<project id>/customers/user_1/active_entitlements"
 ```
 
-## 5. Point an SDK at your server
-Use the Test Store key as the SDK's API key and your server as its proxy URL. The shortest path is the [purchases-js web example](https://github.com/revenuedot/examples/tree/main/web/purchases-js-vite), which runs in a browser in two minutes:
+The same `curl` calls work on Cloud: replace `http://localhost:8787` with `https://api.revenuedot.app`.
 
-```bash
-git clone https://github.com/revenuedot/examples.git && cd examples/web/purchases-js-vite
-npm install
-printf "VITE_REVENUEDOT_URL=http://localhost:8787\nVITE_REVENUEDOT_API_KEY=$TEST_KEY\n" > .env.local
-npm run dev                    # open http://localhost:5199, click Buy, then "Test valid purchase"
-```
+### 5. Point an SDK at your server
+Use the code from [step 4 above](#4-point-an-sdk-at-revenuedot-cloud) with your server's address as the proxy URL, for example `http://localhost:8787`. On the Android emulator, use `http://10.0.2.2:8787`, because the emulator reaches your computer at `10.0.2.2`. In the purchases-js example, set `VITE_REVENUEDOT_URL=http://localhost:8787`.
 
-In your own app, the change is the same on every platform: set the proxy URL before configuring, and turn off the response-signature check where the SDK has one.
-
-```swift
-// iOS: Point the SDK at your RevenueDot server; nothing else in the app changes.
-Purchases.proxyURL = URL(string: "http://localhost:8787")!
-Purchases.configure(with: Configuration.Builder(withAPIKey: "test_...").with(entitlementVerificationMode: .disabled).build())
-```
-```kotlin
-// Android: Point the SDK at your RevenueDot server; nothing else in the app changes.
-Purchases.proxyURL = URL("http://10.0.2.2:8787")   // the emulator reaches your computer as 10.0.2.2
-Purchases.configure(PurchasesConfiguration.Builder(context, "test_...").entitlementVerificationMode(EntitlementVerificationMode.DISABLED).build())
-```
-```ts
-// React Native / Expo: Point the SDK at your RevenueDot server; nothing else in the app changes.
-await Purchases.setProxyURL("http://localhost:8787");
-Purchases.configure({ apiKey: "test_..." });
-```
-
-Per-platform details, including Flutter, Capacitor, Kotlin Multiplatform, Unity and Cordova, are in the [SDK guides](../sdks/README.md). To use the RevenueDot fork packages instead, see [How do I connect my app?](connect-your-app.md).
-
-Give each Test Store product a price in the dashboard (Product catalog, Edit product, Test Store price) so the paywall shows it; a product without one shows 0. Real prices come from the App Store and Google Play. See [Test Store](../guides/test-store.md).
+To run it for real customers, read [Self-hosting](../guides/self-hosting.md) and [Going to production](../guides/going-to-production.md).
 
 ## Next steps
 - Receive the purchase on your backend: [Webhooks](../guides/webhooks.md).
