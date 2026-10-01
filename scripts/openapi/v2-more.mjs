@@ -80,6 +80,9 @@ export const v2MorePaths = {
       responses: { 200: ok("The configuration.", obj({ object: en(["customer_center_config"]), customer_center: { type: "object", additionalProperties: true } }, ["object", "customer_center"])), ...v2Errors(400, 401, 403, 404) } }),
   },
   [`${P}/customer_center_config`]: {
+    get: op({ id: "getCustomerCenterConfigSettings", tag: "Project settings", summary: "Get the Customer Center configuration of the project", security: SECRET, source: EX, extension: true, scopes: ["project_configuration:projects:read"], parameters: [project],
+      description: "The configuration the SDK receives, and the stored overrides it was built from (null when none).",
+      responses: { 200: ok("The configuration.", obj({ object: en(["customer_center_config"]), customer_center: { type: "object", additionalProperties: true }, overrides: { type: ["object", "null"], additionalProperties: true } }, ["object", "customer_center", "overrides"])), ...E(404) } }),
     post: op({ id: "setCustomerCenterConfig", tag: "Project settings", summary: "Set the Customer Center configuration", security: SECRET, source: EX, extension: true, scopes: ["project_configuration:projects:read_write"], parameters: [project],
       description: "Stores overrides that are merged, key by key, over the built-in default. Send `null` to go back to the default.",
       requestBody: body(obj({ customer_center: { type: ["object", "null"], additionalProperties: true } }, ["customer_center"]), { customer_center: { support: { email: "help@example.com" } } }),

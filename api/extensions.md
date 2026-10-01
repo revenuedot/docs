@@ -11,11 +11,11 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (48)
+## Operations on this page (49)
 
 - **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects), [Update account settings](#update-account-settings), [Email a password reset link](#email-a-password-reset-link), [Check a password reset link](#check-a-password-reset-link), [Set a new password from a reset link](#set-a-new-password-from-a-reset-link), [Confirm an email address](#confirm-an-email-address), [Send a new confirmation email](#send-a-new-confirmation-email), [Look up an invite](#look-up-an-invite), [Accept an invite](#accept-an-invite)
 - **Members and invites**: [List open invites](#list-open-invites), [Invite someone by email](#invite-someone-by-email), [Resend an invite](#resend-an-invite), [Revoke an invite](#revoke-an-invite), [Change a member's role](#change-a-members-role), [Remove a member, or leave the project](#remove-a-member-or-leave-the-project)
-- **Project settings**: [Get a project with its settings](#get-a-project-with-its-settings), [Update a project's name and transfer behaviour](#update-a-projects-name-and-transfer-behaviour), [Delete a project and everything in it](#delete-a-project-and-everything-in-it), [Set the Customer Center configuration](#set-the-customer-center-configuration)
+- **Project settings**: [Get a project with its settings](#get-a-project-with-its-settings), [Update a project's name and transfer behaviour](#update-a-projects-name-and-transfer-behaviour), [Delete a project and everything in it](#delete-a-project-and-everything-in-it), [Get the Customer Center configuration of the project](#get-the-customer-center-configuration-of-the-project), [Set the Customer Center configuration](#set-the-customer-center-configuration)
 - **Store setup**: [Store setup state of an app](#store-setup-state-of-an-app), [Check store credentials with Apple or Google](#check-store-credentials-with-apple-or-google), [Extend every active App Store subscriber of a product](#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](#status-of-a-mass-extension), [Setup health](#setup-health)
 - **API keys**: [List secret keys](#list-secret-keys), [Create a secret key](#create-a-secret-key), [Delete a secret key](#delete-a-secret-key)
 - **Webhook deliveries**: [Send a TEST event to one webhook](#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](#whether-each-webhook-is-enabled), [Delivery log of a webhook](#delivery-log-of-a-webhook), [Retry a delivery now](#retry-a-delivery-now)
@@ -827,6 +827,31 @@ Example 200 response:
   "deleted_at": 1790801342625
 }
 ```
+
+### Get the Customer Center configuration of the project
+
+`GET /v2/projects/{project_id}/customer_center_config` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+The configuration the SDK receives, and the stored overrides it was built from (null when none).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_center_config" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The configuration.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
 ### Set the Customer Center configuration
 

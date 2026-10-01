@@ -8006,6 +8006,51 @@ paths:
       x-scopes:
         - customer_information:customers:read
   /v2/projects/{project_id}/customer_center_config:
+    get:
+      operationId: getCustomerCenterConfigSettings
+      tags:
+        - Project settings
+      summary: Get the Customer Center configuration of the project
+      description: The configuration the SDK receives, and the stored overrides it was built from (null when none).
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: The configuration.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - customer_center_config
+                  customer_center:
+                    type: object
+                    additionalProperties: true
+                  overrides:
+                    type:
+                      - object
+                      - "null"
+                    additionalProperties: true
+                required:
+                  - object
+                  - customer_center
+                  - overrides
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/customer-extras.ts
+      x-scopes:
+        - project_configuration:projects:read
+      x-revenuedot-extension: true
     post:
       operationId: setCustomerCenterConfig
       tags:
