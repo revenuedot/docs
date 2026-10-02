@@ -16,6 +16,7 @@ import { webPaths, webSchemas } from "./web.mjs";
 import { adsPaths } from "./ads.mjs";
 import { settingsPathsAll } from "./settings.mjs";
 import { assistantPaths } from "./assistant.mjs";
+import { enterprisePaths, enterpriseSchemas } from "./enterprise.mjs";
 
 /**
  * Tags in reading order. `x-page` is the generated Markdown page (api/<page>.md) the tag's operations go to.
@@ -86,6 +87,12 @@ export const TAGS = [
   ["RevenueDot AI", "extensions", "The in-app assistant: conversations, streaming answers, attachments (screenshots and .storekit files), @ mentions, what the assistant may do in the project, and the first-sale card. See [RevenueDot AI](../docs/guides/revenuedot-ai.md)."],
   ["Share cards", "extensions", "Public pages and images RevenueDot makes for sharing, such as the first-sale card. No API key; the token in the URL is the only key."],
   ["OAuth for MCP clients", "extensions", "OAuth 2.1 with PKCE so MCP clients can connect to one project without copying a key."],
+  ["Enterprise", "enterprise", "Whether this server runs RevenueDot Enterprise, with which licence and features. See [Enterprise](../docs/guides/enterprise.md)."],
+  ["Organizations", "enterprise", "Organizations own projects and hold members with owner, admin and member roles, seats, data location, audit retention and the organization audit log. Dashboard session only. See [Enterprise](../docs/guides/enterprise.md)."],
+  ["Custom roles", "enterprise", "Roles built from API v2 scopes, their assignment to project members, and group role mappings for SSO and SCIM groups. See [Enterprise](../docs/guides/enterprise.md#custom-roles)."],
+  ["Single sign-on", "enterprise", "SAML 2.0 and OpenID Connect connections, verified email domains, and the public sign-in endpoints the browser and the identity provider call. See [Single sign-on](../docs/guides/single-sign-on.md)."],
+  ["SCIM 2.0", "enterprise", "SCIM tokens and groups in the dashboard API, and the SCIM 2.0 service (RFC 7643, RFC 7644) that Okta, Microsoft Entra ID and other identity providers call with a SCIM token. Bodies and errors use `application/scim+json`. See [SCIM](../docs/guides/scim.md)."],
+  ["Compliance exports", "enterprise", "The audit log and an access review as CSV or JSON, signed with Ed25519. See [Audit retention and exports](../docs/guides/audit-retention-and-exports.md)."],
   ["Webhook events", "webhook-events", "What RevenueDot POSTs to your webhook URL."],
 ];
 
@@ -113,9 +120,9 @@ export function buildDocument() {
       { url: "https://{host}", description: "Your self-hosted RevenueDot", variables: { host: { default: "revenuedot.example.com" } } },
     ],
     tags: tags(),
-    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...adsPaths, ...lifecyclePaths, ...webPaths, ...assistantPaths, ...settingsPathsAll, ...extensionPaths },
+    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...adsPaths, ...lifecyclePaths, ...webPaths, ...assistantPaths, ...settingsPathsAll, ...extensionPaths, ...enterprisePaths },
     webhooks,
-    components: { schemas: { ...schemas, ...webSchemas }, parameters, responses, securitySchemes },
+    components: { schemas: { ...schemas, ...webSchemas, ...enterpriseSchemas }, parameters, responses, securitySchemes },
     security: [{ secretApiKey: [] }],
     externalDocs: { description: "RevenueDot documentation", url: "https://github.com/revenuedot/docs" },
   };

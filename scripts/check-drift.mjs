@@ -1,5 +1,8 @@
 // RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
 // This file: fails when api/openapi.yaml and the server's route files disagree (paths, methods, source files, field names).
+// It reads the core (apps/server/src) and, when the checkout has it, RevenueDot Enterprise (ee/server). Core files keep
+// x-source values relative to apps/server/src (routes/v2/apps.ts); enterprise files use the path from the repo root
+// (ee/server/orgs.ts). A checkout without ee/server skips the operations whose x-source is in ee/.
 // Docs: https://revenuedot.app/docs/api   Migrate from RevenueCat: https://revenuedot.app/docs/migrate
 //
 // Usage: npm run check:drift                      (server checkout at ../revenuedot)
@@ -12,6 +15,8 @@ import { parse } from "yaml";
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const SERVER = resolve(process.env.REVENUEDOT_SERVER_DIR ?? join(ROOT, "..", "revenuedot"));
 const SRC = join(SERVER, "apps/server/src");
+const EE = join(SERVER, "ee/server");
+const hasEe = existsSync(EE);
 if (!existsSync(SRC)) {
   console.error(`Server source not found at ${SRC}. Clone https://github.com/revenuedot/revenuedot next to this repo or set REVENUEDOT_SERVER_DIR.`);
   process.exit(2);
@@ -24,6 +29,10 @@ const walk = (dir) => readdirSync(dir).flatMap((f) => {
 // entry.node.ts only adds the dashboard fallback (`app.get("*")`) in Docker.
 const files = walk(SRC).filter((f) => !f.endsWith("entry.node.ts"));
 const text = new Map(files.map((f) => [relative(SRC, f), readFileSync(f, "utf8")]));
+// Enterprise files are keyed from the repo root, so their keys (and x-source values) start with "ee/server/".
+const eeFiles = hasEe ? walk(EE) : [];
+for (const f of eeFiles) text.set(relative(SERVER, f), readFileSync(f, "utf8"));
+const isEe = (file) => file.startsWith("ee/");
 
 // ---- 1. Routes in the code ------------------------------------------------------------------------------------------
 const globalConsts = new Map();
@@ -31,7 +40,8 @@ for (const src of text.values()) for (const m of src.matchAll(/export\s+const\s+
 
 // Mounted routers: r.route("/prefix", someRoutes(deps)) prefixes every route of the file that defines someRoutes.
 const definedIn = new Map();
-for (const [file, src] of text) for (const m of src.matchAll(/export\s+function\s+(\w+)\s*\(/g)) definedIn.set(m[1], file);
+// Core definitions win over enterprise helpers of the same name (ee/ never mounts a core router).
+for (const [file, src] of text) for (const m of src.matchAll(/export\s+function\s+(\w+)\s*\(/g)) if (!definedIn.has(m[1]) || !isEe(file)) definedIn.set(m[1], file);
 // Also r.route("/prefix", pay) after `const pay = payRoutes(deps)` (the hosted pages under /pay).
 const prefixOf = new Map();
 for (const src of text.values()) {
@@ -51,7 +61,8 @@ for (const [file, src] of text) {
   const consts = new Map(globalConsts);
   for (const m of src.matchAll(/const\s+([A-Z][A-Za-z0-9_]*)\s*=\s*"(\/[^"]*)"/g)) consts.set(m[1], m[2]);
   const calls = [
-    ...[...src.matchAll(/\b(?:r|app)\.(get|post|delete|put|patch)\(\s*(`[^`]*`|"[^"]*"|[A-Za-z_][A-Za-z0-9_]*)/g)].map((m) => [m[1], m[2]]),
+    // r.get(...), app.get(...), and named sub-apps such as statusRoute.get(...) (ee/server/index.ts).
+    ...[...src.matchAll(/\b(?:r|app|[a-z]\w*Route)\.(get|post|delete|put|patch)\(\s*(`[^`]*`|"[^"]*"|[A-Za-z_][A-Za-z0-9_]*)/g)].map((m) => [m[1], m[2]]),
     ...[...src.matchAll(/\bstoreAction\(\s*("[^"]*")/g)].map((m) => ["post", m[1]]),
   ];
   for (const [method, arg] of calls) {
@@ -71,7 +82,7 @@ for (const [file, src] of text) {
       paths = [consts.get(arg)];
     }
     for (let p of paths) {
-      if (p.includes("*")) continue;
+      if (p.includes("*") || !p.startsWith("/")) continue;
       p = (prefixOf.get(file) ?? "") + p;
       const key = `${method.toUpperCase()} ${norm(p)}`;
       if (!codeRoutes.has(key)) codeRoutes.set(key, new Set());
@@ -84,8 +95,10 @@ for (const [file, src] of text) {
 const spec = parse(readFileSync(join(ROOT, "api/openapi.yaml"), "utf8"));
 const METHODS = ["get", "post", "put", "patch", "delete"];
 const specOps = new Map();
+let skippedEe = 0;
 for (const [path, item] of Object.entries(spec.paths)) {
-  for (const m of METHODS) if (item[m]) specOps.set(`${m.toUpperCase()} ${norm(path)}`, { path, method: m, op: item[m], shared: item.parameters ?? [] });
+  for (const m of METHODS) if (item[m] && !hasEe && isEe(item[m]["x-source"] ?? "")) skippedEe++;
+  for (const m of METHODS) if (item[m] && (hasEe || !isEe(item[m]["x-source"] ?? ""))) specOps.set(`${m.toUpperCase()} ${norm(path)}`, { path, method: m, op: item[m], shared: item.parameters ?? [] });
 }
 
 const problems = [];
@@ -118,11 +131,13 @@ function propNames(schema, depth = 0, out = [], seen = new Set()) {
 // A route file's own text plus the server files it imports directly (request schemas often live in a service file).
 const withImports = (file) => {
   const src = text.get(file) ?? "";
-  const dir = file.split("/").slice(0, -1);
+  const dir = isEe(file) ? file.split("/").slice(0, -1) : ["apps", "server", "src", ...file.split("/").slice(0, -1)];
   const imported = [...src.matchAll(/from\s+"(\.{1,2}\/[^"]+)\.js"/g)].map((m) => {
     const parts = [...dir];
     for (const seg of m[1].split("/")) { if (seg === "..") parts.pop(); else if (seg !== ".") parts.push(seg); }
-    return text.get(`${parts.join("/")}.ts`) ?? "";
+    // Back to a text key: core files without apps/server/src/, enterprise files from the repo root.
+    const key = parts.join("/").replace(/^apps\/server\/src\//, "");
+    return text.get(`${key}.ts`) ?? "";
   });
   return [src, ...imported].join("\n");
 };
@@ -136,13 +151,15 @@ for (const { op, shared } of specOps.values()) {
     fieldsChecked++;
     if (!has(ownOrCommon, p.name)) problems.push(`${op.operationId}: query parameter "${p.name}" does not appear in ${op["x-source"]}`);
   }
-  const schema = op.requestBody?.content?.["application/json"]?.schema;
+  // JSON bodies, including SCIM's application/scim+json.
+  const schema = Object.values(op.requestBody?.content ?? {})[0]?.schema;
   for (const { name, depth } of schema ? propNames(schema) : []) {
     fieldsChecked++;
     if (depth === 0 ? !has(own, name) : !has(allCode, name)) problems.push(`${op.operationId}: request field "${name}" does not appear in ${depth === 0 ? `${op["x-source"]} or the files it imports` : "the server code"}`);
   }
 }
 for (const [name, schema] of Object.entries(spec.components.schemas)) {
+  if (!hasEe && schema["x-revenuedot-enterprise"]) continue;
   for (const { name: field } of propNames(schema)) {
     fieldsChecked++;
     if (!has(allCode, field)) problems.push(`components.schemas.${name}: field "${field}" does not appear in the server code`);
@@ -160,4 +177,5 @@ if (problems.length) {
   console.error(`Drift between api/openapi.yaml and ${SERVER}:\n${problems.map((p) => `  - ${p}`).join("\n")}`);
   process.exit(1);
 }
-console.log(`No drift: ${codeRoutes.size} routes in the code match ${specOps.size} operations in api/openapi.yaml; ${fieldsChecked} field names found in the code.`);
+const scope = hasEe ? `apps/server/src and ee/server (${eeFiles.length} enterprise files)` : `apps/server/src; no ee/server in this checkout, so ${skippedEe} enterprise operations were skipped`;
+console.log(`No drift: ${codeRoutes.size} routes in the code match ${specOps.size} operations in api/openapi.yaml; ${fieldsChecked} field names found in the code. Read ${scope}.`);

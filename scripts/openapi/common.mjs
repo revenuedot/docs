@@ -48,7 +48,8 @@ export const SESSION = [{ dashboardSession: [] }];
 export const NONE = [];
 
 /**
- * One operation. `source` is the server file (relative to apps/server/src) that implements it; the drift check
+ * One operation. `source` is the server file that implements it: relative to apps/server/src for the core
+ * (routes/v2/apps.ts), from the repo root for RevenueDot Enterprise (ee/server/orgs.ts). The drift check
  * reads it. `scopes` are the API v2 permissions the key needs. `extension` marks RevenueDot-only operations.
  */
 export function op({ id, tag, summary, description, security, parameters, requestBody, responses, source, scopes, extension, deprecated }) {
