@@ -180,6 +180,13 @@ export const schemas = {
     app: ref("App"),
     indicative_price: { oneOf: [ref("IndicativePrice"), { type: "null" }], description: "With `expand=indicative_price`: the Test Store price, or null." },
   }, ["object", "id", "store_identifier", "type", "state", "created_at", "app_id", "display_name"]),
+  StoreProductImport: obj({
+    object: { type: "string", const: "store_product_import" }, app_id: str(),
+    created: arr(ref("Product"), { description: "Products created by this import." }),
+    existing: arr(ref("Product"), { description: "Requested products the catalog already had; left unchanged." }),
+    failed: arr(obj({ store_identifier: str(), reason: { type: "string", enum: ["not_in_store", "not_importable"] }, message: str() }, ["store_identifier", "reason", "message"]), { description: "Requested identifiers the store does not have, or that cannot be imported." }),
+    entitlement_ids: arr(str(), { description: "The entitlements every created and existing product is attached to." }),
+  }, ["object", "app_id", "created", "existing", "failed", "entitlement_ids"]),
   IndicativePrice: obj({
     object: { type: "string", const: "indicative_price" }, currency: str("ISO 4217 code."), country: { type: "null" }, amount_micros: int("Price in micros: 9.99 is 9990000."),
   }, ["object", "currency", "country", "amount_micros"]),
@@ -340,7 +347,18 @@ export const schemas = {
   }, ["object", "id", "days", "environment", "values"]),
   CustomerSummary: obj({
     object: { type: "string", const: "customer_summary" }, id: str("The id you asked for."), original_app_user_id: str(), aliases: arr(str()),
-    total_revenue_in_usd: num(), sandbox_revenue_in_usd: num(), country: nstr(), platform: nstr(), stores: arr(str()), offering_override: nstr(),
+    total_revenue_in_usd: num(), sandbox_revenue_in_usd: num(), country: nstr(), platform: nstr(), stores: arr(str()),
+    offering_override: { ...obj({ id: str(), lookup_key: str(), display_name: str() }), type: ["object", "null"], description: "The offering set for this customer only; it wins over targeting and experiments." },
+    current_offering: {
+      ...obj({
+        id: str(), lookup_key: str(), display_name: str(),
+        source: { ...en(["override", "experiment", "targeting", "default"]), description: "Why the customer gets it: their override, an experiment (one they are in, or a running one their next request would enroll them in), the first live targeting rule that matches, or the project's current offering." },
+        rule_id: str("With `targeting`."), rule_name: nstr("With `targeting`."),
+        experiment_id: str("With `experiment`."), experiment_name: nstr("With `experiment`."), variant: { ...en(["a", "b"]), description: "With `experiment`." },
+      }, ["id", "lookup_key", "source"]),
+      type: ["object", "null"],
+      description: "The current offering the SDK returns for this customer now, resolved with the device details of their last SDK request (platform, app and SDK version, SDK flavor, OS version, storefront). Locale conditions never match here because the locale is not stored. Reading it enrolls nobody in an experiment; it shows the variant their next request would get.",
+    },
     blocked: bool("One of the customer's app user ids is blocked: no entitlements anywhere."),
     active_entitlements: arr({ type: "object" }), granted_entitlements: arr({ type: "object" }), subscriptions: arr({ type: "object" }), purchases: arr({ type: "object" }),
   }, ["object", "id", "original_app_user_id"]),

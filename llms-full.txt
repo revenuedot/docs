@@ -425,7 +425,7 @@ Entitlement "pro"
 ```
 
 ## Products
-A product belongs to one app. Create it in the dashboard (**Products**) or with the API:
+A product belongs to one app. Already set up in App Store Connect, Google Play or Stripe? **Import products** brings them over with their type, duration and name ([Import products](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/import-products.md)). Otherwise create each one in the dashboard (**Products**) or with the API:
 
 ```bash
 curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products" \
@@ -1832,6 +1832,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Accept Google Play purchases and get real-time notifications | [Connect Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md) |
 | Accept Amazon Appstore purchases on Fire tablets and Fire TV | [Connect the Amazon Appstore](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md) |
 | Track subscriptions sold with my own Stripe account | [Connect Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md) |
+| Bring the products I already set up in App Store Connect, Google Play or Stripe into the catalog | [Import products](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/import-products.md) |
 | Sell my app's subscriptions on the web with a hosted Stripe checkout | [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md) |
 | Share a checkout link for an offering | [Purchase links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md) |
 | Build a multi-step web-to-app funnel (quiz, email, paywall) | [Funnels](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md) |
@@ -1862,6 +1863,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Win back lapsed App Store subscribers with Apple's win-back offers | [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md) |
 | Know what happens to customers' access when the server is down | [Offline entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/offline-entitlements.md) |
 | Answer Apple refund requests automatically and see my refund rate | [Refund Control](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/refund-control.md) |
+| Choose what customers can do on the in-app subscription screen, its colours and its text in 33 languages | [Customer Center](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/customer-center.md) |
 | Offer a discount when customers cancel, in my app or on Apple's cancel screen | [Retention offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/retention.md) |
 | Email churned subscribers an offer to come back | [Win-back campaigns](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-campaigns.md) |
 | Get Customer Center support requests by email, or show subscriptions in the Intercom inbox or a Zendesk sidebar | [Support](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/support-integrations.md) |
@@ -1943,7 +1945,7 @@ Set these in the app's `app_store` object with `POST /v2/projects/{project_id}/a
 | `app_apple_id` | Your app's Apple ID (a number). Production notifications for another app ID are refused |
 | `xcode_certificate` | The StoreKit test certificate exported from Xcode (PEM). Lets RevenueDot accept purchases made with a StoreKit configuration file in the simulator. See [sandbox testing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/sandbox-testing.md) |
 | `allow_unsigned_receipts` | Development only: accept StoreKit 1 receipts without the In-App Purchase key |
-| `app_store_connect_api_key`, `_id`, `_issuer`, `app_store_connect_vendor_number` | A separate App Store Connect API key with the App Manager role. Used to create products in App Store Connect (below) |
+| `app_store_connect_api_key`, `_id`, `_issuer`, `app_store_connect_vendor_number` | A separate App Store Connect API key with the App Manager role. Used to [import your products](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/import-products.md) and to create products in App Store Connect (below) |
 | `shared_secret` | The legacy app-specific shared secret. Stored but not used: RevenueDot does not call Apple's deprecated verifyReceipt endpoint |
 
 ## What you can do from the server afterwards
@@ -1983,7 +1985,7 @@ RevenueDot uses the service account to read each purchase from the Google Play D
 
 1. In [Google Cloud](https://console.cloud.google.com/apis/library/androidpublisher.googleapis.com), enable the **Google Play Android Developer API** for your project.
 2. Under **IAM → Service accounts**, create a service account. Open it, choose **Keys → Add key → JSON**, and download the file.
-3. In [Play Console → Users and permissions](https://play.google.com/console/developers/users-and-permissions), invite the service account's email with **View app information**, **View financial data** and **Manage orders and subscriptions**.
+3. In [Play Console → Users and permissions](https://play.google.com/console/developers/users-and-permissions), invite the service account's email with **View app information**, **View financial data** and **Manage orders and subscriptions**. View app information also lets RevenueDot [import your products](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/import-products.md).
 4. In the dashboard, open the app → **Service account credentials**, drop the JSON file and click **Check credentials**. New Play Console permissions can take up to 36 hours to apply; until then the check says the account "works but cannot see this app yet".
 
 With the API, send the file's contents as `play_service_account_credentials_json`:
@@ -2228,6 +2230,74 @@ Both Stripe API shapes work: before 2025-03-31 (period fields on the subscriptio
 - [Sandbox and production](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/sandbox.md)
 - [SDK endpoints: POST /v1/receipts](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md)
 - [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md)
+
+---
+
+# How do I import my products from App Store Connect, Google Play or Stripe?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/import-products.md
+Description: Click Import products, pick the store products you already set up, and RevenueDot creates them in the catalog with their type, duration and name, attached to the entitlements you choose. Works with App Store Connect, Google Play and Stripe; Amazon products are added by SKU.
+
+Open **Product catalog → Products** and click **Import products** (or **Import** next to one app, or **Import products** on the app's own page). RevenueDot reads the store with the credentials the app already has, lists every product with its type and duration, marks the ones already in the catalog, and creates the ones you pick. Nothing changes in the store. RevenueCat's dashboard has the same button under **+ New → Import Products** ([RevenueCat docs](https://www.revenuecat.com/docs/offerings/products-overview)).
+
+## What each store needs
+| Store | Credential on the app | Permission |
+|---|---|---|
+| App Store, Mac App Store | **App Store Connect API key**: the `.p8` file, its key ID and the issuer ID (app page → App Store Connect API key). The In-App Purchase key cannot read the product list. | A team key with the **App Manager** role ([Users and Access → Integrations → App Store Connect API](https://appstoreconnect.apple.com/access/integrations/api)) |
+| Google Play | The **service account JSON** you already use for purchases | **View app information and download bulk reports (read-only)** for the app in [Play Console → Users and permissions](https://play.google.com/console/developers/users-and-permissions) |
+| Stripe | The app's **restricted key** | **Products: Read** (it covers prices) |
+| Amazon Appstore | Not possible | Amazon has no API that lists an app's in-app items. Add each product with **New product**: a subscription by its term SKU, a one-time product by its SKU. |
+
+When a credential is missing or the store refuses it, the dialog says which one and which role or permission it needs, with a link to the app's settings.
+
+**App Store Connect answers 401?** The most common cause is saving the **In-App Purchase key** (a `SubscriptionKey_….p8` file, used for purchases and notifications) in the App Store Connect API key fields. Apple accepts that key only on the App Store Server API, never on the App Store Connect API, so the product list stays closed. Create a separate team key under [Users and Access → Integrations → App Store Connect API](https://appstoreconnect.apple.com/access/integrations/api) with the App Manager role and save that one. The app can keep both.
+
+## What gets imported
+- **App Store Connect:** every subscription, grouped by subscription group, and every in-app purchase. The product ID becomes the store identifier, the reference name the display name. Subscription periods become durations (`ONE_MONTH` is `P1M`, `ONE_YEAR` is `P1Y`). Consumable, non-consumable and non-renewing types carry over.
+- **Google Play:** one product per **base plan**, as `subscription_id:base_plan_id` (for example `premium:monthly`), with the base plan's billing period; prepaid and installment plans are marked. One-time products come in as `one_time` by product ID. A subscription without a base plan is listed but cannot be imported until it has one. A one-time product with no backwards-compatible purchase option is importable, with a note: SDK versions that predate purchase options cannot buy it. RevenueCat asks you to add those by hand.
+- **Stripe:** one product per **active price** (`price_…`), named after its Stripe product. Recurring prices become subscriptions with their interval; one-time prices become non-consumables (change them to consumable if they can be bought again). Prices whose product ID is already in the catalog count as imported. Metered prices and products without a price cannot be imported. Flat-rate prices can also be sold through [web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md) right away. RevenueCat imports the Stripe product and has you pick one price ([RevenueCat docs](https://www.revenuecat.com/docs/web/integrations/stripe)); importing prices lets a monthly and a yearly price of one Stripe product both be in the catalog.
+
+Prices from Apple and Google are not imported yet: the Products page shows each subscription's duration.
+
+## In the dashboard
+1. Click **Import products** and choose the app.
+2. Search, tick products, or tick the box in the header to **select all** that can be imported. Products already in the catalog show **In catalog** and cannot be ticked.
+3. Optionally tick **entitlements** to attach every imported product to, such as `pro`.
+4. Click **Import N products**. The summary lists what was created, what was already there and anything that failed.
+
+Importing the same products again changes nothing.
+
+## With the API
+List what the store has (every page of the store's lists is read; `next_page` is always null):
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/store_products" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+```json
+{
+  "object": "list", "next_page": null, "app_id": "app1a2b3c4d", "store": "play_store", "warnings": [],
+  "items": [
+    { "object": "store_product_listing", "store_identifier": "premium:monthly", "type": "subscription", "display_name": "Premium (monthly)",
+      "duration": "P1M", "store_state": "ACTIVE", "group": { "id": "premium", "name": "Premium" }, "price": null,
+      "importable": true, "note": null, "in_catalog": true, "product_id": "prod1a2b3c4d5e" }
+  ]
+}
+```
+
+Import the ones you want, attached to entitlements:
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/store_products/actions/import" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"store_identifiers":["premium:annual","gems_50"],"entitlement_ids":["entl1a2b3c4d5e"]}'
+```
+
+The answer has `created`, `existing` (left unchanged) and `failed` (`not_in_store` or `not_importable`, with a message). It is 201 when something was created, else 200. The key needs `project_configuration:products:read_write`, and `project_configuration:entitlements:read_write` too when you pass `entitlement_ids`. Reference: [List the products in the app's store](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-the-products-in-the-apps-store) and [Import products from the app's store](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#import-products-from-the-apps-store).
+
+## Related
+- [Products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md)
+- [App Store setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md), [Google Play setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md), [Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md)
 
 ---
 
@@ -5994,6 +6064,45 @@ curl https://api.revenuedot.app/v2/projects/$PROJECT_ID/auth/identities/$PROVIDE
 - Self-hosted servers sign tokens with a key derived from `REVENUEDOT_SIGNING_KEY` (or `REVENUEDOT_ENCRYPTION_KEY`). Without either, sign-in answers 503. Self-hosted servers may also use identity providers on their own network; RevenueDot Cloud only calls public https addresses.
 - Every change to providers, settings and identities is in the [audit log](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/project-settings.md).
 
+---
+
+# How do I set up the Customer Center?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/customer-center.md
+Description: Pick the actions customers see on the in-app subscription screen, ask why they cancel, attach offers, set colours for light and dark mode, and translate every text, from Lifecycle > Customer Center.
+
+The Customer Center is the subscription screen the RevenueCat SDK shows inside your app (`CustomerCenterView` on iOS, `CustomerCenter` on Android). The SDK loads its configuration from your RevenueDot server each time the screen opens, so a change you save reaches every app at once, with no release.
+
+Open **Lifecycle > Customer Center**. The page has three tabs, a **Preview** of the screen, **Save changes** and **Reset configuration**.
+
+## Configuration
+- **Support**: the email address the Contact support button writes to, and three switches: warn customers on an old app version, show the purchase history, and show the user details section (iOS only). Ticket settings live under [Support](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/support-integrations.md).
+- **Two screens.** "Customers with active subscriptions" is shown to customers with something active; "Customers without active subscriptions" to everyone else. Each has a title, an optional subtitle and an ordered list of paths.
+- **Paths.** Select **Add path** and pick one:
+
+| Path | What it does | Settings |
+|---|---|---|
+| Missing Purchase | Restores purchases from the store account | Button text |
+| Refund Request | Opens the store's refund request sheet (iOS) | Button text, promotional offer |
+| Change Plans | Switches to another plan of the same subscription group | Button text |
+| Manage | Opens the store's subscription management, where the customer cancels | Button text, feedback survey, promotional offer |
+| Custom URL | Opens a web page or a deep link | Button text, URL, open in the app or the browser |
+| Custom Action | Calls your app's custom action handler with an identifier | Button text, action identifier |
+
+Each type except Custom URL and Custom Action appears once per screen. Drag a path by its handle, or use the arrows, to change the order. Select a path to edit it; **Edit translations** sets its text per language.
+
+- **Feedback survey.** On the Manage path, turn on "Ask why with a feedback survey". It starts with three answers (Too expensive, Don't use the app, Bought by mistake); add, reorder or remove answers, up to 10. Each answer can show its own offer. Answers are reported as `customer_center_survey_option_chosen` events and counted in the Customer Center Survey Responses [chart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md).
+- **Promotional offers.** Manage and Refund Request show, by default, the active [retention offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/retention.md) for cancellations or refunds. You can instead pick one retention offer, choose **No offer**, or enter an offer of its own (title, subtitle, and each product's store offer id).
+
+## Appearance
+Five colours for light mode and five for dark mode: accent, text, background, button text and button background, as hex values such as `#1A1A1A`. An empty colour keeps the device's default.
+
+## Localization
+The screen follows the customer's device language and comes translated into 33 languages. Pick a language to see every predefined string; **Override** turns one into a custom string you can edit, and **Delete selected** removes custom strings. Texts you write yourself (titles, button text, survey answers) are translated with **Edit translations** next to each one; without a translation, the default texts use the built-in translation and your own texts stay as written.
+
+## Through the API
+`GET` and `POST /v2/projects/{project_id}/customer_center_config` read and replace the configuration; `GET /v2/projects/{project_id}/customers/{customer_id}/customer_center?locale=de_DE` shows what one customer's app receives. Invalid configurations are refused with a 400 that names each field: a Custom URL needs a web address or your app's own scheme (`javascript:`, `data:` and `file:` URLs are refused), and the whole configuration can be at most 1 MB. See the [API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-the-customer-center-configuration).
+
 
 === Migrate from RevenueCat ===
 
@@ -6712,7 +6821,7 @@ Details: [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/
 Source: [`prd/migration/PRD.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/migration/PRD.md).
 
 ## Features still planned, by tier
-Built since the first release: [paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md) with a visual editor and an AI generator, [targeting and experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/targeting-and-experiments.md), 43 [charts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md) (RevenueCat's 42 plus App Store Save Outcomes), Customer Center, virtual currencies, the [Amazon Appstore](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md) and [Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md) stores, [web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md), [Refund Control](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/refund-control.md), [retention offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/retention.md), [win-back campaigns](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-campaigns.md), the [support view](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/support-integrations.md), [ads](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/ads.md), all 37 [integrations](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md) and [RevenueDot AI](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/revenuedot-ai.md).
+Built since the first release: [paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md) with a visual editor and an AI generator, [targeting and experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/targeting-and-experiments.md), 43 [charts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md) (RevenueCat's 42 plus App Store Save Outcomes), the [Customer Center editor](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/customer-center.md), virtual currencies, the [Amazon Appstore](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md) and [Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md) stores, [web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md), [Refund Control](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/refund-control.md), [retention offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/retention.md), [win-back campaigns](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-campaigns.md), the [support view](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/support-integrations.md), [ads](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/ads.md), all 37 [integrations](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md) and [RevenueDot AI](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/revenuedot-ai.md).
 
 **Tier 1 (the current build), not finished**
 - SDK fork packages are partly published: `@revenuedot/purchases-js`, `@revenuedot/purchases-typescript-internal` and `@revenuedot/purchases-js-hybrid-mappings` on npm, `app.revenuedot.purchases` on Maven Central and `RevenueDotPurchases` and `RevenueDotPurchasesUI` on CocoaPods. The React Native, Flutter, Capacitor, Cordova, Unity and Kotlin Multiplatform packages are not published yet.
@@ -6720,7 +6829,6 @@ Built since the first release: [paywalls](https://raw.githubusercontent.com/reve
 
 **Tier 2, still planned**
 - Paywalls with several screens and navigation between them. Today a multi-page paywall is one screen with swipeable pages. Video uploads are not built (a video takes a URL), and exit offers and custom variables have no editor yet; they pass through the API.
-- A dashboard editor for the Customer Center configuration. Today you set it through the API.
 - Memory and custom instructions for RevenueDot AI.
 - Moving between self-host and cloud in one step, and a full export.
 - Cloud billing plans.
@@ -6755,7 +6863,7 @@ One RevenueDot server answers every API below on one port. The reference is gene
 |---|---|---|---|---|
 | SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 70 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
 | REST API v1 | `/v1/subscribers/...` | secret key | 10 | [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md) |
-| REST API v2 | `/v2/projects/...` | secret key or dashboard session | 161 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
+| REST API v2 | `/v2/projects/...` | secret key or dashboard session | 163 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
 | RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 218 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
 | Webhooks (sent by RevenueDot) | your URL | HMAC signature | 22 event types | [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md) |
 
@@ -10793,10 +10901,10 @@ RevenueDot-only endpoints are on [Extensions](https://raw.githubusercontent.com/
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (161)
+## Operations on this page (163)
 
 - **Projects**: [List projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-projects), [Create a project](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-project)
-- **Apps**: [List apps](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-apps), [Create an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-app), [Get an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-app), [Update an app and its store credentials](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-app-and-its-store-credentials), [Delete an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-app), [Get an app's public SDK key](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-apps-public-sdk-key), [Get a StoreKit configuration file](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-storekit-configuration-file), [Issue a subscriber access token](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#issue-a-subscriber-access-token)
+- **Apps**: [List apps](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-apps), [Create an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-app), [Get an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-app), [Update an app and its store credentials](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-app-and-its-store-credentials), [Delete an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-app), [Get an app's public SDK key](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-apps-public-sdk-key), [Get a StoreKit configuration file](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-storekit-configuration-file), [Issue a subscriber access token](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#issue-a-subscriber-access-token), [List the products in the app's store](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-the-products-in-the-apps-store), [Import products from the app's store](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#import-products-from-the-apps-store)
 - **Products**: [List products](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-products), [Create a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-product), [Get a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-product), [Update a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-product), [Delete a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-product), [Archive a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#archive-a-product), [Unarchive a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#unarchive-a-product), [Create the product in its store](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-the-product-in-its-store)
 - **Entitlements**: [List entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-entitlements), [Create an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-entitlement), [Get an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-entitlement), [Rename an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#rename-an-entitlement), [Delete an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-entitlement), [Archive an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#archive-an-entitlement), [Unarchive an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#unarchive-an-entitlement), [List an entitlement's products](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-an-entitlements-products), [Attach products to an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#attach-products-to-an-entitlement), [Detach products from an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#detach-products-from-an-entitlement)
 - **Offerings**: [List offerings](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-offerings), [Create an offering](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-offering), [Get an offering](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-offering), [Update an offering or make it current](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-offering-or-make-it-current), [Delete an offering](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-offering), [Archive an offering](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#archive-an-offering), [Unarchive an offering](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#unarchive-an-offering)
@@ -11185,6 +11293,141 @@ Example 200 response:
   "expires_at": 1790804514034
 }
 ```
+
+### List the products in the app's store
+
+`GET /v2/projects/{project_id}/apps/{app_id}/store_products` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:products:read`
+
+What the app's store has, read with the credentials the app already has, every page of the store's lists, each item marked `in_catalog`. Nothing in the store changes. See [Import products](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/import-products.md).
+
+- **App Store and Mac App Store:** the App Store Connect API key (`app_store_connect_api_key`, `_id`, `_issuer`), a team key with the App Manager role. Subscriptions by subscription group, then in-app purchases (consumable, non-consumable, non-renewing).
+- **Google Play:** the service account, with "View app information and download bulk reports (read-only)" in Play Console. One item per subscription base plan (`subscription_id:base_plan_id`) with its billing period, then one-time products (`monetization.onetimeproducts`, or the legacy `inappproducts` list where that API is not available).
+- **Stripe:** the app's restricted key with "Products" read (it covers prices). One item per active price; recurring prices are subscriptions.
+
+422 `unprocessable_entity_error` when the credential is missing or the store refuses it (the message names the role or permission), for Amazon (it has no API that lists in-app items; add products by SKU) and the Test Store. 422 `store_error` with `retryable: true` while the store cannot be reached.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes | App id (app...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/store_products" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The store's products. `next_page` is always null: every store page has been read.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "next_page": null,
+  "url": "/v2/projects/proj18pzzkao/apps/app1a2b3c4d/store_products",
+  "app_id": "app1a2b3c4d",
+  "store": "app_store",
+  "warnings": [],
+  "items": [
+    {
+      "object": "store_product_listing",
+      "store_identifier": "pro_monthly",
+      "type": "subscription",
+      "display_name": "Pro Monthly",
+      "duration": "P1M",
+      "store_state": "APPROVED",
+      "group": {
+        "id": "21000001",
+        "name": "Pro"
+      },
+      "price": null,
+      "importable": true,
+      "note": null,
+      "in_catalog": true,
+      "product_id": "prod1a2b3c4d5e"
+    },
+    {
+      "object": "store_product_listing",
+      "store_identifier": "pro_annual",
+      "type": "subscription",
+      "display_name": "Pro Annual",
+      "duration": "P1Y",
+      "store_state": "APPROVED",
+      "group": {
+        "id": "21000001",
+        "name": "Pro"
+      },
+      "price": null,
+      "importable": true,
+      "note": null,
+      "in_catalog": false,
+      "product_id": null
+    },
+    {
+      "object": "store_product_listing",
+      "store_identifier": "coins_100",
+      "type": "consumable",
+      "display_name": "100 coins",
+      "duration": null,
+      "store_state": "APPROVED",
+      "group": null,
+      "price": null,
+      "importable": true,
+      "note": null,
+      "in_catalog": false,
+      "product_id": null
+    }
+  ]
+}
+```
+
+### Import products from the app's store
+
+`POST /v2/projects/{project_id}/apps/{app_id}/store_products/actions/import` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:products:read_write`
+
+Creates catalog products for the chosen store identifiers. The store is read again, so the type, duration and display name always come from the store. Products already in the catalog are left as they are and reported in `existing`; identifiers the store does not have, or cannot be imported, are reported in `failed`. Every created and existing product is attached to the `entitlement_ids`. With `entitlement_ids`, an API key also needs `project_configuration:entitlements:read_write`. Running the same import twice changes nothing. Flat-rate Stripe prices also become web products, so the web checkout can sell them.
+
+201 when at least one product was created, else 200. Errors as for listing; 400 for an `entitlement_ids` entry that is not an entitlement of the project.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes | App id (app...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `store_identifiers` | array of string | yes | `store_identifier` values from the list. |
+| `entitlement_ids` | array of string | no | Entitlements to attach the products to. Optional. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/store_products/actions/import" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"store_identifiers":["pro_annual","coins_100"],"entitlement_ids":["entl1a2b3c4d5e"]}'
+```
+
+**Responses**
+
+- **200**: Nothing new was created. Returns [StoreProductImport](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#storeproductimport).
+- **201**: Products were created. Returns [StoreProductImport](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#storeproductimport).
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
 ## Products
 
@@ -17232,6 +17475,20 @@ A percentage discount (RevenueCat's shape).
 | `ownership` | `purchased` | no |  |
 | `country` | string | no |  |
 
+### StoreProductImport
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"store_product_import"` | yes |  |
+| `app_id` | string | yes |  |
+| `created` | array of Product | yes | Products created by this import. |
+| `existing` | array of Product | yes | Requested products the catalog already had; left unchanged. |
+| `failed` | array of object | yes | Requested identifiers the store does not have, or that cannot be imported. |
+| `failed[].store_identifier` | string | yes |  |
+| `failed[].reason` | `not_in_store`, `not_importable` | yes |  |
+| `failed[].message` | string | yes |  |
+| `entitlement_ids` | array of string | yes | The entitlements every created and existing product is attached to. |
+
 ### Subscription
 
 | Field | Type | Required | Description |
@@ -18174,13 +18431,19 @@ Example 200 response:
 
 `GET /v2/projects/{project_id}/customer_center_config` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
 
-The configuration the SDK receives, and the stored overrides it was built from (null when none).
+Three views of the configuration: `customer_center` is what the SDK receives (Retention offers resolved, editor-only fields removed); `config` is the editable document, the default with the stored overrides merged in (what the dashboard editor shows); `overrides` is what is stored (null when none).
 
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `locale` | string | no | Build `customer_center` for this device locale (for example `de_DE`), as the SDK's X-Preferred-Locales header does. English when omitted. |
 
 **Example request**
 
@@ -18199,7 +18462,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_center_config" -H "Aut
 
 `POST /v2/projects/{project_id}/customer_center_config` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
 
-Stores overrides that are merged, key by key, over the built-in default. Send `null` to go back to the default.
+Stores the configuration, merged key by key over the built-in default (lists such as `paths` replace). Send `null` to go back to the default. The SDK's shape plus editor fields: each screen's ordered `paths` (MISSING_PURCHASE, REFUND_REQUEST, CHANGE_PLANS, CANCEL, CUSTOM_URL with `url` and `open_method`, CUSTOM_ACTION with `action_identifier`); a `feedback_survey` on CANCEL; a `promotional_offer` on CANCEL, REFUND_REQUEST and survey options, either an offer of its own (`title`, `subtitle`, `product_mapping`) or `{ "retention_offer_id": "..." }` pointing at a Retention offer, or `null` for no offer; `appearance.light` and `.dark` hex colours; `title_localizations` / `subtitle_localizations` per language; `localization.custom_strings` per language. The merged result is validated as a whole; a 400 names each field that is wrong. Custom URLs cannot use `javascript:`, `data:` or `file:`, and the document can be at most 1 MB.
 
 **Path parameters**
 
@@ -18217,12 +18480,12 @@ Stores overrides that are merged, key by key, over the built-in default. Send `n
 
 ```bash
 curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_center_config" -H "Authorization: Bearer $SECRET_KEY" \
-  -H "Content-Type: application/json" -d '{"customer_center":{"support":{"email":"help@example.com"}}}'
+  -H "Content-Type: application/json" -d '{"customer_center":{"support":{"email":"help@example.com"},"screens":{"MANAGEMENT":{"type":"MANAGEMENT","title":"How can we help?","paths":[{"id":"path_help","type":"CUSTOM_URL","title":"Help center","url":"https://example.com/help","open_method":"IN_APP"},{"id":"path_cancel","type":"CANCEL","title":"Cancel subscription","promotional_offer":{"retention_offer_id":"rto_123"}}]}},"appearance":{"light":{"accent_color":"#F4A900"}},"localization":{"custom_strings":{"de":{"contact_support":"Schreib uns"}}}}}'
 ```
 
 **Responses**
 
-- **200**: The merged configuration.
+- **200**: The saved configuration.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
@@ -26789,7 +27052,20 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `country` | string or null | no |  |
 | `platform` | string or null | no |  |
 | `stores` | array of string | no |  |
-| `offering_override` | string or null | no |  |
+| `offering_override` | object or null | no | The offering set for this customer only; it wins over targeting and experiments. |
+| `offering_override.id` | string | no |  |
+| `offering_override.lookup_key` | string | no |  |
+| `offering_override.display_name` | string | no |  |
+| `current_offering` | object or null | no | The current offering the SDK returns for this customer now, resolved with the device details of their last SDK request (platform, app and SDK version, SDK flavor, OS version, storefront). Locale conditions never match here because the locale is not stored. Reading it enrolls nobody in an experiment; it shows the variant their next request would get. |
+| `current_offering.id` | string | yes |  |
+| `current_offering.lookup_key` | string | yes |  |
+| `current_offering.display_name` | string | no |  |
+| `current_offering.source` | `override`, `experiment`, `targeting`, `default` | yes | Why the customer gets it: their override, an experiment (one they are in, or a running one their next request would enroll them in), the first live targeting rule that matches, or the project's current offering. |
+| `current_offering.rule_id` | string | no | With `targeting`. |
+| `current_offering.rule_name` | string or null | no | With `targeting`. |
+| `current_offering.experiment_id` | string | no | With `experiment`. |
+| `current_offering.experiment_name` | string or null | no | With `experiment`. |
+| `current_offering.variant` | `a`, `b` | no | With `experiment`. |
 | `blocked` | boolean | no | One of the customer's app user ids is blocked: no entitlements anywhere. |
 | `active_entitlements` | array of object | no |  |
 | `granted_entitlements` | array of object | no |  |
