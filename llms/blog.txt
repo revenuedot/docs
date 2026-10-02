@@ -15,6 +15,9 @@ Description: Posts from the RevenueDot team about building an open-source, self-
 Posts from the team building RevenueDot, an open-source (AGPL-3.0), self-hostable backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Newest first.
 
 ## 2026-10-02
+- [How to share one subscription across iOS, Android and the web](https://raw.githubusercontent.com/revenuedot/docs/main/blog/share-subscription-across-ios-android-web.md): one account ID, one entitlement, what Apple guideline 3.1.3(b) and Google Play's payments policy allow, how to avoid double billing, and where the manage button goes.
+- [Restore purchases on iOS and Android: what App Review wants](https://raw.githubusercontent.com/revenuedot/docs/main/blog/restore-purchases-ios-android.md): Apple's restore rule, when to call AppStore.sync, queryPurchasesAsync and the three-day rule, restorePurchases vs syncPurchases, and who owns a restored purchase.
+- [Flutter in_app_purchase vs purchases_flutter: which to use](https://raw.githubusercontent.com/revenuedot/docs/main/blog/flutter-in-app-purchase-vs-purchases-flutter.md): what each package does, the server in_app_purchase needs, code side by side, cost, and when each one fits.
 - [Do you still need RevenueCat with StoreKit 2?](https://raw.githubusercontent.com/revenuedot/docs/main/blog/storekit-2-vs-revenuecat.md): StoreKit 2 handles purchases on the device. See what it covers, what still needs a server, and how to choose between building, RevenueCat and open source.
 - [Subscription app metrics that matter: MRR, churn, LTV and more](https://raw.githubusercontent.com/revenuedot/docs/main/blog/subscription-app-metrics.md): the subscription app metrics to track: MRR, churn, trial conversion, LTV and refunds. Plain definitions, worked examples, benchmarks and a link to every chart.
 - [How to price a subscription app in 2026: plans, trials, regions](https://raw.githubusercontent.com/revenuedot/docs/main/blog/subscription-app-pricing-guide.md): price a subscription app with data: median prices, plans, trial length, regional pricing, price increase consent on both stores, and how to test prices.
@@ -1049,6 +1052,212 @@ If the payment is fixed inside the grace period, yes on both stores. If it is fi
 ### Can I email customers whose payment failed?
 
 Yes. Use the billing-issue event from your server, since both stores also show their own prompts. RevenueDot sends `BILLING_ISSUE` to webhooks and email tools, and the event includes when grace ends.
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
+# Flutter in_app_purchase vs purchases_flutter: which to use
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/flutter-in-app-purchase-vs-purchases-flutter.md
+Description: in_app_purchase talks to the stores and leaves verification to your own server. purchases_flutter works with a backend such as RevenueCat or RevenueDot. Code side by side, cost, and when each one fits.
+
+Use `in_app_purchase` when you want to own everything and are ready to build a server; use `purchases_flutter` when you want a backend to verify purchases and track subscriptions for you. `in_app_purchase` is the flutter.dev plugin. It loads products, runs the purchase and hands you the store's receipt, and the rest is your job: Google's own codelab builds a Dart server with Cloud Firestore to verify purchases and follow renewals. `purchases_flutter` is RevenueCat's MIT-licensed SDK. It sends each purchase to a backend, which can be RevenueCat or an open-source server such as RevenueDot, and gives your app one answer to "is this user Pro?" on iOS and Android.
+
+This post compares the two packages with code side by side, shows what each costs, and says when each one fits. Every Flutter, Google and RevenueCat fact links its source and was checked in October 2026.
+
+![Two columns: in_app_purchase leaves verification, renewals and cross-platform access to your own server, while purchases_flutter sends purchases to a backend that handles them](https://github.com/revenuedot/docs/blob/main/blog/assets/flutter-in-app-purchase-vs-purchases-flutter/cover.svg)
+
+## The short answer
+
+- **`in_app_purchase`** is published by flutter.dev under BSD-3-Clause, version 3.3.1, for Android, iOS and macOS ([pub.dev](https://pub.dev/packages/in_app_purchase)). It does not verify purchases for you.
+- **`purchases_flutter`** is published by revenuecat.com under MIT, version 10.14.0, for iOS, Android, macOS and web ([pub.dev](https://pub.dev/packages/purchases_flutter)). It needs a backend that speaks RevenueCat's API.
+- **Pick `in_app_purchase`** if you sell on one store, already run a backend, or must not depend on any vendor.
+- **Pick `purchases_flutter`** if you sell subscriptions on both stores and want entitlements, webhooks and charts without writing store server code.
+- **Cost:** `in_app_purchase` costs your engineering time. `purchases_flutter` with RevenueCat is free up to $2,500 in monthly tracked revenue, then 1% ([RevenueCat](https://www.revenuecat.com/pricing/)). With RevenueDot Cloud it is free up to $10,000, and self-hosting is free.
+
+## What does each package do?
+
+The two packages sit at different layers. `in_app_purchase` is a thin layer over StoreKit and Google Play Billing. `purchases_flutter` wraps the same store libraries and adds a client for a subscription server.
+
+| | `in_app_purchase` | `purchases_flutter` |
+|---|---|---|
+| Publisher and license | flutter.dev, BSD-3-Clause | revenuecat.com, MIT |
+| Platforms | Android, iOS, macOS | iOS, Android, macOS, web |
+| Load products and buy | Yes | Yes, through offerings and packages |
+| Verify a purchase | Your server, against each store's API | The backend |
+| Acknowledge Google purchases within 3 days | Your code calls `completePurchase` | The backend |
+| Renewals, refunds and billing failures | Your server, from store notifications | The backend |
+| One entitlement across iOS and Android | Your server and your database | Built in (`entitlements.active`) |
+| Webhooks, charts, paywalls, experiments | Build them | From the backend |
+
+The `in_app_purchase` README is clear about the split. It tells you to call `completePurchase` "after verifying the purchase receipt and the delivering the content to the user", and points to Apple's and Google's own verification guides for that step ([pub.dev](https://pub.dev/packages/in_app_purchase)). It also warns that failing to complete a purchase within 3 days "will result in a refund on Android".
+
+## What does the server behind in_app_purchase look like?
+
+Google's Flutter codelab, "Adding in-app purchases to your Flutter app", builds the full setup ([Google codelab](https://codelabs.developers.google.com/codelabs/flutter-in-app-purchases)). Its parts:
+
+1. **Sign-in** with Firebase Authentication, so each purchase belongs to a user.
+2. **A Dart backend** that receives purchase tokens from the app.
+3. **Verification** against the Google Play Developer API and the App Store server, with service account credentials for each store.
+4. **Storage** of purchases in Cloud Firestore.
+5. **Tracking** of renewals and cancellations through Google Cloud Pub/Sub and App Store notifications.
+
+The codelab explains why: with a server, "you can securely verify transactions", and users cannot unlock premium features by changing the device clock. That is the right design. It is also a lot of work for a small team, and the work never ends: both stores change their APIs, and every new edge case, such as grace periods, refunds, upgrades or account transfers, lands on your server. Our [server-side validation guide](https://raw.githubusercontent.com/revenuedot/docs/main/blog/server-side-receipt-validation.md) shows how much code the verification step alone takes.
+
+## The same purchase, side by side
+
+### With in_app_purchase
+
+```dart
+import 'dart:async';
+import 'package:in_app_purchase/in_app_purchase.dart';
+
+final iap = InAppPurchase.instance;
+late final StreamSubscription<List<PurchaseDetails>> purchaseSub;
+
+void startStore() {
+  // Every purchase, restore and update arrives on this stream.
+  purchaseSub = iap.purchaseStream.listen(onPurchases);
+}
+
+Future<void> buyPro() async {
+  // On Android, the ID is the Play subscription ID.
+  final response = await iap.queryProductDetails({'pro_monthly'});
+  final product = response.productDetails.first;
+  // Subscriptions are bought as non-consumables.
+  await iap.buyNonConsumable(purchaseParam: PurchaseParam(productDetails: product));
+}
+
+Future<void> onPurchases(List<PurchaseDetails> purchases) async {
+  for (final p in purchases) {
+    if (p.status == PurchaseStatus.purchased || p.status == PurchaseStatus.restored) {
+      // Your server checks this token with Apple or Google and records access.
+      final ok = await myServer.verify(p.productID, p.verificationData.serverVerificationData);
+      if (ok) setPro(true);
+    }
+    if (p.pendingCompletePurchase) {
+      await iap.completePurchase(p); // Within 3 days on Android, or Google refunds it.
+    }
+  }
+}
+
+// The Restore purchases button: restored purchases arrive on purchaseStream.
+Future<void> restore() => iap.restorePurchases();
+```
+
+`myServer.verify` is the part you write. It holds your App Store key and your Google service account, calls each store, stores the result, and must later learn about renewals and refunds from store notifications.
+
+### With purchases_flutter and RevenueDot
+
+```dart
+import 'dart:io' show Platform;
+import 'package:purchases_flutter/purchases_flutter.dart';
+
+Future<void> startStore() async {
+  // One line of setup sends the SDK to RevenueDot instead of RevenueCat.
+  await Purchases.setProxyURL('https://api.revenuedot.app');
+  await Purchases.configure(
+    PurchasesConfiguration(Platform.isIOS ? 'appl_YourKey' : 'goog_YourKey'),
+  );
+}
+
+Future<bool> buyPro() async {
+  final offerings = await Purchases.getOfferings();
+  final package = offerings.current?.monthly;
+  if (package == null) return false;
+  final result = await Purchases.purchase(PurchaseParams.package(package));
+  return result.customerInfo.entitlements.active.containsKey('pro');
+}
+
+// The Restore purchases button
+Future<bool> restore() async {
+  final info = await Purchases.restorePurchases();
+  return info.entitlements.active.containsKey('pro');
+}
+```
+
+There is no `verify` function to write. The backend verifies the purchase with Apple or Google, acknowledges Google purchases, receives store notifications, and answers with the customer's entitlements. Drop the `setProxyURL` line and the same code talks to RevenueCat. Our [Flutter tutorial](https://raw.githubusercontent.com/revenuedot/docs/main/blog/flutter-in-app-purchases-tutorial.md) builds a full paywall with this package.
+
+## What goes wrong most often?
+
+Each package has its own traps. Knowing them up front saves a rejected build or a week of support email.
+
+**With `in_app_purchase`, from its README** ([pub.dev](https://pub.dev/packages/in_app_purchase)):
+
+1. **Forgetting `completePurchase`.** On Android the purchase is refunded after 3 days. On iOS and macOS the purchase stays in Apple's queue, is delivered to the app again and again, and blocks the next purchase of the same product.
+2. **Expecting consumables to restore.** Google Play treats a consumed product as no longer owned, so `restorePurchases` cannot bring it back. Credit balances must live on your server.
+3. **Changing plans on Android.** To upgrade or downgrade a Google Play subscription, you pass a `GooglePlayPurchaseParam` with a `ChangeSubscriptionParam` to `buyNonConsumable`. Your server must then follow the old and new purchase tokens.
+
+**With `purchases_flutter` against RevenueDot, from our [Flutter docs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/flutter.md):**
+
+1. **Calling `configure` before `setProxyURL` finishes.** Await `setProxyURL` first, or the first requests go to RevenueCat.
+2. **Turning on enforced entitlement verification.** The stock package checks signatures against RevenueCat's key, so `EntitlementVerificationMode.enforced` fails every request. The default, disabled, is correct.
+3. **Shipping a Test Store key.** `test_` keys work only in debug builds. Release builds need the `appl_` and `goog_` keys.
+
+The first list is code you maintain forever. The second list is setup you get right once.
+
+## What does each choice cost?
+
+| | Package | Backend | What you pay |
+|---|---|---|---|
+| `in_app_purchase` + your server | Free (BSD-3-Clause) | You build and run it | Engineering time, hosting and upkeep |
+| `purchases_flutter` + RevenueCat | Free (MIT) | Hosted by RevenueCat | Free to $2,500 in monthly tracked revenue, then 1% ([RevenueCat](https://www.revenuecat.com/pricing/)) |
+| `purchases_flutter` + RevenueDot Cloud | Free (MIT) | Hosted by RevenueDot | Free to $10,000 in monthly tracked revenue; a paid plan is planned ([pricing](https://revenuedot.app/pricing)) |
+| `purchases_flutter` + RevenueDot self-hosted | Free (MIT) | You run the open-source server (AGPL-3.0) | Your hosting, no revenue share |
+
+At $50,000 in monthly tracked revenue, RevenueCat's fee is $500 a month. The [fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator) works it out for your numbers, and our [RevenueCat pricing explainer](https://raw.githubusercontent.com/revenuedot/docs/main/blog/revenuecat-pricing-explained.md) shows worked bills.
+
+## When does each one fit?
+
+**`in_app_purchase` fits when:**
+
+- You sell on one store, or only consumables whose balance you already keep on your server.
+- You already run a backend and have someone who will own the App Store Server API, Google's Play Developer API and both stores' notifications.
+- Your rules forbid any purchase vendor, and you do not want to self-host one.
+
+**`purchases_flutter` fits when:**
+
+- You sell subscriptions on both iOS and Android and want one entitlement across them.
+- You want webhooks, charts, paywalls or experiments without building them.
+- You want to switch backends later without rewriting purchase code. The SDK talks to RevenueCat by default and to RevenueDot with `setProxyURL`.
+
+If you already ship `in_app_purchase` and want a backend's records without rewriting your purchase flow, the RevenueCat SDK documents `syncPurchases` for that case: "Call this when using your own implementation of in-app purchases" ([pub.dev](https://pub.dev/documentation/purchases_flutter/latest/purchases_flutter/Purchases/syncPurchases.html)). Most apps do better with one purchase package, not two.
+
+## Do it with RevenueDot
+
+RevenueDot is an open-source server that speaks the RevenueCat SDK's API. You install the stock `purchases_flutter` package, add one `setProxyURL` line, and get:
+
+- Purchase verification and Google acknowledgement for the [App Store](https://revenuedot.app/stores/app-store) and [Google Play](https://revenuedot.app/stores/google-play).
+- One customer and one entitlement across platforms, with your own user IDs through `logIn`.
+- [Webhooks](https://revenuedot.app/features/webhooks), [charts](https://revenuedot.app/charts/mrr), [paywalls](https://revenuedot.app/features/paywalls) and [experiments](https://revenuedot.app/features/experiments).
+- The [Flutter SDK page](https://revenuedot.app/sdks/flutter) and the [Flutter docs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/flutter.md) with every setup detail.
+
+The limits matter. Flutter web does not work against RevenueDot with the stock package, because its web plugin ignores `setProxyURL`; RevenueDot's fork fixes this but is not published yet ([Flutter docs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/flutter.md)). No real store purchase has run end to end against RevenueDot yet, so test each store in its sandbox before launch. The [RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) lists the other differences.
+
+[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue).
+
+## FAQ
+
+### Is in_app_purchase enough for Flutter subscriptions?
+
+It is enough to sell them. It is not enough to trust them: the README leaves receipt verification to you ([pub.dev](https://pub.dev/packages/in_app_purchase)), and renewals and refunds reach a server, not the app. Google's codelab adds a Dart and Firestore backend for exactly that ([Google codelab](https://codelabs.developers.google.com/codelabs/flutter-in-app-purchases)).
+
+### Do I need a RevenueCat account to use purchases_flutter?
+
+No. The package is MIT-licensed and works with any backend that speaks RevenueCat's API. With RevenueDot you create a RevenueDot project, use its `appl_` and `goog_` keys, and call `setProxyURL` before `configure`.
+
+### Can I use in_app_purchase and purchases_flutter together?
+
+You can, but most apps should not. Both listen to the same store transactions. If you keep your own purchase code, the RevenueCat SDK's `syncPurchases` exists for that case ([pub.dev](https://pub.dev/documentation/purchases_flutter/latest/purchases_flutter/Purchases/syncPurchases.html)).
+
+### Which package works on Flutter web?
+
+`purchases_flutter` lists web support ([pub.dev](https://pub.dev/packages/purchases_flutter)), and `in_app_purchase` lists Android, iOS and macOS ([pub.dev](https://pub.dev/packages/in_app_purchase)). With RevenueDot, the stock web plugin still calls RevenueCat, so target iOS and Android until the fork is published.
+
+### Can I move from in_app_purchase to purchases_flutter later?
+
+Yes. Replace the purchase code with `purchases_flutter`, configure the backend, and call `syncPurchases` once on the first launch of the update so existing subscribers are recorded. See [restore purchases on iOS and Android](https://raw.githubusercontent.com/revenuedot/docs/main/blog/restore-purchases-ios-android.md) for when to use `syncPurchases` and when to use `restorePurchases`.
 
 **About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
 
@@ -3747,6 +3956,190 @@ Use Apple win-back offers and an email campaign that links to the store. Revenue
 
 ---
 
+# Restore purchases on iOS and Android: what App Review wants
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/restore-purchases-ios-android.md
+Description: Apple guideline 3.1.1 asks for a restore mechanism. When to call AppStore.sync, why Google Play has no restore button, restorePurchases vs syncPurchases, who owns a restored purchase, and how to test it.
+
+Apple's App Review Guidelines ask every app with restorable in-app purchases to have a restore mechanism, and in practice that means a **Restore purchases** button on your paywall or settings screen. With StoreKit 2, the button calls `AppStore.sync()`, which Apple says to call only after an explicit user action because it asks the user to sign in. On launch you read `Transaction.currentEntitlements` instead, which needs no restore at all. Google Play has no restore step: your app calls `queryPurchasesAsync` when it starts or resumes, and every purchase must be acknowledged within three days. With the RevenueCat SDK, the button calls `restorePurchases()` and silent checks call `syncPurchases()`.
+
+This post covers what each store expects, the SDK calls, who owns a purchase that a second account restores, and how to test it. Every Apple, Google and RevenueCat fact links its source and was checked in October 2026.
+
+![Two lanes: on iOS a Restore button calls AppStore.sync, on Android queryPurchasesAsync runs on start and resume, and both end at one server that decides who owns the purchase](https://github.com/revenuedot/docs/blob/main/blog/assets/restore-purchases-ios-android/cover.svg)
+
+## The short answer
+
+- **Apple requires a restore mechanism.** Guideline 3.1.1 says to "make sure you have a restore mechanism for any restorable in-app purchases" ([Apple](https://developer.apple.com/app-store/review/guidelines/#3.1.1)).
+- **On iOS, call `AppStore.sync()` only from a button.** It shows a sign-in prompt ([Apple](https://developer.apple.com/documentation/storekit/appstore/sync%28%29)).
+- **On launch, read `Transaction.currentEntitlements`.** Reinstalls and new devices get all transactions automatically ([Apple](https://developer.apple.com/documentation/storekit/appstore/sync%28%29)).
+- **On Android, query purchases on start and resume.** Acknowledge each purchase within three days, or Google refunds it ([Android Developers](https://developer.android.com/google/play/billing/integrate)).
+- **With the RevenueCat SDK,** `restorePurchases()` is for the button and `syncPurchases()` is for silent calls ([RevenueCat](https://www.revenuecat.com/docs/getting-started/restoring-purchases)).
+- **Decide who owns a restored purchase.** When a second account restores the same store purchase, your server's transfer rule decides who keeps access.
+
+## What does Apple App Review require?
+
+Guideline 3.1.1 is short on this point. It says "you should make sure you have a restore mechanism for any restorable in-app purchases" ([Apple](https://developer.apple.com/app-store/review/guidelines/#3.1.1)). Restorable purchases are subscriptions and non-consumables. Consumables, such as a pack of credits, are not restorable from the store, so you keep their balance on your own server.
+
+Apple's StoreKit documentation says the same thing in code terms: include some mechanism, "such as a Restore Purchases button", to let users restore their purchases ([Apple](https://developer.apple.com/documentation/storekit/appstore/sync%28%29)). Put the button where a returning customer looks for it:
+
+1. **On the paywall**, next to the buy buttons. A customer who reinstalls the app often sees the paywall first.
+2. **In settings or the account screen**, so they can find it later.
+
+## How does restore work with StoreKit 2?
+
+StoreKit 2 keeps the device up to date by itself. Apple's documentation for `AppStore.sync()` says "in regular operations, there's no need to call" it, because StoreKit keeps transactions and subscription status current. When users reinstall or move to a new device, the app "automatically has all transactions available to it upon initial launch" ([Apple](https://developer.apple.com/documentation/storekit/appstore/sync%28%29)).
+
+So the launch path and the button path are different:
+
+| When | What to call | Why |
+|---|---|---|
+| App launch | `Transaction.currentEntitlements` | Lists the latest transaction for each active subscription and non-consumable. Refunded or revoked products do not appear ([Apple](https://developer.apple.com/documentation/storekit/transaction/currententitlements)) |
+| While the app runs | `Transaction.updates` | Delivers renewals, Ask to Buy approvals, offer code redemptions and purchases from other devices ([Apple](https://developer.apple.com/documentation/storekit/transaction/updates)) |
+| The customer taps **Restore purchases** | `AppStore.sync()` | Forces a fetch from the App Store. It "displays a system prompt that asks users to authenticate" ([Apple](https://developer.apple.com/documentation/storekit/appstore/sync%28%29)) |
+
+```swift
+import StoreKit
+
+func refreshEntitlements() async -> Set<String> {
+    var owned = Set<String>()
+    for await result in Transaction.currentEntitlements {
+        if case .verified(let transaction) = result {
+            owned.insert(transaction.productID)
+        }
+    }
+    return owned
+}
+
+// Only from the Restore purchases button:
+func restoreTapped() async {
+    do {
+        try await AppStore.sync()
+    } catch {
+        // The customer cancelled the sign-in, or the network failed.
+    }
+    let owned = await refreshEntitlements()
+    // Update your UI from `owned`.
+}
+```
+
+Never call `AppStore.sync()` on launch. Apple says to call it "only in response to an explicit user action", and a sign-in prompt that appears by itself confuses customers and reviewers alike.
+
+## How does restore work on Google Play?
+
+Google Play has no restore call. The Play Billing Library returns the purchases the signed-in Google account owns, and your app asks for them. Google's integration guide says to call `queryPurchasesAsync()` when the billing client connects, which it recommends doing when the app launches or comes to the foreground. Google gives two reasons: a purchase can succeed while the device loses network, and "a user may buy an item on one device and then expect to see the item when they switch devices" ([Android Developers](https://developer.android.com/google/play/billing/integrate)). The same guide says to call it in `onResume()` for purchases that finished while the app was not running.
+
+```kotlin
+override fun onResume() {
+    super.onResume()
+    val params = QueryPurchasesParams.newBuilder()
+        .setProductType(BillingClient.ProductType.SUBS)
+        .build()
+    billingClient.queryPurchasesAsync(params) { billingResult, purchases ->
+        if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
+            // Send each purchase token to your server, which verifies it,
+            // grants access and acknowledges it if needed.
+        }
+    }
+}
+```
+
+**The three-day rule.** After you grant access, the purchase must be acknowledged "within three days so that the purchase isn't automatically refunded and entitlement revoked" ([Android Developers](https://developer.android.com/google/play/billing/integrate)). A purchase that only lives on the device is at risk if the customer never reopens the app. Acknowledging it from a server removes that risk.
+
+You can still show a **Restore purchases** button on Android. It is harmless and helps customers who switch between platforms, but Google's guide does not require one.
+
+## restorePurchases or syncPurchases in the RevenueCat SDK?
+
+The RevenueCat SDK wraps both stores and sends every purchase to a backend. It has two calls that look alike:
+
+| Call | Use it for | What the customer sees |
+|---|---|---|
+| `restorePurchases()` | The **Restore purchases** button | On iOS it "may cause OS level sign-in prompts to appear" |
+| `syncPurchases()` | Silent calls, for example once after a migration | Nothing; it "will not cause OS level sign-in prompts to appear" |
+
+Both quotes are from RevenueCat's restore guide, which says `restorePurchases` "should not be triggered programmatically" ([RevenueCat](https://www.revenuecat.com/docs/getting-started/restoring-purchases)).
+
+```swift
+// The Restore purchases button
+let customerInfo = try await Purchases.shared.restorePurchases()
+let isPro = customerInfo.entitlements["pro"]?.isActive == true
+
+// Once, silently, after you move an existing app to a new backend
+let synced = try await Purchases.shared.syncPurchases()
+```
+
+On Android, the backend reads each restored or synced purchase from the Play Developer API. RevenueDot also acknowledges it there, within Google's three-day limit, so a purchase is safe even if the customer never reopens the app ([Google Play guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md)).
+
+## Who owns a restored purchase?
+
+A restore can surprise you. Say Alice buys Pro on her iPhone while signed in to your app as `alice`. Later her partner signs in as `bob` on the same iPhone and taps **Restore purchases**. The App Store purchase belongs to the Apple account on the device, not to your user. Your server must decide whether Pro moves to `bob`, stays with `alice`, or both keep it.
+
+RevenueCat calls this restore behavior and offers four options; the default for new projects transfers the purchase to the user who restored it ([RevenueCat](https://www.revenuecat.com/docs/projects/restore-behavior)). RevenueDot uses the same four values in its `transfer_behavior` project setting ([customers and app user IDs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/customers-and-app-user-ids.md)):
+
+| `transfer_behavior` | What happens when `bob` restores Alice's purchase |
+|---|---|
+| `transfer` (default) | Pro moves to `bob`. RevenueDot sends a `TRANSFER` webhook |
+| `transfer_if_no_active` | Pro moves only if `alice` has no active subscription. Otherwise the restore fails with code 7102 |
+| `keep` | Pro stays with `alice`. The restore fails with code 7102, "receipt already in use" |
+| `share` | The two customers are merged, so both IDs have Pro |
+
+Two cases never depend on the setting. If the current owner is anonymous, it is merged into the customer who restored. If the customer restoring is anonymous and the owner has a real ID, the anonymous ID joins the owner, as if they had logged in. Store notifications never move a purchase; only a receipt posted from a device does.
+
+Pick the rule by how your app treats accounts:
+
+- **One person, one device, accounts optional:** keep `transfer`. Restores always work.
+- **Accounts that must not share Pro,** such as a business seat: use `transfer_if_no_active` or `keep`, and show a clear message on code 7102: "This purchase belongs to another account. Sign in with that account to use it."
+- **Your own database grants access too:** listen for the `TRANSFER` webhook and move access from the `transferred_from` IDs to the `transferred_to` IDs ([restore guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/restore-purchases.md)).
+
+## How do I test restore?
+
+Test each path once before you submit.
+
+1. **iOS sandbox.** Buy with a sandbox account, delete the app, reinstall it and launch. The entitlement should be active before you tap anything, because `currentEntitlements` returns it. Then tap **Restore purchases** and check that the sign-in prompt appears only then.
+2. **Android test track.** Buy as a license tester, clear the app's data or install on a second device with the same Google account, and open the app. The purchase should appear from `queryPurchasesAsync` on start.
+3. **A second account.** Sign in as a second user on the same device and restore. Check that the result matches your transfer rule and that your webhook receives `TRANSFER` when the purchase moves.
+4. **No store at all.** RevenueDot's Test Store runs purchases in debug builds without a store account. The `TRANSFER` webhook example in our restore guide was captured from a Test Store run ([Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md)).
+
+Our [sandbox testing guide](https://raw.githubusercontent.com/revenuedot/docs/main/blog/sandbox-testing-in-app-purchases.md) shows the store screens for sandbox accounts and license testers.
+
+## Do it with RevenueDot
+
+RevenueDot is an open-source server that works with the RevenueCat SDK. Your `restorePurchases()` and `syncPurchases()` code stays the same; the SDK's proxy URL points at RevenueDot. What you get:
+
+- Receipts from restores verified with the [App Store](https://revenuedot.app/stores/app-store) and [Google Play](https://revenuedot.app/stores/google-play), and Google purchases acknowledged on the server.
+- The four transfer rules in **Project settings**, with a separate rule for sandbox purchases.
+- `TRANSFER` events on [webhooks](https://revenuedot.app/features/webhooks) and integrations, with RevenueCat's field names.
+- A [Customer Center](https://revenuedot.app/features/customer-center) configuration for the SDK's self-service screens.
+
+No real App Store or Google Play purchase has run end to end against RevenueDot yet. Store paths are tested against Apple's and Google's formats with mocked stores, so run your sandbox tests before launch. Compare the cost on the [RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) and the [fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator), or see [pricing](https://revenuedot.app/pricing).
+
+[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue).
+
+## FAQ
+
+### Will Apple reject my app without a Restore purchases button?
+
+Guideline 3.1.1 asks for a restore mechanism for restorable in-app purchases ([Apple](https://developer.apple.com/app-store/review/guidelines/#3.1.1)), and Apple's StoreKit docs name a Restore Purchases button as the example ([Apple](https://developer.apple.com/documentation/storekit/appstore/sync%28%29)). Adding the button is the safe choice for any app that sells subscriptions or non-consumables.
+
+### Should I restore purchases automatically on launch?
+
+No. On iOS, read `Transaction.currentEntitlements`, or let the RevenueCat SDK fetch customer info. Call `AppStore.sync()` or `restorePurchases()` only from a button, because both can show a sign-in prompt ([RevenueCat](https://www.revenuecat.com/docs/getting-started/restoring-purchases)).
+
+### Does Android need a restore button?
+
+Google's guide does not ask for one. It asks you to call `queryPurchasesAsync()` when the app starts or resumes ([Android Developers](https://developer.android.com/google/play/billing/integrate)). A button does no harm and keeps your UI the same on both platforms.
+
+### Why does restore say the receipt is already in use?
+
+The purchase belongs to another account in your app, and your transfer rule is `keep`, or `transfer_if_no_active` while the owner's subscription is active. Ask the customer to sign in with the account that bought, or switch the rule to `transfer` ([restore guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/restore-purchases.md)).
+
+### Can consumables be restored?
+
+Not from the store. Apple's `currentEntitlements` leaves consumables out ([Apple](https://developer.apple.com/documentation/storekit/transaction/currententitlements)), so keep credit balances on your server. RevenueDot's in-app currencies do that per customer.
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
 # RevenueCat pricing in 2026, explained (and how to pay less)
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/revenuecat-pricing-explained.md
@@ -4599,6 +4992,182 @@ The server in those products does it. The SDK posts the purchase, and the backen
 ### Can I validate purchases without a backend?
 
 You can check locally on the device, but Apple's comparison says server-side validation adds subscription information and resists device clock changes. For anything that grants paid access across devices, use a server.
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
+# How to share one subscription across iOS, Android and the web
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/share-subscription-across-ios-android-web.md
+Description: Give each customer one account ID, attach every store's product to one entitlement, and check the entitlement before you sell. What Apple 3.1.3(b) and Google Play allow, how to avoid double billing, and code.
+
+To share one subscription across iOS, Android and the web, give every customer one account ID from your own sign-in, call `logIn` with that ID on every platform, and attach the App Store, Google Play and web products to one entitlement. Your app then checks the entitlement, not the store. Apple's guideline 3.1.3(b) lets customers use a subscription they bought on another platform or your website, as long as you also sell it as an in-app purchase in the iOS app. Google Play lets a signed-in customer use content they paid for somewhere else. Before you show a paywall, check whether the customer already has the entitlement from another store, so nobody pays twice.
+
+This post walks through the account ID, the entitlement, what each store's rules allow, how to stop double billing, and where the "Manage subscription" button should point. Every Apple, Google and RevenueCat fact links its source and was checked in October 2026.
+
+![One customer account with an App Store, a Google Play and a web subscription all unlocking the same pro entitlement](https://github.com/revenuedot/docs/blob/main/blog/assets/share-subscription-across-ios-android-web/cover.svg)
+
+## The short answer
+
+- **One account ID.** Call `logIn` with your own user ID after sign-in. RevenueCat's docs say anonymous IDs cannot share subscriptions across platforms ([RevenueCat](https://www.revenuecat.com/docs/customers/identifying-customers)).
+- **One entitlement.** Attach `pro_monthly` (App Store), `pro:monthly` (Google Play) and the web product to the same `pro` entitlement.
+- **Apple allows it.** Guideline 3.1.3(b) allows access to subscriptions bought on other platforms, if the iOS app also sells them as in-app purchases ([Apple](https://developer.apple.com/app-store/review/guidelines/#3.1.3b)).
+- **Google allows it.** Google says a user "could log in when the app opens and access content paid for somewhere else" ([Google Play](https://support.google.com/googleplay/android-developer/answer/10281818)).
+- **No double billing.** The stores cannot see each other, so your app must hide the buy buttons when the entitlement is already active from another store.
+- **Manage in the right place.** A subscription can only be cancelled in the store that bills it, so the button must open that store's page.
+
+## What does "one subscription on every platform" mean?
+
+It means one person pays once and gets Pro everywhere they sign in. The purchase still happens in one store: Apple bills an iPhone purchase, Google bills an Android purchase, and Stripe bills a web purchase. None of the three knows about the others. A server ties them together with two records:
+
+1. **A customer** with your user ID. Every purchase the customer makes, in any store, is stored on that customer.
+2. **An entitlement** such as `pro`. Each store's product is attached to it, so a purchase in any store makes `pro` active.
+
+Your app asks one question on every platform: "Is `pro` active for this customer?" It never asks "Did this person buy on the App Store?" That is the whole design. The rest of this post is the code and the rules around it.
+
+## Step 1: use one account ID everywhere
+
+Without your own ID, the SDK creates an anonymous ID such as `$RCAnonymousID:4f2c...` and keeps it on that one device. RevenueCat's docs say a user logged in with the same app user ID on different platforms "will be considered the same user" and can use what they bought on any platform ([RevenueCat](https://www.revenuecat.com/docs/customers/identifying-customers)). Anonymous IDs cannot do that.
+
+So call `logIn` right after your own sign-in succeeds, with the same ID on every platform. Use your database's user ID. RevenueCat recommends against email addresses, hard-coded strings and guessable values ([RevenueCat](https://www.revenuecat.com/docs/customers/identifying-customers)), because the ID appears in dashboards, webhooks and logs.
+
+```swift
+// iOS: after your sign-in succeeds
+let (customerInfo, _) = try await Purchases.shared.logIn(user.id)
+let isPro = customerInfo.entitlements["pro"]?.isActive == true
+```
+
+```kotlin
+// Android: after your sign-in succeeds
+val result = Purchases.sharedInstance.awaitLogIn(user.id)
+val isPro = result.customerInfo.entitlements["pro"]?.isActive == true
+```
+
+```ts
+// Web (purchases-js): pass the same ID when you configure
+const purchases = Purchases.configure({
+  apiKey: "test_...",
+  appUserId: user.id,
+  httpConfig: { proxyURL: "https://api.revenuedot.app" },
+  flags: { collectAnalyticsEvents: false },
+});
+```
+
+If a customer bought while still anonymous and then signs in, `logIn` moves that purchase to their account. RevenueDot's exact merge rules are in [customers and app user IDs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/customers-and-app-user-ids.md).
+
+## Step 2: attach every store's product to one entitlement
+
+Create the plan in each store, then connect the products in one place:
+
+| Store | Product ID example | Attached to |
+|---|---|---|
+| App Store | `pro_monthly` | `pro` |
+| Google Play | `pro:monthly` (subscription and base plan) | `pro` |
+| Web (your Stripe account) | `pro_monthly_web` | `pro` |
+
+Put the App Store and Google Play products in one package of your `default` offering, so one paywall configuration serves both apps. The web product goes in a web offering that a [purchase link](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md) or [funnel](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md) sells. See [products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md) and [offerings and packages](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/offerings-and-packages.md).
+
+## What does Apple allow?
+
+Apple allows access to subscriptions bought elsewhere, with one condition. Guideline 3.1.3(b), Multiplatform Services, says apps that work across platforms "may allow users to access content, subscriptions, or features they have acquired in your app on other platforms or your web site", "provided those items are also available as in-app purchases within the app" ([Apple](https://developer.apple.com/app-store/review/guidelines/#3.1.3b)).
+
+In practice that gives you three rules for the iOS app:
+
+1. **Sell Pro in the iOS app too.** If a customer can buy Pro on the web, the iOS app must also offer Pro as an in-app purchase.
+2. **Unlock Pro for anyone who has it.** A customer who signs in with a web or Android subscription gets Pro on iPhone with no extra step.
+3. **Be careful with links to your web checkout.** Guideline 3.1.3 says apps in that section cannot encourage users, within the app, to use a purchasing method other than in-app purchase, except on the United States storefront and in the cases Apple lists ([Apple](https://developer.apple.com/app-store/review/guidelines/#3.1.3)). Our post on [web checkout for iOS apps](https://raw.githubusercontent.com/revenuedot/docs/main/blog/web-checkout-for-ios-apps-stripe.md) covers the US rules.
+
+Apple's subscription guideline adds one more expectation: an auto-renewable subscription must "be available across all of the user's devices" ([Apple](https://developer.apple.com/app-store/review/guidelines/#3.1.2a)). One account ID and one entitlement give you that.
+
+## What does Google Play allow?
+
+Google requires its billing system for in-app purchases of digital goods and subscriptions, and apps "may not lead users to a payment method other than Google Play's billing system", except under the sections and programs the policy lists ([Google Play Payments policy](https://support.google.com/googleplay/android-developer/answer/9858738)).
+
+Using a subscription bought elsewhere is allowed. Google's policy FAQ says an app can be consumption-only "even if it is part of a paid service", and that "a user could log in when the app opens and access content paid for somewhere else" ([Google Play](https://support.google.com/googleplay/android-developer/answer/10281818)). The same FAQ says Google does not require the same features or prices across platforms, and that you may email customers about offers outside the app.
+
+| Question | App Store | Google Play |
+|---|---|---|
+| Can a customer use a subscription bought on another platform? | Yes, under 3.1.3(b) | Yes, a signed-in user can access content paid for elsewhere |
+| Must the app also sell it in-app? | Yes, if it is for sale elsewhere | No, consumption-only apps are allowed, but any in-app sale must use Play billing |
+| Can the app link to your web checkout? | Only on the US storefront or under Apple's listed cases | Only through Google's programs in eligible regions, such as the EEA and the US |
+
+## How do you avoid double billing?
+
+The stores cannot see each other. If a customer already pays you through Stripe and opens the iOS paywall, Apple will happily sell them a second subscription. Your app is the only place that can prevent it.
+
+Check the entitlement before you show buy buttons. If `pro` is active and came from a different store than the one this app sells through, show a message instead of a paywall. Each active entitlement records the store that unlocked it, in the `store` property ([purchases_flutter reference](https://pub.dev/documentation/purchases_flutter/latest/models_entitlement_info_wrapper/EntitlementInfo-class.html); the native SDKs have the same field).
+
+```swift
+let info = try await Purchases.shared.customerInfo()
+if let pro = info.entitlements["pro"], pro.isActive {
+    switch pro.store {
+    case .appStore, .macAppStore:
+        showManageButton()              // they pay through Apple
+    case .playStore:
+        showMessage("You subscribe on Google Play. Manage it on your Android device.")
+    case .stripe:
+        showMessage("You subscribe on our website. Manage it in your account there.")
+    default:
+        showMessage("You already have Pro.")
+    }
+} else {
+    showPaywall()
+}
+```
+
+Three more habits help:
+
+- **Ask customers to sign in before they buy** on every platform, so every purchase lands on a known account. A purchase made while anonymous is still safe, because `logIn` moves it later.
+- **Pass the user ID to your web checkout.** A RevenueDot purchase link with `?app_user_id=` records the purchase on that customer at once ([purchase links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md)).
+- **Watch for two active subscriptions.** If a customer ends up with two, only they can cancel the one billed by Apple or Google, in that store. Send them to the right page with the button below.
+
+## Where should the "Manage subscription" button go?
+
+To the store that bills the customer, because only that store can cancel or change the plan.
+
+| Store that bills | Where to send the customer | Source |
+|---|---|---|
+| App Store | `AppStore.showManageSubscriptions(in:)`, which shows the same sheet as the App Store app's subscription settings | [Apple](https://developer.apple.com/documentation/storekit/appstore/showmanagesubscriptions%28in:%29) |
+| Google Play | `https://play.google.com/store/account/subscriptions?sku=<productId>&package=<package>` | [Android Developers](https://developer.android.com/google/play/billing/subscriptions) |
+| Stripe (web) | Your Stripe customer portal, where customers update payment methods and cancel | [Stripe](https://docs.stripe.com/customer-management) |
+
+RevenueCat's SDK exposes a `managementURL` on customer info that points to the store of the active subscription, and is null when there is none ([RevenueCat](https://www.revenuecat.com/docs/customers/customer-info)). **With RevenueDot, the SDK's `managementURL` is always null today** ([API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md)). Build the link from the entitlement's `store` as in the code above, or ask your server: RevenueDot's REST API returns the App Store or Google Play page for any subscription at `GET /v2/projects/{project_id}/subscriptions/{subscription_id}/authenticated_management_url` ([REST API](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md)).
+
+## Do it with RevenueDot
+
+RevenueDot is an open-source server that works with the RevenueCat SDK, so the code above runs unchanged once the SDK's proxy URL points at RevenueDot. What it gives a cross-platform app:
+
+- One customer record with purchases from the [App Store](https://revenuedot.app/stores/app-store), [Google Play](https://revenuedot.app/stores/google-play) and [Stripe](https://revenuedot.app/stores/stripe), unlocking one entitlement.
+- [Web checkout](https://revenuedot.app/features/web-billing) and [purchase links](https://revenuedot.app/features/purchase-links) on your own Stripe account, with `?app_user_id=` for signed-in buyers and [redemption links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md) for anonymous ones.
+- [Webhooks](https://revenuedot.app/features/webhooks) with RevenueCat's event names, so your own backend hears about every store.
+- A `TRANSFER` event when a purchase moves between accounts, under the [restore rules](https://raw.githubusercontent.com/revenuedot/docs/main/blog/restore-purchases-ios-android.md) you choose.
+
+The limits: the stock web SDK buys only with Test Store keys against RevenueDot, so real web payments go through RevenueDot's hosted Stripe checkout ([web SDK guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/web.md)). No real store purchase has run end to end against RevenueDot yet, so test each store in its sandbox before you launch. The [RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) and the [fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator) show the cost side by side, and [pricing](https://revenuedot.app/pricing) has the plans.
+
+[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue).
+
+## FAQ
+
+### Can a user who subscribed on Android use the subscription on iPhone?
+
+Yes. Apple's guideline 3.1.3(b) allows access to subscriptions bought on other platforms, as long as the iOS app also sells the subscription as an in-app purchase ([Apple](https://developer.apple.com/app-store/review/guidelines/#3.1.3b)). The customer signs in, your app calls `logIn`, and the `pro` entitlement is active.
+
+### Do I need my own login system to share a subscription?
+
+Yes. The share works through one account ID that the customer proves on every device, which means some sign-in. It can be email, Sign in with Apple, Google or a magic link. Anonymous IDs stay on one device ([RevenueCat](https://www.revenuecat.com/docs/customers/identifying-customers)).
+
+### Can I sell only on the web and unlock the Android app?
+
+Google's FAQ allows consumption-only apps where users "access content paid for somewhere else" ([Google Play](https://support.google.com/googleplay/android-developer/answer/10281818)). Any purchase inside the Android app must still use Google Play billing, and the app may not point users to your web checkout outside Google's programs.
+
+### What happens if a customer pays on two platforms?
+
+Both stores bill them, and the entitlement simply stays active. Show the subscription's store on your account screen, and send the customer to that store to cancel the one they do not want. Checking the entitlement before the paywall prevents most cases.
+
+### Does the price have to be the same on every platform?
+
+No for Google: its FAQ says it does not require parity across platforms ([Google Play](https://support.google.com/googleplay/android-developer/answer/10281818)). Apple's 3.1.3(b) asks only that the items are also available as in-app purchases. Many apps charge less on the web, where the store fee does not apply.
 
 **About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
 
