@@ -45,11 +45,15 @@ GetComponent<Purchases>().SyncPurchases();
 ## Use the RevenueDot fork
 The fork is [github.com/revenuedot/purchases-unity](https://github.com/revenuedot/purchases-unity). C# namespaces and assembly names stay the same, so `using RevenueCat;` keeps working.
 
-**Version 9.11.1 is released** as the git tag `9.11.1-revenuedot`. In Unity, open **Window > Package Manager > + > Add package from git URL** and enter:
+**Version 9.11.1 is on [OpenUPM](https://openupm.com/packages/com.revenuedot.purchases-unity/):**
+```bash
+openupm add com.revenuedot.purchases-unity
+```
+Or, without OpenUPM, open **Window > Package Manager > + > Add package from git URL** and enter:
 ```
 https://github.com/revenuedot/purchases-unity.git?path=RevenueCat#9.11.1-revenuedot
 ```
-The OpenUPM listing `com.revenuedot.purchases-unity` is in review. The External Dependency Manager pulls the native side, RevenueDot's [hybrid common](hybrid-common.md) 19.4.1: the `RevenueDotPurchasesHybridCommon` pod and `app.revenuedot.purchases:purchases-hybrid-common`. We have not run the package in the Unity editor yet.
+The paywall package (`RevenueCatUI` folder) installs from git, as upstream. The External Dependency Manager pulls the native side, RevenueDot's [hybrid common](hybrid-common.md) 19.4.1: the `RevenueDotPurchasesHybridCommon` pod and `app.revenuedot.purchases:purchases-hybrid-common`. We have not run the package in the Unity editor yet.
 
 ## Trusted Entitlements
 - **Stock SDK:** the Inspector offers **Disabled** and **Informational**, and the default is Informational. It logs every RevenueDot response as a failed check but still grants access. Choose **Disabled**.

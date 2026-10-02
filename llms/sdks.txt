@@ -29,7 +29,7 @@ All nine RevenueCat app SDKs work with RevenueDot today in **proxy mode**: you k
 | Web (purchases-js) | Yes, with Test Store (`test_`) keys only | `httpConfig: { proxyURL: "..." }` in `configure` | No signature checks | npm `@revenuedot/purchases-js` 1.67.0 | [Web](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/web.md) |
 | Capacitor and Ionic | Yes | `await Purchases.setProxyURL({ url: "..." })` | No default passed, so the native informational default applies. Pass `DISABLED` | npm `@revenuedot/purchases-capacitor` 13.6.1 (first npm release pending) | [Capacitor](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/capacitor.md) |
 | Kotlin Multiplatform | Yes | `Purchases.proxyURL = "..."` (a `String`) | Disabled | Maven `app.revenuedot.purchases:purchases-kmp-core:3.10.1` | [Kotlin Multiplatform](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/kotlin-multiplatform.md) |
-| Unity | Yes | The **Proxy URL** field on the Purchases component | Informational. Set **Disabled** in the Inspector | git `github.com/revenuedot/purchases-unity` at `9.11.1-revenuedot`; OpenUPM `com.revenuedot.purchases-unity` in review | [Unity](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/unity.md) |
+| Unity | Yes | The **Proxy URL** field on the Purchases component | Informational. Set **Disabled** in the Inspector | OpenUPM `com.revenuedot.purchases-unity` 9.11.1, or git `github.com/revenuedot/purchases-unity` at `9.11.1-revenuedot` | [Unity](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/unity.md) |
 | Cordova | Yes | `Purchases.setProxyURL("...")` before `configureWith` | No option: logs a failure, still grants access | npm `@revenuedot/cordova-plugin-purchases` 8.2.3 (first npm release pending) | [Cordova](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/cordova.md) |
 | purchases-hybrid-common | Not installed by apps | Wrappers pass the proxy URL through it | Wrappers pass the mode through it | pods `RevenueDotPurchasesHybridCommon`, Maven `app.revenuedot.purchases:purchases-hybrid-common`, both 19.4.1 | [Hybrid common](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/hybrid-common.md) |
 
@@ -48,7 +48,7 @@ Each fork lives in `github.com/revenuedot/<repo>`. Releases are upstream release
 Source: [`prd/sdk-forks/PRD.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/sdk-forks/PRD.md).
 
 ## What is tested today
-- Each released fork was installed the way an app installs it and checked against a RevenueDot server (2026-10-02). Web purchases-js from npm, Flutter web from its git tag and the React Native release package on the web each bought a Test Store subscription, and the server shows `pro` active. iOS apps built with the published pods and Swift packages (Flutter, Capacitor, Cordova) carry `api.revenuedot.app` and RevenueDot's signing key, and no RevenueCat host. The Android artifacts on Maven Central do the same.
+- Each released fork was installed the way an app installs it and checked against a RevenueDot server (2026-10-02). Web purchases-js from npm, Flutter web from its git tag and the React Native release package on the web each bought a Test Store subscription, and the server shows `pro` active. iOS apps built with the published pods and Swift packages (Flutter, Capacitor, Cordova) carry `api.revenuedot.app` and RevenueDot's signing key, and no RevenueCat host. The Android artifacts on Maven Central and the Kotlin Multiplatform iOS library do the same.
 - The unmodified RevenueCat iOS SDK 5.92 on an iPhone simulator and Android SDK 10.24 on an Android emulator pass configure, customer info, offerings, a Test Store purchase and `logIn` against RevenueDot ([`scripts/e2e`](https://github.com/revenuedot/revenuedot/tree/main/scripts/e2e)).
 - Purchases through the real App Store and Google Play sandboxes have not run end to end yet. Store handling is tested against mocked Apple and Google APIs.
 - The [React Native Expo example](https://github.com/revenuedot/examples/tree/main/mobile/react-native-expo) and the [purchases-js Vite example](https://github.com/revenuedot/examples/tree/main/web/purchases-js-vite) run against RevenueDot with a Test Store key.
@@ -758,7 +758,7 @@ The fork is [github.com/revenuedot/purchases-kmp](https://github.com/revenuedot/
 implementation("app.revenuedot.purchases:purchases-kmp-core:3.10.1")
 implementation("app.revenuedot.purchases:purchases-kmp-ui:3.10.1") // only if you use paywalls
 ```
-The fork's default host is RevenueDot Cloud, so a Cloud project needs no proxy URL. When you self-host, keep setting `Purchases.proxyURL` to your server.
+Its iOS library on Maven Central embeds `api.revenuedot.app` and RevenueDot's signing key, with no RevenueCat host. The fork's default host is RevenueDot Cloud, so a Cloud project needs no proxy URL. When you self-host, keep setting `Purchases.proxyURL` to your server.
 
 ## Trusted Entitlements are off by default
 - **Stock SDK:** the default is `DISABLED`, which is right for RevenueDot. `INFORMATIONAL` logs every response as a failed check, and **`ENFORCED` would fail every request**.
@@ -861,11 +861,15 @@ GetComponent<Purchases>().SyncPurchases();
 ## Use the RevenueDot fork
 The fork is [github.com/revenuedot/purchases-unity](https://github.com/revenuedot/purchases-unity). C# namespaces and assembly names stay the same, so `using RevenueCat;` keeps working.
 
-**Version 9.11.1 is released** as the git tag `9.11.1-revenuedot`. In Unity, open **Window > Package Manager > + > Add package from git URL** and enter:
+**Version 9.11.1 is on [OpenUPM](https://openupm.com/packages/com.revenuedot.purchases-unity/):**
+```bash
+openupm add com.revenuedot.purchases-unity
+```
+Or, without OpenUPM, open **Window > Package Manager > + > Add package from git URL** and enter:
 ```
 https://github.com/revenuedot/purchases-unity.git?path=RevenueCat#9.11.1-revenuedot
 ```
-The OpenUPM listing `com.revenuedot.purchases-unity` is in review. The External Dependency Manager pulls the native side, RevenueDot's [hybrid common](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/hybrid-common.md) 19.4.1: the `RevenueDotPurchasesHybridCommon` pod and `app.revenuedot.purchases:purchases-hybrid-common`. We have not run the package in the Unity editor yet.
+The paywall package (`RevenueCatUI` folder) installs from git, as upstream. The External Dependency Manager pulls the native side, RevenueDot's [hybrid common](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/hybrid-common.md) 19.4.1: the `RevenueDotPurchasesHybridCommon` pod and `app.revenuedot.purchases:purchases-hybrid-common`. We have not run the package in the Unity editor yet.
 
 ## Trusted Entitlements
 - **Stock SDK:** the Inspector offers **Disabled** and **Informational**, and the default is Informational. It logs every RevenueDot response as a failed check but still grants access. Choose **Disabled**.

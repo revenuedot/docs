@@ -42,7 +42,7 @@ The fork is [github.com/revenuedot/purchases-kmp](https://github.com/revenuedot/
 implementation("app.revenuedot.purchases:purchases-kmp-core:3.10.1")
 implementation("app.revenuedot.purchases:purchases-kmp-ui:3.10.1") // only if you use paywalls
 ```
-The fork's default host is RevenueDot Cloud, so a Cloud project needs no proxy URL. When you self-host, keep setting `Purchases.proxyURL` to your server.
+Its iOS library on Maven Central embeds `api.revenuedot.app` and RevenueDot's signing key, with no RevenueCat host. The fork's default host is RevenueDot Cloud, so a Cloud project needs no proxy URL. When you self-host, keep setting `Purchases.proxyURL` to your server.
 
 ## Trusted Entitlements are off by default
 - **Stock SDK:** the default is `DISABLED`, which is right for RevenueDot. `INFORMATIONAL` logs every response as a failed check, and **`ENFORCED` would fail every request**.
