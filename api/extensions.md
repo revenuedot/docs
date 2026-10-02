@@ -11,7 +11,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (249)
+## Operations on this page (252)
 
 - **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects), [Update account settings](#update-account-settings), [Email a password reset link](#email-a-password-reset-link), [Check a password reset link](#check-a-password-reset-link), [Set a new password from a reset link](#set-a-new-password-from-a-reset-link), [Confirm an email address](#confirm-an-email-address), [Send a new confirmation email](#send-a-new-confirmation-email), [Look up an invite](#look-up-an-invite), [Accept an invite](#accept-an-invite)
 - **Members and invites**: [List open invites](#list-open-invites), [Invite someone by email](#invite-someone-by-email), [Resend an invite](#resend-an-invite), [Revoke an invite](#revoke-an-invite), [Change a member's role](#change-a-members-role), [Remove a member, or leave the project](#remove-a-member-or-leave-the-project)
@@ -47,7 +47,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Attribution**: [Get a customer's attribution](#get-a-customers-attribution), [Revenue by campaign](#revenue-by-campaign)
 - **Benchmarks**: [The project's values against peers](#the-projects-values-against-peers), [Whether the project shares benchmarks](#whether-the-project-shares-benchmarks), [Share or stop sharing anonymized benchmarks](#share-or-stop-sharing-anonymized-benchmarks)
 - **Growth insights**: [This week's growth insights](#this-weeks-growth-insights), [Write this week's insights now](#write-this-weeks-insights-now), [The digest's opt-out page](#the-digests-opt-out-page), [Turn the weekly digest off (one click)](#turn-the-weekly-digest-off-one-click)
-- **Share cards**: [Public first-sale page or image](#public-first-sale-page-or-image)
+- **Share cards**: [Public chart page](#public-chart-page), [Public chart preview image](#public-chart-preview-image), [Public chart as SVG](#public-chart-as-svg), [Public first-sale page or image](#public-first-sale-page-or-image)
 - **OAuth for MCP clients**: [OAuth authorization server metadata](#oauth-authorization-server-metadata), [Register an OAuth client](#register-an-oauth-client), [Consent screen](#consent-screen), [Submit the consent decision](#submit-the-consent-decision), [Exchange a code for an access token](#exchange-a-code-for-an-access-token)
 
 ## Dashboard auth
@@ -10179,6 +10179,75 @@ curl -s -X POST "$REVENUEDOT_URL/auth/insights/unsubscribe"
 ## Share cards
 
 Public pages and images RevenueDot makes for sharing, such as the first-sale card. No API key; the token in the URL is the only key.
+
+### Public chart page
+
+`GET /share/charts/{token}` · Auth: none · RevenueDot extension
+
+The chart snapshot as a page: the plot, summary values, the values table, Open Graph and Twitter tags. No scripts, `noindex`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/share/charts/$TOKEN"
+```
+
+**Responses**
+
+- **200**: The page.
+- **304**: Not modified (ETag).
+- **404**: Unknown link.
+- **410**: The link was revoked.
+
+### Public chart preview image
+
+`GET /share/charts/{token}/og.png` · Auth: none · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/share/charts/$TOKEN/og.png"
+```
+
+**Responses**
+
+- **200**: A 1200×630 PNG.
+- **404**: Unknown link.
+- **410**: The link was revoked.
+
+### Public chart as SVG
+
+`GET /share/charts/{token}/chart.svg` · Auth: none · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/share/charts/$TOKEN/chart.svg"
+```
+
+**Responses**
+
+- **200**: The 1200×630 card as SVG.
+- **404**: Unknown link.
+- **410**: The link was revoked.
 
 ### Public first-sale page or image
 

@@ -16918,7 +16918,32 @@ paths:
                     type: array
                     items:
                       type: object
-                    description: With `include_annotations=true`. RevenueDot has no annotations yet, so always empty.
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - chart_annotation
+                        id:
+                          type: string
+                        description:
+                          type: string
+                          description: The annotation's title.
+                        start_date:
+                          type: string
+                          format: date
+                        end_date:
+                          type:
+                            - string
+                            - "null"
+                          format: date
+                          description: Null for a single day.
+                      required:
+                        - object
+                        - id
+                        - description
+                        - start_date
+                        - end_date
+                    description: "With `include_annotations=true`: the project's annotations that overlap the range, in RevenueCat's `ChartAnnotation` shape."
                 required:
                   - object
                   - category
@@ -17127,6 +17152,1288 @@ paths:
       x-source: routes/v2/charts.ts
       x-scopes:
         - charts_metrics:charts:read
+  /v2/projects/{project_id}/charts/{chart_name}/customers:
+    get:
+      operationId: listChartCustomers
+      tags:
+        - Charts
+      summary: List the customers behind a chart
+      description: |-
+        The customers whose purchases, subscriptions, trials or activity make up the chart for these parameters (the chart's own), most recent contribution first, each with their part of one of the chart's measures. The values plus `unattributed_value` add up to the chart: over the range (`sum: total`) or at the last period (`sum: last`). Which customers each chart lists: https://revenuedot.app/docs/guides/charts#customers-behind-a-chart.
+
+        `format=csv` streams every contributor as CSV (at most 100,000 rows); the response has `X-RevenueDot-Total-Count`.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: chart_name
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - actives
+              - actives_movement
+              - actives_new
+              - arr
+              - churn
+              - cohort_explorer
+              - conversion_to_paying
+              - customers_new
+              - initial_conversion
+              - ltv_per_customer
+              - ltv_per_paying_customer
+              - mrr
+              - mrr_movement
+              - prediction_explorer
+              - refund_rate
+              - refund_request
+              - refunds
+              - revenue
+              - subscription_retention
+              - subscription_status
+              - trials
+              - trials_movement
+              - trials_new
+              - customers_active
+              - trial_conversion
+              - trial_conversion_rate
+              - trial_cancellation
+              - non-subscription_purchases
+              - ad_revenue
+              - ad_impressions
+              - ad_clicks
+              - ad_monetized_customers
+              - ad_arpdau
+              - ad_rpm
+              - ad_fill_rate
+              - ad_ctr
+              - paywall_encounter
+              - paywall_conversion
+              - paywall_ltv
+              - paywall_abandonment
+              - app_store_save_outcomes
+              - play_store_cancel_reasons
+              - customer_center_survey_responses
+          description: "The chart. `play_store_cancel_reasons` and `customer_center_survey_responses` are RevenueDot names for charts RevenueCat shows only in its dashboard. Definitions: https://revenuedot.app/docs/guides/charts"
+        - name: resolution
+          in: query
+          schema:
+            type: string
+          description: As for chart data.
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: expand_periods
+          in: query
+          schema:
+            type: boolean
+        - name: filters
+          in: query
+          schema:
+            type: string
+        - name: selectors
+          in: query
+          schema:
+            type: string
+        - name: segment
+          in: query
+          schema:
+            type: string
+        - name: limit_num_segments
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: currency
+          in: query
+          schema:
+            type: string
+            enum:
+              - USD
+              - EUR
+              - GBP
+              - AUD
+              - CAD
+              - JPY
+              - BRL
+              - KRW
+              - CNY
+              - MXN
+              - SEK
+              - PLN
+              - NZD
+              - CHF
+        - name: environment
+          in: query
+          schema:
+            type: string
+            enum:
+              - production
+              - sandbox
+          description: RevenueDot extension. `sandbox` shows only sandbox and Test Store purchases. Default `production`.
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          description: Customers in `items`, 1–100. Default 100.
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum:
+              - json
+              - csv
+          description: Default `json`.
+      responses:
+        "200":
+          description: The customers, or the CSV export.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - chart_customers
+                  chart_name:
+                    type: string
+                  total_count:
+                    type: integer
+                    description: Every contributor; `items` holds the most recent `limit`.
+                  value:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      id:
+                        type: string
+                      display_name:
+                        type: string
+                      unit:
+                        type: string
+                    description: The chart measure the values are part of.
+                  sum:
+                    type: string
+                    enum:
+                      - total
+                      - last
+                    description: "`total`: the values add up to the range's total. `last`: to the last period's value (snapshots such as MRR)."
+                  unattributed_value:
+                    type: number
+                    description: "The part of the chart no customer is listed for: ad events from app user ids the server never saw."
+                  date_label:
+                    type: string
+                    description: What `contributed_at` is, in the chart's words.
+                  currency:
+                    type: string
+                  segment:
+                    type:
+                      - string
+                      - "null"
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - chart_customer
+                        customer_id:
+                          type: string
+                          description: Internal customer id.
+                        app_user_id:
+                          type:
+                            - string
+                            - "null"
+                          description: A non-anonymous app user id when the customer has one.
+                        status:
+                          type: string
+                          enum:
+                            - active
+                            - trialing
+                            - grace_period
+                            - billing_issue
+                            - expired
+                            - none
+                          description: From the subscriptions of the chart's environment.
+                        store:
+                          type:
+                            - string
+                            - "null"
+                        product_id:
+                          type:
+                            - string
+                            - "null"
+                        contributed_at:
+                          type: integer
+                          description: "The customer's latest contribution in the range (ms): a purchase, a paid start, the cohort date …"
+                        first_seen_at:
+                          type:
+                            - integer
+                            - "null"
+                        value:
+                          type: number
+                          description: The customer's part of the `value` measure.
+                        segment:
+                          type:
+                            - string
+                            - "null"
+                          description: The segment's label when the chart is segmented (`Other` past the limit).
+                      required:
+                        - object
+                        - customer_id
+                        - status
+                        - contributed_at
+                        - value
+                required:
+                  - object
+                  - chart_name
+                  - total_count
+                  - value
+                  - sum
+                  - items
+            text/csv:
+              schema:
+                type: string
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/chart-extras.ts
+      x-scopes:
+        - charts_metrics:charts:read
+        - customer_information:customers:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/chart_annotations:
+    get:
+      operationId: listChartAnnotations
+      tags:
+        - Charts
+      summary: List chart annotations
+      description: The project's annotations, oldest first, at most 1,000. With dates, only those that overlap them.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: The annotations.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - chart_annotation
+                        id:
+                          type: string
+                        title:
+                          type: string
+                        description:
+                          type:
+                            - string
+                            - "null"
+                        start_date:
+                          type: string
+                          format: date
+                        end_date:
+                          type: string
+                          description: Equal to `start_date` for a single day.
+                          format: date
+                        created_by:
+                          type:
+                            - object
+                            - "null"
+                          properties:
+                            id:
+                              type: string
+                            email:
+                              type:
+                                - string
+                                - "null"
+                            name:
+                              type:
+                                - string
+                                - "null"
+                          description: Who made it; null for an API key.
+                        created_at:
+                          type: integer
+                        updated_at:
+                          type: integer
+                      required:
+                        - object
+                        - id
+                        - title
+                        - start_date
+                        - end_date
+                        - created_at
+                        - updated_at
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/chart-extras.ts
+      x-scopes:
+        - charts_metrics:charts:read
+      x-revenuedot-extension: true
+    post:
+      operationId: createChartAnnotation
+      tags:
+        - Charts
+      summary: Create a chart annotation
+      description: A note on a UTC day or date range that every chart of the project shows. Viewers cannot create one. Audited as `chart_annotation_created`.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 120
+                description:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 1000
+                start_date:
+                  type: string
+                  format: date
+                end_date:
+                  type:
+                    - string
+                    - "null"
+                  format: date
+                  description: Default `start_date`; never before it.
+              required:
+                - title
+                - start_date
+            example:
+              title: Launched the annual plan
+              description: New paywall in 2.4
+              start_date: 2026-09-14
+      responses:
+        "201":
+          description: The annotation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - chart_annotation
+                  id:
+                    type: string
+                  title:
+                    type: string
+                  description:
+                    type:
+                      - string
+                      - "null"
+                  start_date:
+                    type: string
+                    format: date
+                  end_date:
+                    type: string
+                    description: Equal to `start_date` for a single day.
+                    format: date
+                  created_by:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      id:
+                        type: string
+                      email:
+                        type:
+                          - string
+                          - "null"
+                      name:
+                        type:
+                          - string
+                          - "null"
+                    description: Who made it; null for an API key.
+                  created_at:
+                    type: integer
+                  updated_at:
+                    type: integer
+                required:
+                  - object
+                  - id
+                  - title
+                  - start_date
+                  - end_date
+                  - created_at
+                  - updated_at
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/chart-extras.ts
+      x-scopes:
+        - charts_metrics:charts:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/chart_annotations/{annotation_id}:
+    get:
+      operationId: getChartAnnotation
+      tags:
+        - Charts
+      summary: Get a chart annotation
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: annotation_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The annotation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - chart_annotation
+                  id:
+                    type: string
+                  title:
+                    type: string
+                  description:
+                    type:
+                      - string
+                      - "null"
+                  start_date:
+                    type: string
+                    format: date
+                  end_date:
+                    type: string
+                    description: Equal to `start_date` for a single day.
+                    format: date
+                  created_by:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      id:
+                        type: string
+                      email:
+                        type:
+                          - string
+                          - "null"
+                      name:
+                        type:
+                          - string
+                          - "null"
+                    description: Who made it; null for an API key.
+                  created_at:
+                    type: integer
+                  updated_at:
+                    type: integer
+                required:
+                  - object
+                  - id
+                  - title
+                  - start_date
+                  - end_date
+                  - created_at
+                  - updated_at
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/chart-extras.ts
+      x-scopes:
+        - charts_metrics:charts:read
+      x-revenuedot-extension: true
+    patch:
+      operationId: updateChartAnnotation
+      tags:
+        - Charts
+      summary: Update a chart annotation
+      description: "Changes any field. A single-day annotation moved with `start_date` stays a single day; `end_date: null` makes any annotation a single day. Audited as `chart_annotation_updated`."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: annotation_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 120
+                description:
+                  type:
+                    - string
+                    - "null"
+                  maxLength: 1000
+                start_date:
+                  type: string
+                  format: date
+                end_date:
+                  type:
+                    - string
+                    - "null"
+                  format: date
+      responses:
+        "200":
+          description: The annotation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - chart_annotation
+                  id:
+                    type: string
+                  title:
+                    type: string
+                  description:
+                    type:
+                      - string
+                      - "null"
+                  start_date:
+                    type: string
+                    format: date
+                  end_date:
+                    type: string
+                    description: Equal to `start_date` for a single day.
+                    format: date
+                  created_by:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      id:
+                        type: string
+                      email:
+                        type:
+                          - string
+                          - "null"
+                      name:
+                        type:
+                          - string
+                          - "null"
+                    description: Who made it; null for an API key.
+                  created_at:
+                    type: integer
+                  updated_at:
+                    type: integer
+                required:
+                  - object
+                  - id
+                  - title
+                  - start_date
+                  - end_date
+                  - created_at
+                  - updated_at
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/chart-extras.ts
+      x-scopes:
+        - charts_metrics:charts:read_write
+      x-revenuedot-extension: true
+    delete:
+      operationId: deleteChartAnnotation
+      tags:
+        - Charts
+      summary: Delete a chart annotation
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: annotation_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - chart_annotation
+                  id:
+                    type: string
+                  deleted_at:
+                    type: integer
+                required:
+                  - object
+                  - id
+                  - deleted_at
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/chart-extras.ts
+      x-scopes:
+        - charts_metrics:charts:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/chart_shares:
+    get:
+      operationId: listChartShares
+      tags:
+        - Charts
+      summary: List active chart share links
+      description: The project's links that are not revoked, newest first, at most 200.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: chart_name
+          in: query
+          schema:
+            type: string
+            enum:
+              - actives
+              - actives_movement
+              - actives_new
+              - arr
+              - churn
+              - cohort_explorer
+              - conversion_to_paying
+              - customers_new
+              - initial_conversion
+              - ltv_per_customer
+              - ltv_per_paying_customer
+              - mrr
+              - mrr_movement
+              - prediction_explorer
+              - refund_rate
+              - refund_request
+              - refunds
+              - revenue
+              - subscription_retention
+              - subscription_status
+              - trials
+              - trials_movement
+              - trials_new
+              - customers_active
+              - trial_conversion
+              - trial_conversion_rate
+              - trial_cancellation
+              - non-subscription_purchases
+              - ad_revenue
+              - ad_impressions
+              - ad_clicks
+              - ad_monetized_customers
+              - ad_arpdau
+              - ad_rpm
+              - ad_fill_rate
+              - ad_ctr
+              - paywall_encounter
+              - paywall_conversion
+              - paywall_ltv
+              - paywall_abandonment
+              - app_store_save_outcomes
+              - play_store_cancel_reasons
+              - customer_center_survey_responses
+          description: Only this chart's links.
+      responses:
+        "200":
+          description: The links.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - chart_share
+                        id:
+                          type: string
+                          description: "The link's id (`chartshare…`): revoke it by this id, and the audit log names it. It is not the token."
+                        chart_name:
+                          type: string
+                        title:
+                          type: string
+                        url:
+                          type: string
+                          description: The public page, `/share/charts/cs_…`. Its token (192 random bits) is the only key to the page; anyone who can read the project's links can copy it.
+                        image_url:
+                          type: string
+                          description: The 1200×630 PNG preview, drawn when the link was made.
+                        view:
+                          type: object
+                          properties:
+                            range:
+                              type: string
+                              description: 7d, 30d, 90d, 12m or custom.
+                            start:
+                              type: string
+                              description: Custom range start, YYYY-MM-DD.
+                            end:
+                              type: string
+                              description: Custom range end.
+                            res:
+                              type: string
+                              description: day, week, month, quarter or year.
+                            segment:
+                              type: string
+                            filters:
+                              type: string
+                              description: The filters parameter's JSON.
+                            sel:
+                              type: string
+                              description: The selectors parameter's JSON.
+                            env:
+                              type: string
+                              enum:
+                                - production
+                                - sandbox
+                            compare:
+                              type: boolean
+                              description: Compare to the previous period.
+                            type:
+                              type: string
+                              enum:
+                                - line
+                                - stacked_area
+                                - column
+                                - stacked_column
+                                - percent_column
+                              description: The chart type. Stacked types need two or more series; with one they draw as `line` or `column`.
+                            m:
+                              type: string
+                              description: The plotted measure group, `0` first.
+                        start_date:
+                          type: string
+                          format: date
+                        end_date:
+                          type: string
+                          format: date
+                        created_by:
+                          type:
+                            - object
+                            - "null"
+                          properties:
+                            id:
+                              type: string
+                            email:
+                              type:
+                                - string
+                                - "null"
+                            name:
+                              type:
+                                - string
+                                - "null"
+                          description: Who made it; null for an API key.
+                        created_at:
+                          type: integer
+                        revoked_at:
+                          type:
+                            - integer
+                            - "null"
+                      required:
+                        - object
+                        - id
+                        - chart_name
+                        - url
+                        - image_url
+                        - created_at
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/chart-extras.ts
+      x-scopes:
+        - charts_metrics:charts:read
+      x-revenuedot-extension: true
+    post:
+      operationId: createChartShare
+      tags:
+        - Charts
+      summary: Create a public chart share link
+      description: Computes the chart for the view now and keeps that snapshot (series, labels, summary values; no customer data) behind an unguessable public link with a PNG preview. Owners, admins and developers can create one; at most 200 active per project. Audited as `chart_share_created`.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                chart_name:
+                  type: string
+                  enum:
+                    - actives
+                    - actives_movement
+                    - actives_new
+                    - arr
+                    - churn
+                    - cohort_explorer
+                    - conversion_to_paying
+                    - customers_new
+                    - initial_conversion
+                    - ltv_per_customer
+                    - ltv_per_paying_customer
+                    - mrr
+                    - mrr_movement
+                    - prediction_explorer
+                    - refund_rate
+                    - refund_request
+                    - refunds
+                    - revenue
+                    - subscription_retention
+                    - subscription_status
+                    - trials
+                    - trials_movement
+                    - trials_new
+                    - customers_active
+                    - trial_conversion
+                    - trial_conversion_rate
+                    - trial_cancellation
+                    - non-subscription_purchases
+                    - ad_revenue
+                    - ad_impressions
+                    - ad_clicks
+                    - ad_monetized_customers
+                    - ad_arpdau
+                    - ad_rpm
+                    - ad_fill_rate
+                    - ad_ctr
+                    - paywall_encounter
+                    - paywall_conversion
+                    - paywall_ltv
+                    - paywall_abandonment
+                    - app_store_save_outcomes
+                    - play_store_cancel_reasons
+                    - customer_center_survey_responses
+                view:
+                  type: object
+                  properties:
+                    range:
+                      type: string
+                      description: 7d, 30d, 90d, 12m or custom.
+                    start:
+                      type: string
+                      description: Custom range start, YYYY-MM-DD.
+                    end:
+                      type: string
+                      description: Custom range end.
+                    res:
+                      type: string
+                      description: day, week, month, quarter or year.
+                    segment:
+                      type: string
+                    filters:
+                      type: string
+                      description: The filters parameter's JSON.
+                    sel:
+                      type: string
+                      description: The selectors parameter's JSON.
+                    env:
+                      type: string
+                      enum:
+                        - production
+                        - sandbox
+                    compare:
+                      type: boolean
+                      description: Compare to the previous period.
+                    type:
+                      type: string
+                      enum:
+                        - line
+                        - stacked_area
+                        - column
+                        - stacked_column
+                        - percent_column
+                      description: The chart type. Stacked types need two or more series; with one they draw as `line` or `column`.
+                    m:
+                      type: string
+                      description: The plotted measure group, `0` first.
+              required:
+                - chart_name
+            example:
+              chart_name: revenue
+              view:
+                range: 90d
+                res: week
+                segment: product
+                type: stacked_column
+      responses:
+        "201":
+          description: The link.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - chart_share
+                  id:
+                    type: string
+                    description: "The link's id (`chartshare…`): revoke it by this id, and the audit log names it. It is not the token."
+                  chart_name:
+                    type: string
+                  title:
+                    type: string
+                  url:
+                    type: string
+                    description: The public page, `/share/charts/cs_…`. Its token (192 random bits) is the only key to the page; anyone who can read the project's links can copy it.
+                  image_url:
+                    type: string
+                    description: The 1200×630 PNG preview, drawn when the link was made.
+                  view:
+                    type: object
+                    properties:
+                      range:
+                        type: string
+                        description: 7d, 30d, 90d, 12m or custom.
+                      start:
+                        type: string
+                        description: Custom range start, YYYY-MM-DD.
+                      end:
+                        type: string
+                        description: Custom range end.
+                      res:
+                        type: string
+                        description: day, week, month, quarter or year.
+                      segment:
+                        type: string
+                      filters:
+                        type: string
+                        description: The filters parameter's JSON.
+                      sel:
+                        type: string
+                        description: The selectors parameter's JSON.
+                      env:
+                        type: string
+                        enum:
+                          - production
+                          - sandbox
+                      compare:
+                        type: boolean
+                        description: Compare to the previous period.
+                      type:
+                        type: string
+                        enum:
+                          - line
+                          - stacked_area
+                          - column
+                          - stacked_column
+                          - percent_column
+                        description: The chart type. Stacked types need two or more series; with one they draw as `line` or `column`.
+                      m:
+                        type: string
+                        description: The plotted measure group, `0` first.
+                  start_date:
+                    type: string
+                    format: date
+                  end_date:
+                    type: string
+                    format: date
+                  created_by:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      id:
+                        type: string
+                      email:
+                        type:
+                          - string
+                          - "null"
+                      name:
+                        type:
+                          - string
+                          - "null"
+                    description: Who made it; null for an API key.
+                  created_at:
+                    type: integer
+                  revoked_at:
+                    type:
+                      - integer
+                      - "null"
+                required:
+                  - object
+                  - id
+                  - chart_name
+                  - url
+                  - image_url
+                  - created_at
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/chart-extras.ts
+      x-scopes:
+        - charts_metrics:charts:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/chart_shares/{share_id}:
+    delete:
+      operationId: revokeChartShare
+      tags:
+        - Charts
+      summary: Revoke a chart share link
+      description: The public page and images answer 410 from now on. Audited as `chart_share_deleted`.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: share_id
+          in: path
+          required: true
+          description: The link's `id` (`chartshare…`), not its token.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - chart_share
+                  id:
+                    type: string
+                  deleted_at:
+                    type: integer
+                required:
+                  - object
+                  - id
+                  - deleted_at
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/chart-extras.ts
+      x-scopes:
+        - charts_metrics:charts:read_write
+      x-revenuedot-extension: true
+  /share/charts/{token}:
+    get:
+      operationId: shareChart
+      tags:
+        - Share cards
+      summary: Public chart page
+      description: "The chart snapshot as a page: the plot, summary values, the values table, Open Graph and Twitter tags. No scripts, `noindex`."
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The page.
+          content:
+            text/html:
+              schema:
+                type: string
+        "304":
+          description: Not modified (ETag).
+        "404":
+          description: Unknown link.
+        "410":
+          description: The link was revoked.
+      x-source: routes/share.ts
+      x-revenuedot-extension: true
+  /share/charts/{token}/og.png:
+    get:
+      operationId: shareChartImage
+      tags:
+        - Share cards
+      summary: Public chart preview image
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A 1200×630 PNG.
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Unknown link.
+        "410":
+          description: The link was revoked.
+      x-source: routes/share.ts
+      x-revenuedot-extension: true
+  /share/charts/{token}/chart.svg:
+    get:
+      operationId: shareChartSvg
+      tags:
+        - Share cards
+      summary: Public chart as SVG
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The 1200×630 card as SVG.
+          content:
+            image/svg+xml:
+              schema:
+                type: string
+        "404":
+          description: Unknown link.
+        "410":
+          description: The link was revoked.
+      x-source: routes/share.ts
+      x-revenuedot-extension: true
   /v2/projects/{project_id}/saved_charts:
     get:
       operationId: listSavedCharts
@@ -17202,6 +18509,18 @@ paths:
                             compare:
                               type: boolean
                               description: Compare to the previous period.
+                            type:
+                              type: string
+                              enum:
+                                - line
+                                - stacked_area
+                                - column
+                                - stacked_column
+                                - percent_column
+                              description: The chart type. Stacked types need two or more series; with one they draw as `line` or `column`.
+                            m:
+                              type: string
+                              description: The plotted measure group, `0` first.
                         created_at:
                           type: integer
                         updated_at:
@@ -17239,7 +18558,7 @@ paths:
       tags:
         - Charts
       summary: Save a chart view
-      description: A named chart with the dashboard view that produced it (range, dates, resolution, segment, filters, selectors, environment, compare). Up to 200 per project.
+      description: A named chart with the dashboard view that produced it (range, dates, resolution, segment, filters, selectors, environment, compare, chart type, measure group). Up to 200 per project.
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -17333,6 +18652,18 @@ paths:
                     compare:
                       type: boolean
                       description: Compare to the previous period.
+                    type:
+                      type: string
+                      enum:
+                        - line
+                        - stacked_area
+                        - column
+                        - stacked_column
+                        - percent_column
+                      description: The chart type. Stacked types need two or more series; with one they draw as `line` or `column`.
+                    m:
+                      type: string
+                      description: The plotted measure group, `0` first.
               required:
                 - name
                 - chart_name
@@ -17393,6 +18724,18 @@ paths:
                       compare:
                         type: boolean
                         description: Compare to the previous period.
+                      type:
+                        type: string
+                        enum:
+                          - line
+                          - stacked_area
+                          - column
+                          - stacked_column
+                          - percent_column
+                        description: The chart type. Stacked types need two or more series; with one they draw as `line` or `column`.
+                      m:
+                        type: string
+                        description: The plotted measure group, `0` first.
                   created_at:
                     type: integer
                   updated_at:
@@ -17484,6 +18827,18 @@ paths:
                       compare:
                         type: boolean
                         description: Compare to the previous period.
+                      type:
+                        type: string
+                        enum:
+                          - line
+                          - stacked_area
+                          - column
+                          - stacked_column
+                          - percent_column
+                        description: The chart type. Stacked types need two or more series; with one they draw as `line` or `column`.
+                      m:
+                        type: string
+                        description: The plotted measure group, `0` first.
                   created_at:
                     type: integer
                   updated_at:
@@ -17563,6 +18918,18 @@ paths:
                     compare:
                       type: boolean
                       description: Compare to the previous period.
+                    type:
+                      type: string
+                      enum:
+                        - line
+                        - stacked_area
+                        - column
+                        - stacked_column
+                        - percent_column
+                      description: The chart type. Stacked types need two or more series; with one they draw as `line` or `column`.
+                    m:
+                      type: string
+                      description: The plotted measure group, `0` first.
       responses:
         "200":
           description: The saved chart.
@@ -17612,6 +18979,18 @@ paths:
                       compare:
                         type: boolean
                         description: Compare to the previous period.
+                      type:
+                        type: string
+                        enum:
+                          - line
+                          - stacked_area
+                          - column
+                          - stacked_column
+                          - percent_column
+                        description: The chart type. Stacked types need two or more series; with one they draw as `line` or `column`.
+                      m:
+                        type: string
+                        description: The plotted measure group, `0` first.
                   created_at:
                     type: integer
                   updated_at:
@@ -31472,6 +32851,11 @@ paths:
                                         type: string
                                       label:
                                         type: string
+                                      params:
+                                        type: object
+                                        additionalProperties:
+                                          type: string
+                                        description: "A chart mention's view, as the chart page's Ask AI sends it: `start_date`, `end_date`, `resolution`, `segment`, `filters`, `selectors`, `environment`. Other keys are ignored."
                                     required:
                                       - type
                                       - id
@@ -31691,6 +33075,11 @@ paths:
                                 type: string
                               label:
                                 type: string
+                              params:
+                                type: object
+                                additionalProperties:
+                                  type: string
+                                description: "A chart mention's view, as the chart page's Ask AI sends it: `start_date`, `end_date`, `resolution`, `segment`, `filters`, `selectors`, `environment`. Other keys are ignored."
                             required:
                               - type
                               - id
