@@ -14,6 +14,9 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Accept Amazon Appstore purchases on Fire tablets and Fire TV | [Connect the Amazon Appstore](amazon-appstore.md) |
 | Track subscriptions sold with my own Stripe account | [Connect Stripe](stripe.md) |
 | Connect my Stripe account without copying a restricted key | [Connect with Stripe](stripe-connect.md) |
+| Track web purchases sold through Paddle Billing | [Connect Paddle](paddle.md) |
+| Sell subscriptions in a Roku channel with Roku Pay | [Connect Roku](roku.md) |
+| Accept Samsung Galaxy Store purchases | [Connect the Galaxy Store](galaxy-store.md) |
 | Bring the products I already set up in App Store Connect, Google Play or Stripe into the catalog | [Import products](import-products.md) |
 | Sell my app's subscriptions on the web with a hosted Stripe checkout | [Sell on the web with Stripe](web-billing.md) |
 | Share a checkout link for an offering | [Purchase links](purchase-links.md) |

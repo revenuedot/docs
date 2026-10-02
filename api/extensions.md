@@ -11,7 +11,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (238)
+## Operations on this page (241)
 
 - **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects), [Update account settings](#update-account-settings), [Email a password reset link](#email-a-password-reset-link), [Check a password reset link](#check-a-password-reset-link), [Set a new password from a reset link](#set-a-new-password-from-a-reset-link), [Confirm an email address](#confirm-an-email-address), [Send a new confirmation email](#send-a-new-confirmation-email), [Look up an invite](#look-up-an-invite), [Accept an invite](#accept-an-invite)
 - **Members and invites**: [List open invites](#list-open-invites), [Invite someone by email](#invite-someone-by-email), [Resend an invite](#resend-an-invite), [Revoke an invite](#revoke-an-invite), [Change a member's role](#change-a-members-role), [Remove a member, or leave the project](#remove-a-member-or-leave-the-project)
@@ -20,7 +20,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Blocked customers**: [List blocked app user ids](#list-blocked-app-user-ids), [Block an app user id](#block-an-app-user-id), [Is this app user id blocked?](#is-this-app-user-id-blocked), [Unblock an app user id](#unblock-an-app-user-id)
 - **Verified Metrics**: [Verified Metrics page settings](#verified-metrics-page-settings), [Save Verified Metrics page settings](#save-verified-metrics-page-settings), [Whether a slug is free](#whether-a-slug-is-free), [Publish the page](#publish-the-page), [Unpublish the page](#unpublish-the-page), [The public Verified Metrics page](#the-public-verified-metrics-page), [The page's numbers as JSON](#the-pages-numbers-as-json), [The page's project icon](#the-pages-project-icon), [The page's 1200×630 link preview](#the-pages-1200630-link-preview)
 - **Auth**: [Auth on or off](#auth-on-or-off), [Turn Auth or anonymous sign-in on or off](#turn-auth-or-anonymous-sign-in-on-or-off), [List identity providers](#list-identity-providers), [Add a Firebase or OpenID Connect provider](#add-a-firebase-or-openid-connect-provider), [Get an identity provider](#get-an-identity-provider), [Update or turn off an identity provider](#update-or-turn-off-an-identity-provider), [Delete an identity provider](#delete-an-identity-provider), [Check an ID token without signing in](#check-an-id-token-without-signing-in), [List signed-in identities](#list-signed-in-identities), [Read a signed-in user's balances and entitlements by identity](#read-a-signed-in-users-balances-and-entitlements-by-identity), [Unlink an identity and sign it out](#unlink-an-identity-and-sign-it-out)
-- **Store setup**: [Store setup state of an app](#store-setup-state-of-an-app), [Check store credentials with Apple, Google, Amazon or Stripe](#check-store-credentials-with-apple-google-amazon-or-stripe), [Extend every active App Store subscriber of a product](#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](#status-of-a-mass-extension), [Setup health](#setup-health)
+- **Store setup**: [Store setup state of an app](#store-setup-state-of-an-app), [Check store credentials with the store](#check-store-credentials-with-the-store), [Paddle: create the notification destination (Apply in Paddle)](#paddle-create-the-notification-destination-apply-in-paddle), [Extend every active App Store subscriber of a product](#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](#status-of-a-mass-extension), [Setup health](#setup-health)
 - **API keys**: [List secret keys](#list-secret-keys), [Create a secret key](#create-a-secret-key), [Delete a secret key](#delete-a-secret-key)
 - **Webhook deliveries**: [Send a TEST event to one webhook](#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](#whether-each-webhook-is-enabled), [Delivery log of a webhook](#delivery-log-of-a-webhook), [One delivery: what was sent and every attempt](#one-delivery-what-was-sent-and-every-attempt), [Retry a delivery now](#retry-a-delivery-now)
 - **Integrations**: [What each integration needs](#what-each-integration-needs), [List integrations](#list-integrations), [Connect an integration](#connect-an-integration), [Get an integration](#get-an-integration), [Update, enable or disable an integration](#update-enable-or-disable-an-integration), [Disconnect an integration](#disconnect-an-integration), [Send a TEST event to one integration](#send-a-test-event-to-one-integration), [Delivery log of an integration](#delivery-log-of-an-integration), [One delivery with every attempt](#one-delivery-with-every-attempt), [Retry a delivery now](#retry-a-delivery-now), [Queue failed or skipped deliveries again](#queue-failed-or-skipped-deliveries-again)
@@ -2302,7 +2302,7 @@ Notification URLs, credential checks, setup health and App Store mass extensions
 
 `GET /v2/projects/{project_id}/apps/{app_id}/store_settings` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read`
 
-The notification URL to paste into App Store Connect, Pub/Sub, the Amazon Appstore Console or Stripe, the notification status, the forwarding URL and which credentials are set. Never a secret.
+The notification URL to paste into App Store Connect, Pub/Sub, the Amazon Appstore Console, Stripe, Paddle, the Roku developer dashboard or Samsung Seller Portal, the notification status, the forwarding URL and which credentials are set. Never a secret.
 
 **Path parameters**
 
@@ -2324,11 +2324,11 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/store_settings" -H
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
-### Check store credentials with Apple, Google, Amazon or Stripe
+### Check store credentials with the store
 
 `POST /v2/projects/{project_id}/apps/{app_id}/actions/verify_credentials` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read`
 
-Makes one harmless call to the App Store Server API, the Play Developer API, Amazon's Receipt Verification Service (a made-up receipt: 496 means a wrong shared key) or Stripe (lists one subscription and one Checkout Session with the key). Values in the body are checked before you save them; missing values fall back to the saved ones. A Stripe app connected with Stripe Connect checks its connection only: Stripe values in the body answer 409.
+Makes one harmless call to the App Store Server API, the Play Developer API, Amazon's Receipt Verification Service (a made-up receipt: 496 means a wrong shared key), Stripe (lists one subscription and one Checkout Session with the key), Paddle (event types, then one product and one subscription; Paddle answers 403 for a wrong, revoked or other-environment key), Roku Pay (a made-up transaction: UNAUTHORIZED means a wrong key) or Samsung (an access token from the service account, then a made-up subscription). Values in the body are checked before you save them; missing values fall back to the saved ones. A Stripe app connected with Stripe Connect checks its connection only: Stripe values in the body answer 409.
 
 **Path parameters**
 
@@ -2360,6 +2360,15 @@ Makes one harmless call to the App Store Server API, the Play Developer API, Ama
 | `stripe` | object | no |  |
 | `stripe.stripe_secret_key` | string or null | no |  |
 | `stripe.stripe_account_id` | string or null | no |  |
+| `paddle` | object | no |  |
+| `paddle.paddle_api_key` | string or null | no |  |
+| `paddle.paddle_is_sandbox` | boolean or null | no |  |
+| `roku` | object | no |  |
+| `roku.roku_api_key` | string or null | no |  |
+| `galaxy` | object | no |  |
+| `galaxy.package_name` | string or null | no |  |
+| `galaxy.galaxy_service_account_id` | string or null | no |  |
+| `galaxy.galaxy_service_account_private_key` | string or null | no |  |
 
 **Example request**
 
@@ -2388,6 +2397,53 @@ Example 200 response:
   "valid": false,
   "message": "No in-app purchase key yet. Add the .p8 file, the key ID and the issuer ID.",
   "checked_at": 1790801342700
+}
+```
+
+### Paddle: create the notification destination (Apply in Paddle)
+
+`POST /v2/projects/{project_id}/apps/{app_id}/actions/apply_notification_settings` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read_write`
+
+Creates a notification destination in the app's Paddle account (or updates the one it created before) that sends the subscription, transaction and adjustment events RevenueDot reads to this app's notification URL, and saves the destination's secret key, sealed. The API key needs write access to Notification settings. Only for Paddle apps (422 otherwise). See [Paddle setup](../docs/guides/paddle.md).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes | App id (app...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/actions/apply_notification_settings" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The destination.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "notification_settings",
+  "app_id": "app4f1x9k2m",
+  "store": "paddle",
+  "notification_setting_id": "ntfset_01h8d3a0kq7m2x9c4v6b1n5p3r",
+  "destination": "https://api.revenuedot.app/v1/notifications/paddle/app4f1x9k2m",
+  "subscribed_events": [
+    "subscription.created",
+    "subscription.updated",
+    "transaction.completed",
+    "adjustment.created"
+  ],
+  "secret_saved": true
 }
 ```
 
@@ -10126,7 +10182,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `id` | string | yes | App id (app...). |
 | `name` | string | yes |  |
 | `created_at` | integer | yes | Creation time. Epoch milliseconds. |
-| `type` | `amazon`, `app_store`, `mac_app_store`, `play_store`, `stripe`, `rc_billing`, `roku`, `paddle`, `test_store` | yes |  |
+| `type` | `amazon`, `app_store`, `mac_app_store`, `play_store`, `stripe`, `rc_billing`, `roku`, `paddle`, `test_store`, `galaxy` | yes |  |
 | `project_id` | string | yes |  |
 | `custom_url_scheme` | string | no | Derived from the public key. |
 | `app_store` | object | no |  |
@@ -10153,8 +10209,10 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `roku.roku_channel_id` | string or null | no |  |
 | `roku.roku_channel_name` | string or null | no |  |
 | `paddle` | object | no |  |
-| `paddle.paddle_is_sandbox` | boolean | no |  |
-| `paddle.paddle_api_key` | null | no |  |
+| `paddle.paddle_is_sandbox` | boolean | no | True for a sandbox key (pdl_sdbx_apikey_…), or for an older key marked sandbox. |
+| `paddle.paddle_api_key` | null | no | Always null: the key is never returned (RevenueCat's field). |
+| `galaxy` | object | no | RevenueDot extension. |
+| `galaxy.package_name` | string | no |  |
 
 ### Collaborator
 
@@ -10182,6 +10240,8 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `key_id` | string | no |  |
 | `client_email` | string or null | no |  |
 | `mode` | `live`, `test` | no | Stripe: the key's mode. |
+| `environment` | `live`, `sandbox` | no | Paddle: the environment that accepted the key. |
+| `service_account_id` | string | no | Galaxy Store: the service account checked. |
 
 ### Customer
 
@@ -10614,7 +10674,7 @@ One screen of a funnel. Every step has `id` (1-40 lower-case letters, digits, `-
 | `app_id` | string | yes |  |
 | `type` | string | yes |  |
 | `api_origin` | string | yes | This server as the outside world reaches it: the SDK's proxy URL. |
-| `notification_url` | string or null | no | The store notification URL for this app (App Store, Google Play, Amazon or Stripe). |
+| `notification_url` | string or null | no | The store notification URL for this app (App Store, Google Play, Amazon, Stripe, Paddle, Roku or the Galaxy Store). |
 | `notification_forward_url` | string or null | no | Where notifications are copied during a dual run. |
 | `last_notification_at` | integer or null | no | Last notification processed for a known purchase. Epoch milliseconds, or null. |
 | `last_notification_error` | string or null | no |  |
@@ -10651,6 +10711,19 @@ One screen of a funnel. Every step has `id` (1-40 lower-case letters, digits, `-
 | `credentials.stripe_secret_key.last4` | string or null | no | Last four characters of the key; the key itself is never returned. |
 | `credentials.stripe_webhook_secret` | object | no |  |
 | `credentials.stripe_webhook_secret.configured` | boolean | no |  |
+| `credentials.paddle_api_key` | object | no |  |
+| `credentials.paddle_api_key.configured` | boolean | no |  |
+| `credentials.paddle_api_key.environment` | `live`, `sandbox`, null | no |  |
+| `credentials.paddle_api_key.last4` | string or null | no |  |
+| `credentials.paddle_webhook_secret` | object | no |  |
+| `credentials.paddle_webhook_secret.configured` | boolean | no |  |
+| `credentials.roku_api_key` | object | no |  |
+| `credentials.roku_api_key.configured` | boolean | no |  |
+| `credentials.galaxy_service_account` | object | no |  |
+| `credentials.galaxy_service_account.configured` | boolean | no |  |
+| `credentials.galaxy_service_account.service_account_id` | string or null | no |  |
+| `credentials.galaxy_iap_public_key` | object | no |  |
+| `credentials.galaxy_iap_public_key.configured` | boolean | no |  |
 | `sns_topic_arn` | string or null | no | Amazon: the only SNS topic notifications are accepted from, when set. |
 | `stripe` | object or null | no | Stripe apps only. |
 | `stripe.stripe_account_id` | string or null | no |  |
@@ -10658,6 +10731,23 @@ One screen of a funnel. Every step has `id` (1-40 lower-case letters, digits, `-
 | `stripe.app_user_id_metadata_key` | string | no |  |
 | `stripe.register_on` | `invoice_paid`, `invoice_created` | no |  |
 | `stripe.configured` | boolean | no |  |
+| `paddle` | object or null | no | Paddle apps only. |
+| `paddle.environment` | `live`, `sandbox` | no |  |
+| `paddle.paddle_is_sandbox` | boolean | no |  |
+| `paddle.app_user_id_source` | `custom_data`, `anonymous` | no |  |
+| `paddle.app_user_id_custom_data_key` | string | no |  |
+| `paddle.notification_setting_id` | string or null | no | The destination Apply in Paddle created. |
+| `paddle.events` | array of string | no | The events the destination should send. |
+| `paddle.configured` | boolean | no |  |
+| `roku` | object or null | no | Roku apps only. |
+| `roku.roku_channel_id` | string or null | no |  |
+| `roku.roku_channel_name` | string or null | no |  |
+| `roku.configured` | boolean | no |  |
+| `galaxy` | object or null | no | Galaxy Store apps only. |
+| `galaxy.package_name` | string or null | no |  |
+| `galaxy.service_account_id` | string or null | no |  |
+| `galaxy.configured` | boolean | no |  |
+| `galaxy.iap_public_key_configured` | boolean | no |  |
 
 ### Subscription
 

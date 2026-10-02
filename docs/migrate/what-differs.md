@@ -44,7 +44,7 @@ Sources: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenue
 - The full list of SDK calls and what each answers is in [`prd/sdk-api/PRD.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/sdk-api/PRD.md#endpoint-inventory).
 
 **Stores and receipts**
-- RevenueDot accepts purchases for App Store, Mac App Store, Google Play, Amazon Appstore, Stripe and Test Store apps ([Amazon guide](../guides/amazon-appstore.md), [Stripe guide](../guides/stripe.md)). Receipts for Web Billing (`rcb_`), Paddle and Roku apps answer HTTP 400 with code 7662.
+- RevenueDot accepts purchases for App Store, Mac App Store, Google Play, Amazon Appstore, Stripe, Paddle, Roku, Samsung Galaxy Store and Test Store apps ([Amazon](../guides/amazon-appstore.md), [Stripe](../guides/stripe.md), [Paddle](../guides/paddle.md), [Roku](../guides/roku.md), [Galaxy Store](../guides/galaxy-store.md)). Receipts for Web Billing (`rcb_`) apps answer HTTP 400 with code 7662. Paddle, Roku and Galaxy Store purchases are tested against copies of each store's API, not a real store account yet.
 - Like RevenueCat, RevenueDot does not detect refunds of Amazon subscriptions. Stripe Connect OAuth ("Connect with Stripe") is not available; save a restricted key instead. RevenueDot sells on the web through your own Stripe account ([web billing](../guides/web-billing.md)), not through RevenueCat Billing.
 - purchases-js therefore works only with Test Store (`test_`) keys.
 - StoreKit 1 receipts need the App Store in-app purchase key on the app. Without it RevenueDot answers code 7234 as HTTP 500, so the SDK retries after you add the key. For development, `allow_unsigned_receipts` skips this.
@@ -61,7 +61,7 @@ Sources: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenue
 - Restores follow the project's `transfer_behavior`: `transfer` (default), `transfer_if_no_active`, `keep` or `share`. With `keep`, a restore of a receipt another user owns fails with code 7102. See [Customers and app user IDs](../concepts/customers-and-app-user-ids.md#who-owns-a-restored-purchase).
 
 ## API
-- **Keys:** the same prefixes as RevenueCat. Public app keys are `appl_`, `mac_`, `goog_`, `test_`, `amzn_`, `strp_`, `rcb_`, `pdl_` and `roku_`; secret keys are `sk_` and belong to one project. See [Projects, apps and API keys](../concepts/projects-and-apps.md).
+- **Keys:** the same prefixes as RevenueCat. Public app keys are `appl_`, `mac_`, `goog_`, `test_`, `amzn_`, `strp_`, `rcb_`, `pdl_`, `roku_` and `galx_`; secret keys are `sk_` and belong to one project. See [Projects, apps and API keys](../concepts/projects-and-apps.md).
 - **REST API v1:** all 15 endpoints, with RevenueCat's shapes. See [REST API v1](../../api/rest-v1.md).
 - **REST API v2:** every one of RevenueCat's 128 v2 operations has a route, with RevenueCat's shapes, pagination and errors. 126 do the real work, including the 10 discount operations, which run RevenueDot's [web discounts](../guides/web-discounts.md) as Stripe coupons. The 2 invoice operations exist only for RevenueCat Billing and answer on purpose: the list is empty and a file is 404. `restore_purchase_by_order_id` also accepts App Store order ids; `create_in_store` also creates Google Play subscriptions. See [REST API v2](../../api/rest-v2.md).
 - **Extensions that RevenueCat's API does not have:** the import endpoints, `notification_forward_url` on apps, `POST /v2/projects/{project_id}/test_purchases`, store settings and credential checks, mass subscription extension, webhook delivery logs with retry, web billing (web config, web products, purchase links, funnels, domains), and ads (the Ads Overview, reward rules and the rewards ledger, AdMob). See [REST API extensions](../../api/extensions.md).
@@ -108,7 +108,7 @@ Built since the first release: [paywalls](../guides/paywalls.md) with a visual e
 - Web billing: "Connect with Stripe" (OAuth), Paddle as a web provider, an embedded checkout inside purchases-js, funnel A/B tests and automatic TLS for custom domains on Cloud.
 - Failed-payment recovery.
 - RevenueDot AI tools that write to App Store Connect and Google Play.
-- Paddle, Roku and Galaxy stores; ad reward callbacks from AppLovin MAX, ironSource and Unity Ads; benchmarks.
+- Paddle checkout inside purchases-js (Paddle purchases are posted from your backend instead); ad reward callbacks from AppLovin MAX, ironSource and Unity Ads; benchmarks.
 
 Sources: [`prd/SCOPE.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/SCOPE.md) and [`docs/STATUS.md`](https://github.com/revenuedot/revenuedot/blob/main/docs/STATUS.md).
 
