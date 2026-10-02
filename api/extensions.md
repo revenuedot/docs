@@ -2707,8 +2707,8 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID/deliveries
 
 `GET /v2/projects/{project_id}/webhooks/{webhook_id}/deliveries/{delivery_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
 
-The request as sent (method, URL, headers and the exact body; the Authorization value is masked) and every attempt, newest last (at most 10): when it was sent, the HTTP status, the latency, the error, the first 4,096 characters of the answer with the webhook's secrets and bearer tokens replaced, and the signature header of that attempt. `curl` repeats the request with a placeholder for Authorization.
-Bodies can hold customer data, so this needs `read_write` (Admins and Developers). Attempt details are kept for `attempt_log_kept_days` (30) days; the delivery itself stays.
+The request as sent (method, URL, headers and the exact body; the Authorization value is masked) and every attempt, newest last (at most 10): when it was sent, the HTTP status, the latency, the error, the first 4,096 characters of the answer, and the signature header of that attempt. Answers and errors have the webhook's Authorization value (also the credential alone) and signing secret replaced, and anything that looks like a credential: bearer and basic credentials, passwords in URLs, token-like JSON fields and query parameters. `curl` repeats the request with a placeholder for Authorization.
+Bodies can hold customer data, so this needs `read_write` (Admins and Developers). Attempt details are kept for `attempt_log_kept_days` (30) days after each attempt; the delivery itself stays.
 
 **Path parameters**
 
@@ -3137,7 +3137,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRAT
 
 `GET /v2/projects/{project_id}/integrations/partners/{integration_id}/deliveries/{delivery_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
 
-The delivery with every attempt, newest last (at most 10): when, HTTP status, latency, error, the requests' methods and URLs and the first 4,096 characters of the answer, credentials removed. `curl` repeats a single-request delivery with a placeholder for the partner's credentials (null when the delivery made several requests). Needs `read_write` (Admins and Developers): bodies can hold customer data, and the log answers Viewers without `request_body` and `response_body`. Attempt details are kept 30 days.
+The delivery with every attempt, newest last (at most 10): when, HTTP status, latency, error, the requests' methods and URLs and the first 4,096 characters of the answer. Credentials are removed: the integration's own secrets, and anything that looks like one (bearer and basic credentials, passwords in URLs, token-like JSON fields and query parameters). `curl` repeats a single-request delivery with the right `Content-Type` and a placeholder for the partner's credentials; it is null when the delivery made several requests, when the URL is itself the secret (Slack, Discord) or when the body was longer than the log keeps. Needs `read_write` (Admins and Developers): bodies can hold customer data, and the log answers Viewers without `request_body` and `response_body`. Attempt details are kept for 30 days after each attempt.
 
 **Path parameters**
 

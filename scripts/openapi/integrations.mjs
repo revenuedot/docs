@@ -121,10 +121,10 @@ export const integrationPaths = {
   [`${P}/partners/{integration_id}/deliveries/{delivery_id}`]: {
     get: op2({ id: "getIntegrationDelivery", tag: "Integrations", summary: "One delivery with every attempt", source: RI, scopes: WRITE,
       parameters: [project, id, { name: "delivery_id", in: "path", required: true, schema: str() }],
-      description: "The delivery with every attempt, newest last (at most 10): when, HTTP status, latency, error, the requests' methods and URLs and the first 4,096 characters of the answer, credentials removed. `curl` repeats a single-request delivery with a placeholder for the partner's credentials (null when the delivery made several requests). Needs `read_write` (Admins and Developers): bodies can hold customer data, and the log answers Viewers without `request_body` and `response_body`. Attempt details are kept 30 days.",
+      description: "The delivery with every attempt, newest last (at most 10): when, HTTP status, latency, error, the requests' methods and URLs and the first 4,096 characters of the answer. Credentials are removed: the integration's own secrets, and anything that looks like one (bearer and basic credentials, passwords in URLs, token-like JSON fields and query parameters). `curl` repeats a single-request delivery with the right `Content-Type` and a placeholder for the partner's credentials; it is null when the delivery made several requests, when the URL is itself the secret (Slack, Discord) or when the body was longer than the log keeps. Needs `read_write` (Admins and Developers): bodies can hold customer data, and the log answers Viewers without `request_body` and `response_body`. Attempt details are kept for 30 days after each attempt.",
       responses: { 200: ok("The delivery.", obj({
         ...delivery.properties,
-        curl: nstr("A cURL command, credentials left as placeholders."),
+        curl: nstr("A cURL command, credentials left as placeholders; null when it cannot repeat the request."),
         attempt_log: arr(obj({ attempted_at: ms("When it was sent."), response_status: nint(), response_ms: nint(), error: nstr(), response_body: nstr("First 4,096 characters, credentials removed."), request: nstr("Method and URL of each request.") }, ["attempted_at", "response_status", "response_ms", "error", "response_body"])),
         attempt_log_kept_days: int("How long attempt details are kept."),
       }, ["object", "id", "status", "attempts", "attempt_log", "attempt_log_kept_days"])), ...v2Errors(401, 403, 404) } }),
