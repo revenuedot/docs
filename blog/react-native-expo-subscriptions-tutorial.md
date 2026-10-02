@@ -72,7 +72,7 @@ RevenueCat's guide says the SDK detects Expo Go by itself and swaps native calls
 
 With RevenueDot, Expo Go and the web run in a browser mode that accepts only a Test Store key (`test_...`). That is useful for building a paywall before you have any store account. Real purchases need a development build.
 
-The RevenueDot [fork](https://revenuedot.app/docs/sdks/react-native) installs through an npm alias, `"react-native-purchases": "npm:@revenuedot/react-native-purchases@<version>"`. It is not published yet, and it needs native packages that are also unpublished, so use the stock SDK in proxy mode today.
+The RevenueDot [fork](https://revenuedot.app/docs/sdks/react-native) installs through an npm alias, `"react-native-purchases": "npm:@revenuedot/react-native-purchases@10.10.2"`. Version 10.10.2 is on npm, and the stock SDK in proxy mode works too.
 
 ## Step 4: Configure the SDK with the proxy URL
 

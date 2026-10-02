@@ -10,6 +10,9 @@ author: RevenueDot team
 Posts from the team building RevenueDot, an open-source (AGPL-3.0), self-hostable backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Newest first.
 
 ## 2026-10-02
+- [react-native-iap vs expo-iap vs react-native-purchases: which to use](react-native-iap-vs-expo-iap-vs-react-native-purchases.md): what each React Native package does, which ones run in Expo Go, the server each one needs, code side by side, cost, and when each one fits.
+- [How to check free trial eligibility on iOS and Android](free-trial-eligibility-ios-android.md): Apple's one-trial-per-group rule, how Google Play filters offers, StoreKit 2 and RevenueCat SDK code, and what the paywall button should say.
+- [How to sell a lifetime purchase next to a subscription](lifetime-purchase-and-subscriptions.md): a non-consumable and a one-time product on one entitlement, what to do when a subscriber buys lifetime, refunds, Family Sharing and restore.
 - [How to share one subscription across iOS, Android and the web](share-subscription-across-ios-android-web.md): one account ID, one entitlement, what Apple guideline 3.1.3(b) and Google Play's payments policy allow, how to avoid double billing, and where the manage button goes.
 - [Restore purchases on iOS and Android: what App Review wants](restore-purchases-ios-android.md): Apple's restore rule, when to call AppStore.sync, queryPurchasesAsync and the three-day rule, restorePurchases vs syncPurchases, and who owns a restored purchase.
 - [Flutter in_app_purchase vs purchases_flutter: which to use](flutter-in-app-purchase-vs-purchases-flutter.md): what each package does, the server in_app_purchase needs, code side by side, cost, and when each one fits.
