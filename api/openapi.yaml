@@ -938,7 +938,7 @@ paths:
       tags:
         - Attributes
       summary: Set customer attributes
-      description: "Saves attributes such as `$email`, `$displayName` or your own keys. A null value deletes the attribute. An invalid `$email` is refused with 7263; the other attributes are saved. `collectDeviceIdentifiers()` sends `$ip` and `$deviceVersion` as `\"true\"`: RevenueDot stores the request's IP address and the device and OS from the SDK's headers instead."
+      description: "Saves attributes such as `$email`, `$displayName` or your own keys. A null value deletes the attribute, except attribution attributes (`$mediaSource`, `$campaign`, `$adGroup`, `$ad`, `$keyword`, `$creative`, `$appleAds*`, `$claimType`, `$conversionType`): they are write-once, so a stored value is kept and a different value or a null is ignored. Correct them with the REST API v2. An invalid `$email` is refused with 7263; the other attributes are saved. `collectDeviceIdentifiers()` sends `$ip` and `$deviceVersion` as `\"true\"`: RevenueDot stores the request's IP address and the device and OS from the SDK's headers instead."
       security:
         - publicApiKey: []
         - secretApiKey: []
@@ -32503,9 +32503,9 @@ paths:
         - name: customer_id
           in: path
           required: true
+          description: Any of the customer's app user ids.
           schema:
             type: string
-            description: Any of the customer's app user ids.
       responses:
         "200":
           description: The row.
@@ -32618,6 +32618,7 @@ paths:
         - $ref: "#/components/parameters/ProjectId"
         - name: group_by
           in: query
+          description: Default `campaign`.
           schema:
             type: string
             enum:
@@ -32625,32 +32626,31 @@ paths:
               - campaign
               - ad_group
               - keyword
-            description: Default `campaign`.
         - name: media_source
           in: query
+          description: Only customers with this media source; `No attribution` for customers without one.
           schema:
             type: string
-            description: Only customers with this media source; `No attribution` for customers without one.
         - name: start_date
           in: query
+          description: "First cohort day (UTC). Default: 29 days before end_date."
           schema:
             type: string
             pattern: ^\d{4}-\d{2}-\d{2}$
-            description: "First cohort day (UTC). Default: 29 days before end_date."
         - name: end_date
           in: query
+          description: "Last cohort day (UTC). Default: today."
           schema:
             type: string
             pattern: ^\d{4}-\d{2}-\d{2}$
-            description: "Last cohort day (UTC). Default: today."
         - name: environment
           in: query
+          description: Default production.
           schema:
             type: string
             enum:
               - production
               - sandbox
-            description: Default production.
       responses:
         "200":
           description: The report.
@@ -32817,7 +32817,7 @@ paths:
       tags:
         - Benchmarks
       summary: The project's values against peers
-      description: RevenueDot Cloud only. The project's last 12 complete months against the percentiles of apps that share anonymized benchmarks, for one category, platform and country. A group is published only when 10 or more projects contribute; nothing about another project is returned. A project that does not share sees no peer numbers. See [Benchmarks](../docs/guides/benchmarks.md).
+      description: RevenueDot Cloud only. The project's last 12 complete months against the percentiles of apps that share anonymized benchmarks, for one category, platform and country. A group is published only when 10 or more projects of 10 or more different owner accounts contribute; nothing about another project is returned. A project that does not share sees no peer numbers. See [Benchmarks](../docs/guides/benchmarks.md).
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -32825,9 +32825,9 @@ paths:
         - $ref: "#/components/parameters/ProjectId"
         - name: category
           in: query
+          description: A category id or `all`; default the project's.
           schema:
             type: string
-            description: A category id or `all`; default the project's.
         - name: platform
           in: query
           schema:
@@ -32838,9 +32838,9 @@ paths:
               - android
         - name: country
           in: query
+          description: A two-letter country code; default all.
           schema:
             type: string
-            description: A two-letter country code; default all.
       responses:
         "200":
           description: Benchmarks.
@@ -33392,6 +33392,8 @@ paths:
         "404":
           $ref: "#/components/responses/V2Error404"
       x-source: routes/v2/assistant.ts
+      x-scopes:
+        - charts_metrics:charts:read
       x-revenuedot-extension: true
   /v2/projects/{project_id}/ai/insights/refresh:
     post:
@@ -33544,6 +33546,8 @@ paths:
         "503":
           $ref: "#/components/responses/V2Error503"
       x-source: routes/v2/assistant.ts
+      x-scopes:
+        - charts_metrics:charts:read
       x-revenuedot-extension: true
   /auth/insights/unsubscribe:
     get:
@@ -33556,9 +33560,10 @@ paths:
       parameters:
         - name: token
           in: query
+          required: true
+          description: The signed token from the digest email.
           schema:
             type: string
-            description: The signed token from the digest email.
       responses:
         "200":
           description: The page.
@@ -33584,9 +33589,10 @@ paths:
       parameters:
         - name: token
           in: query
+          required: true
+          description: The signed token from the digest email.
           schema:
             type: string
-            description: The signed token from the digest email.
       responses:
         "200":
           description: Done.

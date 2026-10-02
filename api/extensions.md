@@ -9924,7 +9924,7 @@ The first-class attribution row built from the customer's reserved attributes (`
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
-| `customer_id` | string | yes |  |
+| `customer_id` | string | yes | Any of the customer's app user ids. |
 
 **Example request**
 
@@ -9955,11 +9955,11 @@ New customers of a date range grouped by one attribution dimension, with trial s
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `group_by` | `media_source`, `campaign`, `ad_group`, `keyword` | no |  |
-| `media_source` | string | no |  |
-| `start_date` | string | no |  |
-| `end_date` | string | no |  |
-| `environment` | `production`, `sandbox` | no |  |
+| `group_by` | `media_source`, `campaign`, `ad_group`, `keyword` | no | Default `campaign`. |
+| `media_source` | string | no | Only customers with this media source; `No attribution` for customers without one. |
+| `start_date` | string | no | First cohort day (UTC). Default: 29 days before end_date. |
+| `end_date` | string | no | Last cohort day (UTC). Default: today. |
+| `environment` | `production`, `sandbox` | no | Default production. |
 
 **Example request**
 
@@ -9983,7 +9983,7 @@ RevenueDot Cloud only: the project's metrics against anonymized percentiles of a
 
 `GET /v2/projects/{project_id}/benchmarks` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`
 
-RevenueDot Cloud only. The project's last 12 complete months against the percentiles of apps that share anonymized benchmarks, for one category, platform and country. A group is published only when 10 or more projects contribute; nothing about another project is returned. A project that does not share sees no peer numbers. See [Benchmarks](../docs/guides/benchmarks.md).
+RevenueDot Cloud only. The project's last 12 complete months against the percentiles of apps that share anonymized benchmarks, for one category, platform and country. A group is published only when 10 or more projects of 10 or more different owner accounts contribute; nothing about another project is returned. A project that does not share sees no peer numbers. See [Benchmarks](../docs/guides/benchmarks.md).
 
 **Path parameters**
 
@@ -9995,9 +9995,9 @@ RevenueDot Cloud only. The project's last 12 complete months against the percent
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `category` | string | no |  |
+| `category` | string | no | A category id or `all`; default the project's. |
 | `platform` | `all`, `ios`, `android` | no |  |
-| `country` | string | no |  |
+| `country` | string | no | A two-letter country code; default all. |
 
 **Example request**
 
@@ -10075,7 +10075,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/benchmarks/settings" -H
 
 ### This week's growth insights
 
-`GET /v2/projects/{project_id}/ai/insights` · Auth: secret key or dashboard session · RevenueDot extension
+`GET /v2/projects/{project_id}/ai/insights` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`
 
 The cached recommendations RevenueDot AI wrote for this week (or the last ready week), with the numbers they rest on. Reading never calls the model. See [Growth insights](../docs/guides/growth-insights.md).
 
@@ -10100,7 +10100,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/insights" -H "Authorization:
 
 ### Write this week's insights now
 
-`POST /v2/projects/{project_id}/ai/insights/refresh` · Auth: dashboard session · RevenueDot extension
+`POST /v2/projects/{project_id}/ai/insights/refresh` · Auth: dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`
 
 Admins and developers. RevenueDot AI reads the project's numbers with its read tools and writes 3 to 5 recommendations; the server keeps only those that cite the data pack. At most once an hour per project (429), and it counts against the person's RevenueDot AI allowance.
 
@@ -10136,7 +10136,7 @@ Shows a button; a GET changes nothing (mail scanners follow links).
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `token` | string | no |  |
+| `token` | string | yes | The signed token from the digest email. |
 
 **Example request**
 
@@ -10159,7 +10159,7 @@ Turns the digest off for the person the token was issued to, also as RFC 8058 on
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `token` | string | no |  |
+| `token` | string | yes | The signed token from the digest email. |
 
 **Example request**
 

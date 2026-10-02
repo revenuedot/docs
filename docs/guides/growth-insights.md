@@ -17,12 +17,12 @@ Each insight has:
 ## How they are written
 1. RevenueDot computes a data pack from your production data with the chart definitions: MRR and active subscriptions now against 28 days ago; revenue, new customers and new trials in the last 28 days against the 28 before; trial conversion, initial conversion and conversion to paying for cohorts old enough to have finished; churn; refund rate; the top campaigns by revenue (see [Attribution](attribution.md)); and, if your project shares them, your [Benchmarks](benchmarks.md).
 2. RevenueDot AI reads the pack and may look closer with its read tools (charts, the attribution report, benchmarks).
-3. The server keeps only recommendations that cite items of the pack, attaches the real numbers and links, and needs 3 to 5 of them; otherwise it asks the model once more.
+3. The server keeps only recommendations that cite items of the pack, attaches the real numbers and links, and needs 3 to 5 of them; otherwise it asks the model once more. Web addresses are removed from the insight text and from the number labels in the email, because campaign names can come from your app's users.
 
 Growth insights only read. The assistant gets no tool that changes anything, and RevenueDot refuses any change from it, whatever the project's AI setting.
 
 ## When they are written
-- **Weekly:** from Monday 06:00 UTC, for every project with production revenue in the last 90 days and RevenueDot AI not turned off. The week's insights stay until the next Monday.
+- **Weekly:** from Monday 06:00 UTC, for every project with production revenue in the last 90 days and RevenueDot AI not turned off. The week's insights stay until the next Monday. If the server's daily RevenueDot AI token allowance runs out, the remaining projects get their insights the next day instead of skipping the week. A project over its own daily allowance is skipped that week.
 - **On demand:** admins and developers can select **Write insights** or **Refresh** on the Overview, at most once an hour. It counts as one question against your daily RevenueDot AI allowance.
 
 Opening the Overview never calls the model: it shows the week's saved insights.
@@ -44,8 +44,8 @@ REVENUEDOT_INSIGHTS_DIGEST=on
 Benchmarks are a RevenueDot Cloud feature, so self-hosted insights do not mention peers.
 
 ## Use the API
-- `GET /v2/projects/{project_id}/ai/insights`: this week's insights (or the last ready week's) with their numbers.
-- `POST /v2/projects/{project_id}/ai/insights/refresh`: write them now (dashboard session; admins and developers).
+- `GET /v2/projects/{project_id}/ai/insights`: this week's insights (or the last ready week's) with their numbers (permission `charts_metrics:charts:read`).
+- `POST /v2/projects/{project_id}/ai/insights/refresh`: write them now (dashboard session; admins and developers; permission `charts_metrics:charts:read`).
 - `POST /auth/me` with `{"insights_emails": false}`: stop the digest for the signed-in user.
 
 See the [API reference](../../api/extensions.md#growth-insights).

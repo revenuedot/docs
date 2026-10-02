@@ -19,10 +19,10 @@ Sharing is off for every project until an admin turns it on. Only projects that 
 Your own numbers appear within a minute. Your project joins the peer groups at the next nightly run, at 02:00 UTC. The change is in the project's audit log as `benchmarks_settings_updated`.
 
 ## What is shared, and what is never shown
-- **Only percentiles of groups of 10 or more apps.** A group is one category, platform and country. If fewer than 10 sharing apps have enough data for a metric in a group, that group shows nothing. The 10th and 90th percentiles appear only from 20 apps.
+- **Only percentiles of groups of 10 or more apps from 10 or more different accounts.** A group is one category, platform and country. If fewer than 10 sharing apps of 10 different accounts have enough data for a metric in a group, that group shows nothing, so one account cannot fill a group with apps of its own around someone else's. The 10th and 90th percentiles appear only from 20 apps and 20 accounts.
 - **No app, customer or exact count.** RevenueDot never shows which apps are in a group, any app's value, a mean, a minimum or a maximum. The number of apps is rounded down to a multiple of 5 ("25+ apps").
 - **Your values stay yours.** Your own values are shown only to your project. Turning sharing off removes them from every group at once.
-- **Small apps do not count.** An app contributes to a metric only with enough data of its own (for example 100 new customers for conversion and LTV, 20 finished trials for trial conversion), so one tiny app cannot move a percentile.
+- **Small apps do not count.** An app contributes to a metric only with enough data of its own (100 new customers for initial conversion, conversion to paying and LTV per customer; 20 finished trials for trial conversion; 20 paying customers for LTV per paying customer; 50 subscription-months for churn; 50 transactions for refund rate; 20 purchases for each price), so one tiny app cannot move a percentile.
 - **Production only.** Sandbox and Test Store purchases are never included. The nightly job runs inside RevenueDot Cloud; nobody reads production data from a laptop to build it.
 
 ## The metrics
@@ -61,4 +61,4 @@ curl -X POST "https://api.revenuedot.app/v2/projects/$PROJECT/benchmarks/setting
 See the [API reference](../../api/extensions.md#benchmarks). RevenueDot AI's `get-benchmarks` tool reads the same numbers.
 
 ## Differences from RevenueCat
-RevenueCat's Benchmarks compare 7 metrics with apps in the same store and primary category over 12 months, and include every eligible app ([Benchmarks](https://www.revenuecat.com/docs/dashboard-and-metrics/benchmarks)). RevenueDot adds ARPU and prices, splits by platform and country, publishes the 10-app threshold, and includes only projects that opt in.
+RevenueCat's Benchmarks compare 7 metrics with apps in the same store and primary category over 12 months, and show a group when it has enough apps to stay anonymous, without publishing the minimum ([Benchmarks](https://www.revenuecat.com/docs/dashboard-and-metrics/benchmarks)). RevenueDot adds ARPU and prices, splits by platform and country, publishes the 10-app threshold, and counts only projects that opt in.

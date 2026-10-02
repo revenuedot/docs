@@ -16,11 +16,12 @@ You do not need anything on the server. RevenueDot reads the reserved attributes
 | Apple Search Ads | With `Purchases.shared.attribution.enableAdServicesAttributionTokenCollection()`, the iOS SDK posts an AdServices token. RevenueDot asks Apple's attribution API for the campaign, ad group, keyword and ad ids, the claim type and the country |
 | AppsFlyer, Adjust, Branch, Kochava, Singular, Tenjin, Airbridge | The partner's device id (`$appsflyerId`, `$adjustId` …) the SDK helpers set, kept with the record so you can match it in the partner's dashboard |
 | Your backend | `POST /v2/projects/{project_id}/customers/{customer_id}/attributes` with a secret key |
+| Import from RevenueCat | Attribution attributes imported with `revenuedot import` (`POST /v2/projects/{project_id}/import/customers`) fill the record |
 
-The record follows the attributes: change or clear an attribute and the record changes with it. Attribution from Apple's AdServices token is written once, so a later install on the same account does not overwrite it.
+Attribution attributes (`$mediaSource`, `$campaign`, `$adGroup`, `$ad`, `$keyword`, `$creative`, `$appleAds*`, `$claimType`, `$conversionType`) are write-once from the SDK, as in RevenueCat. Once a value is stored, a different value or a clear sent through `POST /v1/subscribers/{app_user_id}/attributes` or a receipt's `attributes` is ignored, so a reinstall or a partner resending its conversion data never replaces the original install's attribution. Apple's AdServices attribution is written once too. Partner device ids follow the newest value. To correct or clear attribution, use `POST /v2/projects/{project_id}/customers/{customer_id}/attributes` with a secret key; the record follows.
 
 ### Name your Apple Search Ads campaigns
-Apple's attribution API returns ids, not names. To see campaign and ad group names, connect an Apple Search Ads API user under **Integrations > Apple Search Ads** and load the names (see [Apple Search Ads](integrations.md#apple-search-ads)). Every customer attributed to those campaigns then shows the name, in charts, the report and filters, and keeps the id next to it. Keywords show Apple's keyword id unless your app sets `$keyword` itself.
+Apple's attribution API returns ids, not names. To see campaign and ad group names, connect an Apple Search Ads API user under **Integrations > Apple Search Ads** and load the names (see [Apple Search Ads](integrations.md#apple-search-ads)). Every customer attributed to those campaigns then shows the name, in charts, the report and filters, and keeps the id next to it. Keywords show Apple's keyword id unless `$keyword` was set before the AdServices lookup stored the id, or your backend sets it through the REST API v2.
 
 ## Segment any chart by campaign
 On **Analytics > Charts**, open **Segment** and pick one of the **Attribution** options: media source, campaign, ad group, keyword, ad or creative. **Filter** has the same six. They are customer dimensions, like country: a filter keeps the matching customers and everything they bought. Customers without attribution appear as **No attribution**. The API takes the same names, for example:
@@ -55,5 +56,5 @@ In **Customers > Filter** and in Targeting audiences, the conditions **Media sou
 
 ## Differences from RevenueCat
 - RevenueCat's charts segment by Apple Search Ads attribution source, campaign, ad group, keyword and claim type ([Charts](https://www.revenuecat.com/docs/dashboard-and-metrics/charts)). RevenueDot offers media source, campaign, ad group, keyword, ad and creative for every source, not only Apple Search Ads.
-- RevenueCat documents attribution attributes as write-once. In RevenueDot only the AdServices and iAd attribution is write-once; attributes set by the app follow the newest value, like other attributes.
+- Attribution attributes are write-once from the SDK, as RevenueCat documents ([Customer attributes](https://www.revenuecat.com/docs/customers/customer-attributes)). In RevenueDot your backend can still correct or clear them with the REST API v2.
 - Ad spend is typed in on the page; RevenueDot does not import spend from ad networks yet.

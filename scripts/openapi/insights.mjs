@@ -7,7 +7,7 @@ const P = "/v2/projects/{project_id}";
 const project = param("ProjectId");
 const E = (...c) => v2Errors(401, 403, ...c);
 const x = { extension: true, security: SECRET };
-const q = (name, schema, description) => ({ name, in: "query", schema: { ...schema, ...(description ? { description } : {}) } });
+const q = (name, schema, description, required = false) => ({ name, in: "query", ...(required ? { required: true } : {}), ...(description ? { description } : {}), schema });
 const nnum = (description) => ({ type: ["number", "null"], ...(description ? { description } : {}) });
 const date = (description) => str(description, { pattern: "^\\d{4}-\\d{2}-\\d{2}$" });
 
@@ -69,7 +69,7 @@ const html = (description) => ({ description, content: { "text/html": { schema: 
 export const insightsPaths = {
   [`${P}/customers/{customer_id}/attribution`]: {
     get: op({ ...x, id: "getCustomerAttribution", tag: "Attribution", summary: "Get a customer's attribution", source: "routes/v2/customers.ts", scopes: ["customer_information:customers:read"],
-      parameters: [project, { name: "customer_id", in: "path", required: true, schema: str("Any of the customer's app user ids.") }],
+      parameters: [project, { name: "customer_id", in: "path", required: true, description: "Any of the customer's app user ids.", schema: str() }],
       description: "The first-class attribution row built from the customer's reserved attributes (`$mediaSource`, `$campaign`, `$adGroup`, `$ad`, `$keyword`, `$creative`, `$appleAds*`, `$claimType`, `$conversionType`) and partner ids. Null when the customer has none.",
       responses: { 200: ok("The row.", obj({ object: en(["customer_attribution_result"]), attribution: { ...attribution, type: ["object", "null"] } })), ...E(404) } }),
   },
@@ -85,7 +85,7 @@ export const insightsPaths = {
   },
   [`${P}/benchmarks`]: {
     get: op({ ...x, id: "getBenchmarks", tag: "Benchmarks", summary: "The project's values against peers", source: "routes/v2/benchmarks.ts", scopes: ["charts_metrics:charts:read"],
-      description: "RevenueDot Cloud only. The project's last 12 complete months against the percentiles of apps that share anonymized benchmarks, for one category, platform and country. A group is published only when 10 or more projects contribute; nothing about another project is returned. A project that does not share sees no peer numbers. See [Benchmarks](../docs/guides/benchmarks.md).",
+      description: "RevenueDot Cloud only. The project's last 12 complete months against the percentiles of apps that share anonymized benchmarks, for one category, platform and country. A group is published only when 10 or more projects of 10 or more different owner accounts contribute; nothing about another project is returned. A project that does not share sees no peer numbers. See [Benchmarks](../docs/guides/benchmarks.md).",
       parameters: [project, q("category", str(), "A category id or `all`; default the project's."), q("platform", en(["all", "ios", "android"])), q("country", str(), "A two-letter country code; default all.")],
       responses: { 200: ok("Benchmarks.", benchmarks), ...E(404) } }),
   },
@@ -98,21 +98,21 @@ export const insightsPaths = {
       responses: { 200: ok("Saved.", settings), ...v2Errors(400, 401, 403, 404) } }),
   },
   [`${P}/ai/insights`]: {
-    get: op({ ...x, id: "getAiInsights", tag: "Growth insights", summary: "This week's growth insights", source: "routes/v2/assistant.ts", parameters: [project],
+    get: op({ ...x, id: "getAiInsights", tag: "Growth insights", summary: "This week's growth insights", source: "routes/v2/assistant.ts", scopes: ["charts_metrics:charts:read"], parameters: [project],
       description: "The cached recommendations RevenueDot AI wrote for this week (or the last ready week), with the numbers they rest on. Reading never calls the model. See [Growth insights](../docs/guides/growth-insights.md).",
       responses: { 200: ok("Insights.", insights), ...E(404) } }),
   },
   [`${P}/ai/insights/refresh`]: {
-    post: op({ extension: true, security: SESSION, id: "refreshAiInsights", tag: "Growth insights", summary: "Write this week's insights now", source: "routes/v2/assistant.ts", parameters: [project],
+    post: op({ extension: true, security: SESSION, id: "refreshAiInsights", tag: "Growth insights", summary: "Write this week's insights now", source: "routes/v2/assistant.ts", scopes: ["charts_metrics:charts:read"], parameters: [project],
       description: "Admins and developers. RevenueDot AI reads the project's numbers with its read tools and writes 3 to 5 recommendations; the server keeps only those that cite the data pack. At most once an hour per project (429), and it counts against the person's RevenueDot AI allowance.",
       responses: { 200: ok("The new insights.", insights), ...v2Errors(401, 403, 404, 409, 429, 503) } }),
   },
   "/auth/insights/unsubscribe": {
     get: op({ id: "insightsUnsubscribePage", tag: "Growth insights", summary: "The digest's opt-out page", security: NONE, source: "routes/insights-public.ts", extension: true,
-      description: "Shows a button; a GET changes nothing (mail scanners follow links).", parameters: [q("token", str(), "The signed token from the digest email.")],
+      description: "Shows a button; a GET changes nothing (mail scanners follow links).", parameters: [q("token", str(), "The signed token from the digest email.", true)],
       responses: { 200: html("The page."), 404: html("The link is not valid.") } }),
     post: op({ id: "insightsUnsubscribe", tag: "Growth insights", summary: "Turn the weekly digest off (one click)", security: NONE, source: "routes/insights-public.ts", extension: true,
-      description: "Turns the digest off for the person the token was issued to, also as RFC 8058 one-click unsubscribe from the `List-Unsubscribe` header.", parameters: [q("token", str(), "The signed token from the digest email.")],
+      description: "Turns the digest off for the person the token was issued to, also as RFC 8058 one-click unsubscribe from the `List-Unsubscribe` header.", parameters: [q("token", str(), "The signed token from the digest email.", true)],
       responses: { 200: html("Done."), 404: html("The link is not valid.") } }),
   },
 };
