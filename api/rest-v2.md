@@ -3050,6 +3050,7 @@ Sandbox purchases, granted access and Family Sharing are excluded; money is USD 
 | `limit_num_segments` | integer | no | Top N segments by the first measure; the rest become "Other". |
 | `aggregate` | string | no | `average`, `total` or both, comma separated: `values` is empty and `summary` holds only these. |
 | `currency` | `USD`, `EUR`, `GBP`, `AUD`, `CAD`, `JPY`, `BRL`, `KRW`, `CNY`, `MXN`, `SEK`, `PLN`, `NZD`, `CHF` | no |  |
+| `week_start` | string | no | RevenueDot extension: the first day of weekly buckets, 0 (Sunday) to 6 (Saturday) or a day's name. Default 1 (Monday). |
 | `include_annotations` | boolean | no |  |
 | `realtime` | boolean | no | Accepted for compatibility; every chart uses the real-time (v3) definitions. |
 | `environment` | `production`, `sandbox` | no | RevenueDot extension. `sandbox` shows only sandbox and Test Store purchases. Default `production`. |
