@@ -345,12 +345,12 @@ export const schemas = {
     current_offering: {
       ...obj({
         id: str(), lookup_key: str(), display_name: str(),
-        source: { ...en(["override", "experiment", "targeting", "default"]), description: "Why the customer gets it: their override, a running experiment, the first live targeting rule that matches, or the project's current offering." },
+        source: { ...en(["override", "experiment", "targeting", "default"]), description: "Why the customer gets it: their override, an experiment (one they are in, or a running one their next request would enroll them in), the first live targeting rule that matches, or the project's current offering." },
         rule_id: str("With `targeting`."), rule_name: nstr("With `targeting`."),
         experiment_id: str("With `experiment`."), experiment_name: nstr("With `experiment`."), variant: { ...en(["a", "b"]), description: "With `experiment`." },
       }, ["id", "lookup_key", "source"]),
       type: ["object", "null"],
-      description: "The current offering the SDK returns for this customer now, resolved with the platform and app version they last used. Reading it enrolls nobody in an experiment; it shows the variant their next request would get.",
+      description: "The current offering the SDK returns for this customer now, resolved with the device details of their last SDK request (platform, app and SDK version, SDK flavor, OS version, storefront). Locale conditions never match here because the locale is not stored. Reading it enrolls nobody in an experiment; it shows the variant their next request would get.",
     },
     blocked: bool("One of the customer's app user ids is blocked: no entitlements anywhere."),
     active_entitlements: arr({ type: "object" }), granted_entitlements: arr({ type: "object" }), subscriptions: arr({ type: "object" }), purchases: arr({ type: "object" }),
