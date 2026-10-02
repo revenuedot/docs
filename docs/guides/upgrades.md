@@ -21,7 +21,7 @@ curl -s http://localhost:8787/v1/health                                         
 - **Stores retry.** Apple and Google resend notifications that got no 2xx answer.
 - **Webhooks wait.** Pending deliveries stay in the database and go out after the restart.
 
-For no downtime at all, run the new version next to the old one against the same database only after reading the release notes, which list any breaking change and the steps it needs.
+For no downtime at all, run two or more replicas behind a load balancer and replace them one at a time: see [High availability](high-availability.md#upgrades-without-downtime). Read the release notes first; they list any breaking change and the steps it needs.
 
 ## If the new version does not start
 1. Read the log: `docker compose logs revenuedot --tail 100`. A failed migration names the statement.
@@ -35,5 +35,6 @@ For no downtime at all, run the new version next to the old one against the same
 
 ## Related
 - [Backups](backups.md)
+- [High availability](high-availability.md)
 - [Self-hosting](self-hosting.md)
 - [Going to production](going-to-production.md)

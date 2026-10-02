@@ -1,6 +1,6 @@
 ---
 title: Which guide do I need?
-description: Step-by-step guides for stores, web billing, webhooks, integrations and data exports, ads, refunds, retention, support, testing, your team, project settings, Auth, moving between self-host and Cloud, Cloud billing, Enterprise, and self-hosting.
+description: Step-by-step guides for stores, web billing, webhooks, integrations and data exports, ads, refunds, retention, support, testing, your team, project settings, Auth, moving between self-host and Cloud, Cloud billing, Enterprise and its SLA, self-hosting and high availability.
 ---
 
 # Which guide do I need?
@@ -29,6 +29,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Test purchases without any store account | [Test Store](test-store.md) |
 | Test with App Store sandbox, Xcode or Google Play testers | [Sandbox testing](sandbox-testing.md) |
 | Run RevenueDot on my own servers | [Self-hosting](self-hosting.md) |
+| Run several replicas behind a load balancer, on Kubernetes with Helm, or on AWS or Google Cloud with Terraform | [High availability](high-availability.md) |
 | Upgrade my server | [Upgrades](upgrades.md) |
 | Back up and restore | [Backups](backups.md) |
 | Move a project between my own server and RevenueDot Cloud, or download everything a project owns | [Move projects and export everything](move-projects.md) |
@@ -36,6 +37,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Check everything before real customers arrive | [Going to production](going-to-production.md) |
 | Invite teammates to a project and set their roles | [Invite your team](team.md) |
 | Group projects into an organization, turn on RevenueDot Enterprise, or build custom roles | [Enterprise](enterprise.md) |
+| Know the uptime and support response times RevenueDot Enterprise promises | [Service level agreement](sla.md) |
 | Sign my team in with Okta, Microsoft Entra ID, Google Workspace or any SAML or OpenID Connect provider | [Single sign-on](single-sign-on.md) |
 | Create, update and deactivate people from my identity provider and map its groups to roles | [SCIM](scim.md) |
 | Keep data in the US or the EU | [Data location](data-location.md) |
