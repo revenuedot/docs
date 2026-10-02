@@ -1,6 +1,6 @@
 ---
 title: Which guide do I need?
-description: Step-by-step guides for stores, web billing, webhooks, integrations and data exports, ads, refunds, retention, support, testing, your team, project settings, Auth, moving between self-host and Cloud, Cloud billing, and self-hosting.
+description: Step-by-step guides for stores, web billing, webhooks, integrations and data exports, ads, refunds, retention, support, testing, your team, project settings, Auth, moving between self-host and Cloud, Cloud billing, Enterprise, and self-hosting.
 ---
 
 # Which guide do I need?
@@ -34,6 +34,11 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Know what RevenueDot Cloud costs, upgrade, or change my card | [Cloud billing](cloud-billing.md) |
 | Check everything before real customers arrive | [Going to production](going-to-production.md) |
 | Invite teammates to a project and set their roles | [Invite your team](team.md) |
+| Group projects into an organization, turn on RevenueDot Enterprise, or build custom roles | [Enterprise](enterprise.md) |
+| Sign my team in with Okta, Microsoft Entra ID, Google Workspace or any SAML or OpenID Connect provider | [Single sign-on](single-sign-on.md) |
+| Create, update and deactivate people from my identity provider and map its groups to roles | [SCIM](scim.md) |
+| Keep data in the US or the EU | [Data location](data-location.md) |
+| Keep audit logs for a set time and give auditors signed exports | [Audit retention and exports](audit-retention-and-exports.md) |
 | Limit sandbox testing, hand a project to another admin, keep brand colours and fonts, block abusive users, or publish verified revenue numbers | [Project settings](project-settings.md) |
 | Sign users in with Firebase or OpenID Connect and read their purchases and balances without a backend | [Auth](auth.md) |
 | Build a paywall and show it in my app | [Paywalls](paywalls.md) |
