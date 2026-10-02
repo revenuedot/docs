@@ -20,6 +20,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Accept Google Play purchases and get real-time notifications | [Connect Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md) |
 | Accept Amazon Appstore purchases on Fire tablets and Fire TV | [Connect the Amazon Appstore](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md) |
 | Track subscriptions sold with my own Stripe account | [Connect Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md) |
+| Connect my Stripe account without copying a restricted key | [Connect with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe-connect.md) |
 | Sell my app's subscriptions on the web with a hosted Stripe checkout | [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md) |
 | Share a checkout link for an offering | [Purchase links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md) |
 | Build a multi-step web-to-app funnel (quiz, email, paywall) | [Funnels](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md) |
@@ -50,6 +51,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Answer Apple refund requests automatically and see my refund rate | [Refund Control](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/refund-control.md) |
 | Choose what customers can do on the in-app subscription screen, its colours and its text in 33 languages | [Customer Center](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/customer-center.md) |
 | Offer a discount when customers cancel, in my app or on Apple's cancel screen | [Retention offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/retention.md) |
+| Email subscribers whose payment failed a link to fix it, and see the revenue that comes back | [Payment recovery](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/payment-recovery.md) |
 | Email churned subscribers an offer to come back | [Win-back campaigns](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-campaigns.md) |
 | Get Customer Center support requests by email, or show subscriptions in the Intercom inbox or a Zendesk sidebar | [Support](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/support-integrations.md) |
 | Filter, save and export lists of customers | [Customer lists](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/customer-lists.md) |
@@ -337,10 +339,13 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" \
 
 The app's public key starts with `strp_`. Create its products with `store_identifier` set to the **Stripe product ID** (`prod_…`). To sell several prices of one Stripe product as separate products, use the **price ID** (`price_…`) instead; a price ID wins over its product ID. See [Products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md).
 
-## 2. Save a restricted API key
+## 2. Connect your Stripe account
+Select **Connect with Stripe** on the app's page and allow RevenueDot in Stripe: no key to copy and no webhook endpoint to add, so skip to step 4. See [Connect with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe-connect.md). If that button is greyed out, or you prefer a key, save a restricted key instead:
+
+### Save a restricted API key
 1. In the [Stripe Dashboard → Developers → API keys](https://dashboard.stripe.com/apikeys/create), click **Create restricted key**.
 2. Give it **Read** access to Subscriptions, Invoices, Checkout Sessions, Charges, Customers, Products and Prices. Leave everything else at None. For [web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md#1-connect-stripe), give Products, Prices, Checkout Sessions, Coupons and Promotion Codes **Write** instead.
-3. In the dashboard, open the app → **Stripe API key**, paste it and click **Check credentials**. RevenueDot lists one subscription and one Checkout Session: a wrong key says so, and a key without a permission names the one it lacks.
+3. In the dashboard, open the app → **Stripe account**, paste it under **Or use a restricted key** and click **Check credentials**. RevenueDot lists one subscription and one Checkout Session: a wrong key says so, and a key without a permission names the one it lacks.
 
 With the API:
 
@@ -405,11 +410,12 @@ Webhooks report `store: STRIPE` with no store commission. Revenue is what each i
 Both Stripe API shapes work: before 2025-03-31 (period fields on the subscription, `invoice.subscription`) and after (period fields on the subscription item, `invoice.parent.subscription_details`).
 
 ## Not supported yet
-- "Connect with Stripe" (OAuth) instead of a restricted key. It needs RevenueDot's own Stripe platform account and comes later. Hosted checkout works today with a restricted key: see [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md).
 - Subscription schedules, metered and tiered prices, and subscriptions with several items.
 - A scheduled re-check without webhooks: without the webhook endpoint, a cancellation shows only when your backend posts the subscription again.
 
 ## Related
+- [Connect with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe-connect.md): link your account without a restricted key
+- [Payment recovery](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/payment-recovery.md): email customers whose renewal failed a link to the Stripe customer portal
 - [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md): hosted checkout, purchase links, funnels and redemption links
 - [Webhooks out of RevenueDot](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md)
 - [Sandbox and production](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/sandbox.md)
@@ -421,7 +427,7 @@ Both Stripe API shapes work: before 2025-03-31 (period fields on the subscriptio
 # How do I sell my app's subscriptions on the web with Stripe?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md
-Description: Connect your Stripe account with a restricted key, add a web config, let RevenueDot create web products in Stripe, put them in an offering, then share a purchase link or publish a funnel. Buyers pay on Stripe Checkout and unlock the app with a redemption link.
+Description: Connect your Stripe account with Connect with Stripe or a restricted key, add a web config, let RevenueDot create web products in Stripe, put them in an offering, then share a purchase link or publish a funnel. Buyers pay on Stripe Checkout and unlock the app with a redemption link.
 
 RevenueDot hosts the checkout pages and runs every payment on **your own Stripe account**. Open **Web** in the dashboard and do four steps: connect Stripe, add a web config, create web products, and put them in an offering. Then share a [purchase link](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md) or publish a [funnel](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md). Buyers pay on Stripe Checkout. RevenueDot records the purchase like any Stripe purchase, sends the usual webhooks, and gives the buyer a [redemption link](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md) that unlocks the app.
 
@@ -445,7 +451,9 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" \
   -d '{"name":"Scanner Web","type":"stripe"}'
 ```
 
-Then create a **restricted key** in the [Stripe Dashboard → Developers → API keys](https://dashboard.stripe.com/apikeys/create). Web billing needs more than [tracking Stripe subscriptions](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md) does, because RevenueDot creates products, prices, Checkout Sessions, coupons and promotion codes in your account:
+Then select **Connect with Stripe** on the app's page and allow RevenueDot in Stripe: no keys and no webhook to set up, and RevenueDot takes no fee on your payments. See [Connect with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe-connect.md). Pick **Test** mode first to try everything with Stripe's test cards.
+
+Or create a **restricted key** in the [Stripe Dashboard → Developers → API keys](https://dashboard.stripe.com/apikeys/create). Web billing needs more than [tracking Stripe subscriptions](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md) does, because RevenueDot creates products, prices, Checkout Sessions, coupons and promotion codes in your account:
 
 | Stripe resource | Permission |
 |---|---|
@@ -580,10 +588,9 @@ With `success_mode: redirect`, the page answers 303 to your `success_redirect_ur
 A RevenueCatUI paywall can have a purchase button that opens web checkout (see [Paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md)). The iOS SDK then calls `POST /rcbilling/v1/hosted-checkout` with the package. RevenueDot finds the Stripe app that sells that package and answers with a Stripe Checkout URL for the SDK's app user id. The SDK closes the page when it reaches the success or cancel URL, and the purchase is already on the customer. A package with no web product answers 400 with code 7000. Reference: [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#start-a-hosted-web-checkout).
 
 ## Test before you go live
-Use a test-mode key (`rk_test_…`). Purchases are then sandbox data, kept out of production charts, and webhooks carry `environment: SANDBOX`. Pay with [Stripe's test cards](https://docs.stripe.com/testing), such as `4242 4242 4242 4242`. For production, create a second Stripe app with a live key, its own webhook endpoint and its own web products: Stripe keeps test and live products apart.
+Connect in **Test** mode, or use a test-mode key (`rk_test_…`). Purchases are then sandbox data, kept out of production charts, and webhooks carry `environment: SANDBOX`. Pay with [Stripe's test cards](https://docs.stripe.com/testing), such as `4242 4242 4242 4242`. For production, create a second Stripe app connected in **Live** mode (or with a live key and its own webhook endpoint) and its own web products: Stripe keeps test and live products apart.
 
 ## Not built yet
-- **"Connect with Stripe"** (OAuth). It needs RevenueDot's own Stripe platform account. Until then, paste a restricted key.
 - **Paddle** as a web provider.
 - **An embedded checkout** (Stripe Elements on your page) and the purchases-js Web Billing checkout for `rcb_` keys. RevenueDot's checkout is a hosted page.
 - **Apple Pay domain registration** for your custom domain.
@@ -4019,3 +4026,118 @@ The screen follows the customer's device language and comes translated into 33 l
 
 ## Through the API
 `GET` and `POST /v2/projects/{project_id}/customer_center_config` read and replace the configuration; `GET /v2/projects/{project_id}/customers/{customer_id}/customer_center?locale=de_DE` shows what one customer's app receives. Invalid configurations are refused with a 400 that names each field: a Custom URL needs a web address or your app's own scheme (`javascript:`, `data:` and `file:` URLs are refused), and the whole configuration can be at most 1 MB. See the [API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-the-customer-center-configuration).
+
+---
+
+# How do I recover subscribers whose payment failed?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/payment-recovery.md
+Description: Payment recovery emails subscribers whose renewal failed on the App Store, Google Play, Amazon or Stripe a link to fix their payment, on a schedule you set, and counts the revenue that comes back.
+
+When a renewal fails, the store keeps retrying the charge for days or weeks, but most customers never notice. Payment recovery emails them from your app's name with one link that opens the right place to fix the payment, and shows how much revenue came back.
+
+## What counts as a failed payment
+RevenueDot opens a **case** the moment a subscription gets a billing issue, the same moment it sends the `BILLING_ISSUE` webhook:
+
+| Store | When a case opens |
+|---|---|
+| App Store | `DID_FAIL_TO_RENEW` (billing retry, with or without a grace period) |
+| Google Play | `SUBSCRIPTION_IN_GRACE_PERIOD` or `SUBSCRIPTION_ON_HOLD` (account hold) |
+| Stripe | The subscription goes `past_due` or `unpaid` |
+| Amazon | The subscription enters its grace period |
+| Test Store | The `billing_issue` scenario (sandbox) |
+
+A case is **recovered** when the same subscription renews within the recovery window (30 days by default), and **lost** when the window passes or the purchase is refunded.
+
+## Turn it on
+1. Open **Lifecycle > Payment recovery** and select **Turn on**.
+2. Check the emails. There are three by default: day 0 (right away), day 3 and day 7 after the payment failed. Each has a subject, heading, body and button label. `{app}` becomes your sender name. You can add up to five emails, remove them, or change their days.
+3. Set the sender name (empty: your project's name) and the recovery window (7 to 60 days).
+4. Select **Send test** to get one email yourself, then **Save**.
+
+Emails come from your app's name with your Customer Center support address as Reply-To (**Lifecycle > Support > Customer Center**). On RevenueDot Cloud they are sent through Cloudflare Email; on a self-hosted server set `REVENUEDOT_SMTP_URL` and `REVENUEDOT_PUBLIC_URL` (see [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md)).
+
+To try it in sandbox, tick **Also email sandbox subscribers** and fail a Test Store or Stripe test-mode renewal. Production subscribers always get emails while payment recovery is on.
+
+## Who gets an email
+- Customers with an email address: the `$email` attribute, or for Stripe purchases the Stripe customer's email.
+- Not customers who unsubscribed from your project's emails (payment recovery and [win-back campaigns](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-campaigns.md) share one unsubscribe list).
+- Only while the subscription still has a billing issue. When the store recovers the payment before an email is due, nothing is sent.
+- If you turn recovery on while a case already has several emails due, it gets only the latest one.
+
+RevenueDot sends at most 100 recovery emails a minute and 2,000 per project a day. **Send due emails** on the page sends what is due right away; the server also does this every minute.
+
+## Where the link goes
+| Store | The link opens |
+|---|---|
+| App Store | The customer's Apple ID payment methods page |
+| Google Play | The Play Store page of their subscription, where Google shows **Fix payment** |
+| Amazon | Amazon's Memberships and Subscriptions page |
+| Stripe | A Stripe customer portal page to update the card, made when they click. If the portal is not set up in your Stripe account, the open invoice's payment page |
+
+For Stripe, set up the customer portal in your Stripe Dashboard (**Settings > Billing > Customer portal**). With a restricted key, give it **Customer portal: write**; with [Connect with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe-connect.md) nothing else is needed.
+
+## Customer Center
+While a customer has an open case, their customer info carries `management_url`: the same link. The RevenueCat SDKs' Customer Center opens it from **Manage subscription** for purchases it cannot manage itself, so a web subscriber can fix their card from inside your app.
+
+## Unsubscribe
+Every email has an unsubscribe link. Opening it only asks; the button unsubscribes. When your server's public URL is https, the email also has one-click `List-Unsubscribe` headers ([RFC 8058](https://www.rfc-editor.org/rfc/rfc8058)).
+
+## The numbers
+The page shows, for 7, 28 or 90 days, production or sandbox:
+- **At risk now**: open cases and what their periods are worth.
+- **Emails sent** and how many customers opened the link.
+- **Recovered**: subscriptions that renewed after at least one email, and the **recovered revenue**. This is the money RevenueDot recovered.
+- **Came back on its own**: renewals before any email went out, or with emails off.
+- The list of cases, with their status, emails and revenue.
+
+The same numbers are at `GET /v2/projects/{project_id}/payment_recovery/stats`, and the cases at `GET /v2/projects/{project_id}/payment_recovery/cases` ([API](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md)).
+
+## Webhooks and integrations
+Nothing changes: `BILLING_ISSUE`, `RENEWAL` and `EXPIRATION` go to your [webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md) and [integrations](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md) as before. If you already email customers from Braze or Customer.io on `BILLING_ISSUE`, leave payment recovery off or turn one of them off, so customers do not get two emails.
+
+---
+
+# How do I connect my Stripe account without a restricted key?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe-connect.md
+Description: Connect with Stripe links your own Stripe account to RevenueDot through Stripe Connect in two clicks. Payments go to your account, RevenueDot takes no fee, and events arrive without a webhook to set up.
+
+Select **Connect with Stripe** on your Stripe app and allow RevenueDot in Stripe. RevenueDot then reads your purchases and creates checkouts in your Stripe account through Stripe Connect. You copy no keys and set up no webhook.
+
+## What it means for your money
+- Your Stripe account stays yours. It is a Standard connected account: you keep your Stripe Dashboard, your payouts and your Stripe fees.
+- Web checkouts are charged on your account directly.
+- **RevenueDot takes no fee** on these payments.
+
+## Connect
+1. Open your Stripe app (**Apps**, or **Web > Add web provider**) and find **Stripe account**.
+2. Pick **Live** or **Test** mode. A test-mode connection records sandbox purchases, so you can try purchase links and funnels with Stripe's test cards.
+3. Select **Connect with Stripe**, sign in to Stripe and select **Connect**. Stripe sends you back to RevenueDot.
+
+No Stripe account yet? Select **Create one through RevenueDot**: Stripe walks you through creating one, and you come back connected. Until Stripe's onboarding is finished, the app page says the account cannot take payments yet, with a button to continue in Stripe.
+
+The page then shows **Connected with Stripe Connect** with the account (`acct_…abcd`) and the mode. **Check connection** reads your account to confirm access.
+
+## What works on the connected account
+Everything a restricted key does: purchases posted to `/v1/receipts`, [web products](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md), the hosted checkout, [purchase links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md), [funnels](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md), [web discounts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-discounts.md), refunds you make in Stripe, and the customer portal link in [payment recovery](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/payment-recovery.md) emails.
+
+Your account's events (renewals, failed payments, cancellations, refunds) reach RevenueDot through Stripe Connect. If you added a webhook endpoint for this app before connecting, you can delete it in Stripe.
+
+## Disconnect
+- In RevenueDot: **Disconnect** on the app page. RevenueDot asks Stripe to remove its access and forgets the account.
+- In Stripe: remove RevenueDot under **Settings > Connected accounts / apps**. RevenueDot learns it from Stripe and the app page says **Disconnected in Stripe**.
+
+After a disconnect, purchases already recorded stay. Checkouts stop until you connect again or add a restricted key.
+
+## If the button is greyed out
+The server you use has no Stripe Connect platform. On RevenueDot Cloud this is the case until RevenueDot's platform account is live. On a self-hosted server, its operator needs a Stripe Connect platform of their own and these settings:
+
+| Variable | What |
+|---|---|
+| `REVENUEDOT_STRIPE_CONNECT_CLIENT_ID` | The platform's OAuth client id (`ca_…`) |
+| `REVENUEDOT_STRIPE_CONNECT_SECRET_KEY` | The platform's secret key |
+| `REVENUEDOT_STRIPE_CONNECT_TEST_SECRET_KEY` | Optional: its test-mode key, to allow test-mode connections |
+| `REVENUEDOT_STRIPE_CONNECT_WEBHOOK_SECRET` | The signing secret of its Connect webhook endpoint `https://<your server>/v1/notifications/stripe-connect` (comma-separated for a live and a test endpoint) |
+
+The platform's OAuth redirect URI is `https://<your dashboard>/connect/stripe`. Until then, use a [restricted key](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md): it keeps working exactly as before.

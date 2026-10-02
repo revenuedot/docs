@@ -1832,6 +1832,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Accept Google Play purchases and get real-time notifications | [Connect Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md) |
 | Accept Amazon Appstore purchases on Fire tablets and Fire TV | [Connect the Amazon Appstore](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md) |
 | Track subscriptions sold with my own Stripe account | [Connect Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md) |
+| Connect my Stripe account without copying a restricted key | [Connect with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe-connect.md) |
 | Sell my app's subscriptions on the web with a hosted Stripe checkout | [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md) |
 | Share a checkout link for an offering | [Purchase links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md) |
 | Build a multi-step web-to-app funnel (quiz, email, paywall) | [Funnels](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md) |
@@ -1862,6 +1863,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Answer Apple refund requests automatically and see my refund rate | [Refund Control](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/refund-control.md) |
 | Choose what customers can do on the in-app subscription screen, its colours and its text in 33 languages | [Customer Center](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/customer-center.md) |
 | Offer a discount when customers cancel, in my app or on Apple's cancel screen | [Retention offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/retention.md) |
+| Email subscribers whose payment failed a link to fix it, and see the revenue that comes back | [Payment recovery](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/payment-recovery.md) |
 | Email churned subscribers an offer to come back | [Win-back campaigns](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-campaigns.md) |
 | Get Customer Center support requests by email, or show subscriptions in the Intercom inbox or a Zendesk sidebar | [Support](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/support-integrations.md) |
 | Filter, save and export lists of customers | [Customer lists](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/customer-lists.md) |
@@ -2149,10 +2151,13 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" \
 
 The app's public key starts with `strp_`. Create its products with `store_identifier` set to the **Stripe product ID** (`prod_…`). To sell several prices of one Stripe product as separate products, use the **price ID** (`price_…`) instead; a price ID wins over its product ID. See [Products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md).
 
-## 2. Save a restricted API key
+## 2. Connect your Stripe account
+Select **Connect with Stripe** on the app's page and allow RevenueDot in Stripe: no key to copy and no webhook endpoint to add, so skip to step 4. See [Connect with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe-connect.md). If that button is greyed out, or you prefer a key, save a restricted key instead:
+
+### Save a restricted API key
 1. In the [Stripe Dashboard → Developers → API keys](https://dashboard.stripe.com/apikeys/create), click **Create restricted key**.
 2. Give it **Read** access to Subscriptions, Invoices, Checkout Sessions, Charges, Customers, Products and Prices. Leave everything else at None. For [web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md#1-connect-stripe), give Products, Prices, Checkout Sessions, Coupons and Promotion Codes **Write** instead.
-3. In the dashboard, open the app → **Stripe API key**, paste it and click **Check credentials**. RevenueDot lists one subscription and one Checkout Session: a wrong key says so, and a key without a permission names the one it lacks.
+3. In the dashboard, open the app → **Stripe account**, paste it under **Or use a restricted key** and click **Check credentials**. RevenueDot lists one subscription and one Checkout Session: a wrong key says so, and a key without a permission names the one it lacks.
 
 With the API:
 
@@ -2217,11 +2222,12 @@ Webhooks report `store: STRIPE` with no store commission. Revenue is what each i
 Both Stripe API shapes work: before 2025-03-31 (period fields on the subscription, `invoice.subscription`) and after (period fields on the subscription item, `invoice.parent.subscription_details`).
 
 ## Not supported yet
-- "Connect with Stripe" (OAuth) instead of a restricted key. It needs RevenueDot's own Stripe platform account and comes later. Hosted checkout works today with a restricted key: see [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md).
 - Subscription schedules, metered and tiered prices, and subscriptions with several items.
 - A scheduled re-check without webhooks: without the webhook endpoint, a cancellation shows only when your backend posts the subscription again.
 
 ## Related
+- [Connect with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe-connect.md): link your account without a restricted key
+- [Payment recovery](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/payment-recovery.md): email customers whose renewal failed a link to the Stripe customer portal
 - [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md): hosted checkout, purchase links, funnels and redemption links
 - [Webhooks out of RevenueDot](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md)
 - [Sandbox and production](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/sandbox.md)
@@ -2233,7 +2239,7 @@ Both Stripe API shapes work: before 2025-03-31 (period fields on the subscriptio
 # How do I sell my app's subscriptions on the web with Stripe?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md
-Description: Connect your Stripe account with a restricted key, add a web config, let RevenueDot create web products in Stripe, put them in an offering, then share a purchase link or publish a funnel. Buyers pay on Stripe Checkout and unlock the app with a redemption link.
+Description: Connect your Stripe account with Connect with Stripe or a restricted key, add a web config, let RevenueDot create web products in Stripe, put them in an offering, then share a purchase link or publish a funnel. Buyers pay on Stripe Checkout and unlock the app with a redemption link.
 
 RevenueDot hosts the checkout pages and runs every payment on **your own Stripe account**. Open **Web** in the dashboard and do four steps: connect Stripe, add a web config, create web products, and put them in an offering. Then share a [purchase link](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md) or publish a [funnel](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md). Buyers pay on Stripe Checkout. RevenueDot records the purchase like any Stripe purchase, sends the usual webhooks, and gives the buyer a [redemption link](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md) that unlocks the app.
 
@@ -2257,7 +2263,9 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" \
   -d '{"name":"Scanner Web","type":"stripe"}'
 ```
 
-Then create a **restricted key** in the [Stripe Dashboard → Developers → API keys](https://dashboard.stripe.com/apikeys/create). Web billing needs more than [tracking Stripe subscriptions](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md) does, because RevenueDot creates products, prices, Checkout Sessions, coupons and promotion codes in your account:
+Then select **Connect with Stripe** on the app's page and allow RevenueDot in Stripe: no keys and no webhook to set up, and RevenueDot takes no fee on your payments. See [Connect with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe-connect.md). Pick **Test** mode first to try everything with Stripe's test cards.
+
+Or create a **restricted key** in the [Stripe Dashboard → Developers → API keys](https://dashboard.stripe.com/apikeys/create). Web billing needs more than [tracking Stripe subscriptions](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md) does, because RevenueDot creates products, prices, Checkout Sessions, coupons and promotion codes in your account:
 
 | Stripe resource | Permission |
 |---|---|
@@ -2392,10 +2400,9 @@ With `success_mode: redirect`, the page answers 303 to your `success_redirect_ur
 A RevenueCatUI paywall can have a purchase button that opens web checkout (see [Paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md)). The iOS SDK then calls `POST /rcbilling/v1/hosted-checkout` with the package. RevenueDot finds the Stripe app that sells that package and answers with a Stripe Checkout URL for the SDK's app user id. The SDK closes the page when it reaches the success or cancel URL, and the purchase is already on the customer. A package with no web product answers 400 with code 7000. Reference: [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#start-a-hosted-web-checkout).
 
 ## Test before you go live
-Use a test-mode key (`rk_test_…`). Purchases are then sandbox data, kept out of production charts, and webhooks carry `environment: SANDBOX`. Pay with [Stripe's test cards](https://docs.stripe.com/testing), such as `4242 4242 4242 4242`. For production, create a second Stripe app with a live key, its own webhook endpoint and its own web products: Stripe keeps test and live products apart.
+Connect in **Test** mode, or use a test-mode key (`rk_test_…`). Purchases are then sandbox data, kept out of production charts, and webhooks carry `environment: SANDBOX`. Pay with [Stripe's test cards](https://docs.stripe.com/testing), such as `4242 4242 4242 4242`. For production, create a second Stripe app connected in **Live** mode (or with a live key and its own webhook endpoint) and its own web products: Stripe keeps test and live products apart.
 
 ## Not built yet
-- **"Connect with Stripe"** (OAuth). It needs RevenueDot's own Stripe platform account. Until then, paste a restricted key.
 - **Paddle** as a web provider.
 - **An embedded checkout** (Stripe Elements on your page) and the purchases-js Web Billing checkout for `rcb_` keys. RevenueDot's checkout is a hosted page.
 - **Apple Pay domain registration** for your custom domain.
@@ -5832,6 +5839,121 @@ The screen follows the customer's device language and comes translated into 33 l
 ## Through the API
 `GET` and `POST /v2/projects/{project_id}/customer_center_config` read and replace the configuration; `GET /v2/projects/{project_id}/customers/{customer_id}/customer_center?locale=de_DE` shows what one customer's app receives. Invalid configurations are refused with a 400 that names each field: a Custom URL needs a web address or your app's own scheme (`javascript:`, `data:` and `file:` URLs are refused), and the whole configuration can be at most 1 MB. See the [API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-the-customer-center-configuration).
 
+---
+
+# How do I recover subscribers whose payment failed?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/payment-recovery.md
+Description: Payment recovery emails subscribers whose renewal failed on the App Store, Google Play, Amazon or Stripe a link to fix their payment, on a schedule you set, and counts the revenue that comes back.
+
+When a renewal fails, the store keeps retrying the charge for days or weeks, but most customers never notice. Payment recovery emails them from your app's name with one link that opens the right place to fix the payment, and shows how much revenue came back.
+
+## What counts as a failed payment
+RevenueDot opens a **case** the moment a subscription gets a billing issue, the same moment it sends the `BILLING_ISSUE` webhook:
+
+| Store | When a case opens |
+|---|---|
+| App Store | `DID_FAIL_TO_RENEW` (billing retry, with or without a grace period) |
+| Google Play | `SUBSCRIPTION_IN_GRACE_PERIOD` or `SUBSCRIPTION_ON_HOLD` (account hold) |
+| Stripe | The subscription goes `past_due` or `unpaid` |
+| Amazon | The subscription enters its grace period |
+| Test Store | The `billing_issue` scenario (sandbox) |
+
+A case is **recovered** when the same subscription renews within the recovery window (30 days by default), and **lost** when the window passes or the purchase is refunded.
+
+## Turn it on
+1. Open **Lifecycle > Payment recovery** and select **Turn on**.
+2. Check the emails. There are three by default: day 0 (right away), day 3 and day 7 after the payment failed. Each has a subject, heading, body and button label. `{app}` becomes your sender name. You can add up to five emails, remove them, or change their days.
+3. Set the sender name (empty: your project's name) and the recovery window (7 to 60 days).
+4. Select **Send test** to get one email yourself, then **Save**.
+
+Emails come from your app's name with your Customer Center support address as Reply-To (**Lifecycle > Support > Customer Center**). On RevenueDot Cloud they are sent through Cloudflare Email; on a self-hosted server set `REVENUEDOT_SMTP_URL` and `REVENUEDOT_PUBLIC_URL` (see [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md)).
+
+To try it in sandbox, tick **Also email sandbox subscribers** and fail a Test Store or Stripe test-mode renewal. Production subscribers always get emails while payment recovery is on.
+
+## Who gets an email
+- Customers with an email address: the `$email` attribute, or for Stripe purchases the Stripe customer's email.
+- Not customers who unsubscribed from your project's emails (payment recovery and [win-back campaigns](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-campaigns.md) share one unsubscribe list).
+- Only while the subscription still has a billing issue. When the store recovers the payment before an email is due, nothing is sent.
+- If you turn recovery on while a case already has several emails due, it gets only the latest one.
+
+RevenueDot sends at most 100 recovery emails a minute and 2,000 per project a day. **Send due emails** on the page sends what is due right away; the server also does this every minute.
+
+## Where the link goes
+| Store | The link opens |
+|---|---|
+| App Store | The customer's Apple ID payment methods page |
+| Google Play | The Play Store page of their subscription, where Google shows **Fix payment** |
+| Amazon | Amazon's Memberships and Subscriptions page |
+| Stripe | A Stripe customer portal page to update the card, made when they click. If the portal is not set up in your Stripe account, the open invoice's payment page |
+
+For Stripe, set up the customer portal in your Stripe Dashboard (**Settings > Billing > Customer portal**). With a restricted key, give it **Customer portal: write**; with [Connect with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe-connect.md) nothing else is needed.
+
+## Customer Center
+While a customer has an open case, their customer info carries `management_url`: the same link. The RevenueCat SDKs' Customer Center opens it from **Manage subscription** for purchases it cannot manage itself, so a web subscriber can fix their card from inside your app.
+
+## Unsubscribe
+Every email has an unsubscribe link. Opening it only asks; the button unsubscribes. When your server's public URL is https, the email also has one-click `List-Unsubscribe` headers ([RFC 8058](https://www.rfc-editor.org/rfc/rfc8058)).
+
+## The numbers
+The page shows, for 7, 28 or 90 days, production or sandbox:
+- **At risk now**: open cases and what their periods are worth.
+- **Emails sent** and how many customers opened the link.
+- **Recovered**: subscriptions that renewed after at least one email, and the **recovered revenue**. This is the money RevenueDot recovered.
+- **Came back on its own**: renewals before any email went out, or with emails off.
+- The list of cases, with their status, emails and revenue.
+
+The same numbers are at `GET /v2/projects/{project_id}/payment_recovery/stats`, and the cases at `GET /v2/projects/{project_id}/payment_recovery/cases` ([API](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md)).
+
+## Webhooks and integrations
+Nothing changes: `BILLING_ISSUE`, `RENEWAL` and `EXPIRATION` go to your [webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md) and [integrations](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md) as before. If you already email customers from Braze or Customer.io on `BILLING_ISSUE`, leave payment recovery off or turn one of them off, so customers do not get two emails.
+
+---
+
+# How do I connect my Stripe account without a restricted key?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe-connect.md
+Description: Connect with Stripe links your own Stripe account to RevenueDot through Stripe Connect in two clicks. Payments go to your account, RevenueDot takes no fee, and events arrive without a webhook to set up.
+
+Select **Connect with Stripe** on your Stripe app and allow RevenueDot in Stripe. RevenueDot then reads your purchases and creates checkouts in your Stripe account through Stripe Connect. You copy no keys and set up no webhook.
+
+## What it means for your money
+- Your Stripe account stays yours. It is a Standard connected account: you keep your Stripe Dashboard, your payouts and your Stripe fees.
+- Web checkouts are charged on your account directly.
+- **RevenueDot takes no fee** on these payments.
+
+## Connect
+1. Open your Stripe app (**Apps**, or **Web > Add web provider**) and find **Stripe account**.
+2. Pick **Live** or **Test** mode. A test-mode connection records sandbox purchases, so you can try purchase links and funnels with Stripe's test cards.
+3. Select **Connect with Stripe**, sign in to Stripe and select **Connect**. Stripe sends you back to RevenueDot.
+
+No Stripe account yet? Select **Create one through RevenueDot**: Stripe walks you through creating one, and you come back connected. Until Stripe's onboarding is finished, the app page says the account cannot take payments yet, with a button to continue in Stripe.
+
+The page then shows **Connected with Stripe Connect** with the account (`acct_…abcd`) and the mode. **Check connection** reads your account to confirm access.
+
+## What works on the connected account
+Everything a restricted key does: purchases posted to `/v1/receipts`, [web products](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md), the hosted checkout, [purchase links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md), [funnels](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md), [web discounts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-discounts.md), refunds you make in Stripe, and the customer portal link in [payment recovery](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/payment-recovery.md) emails.
+
+Your account's events (renewals, failed payments, cancellations, refunds) reach RevenueDot through Stripe Connect. If you added a webhook endpoint for this app before connecting, you can delete it in Stripe.
+
+## Disconnect
+- In RevenueDot: **Disconnect** on the app page. RevenueDot asks Stripe to remove its access and forgets the account.
+- In Stripe: remove RevenueDot under **Settings > Connected accounts / apps**. RevenueDot learns it from Stripe and the app page says **Disconnected in Stripe**.
+
+After a disconnect, purchases already recorded stay. Checkouts stop until you connect again or add a restricted key.
+
+## If the button is greyed out
+The server you use has no Stripe Connect platform. On RevenueDot Cloud this is the case until RevenueDot's platform account is live. On a self-hosted server, its operator needs a Stripe Connect platform of their own and these settings:
+
+| Variable | What |
+|---|---|
+| `REVENUEDOT_STRIPE_CONNECT_CLIENT_ID` | The platform's OAuth client id (`ca_…`) |
+| `REVENUEDOT_STRIPE_CONNECT_SECRET_KEY` | The platform's secret key |
+| `REVENUEDOT_STRIPE_CONNECT_TEST_SECRET_KEY` | Optional: its test-mode key, to allow test-mode connections |
+| `REVENUEDOT_STRIPE_CONNECT_WEBHOOK_SECRET` | The signing secret of its Connect webhook endpoint `https://<your server>/v1/notifications/stripe-connect` (comma-separated for a live and a test endpoint) |
+
+The platform's OAuth redirect URI is `https://<your dashboard>/connect/stripe`. Until then, use a [restricted key](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md): it keeps working exactly as before.
+
 
 === Migrate from RevenueCat ===
 
@@ -6590,10 +6712,10 @@ One RevenueDot server answers every API below on one port. The reference is gene
 
 | API | Paths | Auth | Operations | Reference |
 |---|---|---|---|---|
-| SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 70 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
+| SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 71 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
 | REST API v1 | `/v1/subscribers/...` | secret key | 10 | [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md) |
 | REST API v2 | `/v2/projects/...` | secret key or dashboard session | 161 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
-| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 193 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
+| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 207 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
 | Webhooks (sent by RevenueDot) | your URL | HMAC signature | 22 event types | [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md) |
 
 ## Quick example
@@ -6856,7 +6978,7 @@ Responses under `/v1` and `/rcbilling` are signed when the server has a signing 
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (70)
+## Operations on this page (71)
 
 - **Server**: [Server name and docs link](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#server-name-and-docs-link), [Health check](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#health-check), [Connectivity probe](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#connectivity-probe)
 - **Customer info**: [Get customer info](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#get-customer-info)
@@ -6868,7 +6990,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Web Billing**: [Web offering products](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-offering-products), [Start a hosted web checkout](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#start-a-hosted-web-checkout), [Web Billing purchase (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-billing-purchase-not-available), [Prepare a Web Billing checkout (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#prepare-a-web-billing-checkout-not-available), [Start a Web Billing checkout (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#start-a-web-billing-checkout-not-available), [Web Billing checkout status](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-billing-checkout-status), [Refresh Web Billing checkout pricing](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#refresh-web-billing-checkout-pricing), [Complete a Web Billing checkout](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#complete-a-web-billing-checkout), [Web checkout branding](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-checkout-branding)
 - **Subscriber tokens**: [Get customer info (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#get-customer-info-subscriber-token), [Get offerings (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#get-offerings-subscriber-token), [Intro offer eligibility (StoreKit 1) (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#intro-offer-eligibility-storekit-1-subscriber-token), [Attribution data (deprecated iOS call) (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#attribution-data-deprecated-ios-call-subscriber-token), [Read customer attributes (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#read-customer-attributes-subscriber-token), [Set customer attributes (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#set-customer-attributes-subscriber-token), [Apple AdServices token (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#apple-adservices-token-subscriber-token), [SDK health report (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-health-report-subscriber-token), [Customer Center configuration (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-configuration-subscriber-token), [Customer Center support ticket (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-support-ticket-subscriber-token), [Virtual currency balances (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#virtual-currency-balances-subscriber-token), [Restore eligibility (StoreKit 2) (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#restore-eligibility-storekit-2-subscriber-token), [Rewarded ad verification status (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#rewarded-ad-verification-status-subscriber-token), [Web offering products (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-offering-products-subscriber-token), [Test Store product details (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#test-store-product-details-subscriber-token), [Spend in-app currency as the subscriber](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#spend-in-app-currency-as-the-subscriber)
 - **Auth sign-in**: [Sign in with an identity provider's ID token](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sign-in-with-an-identity-providers-id-token), [Refresh the access token](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#refresh-the-access-token), [Sign out](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sign-out), [Refresh the access token](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#refresh-the-access-token), [Sign out](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sign-out), [Public key of RevenueDot's ID and access tokens](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#public-key-of-revenuedots-id-and-access-tokens)
-- **Store notifications**: [App Store Server Notifications v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#app-store-server-notifications-v2), [Google Play real-time developer notifications (Pub/Sub push)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#google-play-real-time-developer-notifications-pubsub-push), [Amazon Appstore Real-time Notifications (SNS)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#amazon-appstore-real-time-notifications-sns), [Stripe webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#stripe-webhooks)
+- **Store notifications**: [App Store Server Notifications v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#app-store-server-notifications-v2), [Google Play real-time developer notifications (Pub/Sub push)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#google-play-real-time-developer-notifications-pubsub-push), [Amazon Appstore Real-time Notifications (SNS)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#amazon-appstore-real-time-notifications-sns), [Stripe webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#stripe-webhooks), [Stripe Connect webhooks (RevenueDot's platform)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#stripe-connect-webhooks-revenuedots-platform)
 - **Response signing**: [Public key for response signatures](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#public-key-for-response-signatures)
 
 ## Server
@@ -9575,6 +9697,52 @@ curl -s -X POST "$REVENUEDOT_URL/v1/notifications/stripe/$APP_ID"
 - **200**: Handled.
 - **400**: Not accepted. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
 - **404**: Unknown app. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **500**: Temporary failure; Stripe retries. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "status": "processed"
+}
+```
+
+### Stripe Connect webhooks (RevenueDot's platform)
+
+`POST /v1/notifications/stripe-connect` · Auth: none · RevenueDot extension
+
+The platform's endpoint for "Events on Connected accounts". Each event carries `account` and is handled for every app connected to that account exactly like its own Stripe endpoint (stored once per app, forwarded, applied), when its `livemode` matches the connection's mode. `account.updated` refreshes onboarding status; `account.application.deauthorized` disconnects the apps.
+
+- **200:** handled, a duplicate, `unknown_account` (no app is connected to it), `other_mode`, or a platform event without `account`. **400:** a bad signature or not a Stripe event. **404:** Connect is not set up on this server. **500:** a temporary failure; Stripe retries.
+
+**Headers**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `Stripe-Signature` | string | yes | Checked against each of the platform's webhook secrets (`REVENUEDOT_STRIPE_CONNECT_WEBHOOK_SECRET`). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `id` | string | yes | evt_… |
+| `type` | string | yes |  |
+| `account` | string | no | acct_… |
+| `livemode` | boolean | no |  |
+| `data` | object | yes |  |
+| `data.object` | object | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/notifications/stripe-connect"
+```
+
+**Responses**
+
+- **200**: Handled.
+- **400**: Not accepted. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **404**: Connect is not set up. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
 - **500**: Temporary failure; Stripe retries. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
 
 Example 200 response:
@@ -17156,7 +17324,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (193)
+## Operations on this page (207)
 
 - **Dashboard auth**: [Whether sign-up is open](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-sign-up-is-open), [Create a dashboard account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-dashboard-account), [Sign in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-in), [Sign out](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out), [The signed-in user and their projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-signed-in-user-and-their-projects), [Update account settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-account-settings), [Email a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#email-a-password-reset-link), [Check a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-a-password-reset-link), [Set a new password from a reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-a-new-password-from-a-reset-link), [Confirm an email address](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#confirm-an-email-address), [Send a new confirmation email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-new-confirmation-email), [Look up an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#look-up-an-invite), [Accept an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#accept-an-invite)
 - **Members and invites**: [List open invites](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-open-invites), [Invite someone by email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#invite-someone-by-email), [Resend an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#resend-an-invite), [Revoke an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#revoke-an-invite), [Change a member's role](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-a-members-role), [Remove a member, or leave the project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#remove-a-member-or-leave-the-project)
@@ -17174,6 +17342,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Refund Control**: [Get policies and settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-policies-and-settings), [Save settings and the ordered policies](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#save-settings-and-the-ordered-policies), [Refund rate, amounts and counts](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#refund-rate-amounts-and-counts), [List refund requests, newest first](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-refund-requests-newest-first)
 - **Retention**: [List Customer Center retention offers](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-customer-center-retention-offers), [Create a retention offer](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-retention-offer), [Update a retention offer](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-a-retention-offer), [Delete a retention offer](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-retention-offer), [Get Apple Retention Messaging settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-apple-retention-messaging-settings), [Save messages, defaults and real-time rules](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#save-messages-defaults-and-real-time-rules), [Upload to Apple and register the real-time URL](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#upload-to-apple-and-register-the-real-time-url), [Apple's real-time Get Retention Message call](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#apples-real-time-get-retention-message-call)
 - **Support**: [List Customer Center tickets, newest first](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-customer-center-tickets-newest-first), [Get a ticket](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-ticket), [Close or reopen a ticket](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#close-or-reopen-a-ticket), [What a help desk sidebar shows about a customer](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#what-a-help-desk-sidebar-shows-about-a-customer), [Look customers up by email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#look-customers-up-by-email), [Intercom inbox app: the customer's subscription as Canvas Kit components](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#intercom-inbox-app-the-customers-subscription-as-canvas-kit-components)
+- **Payment recovery**: [Get payment recovery settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-payment-recovery-settings), [Replace payment recovery settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#replace-payment-recovery-settings), [At risk, emails sent, recovered revenue](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#at-risk-emails-sent-recovered-revenue), [List recovery cases](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-recovery-cases), [Send a test recovery email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-test-recovery-email), [Send the emails that are due now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-the-emails-that-are-due-now), [Email link: opens the place to fix the payment](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#email-link-opens-the-place-to-fix-the-payment), [Where the Stripe portal returns to](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#where-the-stripe-portal-returns-to), [Unsubscribe page (asks first)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unsubscribe-page-asks-first), [Unsubscribe (also RFC 8058 one-click)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unsubscribe-also-rfc-8058-one-click)
 - **Win-back**: [List win-back campaigns](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-win-back-campaigns), [Create a win-back campaign](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-win-back-campaign), [Get a campaign with stats and recent emails](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-campaign-with-stats-and-recent-emails), [Update, start or pause a campaign](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-start-or-pause-a-campaign), [Delete a campaign](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-campaign), [Who would get the email now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#who-would-get-the-email-now), [Send a test email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-test-email), [Send now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-now), [Email button: records the click and redirects to the offer](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#email-button-records-the-click-and-redirects-to-the-offer), [Open-tracking image (campaigns with track_opens)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#open-tracking-image-campaigns-with-track_opens), [Unsubscribe page (asks first)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unsubscribe-page-asks-first), [Unsubscribe (also RFC 8058 one-click)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unsubscribe-also-rfc-8058-one-click)
 - **Customer lists**: [Customers in a list, with the summary cards](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#customers-in-a-list-with-the-summary-cards), [Export a list as CSV](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#export-a-list-as-csv)
 - **Event log**: [Event log](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#event-log), [Transaction feed](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#transaction-feed)
@@ -17181,6 +17350,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Dashboard data**: [Daily history of an overview metric](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#daily-history-of-an-overview-metric), [Dashboard rows for customers](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#dashboard-rows-for-customers)
 - **Migration import**: [Import customers with their purchases](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#import-customers-with-their-purchases), [Keep an app's existing SDK key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#keep-an-apps-existing-sdk-key), [What still needs attention after an import](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#what-still-needs-attention-after-an-import)
 - **Web billing**: [List web discounts with their settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-web-discounts-with-their-settings), [Get the Web page: providers and checklist](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-the-web-page-providers-and-checklist), [Get a Stripe app's web config](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-stripe-apps-web-config), [Save a Stripe app's web config](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#save-a-stripe-apps-web-config), [List a Stripe app's web products](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-a-stripe-apps-web-products), [Create a web product in Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-web-product-in-stripe), [Get the project's web address and custom domain](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-the-projects-web-address-and-custom-domain), [Change the project's slug or custom domain](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-the-projects-slug-or-custom-domain), [Check the custom domain's DNS records](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-the-custom-domains-dns-records)
+- **Stripe Connect**: [Get a Stripe app's Connect status](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-stripe-apps-connect-status), [Start connecting a Stripe account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#start-connecting-a-stripe-account), [Finish connecting (from the callback page)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#finish-connecting-from-the-callback-page), [Disconnect the Stripe account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#disconnect-the-stripe-account)
 - **Purchase links**: [List purchase links](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-purchase-links), [Create a purchase link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-purchase-link), [Get a purchase link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-purchase-link), [Update a purchase link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-a-purchase-link), [Delete a purchase link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-purchase-link)
 - **Funnels**: [List funnels](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-funnels), [Create a funnel](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-funnel), [Is Build with AI available?](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#is-build-with-ai-available), [Build a funnel with AI](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#build-a-funnel-with-ai), [Get a funnel](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-funnel), [Update a funnel's draft](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-a-funnels-draft), [Delete a funnel](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-funnel), [Publish a funnel](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#publish-a-funnel), [Unpublish a funnel](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unpublish-a-funnel), [Get a funnel's analytics](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-funnels-analytics), [Get what the builder's preview needs](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-what-the-builders-preview-needs)
 - **Hosted pages**: [A purchase link or a published funnel](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#a-purchase-link-or-a-published-funnel), [The success page after Stripe Checkout](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-success-page-after-stripe-checkout), [The success page of the iOS SDK's hosted checkout](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-success-page-of-the-ios-sdks-hosted-checkout), [The cancel page of the iOS SDK's hosted checkout](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-cancel-page-of-the-ios-sdks-hosted-checkout), [A redemption link page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#a-redemption-link-page), [Start a checkout from a page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#start-a-checkout-from-a-page), [Check a discount code from a page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-a-discount-code-from-a-page), [Record a funnel event from a page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#record-a-funnel-event-from-a-page)
@@ -22190,6 +22360,342 @@ Example 200 response:
 }
 ```
 
+## Payment recovery
+
+Emails to subscribers whose renewal failed on any store, with one link to fix the payment, and the revenue that comes back. See [Payment recovery](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/payment-recovery.md).
+
+### Get payment recovery settings
+
+`GET /v2/projects/{project_id}/payment_recovery` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/payment_recovery" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Settings.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Replace payment recovery settings
+
+`POST /v2/projects/{project_id}/payment_recovery` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Open cases move to the new schedule: each case's next email is due on its new day.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `enabled` | boolean | yes |  |
+| `steps` | array of object | yes |  |
+| `steps[].day` | integer | yes | Days after the billing issue started. 0 sends right away. |
+| `steps[].subject` | string | yes | `{app}` becomes the sender name. |
+| `steps[].heading` | string | yes |  |
+| `steps[].body` | string | yes | Plain text; a blank line starts a paragraph. |
+| `steps[].button_label` | string | yes |  |
+| `window_days` | integer | no |  |
+| `include_sandbox` | boolean | no |  |
+| `sender_name` | string or null | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/payment_recovery" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"enabled":true,"window_days":30,"include_sandbox":false,"sender_name":null,"steps":[{"day":0,"subject":"Your payment for {app} didn'\''t go through","heading":"Update your payment method","body":"We couldn'\''t charge your payment method for your {app} subscription.\n\nUpdate your payment details to keep your access.","button_label":"Update payment"},{"day":3,"subject":"Action needed: keep your {app} subscription","heading":"Your subscription is at risk","body":"Your last payment for {app} still hasn'\''t gone through.","button_label":"Update payment"}]}'
+```
+
+**Responses**
+
+- **200**: Settings.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### At risk, emails sent, recovered revenue
+
+`GET /v2/projects/{project_id}/payment_recovery/stats` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `days` | integer | no |  |
+| `environment` | `production`, `sandbox` | no | Default production. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/payment_recovery/stats" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The numbers.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "payment_recovery_stats",
+  "days": 28,
+  "environment": "production",
+  "at_risk": {
+    "count": 3,
+    "revenue_in_usd": 89.97
+  },
+  "opened": 9,
+  "messages_sent": 14,
+  "clicked": 6,
+  "recovered": {
+    "count": 5,
+    "revenue_in_usd": 179.95
+  },
+  "recovered_without_message": {
+    "count": 1,
+    "revenue_in_usd": 9.99
+  },
+  "lost": {
+    "count": 1
+  },
+  "recovery_rate": 0.857,
+  "by_store": [
+    {
+      "store": "app_store",
+      "at_risk": 2,
+      "recovered": 4,
+      "recovered_revenue_in_usd": 119.96,
+      "recovered_without_message": 1,
+      "lost": 1
+    }
+  ]
+}
+```
+
+### List recovery cases
+
+`GET /v2/projects/{project_id}/payment_recovery/cases` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read`
+
+Newest first.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `status` | `open`, `recovered`, `lost` | no |  |
+| `environment` | `production`, `sandbox` | no | Default production. |
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/payment_recovery/cases" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Cases.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Send a test recovery email
+
+`POST /v2/projects/{project_id}/payment_recovery/actions/send_test` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Sends one step (saved, or `content` to preview unsaved edits) to any address with sample links. At most 10 an hour per project.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `email` | string | yes |  |
+| `step` | integer | no | 0-based, default 0. |
+| `content` | object | no |  |
+| `content.day` | integer | yes | Days after the billing issue started. 0 sends right away. |
+| `content.subject` | string | yes | `{app}` becomes the sender name. |
+| `content.heading` | string | yes |  |
+| `content.body` | string | yes | Plain text; a blank line starts a paragraph. |
+| `content.button_label` | string | yes |  |
+| `sender_name` | string or null | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/payment_recovery/actions/send_test" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"email":"me@example.com","step":0}'
+```
+
+**Responses**
+
+- **200**: Sent.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **429**: Too many requests. Retry later. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **502**: An upstream service (the store or the language model) gave no usable answer. Retry later. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Send the emails that are due now
+
+`POST /v2/projects/{project_id}/payment_recovery/actions/run` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+The minute tick sends due emails too (on Cloud from the cron). Closes cases whose window passed. **422:** recovery is off.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/payment_recovery/actions/run" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Counts.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Email link: opens the place to fix the payment
+
+`GET /v1/recovery/l/{token}` · Auth: none · RevenueDot extension
+
+Records the click and redirects: Apple's payment page, the Play Store subscription page, Amazon's subscriptions page, or a Stripe customer portal session made now (the open invoice's page when the portal is not set up). Test Store purchases get a page that explains the test.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `via` | string | no |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/recovery/l/$TOKEN"
+```
+
+**Responses**
+
+- **200**: An explanation page.
+- **303**: To the store or Stripe.
+- **404**: Unknown link.
+
+### Where the Stripe portal returns to
+
+`GET /v1/recovery/done/{token}` · Auth: none · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/recovery/done/$TOKEN"
+```
+
+**Responses**
+
+- **200**: A thank-you page.
+- **404**: Unknown link.
+
+### Unsubscribe page (asks first)
+
+`GET /v1/recovery/u/{token}` · Auth: none · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/recovery/u/$TOKEN"
+```
+
+**Responses**
+
+- **200**: HTML.
+- **404**: Unknown link.
+
+### Unsubscribe (also RFC 8058 one-click)
+
+`POST /v1/recovery/u/{token}` · Auth: none · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/recovery/u/$TOKEN"
+```
+
+**Responses**
+
+- **200**: HTML confirmation.
+- **404**: Unknown link.
+
 ## Win-back
 
 Campaigns that email churned subscribers an offer, with tracked links and one-click unsubscribe.
@@ -23664,6 +24170,212 @@ Example 200 response:
   }
 }
 ```
+
+## Stripe Connect
+
+Connect a Stripe app to the developer's own Stripe account through RevenueDot's Stripe Connect platform (OAuth or Account Links), without a restricted key. See [Connect with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe-connect.md).
+
+### Get a Stripe app's Connect status
+
+`GET /v2/projects/{project_id}/apps/{app_id}/stripe_connect` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read`
+
+Whether this server offers Connect with Stripe (and why not), and the app's connection. See [Connect with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe-connect.md).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes | App id (app...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/stripe_connect" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The connection.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "stripe_connect",
+  "app_id": "app1a2b3c4d",
+  "available": true,
+  "unavailable_reason": null,
+  "modes": [
+    "live",
+    "test"
+  ],
+  "status": "connected",
+  "method": "oauth",
+  "mode": "live",
+  "account": "acct_…9xQz",
+  "charges_enabled": true,
+  "details_submitted": true,
+  "connected_at": 1790900000000,
+  "disconnected_at": null,
+  "disconnect_reason": null,
+  "restricted_key_configured": false,
+  "webhook_url": "https://api.revenuedot.app/v1/notifications/stripe-connect",
+  "application_fee": null
+}
+```
+
+### Start connecting a Stripe account
+
+`POST /v2/projects/{project_id}/apps/{app_id}/stripe_connect/actions/start` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read_write`
+
+`oauth` answers Stripe's authorize URL for an existing Stripe account; `account_link` creates a Standard account on RevenueDot's platform and answers its onboarding link. Open `url` in the browser and keep `nonce` there: Stripe sends the developer back to `redirect_uri` (the dashboard's `/connect/stripe`), which posts `state`, `code` and the nonce to `actions/finish` within 10 minutes.
+
+- **400:** a mode this server cannot connect in. **409:** the app is already connected. **422:** Connect is not set up on this server (`unavailable_reason`), or Stripe refused to create the account.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes | App id (app...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `method` | `oauth`, `account_link` | no |  |
+| `mode` | `live`, `test` | no |  |
+| `email` | string or null | no | account_link: the new account's email. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/stripe_connect/actions/start" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"method":"oauth","mode":"live"}'
+```
+
+**Responses**
+
+- **200**: Where to send the developer.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "stripe_connect_start",
+  "url": "https://connect.stripe.com/oauth/authorize?response_type=code&client_id=ca_…&scope=read_write&state=proj1.app1.f3…&redirect_uri=https%3A%2F%2Fapp.revenuedot.app%2Fconnect%2Fstripe&stripe_landing=login",
+  "state": "proj1.app1.f3a9…",
+  "nonce": "8c1e…",
+  "redirect_uri": "https://app.revenuedot.app/connect/stripe",
+  "expires_in": 600
+}
+```
+
+### Finish connecting (from the callback page)
+
+`POST /v2/projects/{project_id}/apps/{app_id}/stripe_connect/actions/finish` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read_write`
+
+The state must be this app's pending one, under 10 minutes old, and is used once; the nonce must be the one `actions/start` gave this browser. For OAuth the code is exchanged at `connect.stripe.com/oauth/token` and only the account id is kept, sealed. For Account Links the account's status is read again.
+
+- **400:** an invalid, used or expired state, or a nonce from another browser. **422:** Stripe refused the code.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes | App id (app...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `state` | string | yes |  |
+| `nonce` | string | yes |  |
+| `code` | string or null | no | OAuth only. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/stripe_connect/actions/finish" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"state":"proj1.app1.f3a9…","nonce":"8c1e…","code":"ac_…"}'
+```
+
+**Responses**
+
+- **200**: The connection.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "stripe_connect",
+  "app_id": "app1a2b3c4d",
+  "available": true,
+  "unavailable_reason": null,
+  "modes": [
+    "live",
+    "test"
+  ],
+  "status": "connected",
+  "method": "oauth",
+  "mode": "live",
+  "account": "acct_…9xQz",
+  "charges_enabled": true,
+  "details_submitted": true,
+  "connected_at": 1790900000000,
+  "disconnected_at": null,
+  "disconnect_reason": null,
+  "restricted_key_configured": false,
+  "webhook_url": "https://api.revenuedot.app/v1/notifications/stripe-connect",
+  "application_fee": null
+}
+```
+
+### Disconnect the Stripe account
+
+`POST /v2/projects/{project_id}/apps/{app_id}/stripe_connect/actions/disconnect` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read_write`
+
+Deauthorizes RevenueDot's platform at Stripe and forgets the account. If Stripe cannot be reached the app is still disconnected, `deauthorized` is false and `warning` says to remove RevenueDot under Connected apps in Stripe.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes | App id (app...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/stripe_connect/actions/disconnect" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Disconnected.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
 ## Purchase links
 

@@ -11,7 +11,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (193)
+## Operations on this page (207)
 
 - **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects), [Update account settings](#update-account-settings), [Email a password reset link](#email-a-password-reset-link), [Check a password reset link](#check-a-password-reset-link), [Set a new password from a reset link](#set-a-new-password-from-a-reset-link), [Confirm an email address](#confirm-an-email-address), [Send a new confirmation email](#send-a-new-confirmation-email), [Look up an invite](#look-up-an-invite), [Accept an invite](#accept-an-invite)
 - **Members and invites**: [List open invites](#list-open-invites), [Invite someone by email](#invite-someone-by-email), [Resend an invite](#resend-an-invite), [Revoke an invite](#revoke-an-invite), [Change a member's role](#change-a-members-role), [Remove a member, or leave the project](#remove-a-member-or-leave-the-project)
@@ -29,6 +29,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Refund Control**: [Get policies and settings](#get-policies-and-settings), [Save settings and the ordered policies](#save-settings-and-the-ordered-policies), [Refund rate, amounts and counts](#refund-rate-amounts-and-counts), [List refund requests, newest first](#list-refund-requests-newest-first)
 - **Retention**: [List Customer Center retention offers](#list-customer-center-retention-offers), [Create a retention offer](#create-a-retention-offer), [Update a retention offer](#update-a-retention-offer), [Delete a retention offer](#delete-a-retention-offer), [Get Apple Retention Messaging settings](#get-apple-retention-messaging-settings), [Save messages, defaults and real-time rules](#save-messages-defaults-and-real-time-rules), [Upload to Apple and register the real-time URL](#upload-to-apple-and-register-the-real-time-url), [Apple's real-time Get Retention Message call](#apples-real-time-get-retention-message-call)
 - **Support**: [List Customer Center tickets, newest first](#list-customer-center-tickets-newest-first), [Get a ticket](#get-a-ticket), [Close or reopen a ticket](#close-or-reopen-a-ticket), [What a help desk sidebar shows about a customer](#what-a-help-desk-sidebar-shows-about-a-customer), [Look customers up by email](#look-customers-up-by-email), [Intercom inbox app: the customer's subscription as Canvas Kit components](#intercom-inbox-app-the-customers-subscription-as-canvas-kit-components)
+- **Payment recovery**: [Get payment recovery settings](#get-payment-recovery-settings), [Replace payment recovery settings](#replace-payment-recovery-settings), [At risk, emails sent, recovered revenue](#at-risk-emails-sent-recovered-revenue), [List recovery cases](#list-recovery-cases), [Send a test recovery email](#send-a-test-recovery-email), [Send the emails that are due now](#send-the-emails-that-are-due-now), [Email link: opens the place to fix the payment](#email-link-opens-the-place-to-fix-the-payment), [Where the Stripe portal returns to](#where-the-stripe-portal-returns-to), [Unsubscribe page (asks first)](#unsubscribe-page-asks-first), [Unsubscribe (also RFC 8058 one-click)](#unsubscribe-also-rfc-8058-one-click)
 - **Win-back**: [List win-back campaigns](#list-win-back-campaigns), [Create a win-back campaign](#create-a-win-back-campaign), [Get a campaign with stats and recent emails](#get-a-campaign-with-stats-and-recent-emails), [Update, start or pause a campaign](#update-start-or-pause-a-campaign), [Delete a campaign](#delete-a-campaign), [Who would get the email now](#who-would-get-the-email-now), [Send a test email](#send-a-test-email), [Send now](#send-now), [Email button: records the click and redirects to the offer](#email-button-records-the-click-and-redirects-to-the-offer), [Open-tracking image (campaigns with track_opens)](#open-tracking-image-campaigns-with-track_opens), [Unsubscribe page (asks first)](#unsubscribe-page-asks-first), [Unsubscribe (also RFC 8058 one-click)](#unsubscribe-also-rfc-8058-one-click)
 - **Customer lists**: [Customers in a list, with the summary cards](#customers-in-a-list-with-the-summary-cards), [Export a list as CSV](#export-a-list-as-csv)
 - **Event log**: [Event log](#event-log), [Transaction feed](#transaction-feed)
@@ -36,6 +37,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Dashboard data**: [Daily history of an overview metric](#daily-history-of-an-overview-metric), [Dashboard rows for customers](#dashboard-rows-for-customers)
 - **Migration import**: [Import customers with their purchases](#import-customers-with-their-purchases), [Keep an app's existing SDK key](#keep-an-apps-existing-sdk-key), [What still needs attention after an import](#what-still-needs-attention-after-an-import)
 - **Web billing**: [List web discounts with their settings](#list-web-discounts-with-their-settings), [Get the Web page: providers and checklist](#get-the-web-page-providers-and-checklist), [Get a Stripe app's web config](#get-a-stripe-apps-web-config), [Save a Stripe app's web config](#save-a-stripe-apps-web-config), [List a Stripe app's web products](#list-a-stripe-apps-web-products), [Create a web product in Stripe](#create-a-web-product-in-stripe), [Get the project's web address and custom domain](#get-the-projects-web-address-and-custom-domain), [Change the project's slug or custom domain](#change-the-projects-slug-or-custom-domain), [Check the custom domain's DNS records](#check-the-custom-domains-dns-records)
+- **Stripe Connect**: [Get a Stripe app's Connect status](#get-a-stripe-apps-connect-status), [Start connecting a Stripe account](#start-connecting-a-stripe-account), [Finish connecting (from the callback page)](#finish-connecting-from-the-callback-page), [Disconnect the Stripe account](#disconnect-the-stripe-account)
 - **Purchase links**: [List purchase links](#list-purchase-links), [Create a purchase link](#create-a-purchase-link), [Get a purchase link](#get-a-purchase-link), [Update a purchase link](#update-a-purchase-link), [Delete a purchase link](#delete-a-purchase-link)
 - **Funnels**: [List funnels](#list-funnels), [Create a funnel](#create-a-funnel), [Is Build with AI available?](#is-build-with-ai-available), [Build a funnel with AI](#build-a-funnel-with-ai), [Get a funnel](#get-a-funnel), [Update a funnel's draft](#update-a-funnels-draft), [Delete a funnel](#delete-a-funnel), [Publish a funnel](#publish-a-funnel), [Unpublish a funnel](#unpublish-a-funnel), [Get a funnel's analytics](#get-a-funnels-analytics), [Get what the builder's preview needs](#get-what-the-builders-preview-needs)
 - **Hosted pages**: [A purchase link or a published funnel](#a-purchase-link-or-a-published-funnel), [The success page after Stripe Checkout](#the-success-page-after-stripe-checkout), [The success page of the iOS SDK's hosted checkout](#the-success-page-of-the-ios-sdks-hosted-checkout), [The cancel page of the iOS SDK's hosted checkout](#the-cancel-page-of-the-ios-sdks-hosted-checkout), [A redemption link page](#a-redemption-link-page), [Start a checkout from a page](#start-a-checkout-from-a-page), [Check a discount code from a page](#check-a-discount-code-from-a-page), [Record a funnel event from a page](#record-a-funnel-event-from-a-page)
@@ -5045,6 +5047,342 @@ Example 200 response:
 }
 ```
 
+## Payment recovery
+
+Emails to subscribers whose renewal failed on any store, with one link to fix the payment, and the revenue that comes back. See [Payment recovery](../docs/guides/payment-recovery.md).
+
+### Get payment recovery settings
+
+`GET /v2/projects/{project_id}/payment_recovery` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/payment_recovery" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Settings.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Replace payment recovery settings
+
+`POST /v2/projects/{project_id}/payment_recovery` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Open cases move to the new schedule: each case's next email is due on its new day.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `enabled` | boolean | yes |  |
+| `steps` | array of object | yes |  |
+| `steps[].day` | integer | yes | Days after the billing issue started. 0 sends right away. |
+| `steps[].subject` | string | yes | `{app}` becomes the sender name. |
+| `steps[].heading` | string | yes |  |
+| `steps[].body` | string | yes | Plain text; a blank line starts a paragraph. |
+| `steps[].button_label` | string | yes |  |
+| `window_days` | integer | no |  |
+| `include_sandbox` | boolean | no |  |
+| `sender_name` | string or null | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/payment_recovery" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"enabled":true,"window_days":30,"include_sandbox":false,"sender_name":null,"steps":[{"day":0,"subject":"Your payment for {app} didn'\''t go through","heading":"Update your payment method","body":"We couldn'\''t charge your payment method for your {app} subscription.\n\nUpdate your payment details to keep your access.","button_label":"Update payment"},{"day":3,"subject":"Action needed: keep your {app} subscription","heading":"Your subscription is at risk","body":"Your last payment for {app} still hasn'\''t gone through.","button_label":"Update payment"}]}'
+```
+
+**Responses**
+
+- **200**: Settings.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### At risk, emails sent, recovered revenue
+
+`GET /v2/projects/{project_id}/payment_recovery/stats` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `days` | integer | no |  |
+| `environment` | `production`, `sandbox` | no | Default production. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/payment_recovery/stats" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The numbers.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "payment_recovery_stats",
+  "days": 28,
+  "environment": "production",
+  "at_risk": {
+    "count": 3,
+    "revenue_in_usd": 89.97
+  },
+  "opened": 9,
+  "messages_sent": 14,
+  "clicked": 6,
+  "recovered": {
+    "count": 5,
+    "revenue_in_usd": 179.95
+  },
+  "recovered_without_message": {
+    "count": 1,
+    "revenue_in_usd": 9.99
+  },
+  "lost": {
+    "count": 1
+  },
+  "recovery_rate": 0.857,
+  "by_store": [
+    {
+      "store": "app_store",
+      "at_risk": 2,
+      "recovered": 4,
+      "recovered_revenue_in_usd": 119.96,
+      "recovered_without_message": 1,
+      "lost": 1
+    }
+  ]
+}
+```
+
+### List recovery cases
+
+`GET /v2/projects/{project_id}/payment_recovery/cases` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read`
+
+Newest first.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `status` | `open`, `recovered`, `lost` | no |  |
+| `environment` | `production`, `sandbox` | no | Default production. |
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/payment_recovery/cases" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Cases.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Send a test recovery email
+
+`POST /v2/projects/{project_id}/payment_recovery/actions/send_test` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Sends one step (saved, or `content` to preview unsaved edits) to any address with sample links. At most 10 an hour per project.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `email` | string | yes |  |
+| `step` | integer | no | 0-based, default 0. |
+| `content` | object | no |  |
+| `content.day` | integer | yes | Days after the billing issue started. 0 sends right away. |
+| `content.subject` | string | yes | `{app}` becomes the sender name. |
+| `content.heading` | string | yes |  |
+| `content.body` | string | yes | Plain text; a blank line starts a paragraph. |
+| `content.button_label` | string | yes |  |
+| `sender_name` | string or null | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/payment_recovery/actions/send_test" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"email":"me@example.com","step":0}'
+```
+
+**Responses**
+
+- **200**: Sent.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **429**: Too many requests. Retry later. Returns [V2Error](#v2error).
+- **502**: An upstream service (the store or the language model) gave no usable answer. Retry later. Returns [V2Error](#v2error).
+
+### Send the emails that are due now
+
+`POST /v2/projects/{project_id}/payment_recovery/actions/run` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+The minute tick sends due emails too (on Cloud from the cron). Closes cases whose window passed. **422:** recovery is off.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/payment_recovery/actions/run" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Counts.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### Email link: opens the place to fix the payment
+
+`GET /v1/recovery/l/{token}` · Auth: none · RevenueDot extension
+
+Records the click and redirects: Apple's payment page, the Play Store subscription page, Amazon's subscriptions page, or a Stripe customer portal session made now (the open invoice's page when the portal is not set up). Test Store purchases get a page that explains the test.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `via` | string | no |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/recovery/l/$TOKEN"
+```
+
+**Responses**
+
+- **200**: An explanation page.
+- **303**: To the store or Stripe.
+- **404**: Unknown link.
+
+### Where the Stripe portal returns to
+
+`GET /v1/recovery/done/{token}` · Auth: none · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/recovery/done/$TOKEN"
+```
+
+**Responses**
+
+- **200**: A thank-you page.
+- **404**: Unknown link.
+
+### Unsubscribe page (asks first)
+
+`GET /v1/recovery/u/{token}` · Auth: none · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/recovery/u/$TOKEN"
+```
+
+**Responses**
+
+- **200**: HTML.
+- **404**: Unknown link.
+
+### Unsubscribe (also RFC 8058 one-click)
+
+`POST /v1/recovery/u/{token}` · Auth: none · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/recovery/u/$TOKEN"
+```
+
+**Responses**
+
+- **200**: HTML confirmation.
+- **404**: Unknown link.
+
 ## Win-back
 
 Campaigns that email churned subscribers an offer, with tracked links and one-click unsubscribe.
@@ -6519,6 +6857,212 @@ Example 200 response:
   }
 }
 ```
+
+## Stripe Connect
+
+Connect a Stripe app to the developer's own Stripe account through RevenueDot's Stripe Connect platform (OAuth or Account Links), without a restricted key. See [Connect with Stripe](../docs/guides/stripe-connect.md).
+
+### Get a Stripe app's Connect status
+
+`GET /v2/projects/{project_id}/apps/{app_id}/stripe_connect` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read`
+
+Whether this server offers Connect with Stripe (and why not), and the app's connection. See [Connect with Stripe](../docs/guides/stripe-connect.md).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes | App id (app...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/stripe_connect" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The connection.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "stripe_connect",
+  "app_id": "app1a2b3c4d",
+  "available": true,
+  "unavailable_reason": null,
+  "modes": [
+    "live",
+    "test"
+  ],
+  "status": "connected",
+  "method": "oauth",
+  "mode": "live",
+  "account": "acct_…9xQz",
+  "charges_enabled": true,
+  "details_submitted": true,
+  "connected_at": 1790900000000,
+  "disconnected_at": null,
+  "disconnect_reason": null,
+  "restricted_key_configured": false,
+  "webhook_url": "https://api.revenuedot.app/v1/notifications/stripe-connect",
+  "application_fee": null
+}
+```
+
+### Start connecting a Stripe account
+
+`POST /v2/projects/{project_id}/apps/{app_id}/stripe_connect/actions/start` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read_write`
+
+`oauth` answers Stripe's authorize URL for an existing Stripe account; `account_link` creates a Standard account on RevenueDot's platform and answers its onboarding link. Open `url` in the browser and keep `nonce` there: Stripe sends the developer back to `redirect_uri` (the dashboard's `/connect/stripe`), which posts `state`, `code` and the nonce to `actions/finish` within 10 minutes.
+
+- **400:** a mode this server cannot connect in. **409:** the app is already connected. **422:** Connect is not set up on this server (`unavailable_reason`), or Stripe refused to create the account.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes | App id (app...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `method` | `oauth`, `account_link` | no |  |
+| `mode` | `live`, `test` | no |  |
+| `email` | string or null | no | account_link: the new account's email. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/stripe_connect/actions/start" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"method":"oauth","mode":"live"}'
+```
+
+**Responses**
+
+- **200**: Where to send the developer.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "stripe_connect_start",
+  "url": "https://connect.stripe.com/oauth/authorize?response_type=code&client_id=ca_…&scope=read_write&state=proj1.app1.f3…&redirect_uri=https%3A%2F%2Fapp.revenuedot.app%2Fconnect%2Fstripe&stripe_landing=login",
+  "state": "proj1.app1.f3a9…",
+  "nonce": "8c1e…",
+  "redirect_uri": "https://app.revenuedot.app/connect/stripe",
+  "expires_in": 600
+}
+```
+
+### Finish connecting (from the callback page)
+
+`POST /v2/projects/{project_id}/apps/{app_id}/stripe_connect/actions/finish` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read_write`
+
+The state must be this app's pending one, under 10 minutes old, and is used once; the nonce must be the one `actions/start` gave this browser. For OAuth the code is exchanged at `connect.stripe.com/oauth/token` and only the account id is kept, sealed. For Account Links the account's status is read again.
+
+- **400:** an invalid, used or expired state, or a nonce from another browser. **422:** Stripe refused the code.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes | App id (app...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `state` | string | yes |  |
+| `nonce` | string | yes |  |
+| `code` | string or null | no | OAuth only. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/stripe_connect/actions/finish" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"state":"proj1.app1.f3a9…","nonce":"8c1e…","code":"ac_…"}'
+```
+
+**Responses**
+
+- **200**: The connection.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "stripe_connect",
+  "app_id": "app1a2b3c4d",
+  "available": true,
+  "unavailable_reason": null,
+  "modes": [
+    "live",
+    "test"
+  ],
+  "status": "connected",
+  "method": "oauth",
+  "mode": "live",
+  "account": "acct_…9xQz",
+  "charges_enabled": true,
+  "details_submitted": true,
+  "connected_at": 1790900000000,
+  "disconnected_at": null,
+  "disconnect_reason": null,
+  "restricted_key_configured": false,
+  "webhook_url": "https://api.revenuedot.app/v1/notifications/stripe-connect",
+  "application_fee": null
+}
+```
+
+### Disconnect the Stripe account
+
+`POST /v2/projects/{project_id}/apps/{app_id}/stripe_connect/actions/disconnect` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read_write`
+
+Deauthorizes RevenueDot's platform at Stripe and forgets the account. If Stripe cannot be reached the app is still disconnected, `deauthorized` is false and `warning` says to remove RevenueDot under Connected apps in Stripe.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes | App id (app...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/stripe_connect/actions/disconnect" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Disconnected.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
 
 ## Purchase links
 
