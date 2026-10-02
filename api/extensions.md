@@ -11,7 +11,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (232)
+## Operations on this page (236)
 
 - **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects), [Update account settings](#update-account-settings), [Email a password reset link](#email-a-password-reset-link), [Check a password reset link](#check-a-password-reset-link), [Set a new password from a reset link](#set-a-new-password-from-a-reset-link), [Confirm an email address](#confirm-an-email-address), [Send a new confirmation email](#send-a-new-confirmation-email), [Look up an invite](#look-up-an-invite), [Accept an invite](#accept-an-invite)
 - **Members and invites**: [List open invites](#list-open-invites), [Invite someone by email](#invite-someone-by-email), [Resend an invite](#resend-an-invite), [Revoke an invite](#revoke-an-invite), [Change a member's role](#change-a-members-role), [Remove a member, or leave the project](#remove-a-member-or-leave-the-project)
@@ -29,7 +29,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Refund Control**: [Get policies and settings](#get-policies-and-settings), [Save settings and the ordered policies](#save-settings-and-the-ordered-policies), [Refund rate, amounts and counts](#refund-rate-amounts-and-counts), [List refund requests, newest first](#list-refund-requests-newest-first)
 - **Retention**: [List Customer Center retention offers](#list-customer-center-retention-offers), [Create a retention offer](#create-a-retention-offer), [Update a retention offer](#update-a-retention-offer), [Delete a retention offer](#delete-a-retention-offer), [Get Apple Retention Messaging settings](#get-apple-retention-messaging-settings), [Save messages, defaults and real-time rules](#save-messages-defaults-and-real-time-rules), [Upload to Apple and register the real-time URL](#upload-to-apple-and-register-the-real-time-url), [Apple's real-time Get Retention Message call](#apples-real-time-get-retention-message-call)
 - **Support**: [List Customer Center tickets, newest first](#list-customer-center-tickets-newest-first), [Get a ticket](#get-a-ticket), [Close or reopen a ticket](#close-or-reopen-a-ticket), [What a help desk sidebar shows about a customer](#what-a-help-desk-sidebar-shows-about-a-customer), [Look customers up by email](#look-customers-up-by-email), [Intercom inbox app: the customer's subscription as Canvas Kit components](#intercom-inbox-app-the-customers-subscription-as-canvas-kit-components)
-- **Payment recovery**: [Get payment recovery settings](#get-payment-recovery-settings), [Replace payment recovery settings](#replace-payment-recovery-settings), [At risk, emails sent, recovered revenue](#at-risk-emails-sent-recovered-revenue), [List recovery cases](#list-recovery-cases), [Send a test recovery email](#send-a-test-recovery-email), [Send the emails that are due now](#send-the-emails-that-are-due-now), [Email link: opens the place to fix the payment](#email-link-opens-the-place-to-fix-the-payment), [Where the Stripe portal returns to](#where-the-stripe-portal-returns-to), [Unsubscribe page (asks first)](#unsubscribe-page-asks-first), [Unsubscribe (also RFC 8058 one-click)](#unsubscribe-also-rfc-8058-one-click)
+- **Payment recovery**: [Get payment recovery settings](#get-payment-recovery-settings), [Replace payment recovery settings](#replace-payment-recovery-settings), [At risk, emails sent, recovered revenue](#at-risk-emails-sent-recovered-revenue), [List recovery cases](#list-recovery-cases), [Send a test recovery email](#send-a-test-recovery-email), [Send the emails that are due now](#send-the-emails-that-are-due-now), [Email link: opens the place to fix the payment](#email-link-opens-the-place-to-fix-the-payment), [Customer Center link (customer info's management_url)](#customer-center-link-customer-infos-management_url), [Email a one-time link to the Stripe customer portal](#email-a-one-time-link-to-the-stripe-customer-portal), [One-time link page (a button; opening it spends nothing)](#one-time-link-page-a-button-opening-it-spends-nothing), [Use the one-time link: a Stripe portal session made now](#use-the-one-time-link-a-stripe-portal-session-made-now), [Where the Stripe portal returns to](#where-the-stripe-portal-returns-to), [Unsubscribe page (asks first)](#unsubscribe-page-asks-first), [Unsubscribe (also RFC 8058 one-click)](#unsubscribe-also-rfc-8058-one-click)
 - **Win-back**: [List win-back campaigns](#list-win-back-campaigns), [Create a win-back campaign](#create-a-win-back-campaign), [Get a campaign with stats and recent emails](#get-a-campaign-with-stats-and-recent-emails), [Update, start or pause a campaign](#update-start-or-pause-a-campaign), [Delete a campaign](#delete-a-campaign), [Who would get the email now](#who-would-get-the-email-now), [Send a test email](#send-a-test-email), [Send now](#send-now), [Email button: records the click and redirects to the offer](#email-button-records-the-click-and-redirects-to-the-offer), [Open-tracking image (campaigns with track_opens)](#open-tracking-image-campaigns-with-track_opens), [Unsubscribe page (asks first)](#unsubscribe-page-asks-first), [Unsubscribe (also RFC 8058 one-click)](#unsubscribe-also-rfc-8058-one-click)
 - **Customer lists**: [Customers in a list, with the summary cards](#customers-in-a-list-with-the-summary-cards), [Export a list as CSV](#export-a-list-as-csv)
 - **Event log**: [Event log](#event-log), [Transaction feed](#transaction-feed)
@@ -5307,12 +5307,6 @@ Records the click and redirects: Apple's payment page, the Play Store subscripti
 |---|---|---|---|
 | `token` | string | yes |  |
 
-**Query parameters**
-
-| Name | Type | Required | Description |
-|---|---|---|---|
-| `via` | string | no |  |
-
 **Example request**
 
 ```bash
@@ -5323,6 +5317,98 @@ curl -s "$REVENUEDOT_URL/v1/recovery/l/$TOKEN"
 
 - **200**: An explanation page.
 - **303**: To the store or Stripe.
+- **404**: Unknown link.
+
+### Customer Center link (customer info's management_url)
+
+`GET /v1/recovery/c/{token}` · Auth: none · RevenueDot extension
+
+The Customer Center token, never the emailed one. App Store, Google Play and Amazon purchases redirect straight to the store's page. A web (Stripe) purchase gets a page that offers to email a one-time link: customer info is readable with the app's public key, so this link never opens the Stripe portal itself. Without an email address on file, the page says where to update the payment instead.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/recovery/c/$TOKEN"
+```
+
+**Responses**
+
+- **200**: HTML.
+- **303**: To the store.
+- **404**: Unknown link.
+
+### Email a one-time link to the Stripe customer portal
+
+`POST /v1/recovery/c/{token}` · Auth: none · RevenueDot extension
+
+Emails a link that works once, for 30 minutes, to the address on file (the case's email, `$email`, or the Stripe customer's). At most 3 an hour per customer and 10 an hour per IP address.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/recovery/c/$TOKEN"
+```
+
+**Responses**
+
+- **200**: Check your email (or no email on file).
+- **404**: Unknown link.
+- **429**: Too many requests.
+- **503**: The email could not be sent.
+
+### One-time link page (a button; opening it spends nothing)
+
+`GET /v1/recovery/p/{token}` · Auth: none · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v1/recovery/p/$TOKEN"
+```
+
+**Responses**
+
+- **200**: A button, or why the link no longer works (used, expired).
+- **404**: Unknown link.
+
+### Use the one-time link: a Stripe portal session made now
+
+`POST /v1/recovery/p/{token}` · Auth: none · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/recovery/p/$TOKEN"
+```
+
+**Responses**
+
+- **200**: Why the link no longer works.
+- **303**: To the Stripe customer portal.
 - **404**: Unknown link.
 
 ### Where the Stripe portal returns to

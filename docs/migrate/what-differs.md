@@ -103,7 +103,7 @@ Built since the first release: [paywalls](../guides/paywalls.md) with a visual e
 - Cloud billing plans.
 
 **Tier 3, still planned**
-- SSO/SAML, SCIM, custom roles, several organizations, data-location controls and compliance exports.
+- An EU region on RevenueDot Cloud. Organizations, custom roles, single sign-on, SCIM, data location, audit retention and compliance exports are built in [RevenueDot Enterprise](../guides/enterprise.md).
 - High-availability self-host (Helm, Terraform, clustering).
 - Web billing: "Connect with Stripe" (OAuth), Paddle as a web provider, an embedded checkout inside purchases-js, funnel A/B tests and automatic TLS for custom domains on Cloud.
 - Failed-payment recovery.

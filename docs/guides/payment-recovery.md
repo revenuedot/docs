@@ -51,7 +51,10 @@ A Stripe link opens the portal only while the case is open. After the case is lo
 For Stripe, set up the customer portal in your Stripe Dashboard (**Settings > Billing > Customer portal**). With a restricted key, give it **Customer portal: write**; with [Connect with Stripe](stripe-connect.md) nothing else is needed.
 
 ## Customer Center
-While a customer has an open case, their customer info carries `management_url`: the same link. The RevenueCat SDKs' Customer Center opens it from **Manage subscription** for purchases it cannot manage itself, so a web subscriber can fix their card from inside your app.
+While a customer has an open case, their customer info carries `management_url`. The RevenueCat SDKs' Customer Center opens it from **Manage subscription** for purchases it cannot manage itself.
+- **App Store, Google Play, Amazon:** it opens the store's own payment page, like the email.
+- **Stripe (web):** customer info can be read with your app's public key, so this link never opens the billing portal by itself. It shows **We'll email you a secure link**; the customer taps **Email me the link** and gets a link at the address on file that works once, for 30 minutes. The portal opens only from that link. At most 3 links an hour per customer and 10 per IP address.
+- **No email on file:** the page says to update the payment in the account where they subscribed on the web, or to contact your support.
 
 ## Unsubscribe
 Every email has an unsubscribe link. Opening it only asks; the button unsubscribes. When your server's public URL is https, the email also has one-click `List-Unsubscribe` headers ([RFC 8058](https://www.rfc-editor.org/rfc/rfc8058)).

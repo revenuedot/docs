@@ -145,9 +145,23 @@ The platform's endpoint for "Events on Connected accounts". Each event carries \
       responses: { 200: ok("Counts.", obj({ object: en(["payment_recovery_run"]), sent: int(), failed: int(), skipped: int(), closed: int() })), ...E(404, 422) } }),
   },
   "/v1/recovery/l/{token}": {
-    get: op({ id: "recoveryLink", tag: "Payment recovery", summary: "Email link: opens the place to fix the payment", security: NONE, source: PUB, extension: true, parameters: [id("token"), { name: "via", in: "query", required: false, schema: str("`customer_center` from customer info's management_url.") }],
+    get: op({ id: "recoveryLink", tag: "Payment recovery", summary: "Email link: opens the place to fix the payment", security: NONE, source: PUB, extension: true, parameters: [id("token")],
       description: "Records the click and redirects: Apple's payment page, the Play Store subscription page, Amazon's subscriptions page, or a Stripe customer portal session made now (the open invoice's page when the portal is not set up). Test Store purchases get a page that explains the test.",
       responses: { 303: { description: "To the store or Stripe." }, 200: { description: "An explanation page.", content: { "text/html": {} } }, 404: { description: "Unknown link." } } }),
+  },
+  "/v1/recovery/c/{token}": {
+    get: op({ id: "recoveryCustomerCenter", tag: "Payment recovery", summary: "Customer Center link (customer info's management_url)", security: NONE, source: PUB, extension: true, parameters: [id("token")],
+      description: "The Customer Center token, never the emailed one. App Store, Google Play and Amazon purchases redirect straight to the store's page. A web (Stripe) purchase gets a page that offers to email a one-time link: customer info is readable with the app's public key, so this link never opens the Stripe portal itself. Without an email address on file, the page says where to update the payment instead.",
+      responses: { 303: { description: "To the store." }, 200: { description: "HTML.", content: { "text/html": {} } }, 404: { description: "Unknown link." } } }),
+    post: op({ id: "recoveryCustomerCenterSend", tag: "Payment recovery", summary: "Email a one-time link to the Stripe customer portal", security: NONE, source: PUB, extension: true, parameters: [id("token")],
+      description: "Emails a link that works once, for 30 minutes, to the address on file (the case's email, `$email`, or the Stripe customer's). At most 3 an hour per customer and 10 an hour per IP address.",
+      responses: { 200: { description: "Check your email (or no email on file).", content: { "text/html": {} } }, 429: { description: "Too many requests.", content: { "text/html": {} } }, 503: { description: "The email could not be sent.", content: { "text/html": {} } }, 404: { description: "Unknown link." } } }),
+  },
+  "/v1/recovery/p/{token}": {
+    get: op({ id: "recoveryPortalLinkPage", tag: "Payment recovery", summary: "One-time link page (a button; opening it spends nothing)", security: NONE, source: PUB, extension: true, parameters: [id("token")],
+      responses: { 200: { description: "A button, or why the link no longer works (used, expired).", content: { "text/html": {} } }, 404: { description: "Unknown link." } } }),
+    post: op({ id: "recoveryPortalLinkUse", tag: "Payment recovery", summary: "Use the one-time link: a Stripe portal session made now", security: NONE, source: PUB, extension: true, parameters: [id("token")],
+      responses: { 303: { description: "To the Stripe customer portal." }, 200: { description: "Why the link no longer works.", content: { "text/html": {} } }, 404: { description: "Unknown link." } } }),
   },
   "/v1/recovery/done/{token}": { get: op({ id: "recoveryDone", tag: "Payment recovery", summary: "Where the Stripe portal returns to", security: NONE, source: PUB, extension: true, parameters: [id("token")], responses: { 200: { description: "A thank-you page.", content: { "text/html": {} } }, 404: { description: "Unknown link." } } }) },
   "/v1/recovery/u/{token}": {

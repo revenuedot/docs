@@ -18,6 +18,8 @@ The roles follow RevenueCat's collaborator roles ([Collaborators](https://www.re
 
 `GET /v2/projects/{project_id}/collaborators` answers with RevenueCat's role names, so the Viewer role comes back as `read_only`. Requests that set a role take `admin`, `developer` or `viewer`.
 
+**Custom roles** (for example a support agent who can refund but not edit the catalog) are part of [RevenueDot Enterprise](enterprise.md#custom-roles). A member with one shows **Custom role** in Collaborators, and the API returns the role's id (`role_...`). Single sign-on and SCIM for your team are there too: [Single sign-on](single-sign-on.md), [SCIM](scim.md).
+
 ## Invite someone
 1. Open **Project settings → Collaborators** and click **Invite**.
 2. Enter the email address and pick **Admin**, **Developer** or **Viewer**.
@@ -67,3 +69,4 @@ These are RevenueDot extensions. They need a dashboard session (the `rd_session`
 - [Alert emails](alerts.md): what admins get told when something breaks
 - [Self-hosting: Email](self-hosting.md#email)
 - [Projects, apps and API keys](../concepts/projects-and-apps.md)
+- [Enterprise](enterprise.md): organizations, custom roles, single sign-on and SCIM
