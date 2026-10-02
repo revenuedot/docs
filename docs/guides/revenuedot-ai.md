@@ -28,6 +28,8 @@ Select **Attach image** (or drop a file on the box) to add a PNG, JPEG, WebP or 
 ### Mention a customer, offering or chart
 Type `@` and pick from the list: customers (by app user ID), offerings and charts. The assistant gets that item's details with your question, so "Why did @wren_ios cancel?" needs no lookup.
 
+On any chart, **Ask AI** opens a new conversation with the chart already mentioned and a question ready to edit or send. The mention carries what you were looking at (range, resolution, segment, filters and the Sandbox switch), so the assistant reads the same numbers. See [Charts](charts.md#refresh-and-ask-ai).
+
 ### Import products from a StoreKit configuration file
 Attach the `.storekit` file Xcode uses for local StoreKit testing. The chat shows its products (IDs, types, prices, periods, introductory offers). Select **Import into catalog** and approve: RevenueDot creates the products on your App Store app and skips the ones that already exist. Prices and offers stay in App Store Connect.
 

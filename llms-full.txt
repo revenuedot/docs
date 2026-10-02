@@ -3876,7 +3876,7 @@ It works in both directions: from your own server to RevenueDot Cloud (`https://
 
 ## What moves
 
-Everything the project owns, 68 tables in all: the project and its settings, apps and their store credentials, the catalog (products, entitlements, offerings, packages), customers with their aliases, attributes and attribution, subscriptions, one-time purchases, transactions, events, webhooks and their delivery log, integrations, scheduled data exports, paywalls with their versions and images, audiences, targeting rules, experiments, in-app currencies with balances and the ledger, Refund Control, retention offers, win-back campaigns, support tickets, web billing (web products, purchase links, funnels, discounts, domains), Auth providers, blocked customers, Verified Metrics, Stripe Connect connections, payment recovery cases and emails, and the audit log.
+Everything the project owns, 70 tables in all: the project and its settings, apps and their store credentials, the catalog (products, entitlements, offerings, packages), customers with their aliases, attributes and attribution, subscriptions, one-time purchases, transactions, events, webhooks and their delivery log, integrations, scheduled data exports, paywalls with their versions and images, audiences, targeting rules, experiments, in-app currencies with balances and the ledger, Refund Control, retention offers, win-back campaigns, support tickets, web billing (web products, purchase links, funnels, discounts, domains), Auth providers, blocked customers, Verified Metrics, Stripe Connect connections, payment recovery cases and emails, and the audit log.
 
 What does not move:
 
@@ -3901,7 +3901,7 @@ What does not move:
    npx revenuedot move --from https://revenuedot.example.com --to https://api.revenuedot.app
    ```
 
-   The CLI exports the project, copies each file, then has the new server recompute the row count and a checksum of every table and compares them with the archive. It ends with `All 68 tables match`. If the copy stops (network, laptop sleep), run the same command again: a state file in the current folder (`revenuedot-move-<old host>-to-<new host>.json`, or `--state <file>`) remembers which files are done.
+   The CLI exports the project, copies each file, then has the new server recompute the row count and a checksum of every table and compares them with the archive. It ends with `All 70 tables match`. If the copy stops (network, laptop sleep), run the same command again: a state file in the current folder (`revenuedot-move-<old host>-to-<new host>.json`, or `--state <file>`) remembers which files are done.
 
    Your apps keep using the old server during the copy, and it is read table by table. A row that belongs to something created after its table was read, such as the alias of a user who installed the app a minute ago, is left out and counted, and the verification says how many. `--finish` copies everything again, so nothing is lost.
 5. **Switch.** When you are ready:
@@ -4304,6 +4304,8 @@ Select **Attach image** (or drop a file on the box) to add a PNG, JPEG, WebP or 
 
 ### Mention a customer, offering or chart
 Type `@` and pick from the list: customers (by app user ID), offerings and charts. The assistant gets that item's details with your question, so "Why did @wren_ios cancel?" needs no lookup.
+
+On any chart, **Ask AI** opens a new conversation with the chart already mentioned and a question ready to edit or send. The mention carries what you were looking at (range, resolution, segment, filters and the Sandbox switch), so the assistant reads the same numbers. See [Charts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md#refresh-and-ask-ai).
 
 ### Import products from a StoreKit configuration file
 Attach the `.storekit` file Xcode uses for local StoreKit testing. The chat shows its products (IDs, types, prices, periods, introductory offers). Select **Import into catalog** and approve: RevenueDot creates the products on your App Store app and skips the ones that already exist. Prices and offers stay in App Store Connect.
@@ -4807,7 +4809,7 @@ RevenueDot AI can also list experiments, read their results, start, pause and st
 
 ## Experiments made before multi-variant experiments
 
-Upgrading a server to this release (database migration 0029) converts every existing A/B experiment:
+Upgrading a server to this release (database migration 0030) converts every existing A/B experiment:
 
 - **Offering A becomes variant `a` (Control)** and **offering B becomes variant `b` (Treatment B)**.
 - **Every enrollment is kept**, so no customer changes variant.
@@ -4853,7 +4855,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments" -H "Author
 # Charts
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md
-Description: Every built-in chart in RevenueDot, how each one is calculated from your purchases, the filters and segments, the API, and the SQL that reproduces the core numbers.
+Description: Every built-in chart in RevenueDot, how each one is calculated, chart types, the customers behind each number, annotations, share links, the API, and the SQL that reproduces the core numbers.
 
 RevenueDot has 42 charts in the dashboard under **Analytics > Charts**, with the same names, groups and definitions as RevenueCat's Charts v3 wherever RevenueDot holds the same data. The REST API serves the same numbers at `GET /v2/projects/{project_id}/charts/{chart_name}` with RevenueCat's parameters and response shape, so scripts written for RevenueCat's charts API keep working.
 
@@ -4968,10 +4970,61 @@ RevenueDot has 42 charts in the dashboard under **Analytics > Charts**, with the
 
 Filter and segment by app, store, product, product duration, offering, country (the purchase's storefront, else the customer's last country), platform, app version and the customer's attribution (media source, campaign, ad group, keyword, ad and creative; see [Attribution](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/attribution.md)); paywall charts also by paywall, and the Customer Center chart by survey option. Customers without attribution show as "No attribution" (an empty value in the API). A filter on a purchase dimension (store, product …) does not change the new-customer counts that conversion charts divide by. A segmented chart shows the five largest values, then "Other" and the total.
 
+## Chart types
+
+Pick **Line**, **Stacked area**, **Column**, **Stacked column** or **100% stacked column** in the chart type menu. Line charts open as lines; bar charts open as columns, stacked when the chart is segmented or stacks its measures (MRR Movement, Active Subscriptions Movement). Stacked types need two or more series, so segment the chart to stack it; with one series they are disabled. Stacks split by sign: positive values build up from zero and negative ones (churned MRR) build down. The 100% stacked column shows each series as its share of the period's total; the table and the tooltip keep the real values. The type is kept in the page's address and in saved charts.
+
+## Customers behind a chart
+
+The **Customers** tab under every chart lists up to 100 customers who make up its numbers for the current range, resolution, filters, segment and Sandbox switch, the most recent first. Each row shows the app user ID (it opens the customer page), the subscription status, store, product, the date of the customer's latest contribution and their part of the chart's number. **Export all** downloads every one of them as CSV (up to 100,000 rows).
+
+The listed values add up to the chart. Flows and cohorts add up over the range; snapshots such as MRR, ARR and Active Subscriptions add up to the last period, so customers who were active earlier in the range are listed with 0. Ad revenue from app users who never became customers belongs to no one, and the tab shows it as one amount. Two ad charts list something else: Ad Monetized Customers lists each customer's days with ad revenue, which add up to the sum of the daily counts, and ARPDAU, a ratio, lists each customer's ad revenue, which adds up to the Ad Revenue chart.
+
+| Charts | Who is listed | Their value |
+|---|---|---|
+| Revenue | Customers with a purchase, renewal, one-time purchase, refund or ad revenue in the range | Their revenue (or proceeds) |
+| MRR, ARR, Active Subscriptions, Active Trials, Subscription Status | Customers with a paid subscription (a trial for Active Trials) at the end of any period | Their MRR, ARR or count at the end of the last period |
+| MRR Movement, Active Subscriptions Movement | Customers with a paid start, end, lapse, recovery or price change | Their net movement |
+| Paid Subscriptions, Churn | Paid starts; paid subscriptions that ended | The count |
+| Non-subscription Purchases, Refund Rate, Refunds | One-time purchases; paid transactions; refunds by refund date | The count; refunded money |
+| Ad charts | Customers with the chart's ad events | Ad revenue, impressions, clicks or requests |
+| New Customers, LTV, Initial Conversion, Conversion to Paying, Trial Conversion Funnel, Paywall Encounter, Cohort and Prediction Explorer | Customers whose cohort date is in the range | 1, their revenue in the lifetime window, or 1 when they converted |
+| Active Customers | Customers with app activity | Periods they were active in |
+| Trial Conversion Rate, Trial Cancellation Rate | Customers by their first trial start in each period | 1 when converted or cancelled |
+| Paywall charts | Customer and paywall pairs by first view | Conversions, revenue or views |
+| Subscription Retention | Subscriptions by paid start | The count |
+| Refund Request Outcomes, Play Store Cancel Reasons, Customer Center Survey Responses | Requests, cancellations, answers | The count |
+
+Through the API, with the chart's own parameters:
+
+```bash
+curl -H "Authorization: Bearer $REVENUEDOT_SECRET_KEY" \
+  "https://api.revenuedot.app/v2/projects/$PROJECT_ID/charts/revenue/customers?resolution=month&start_date=2026-07-01&end_date=2026-09-30"
+```
+
+The answer has `items` (`app_user_id`, `status`, `store`, `product_id`, `contributed_at`, `value`, `segment`), `total_count`, the measure in `value`, `sum` (`total` or `last`) and `unattributed_value`. Add `format=csv` for every customer as CSV. The key needs `charts_metrics:charts:read` and `customer_information:customers:read`.
+
+## Annotations
+
+Mark launches, price changes and campaigns on your charts. Click a period on any chart to select it, or drag across several (Shift+click works too), then press **+** above the selection. Give the annotation a title and, if you like, a description. It shows on every chart of the project whose range includes it: a square marker with a dashed line for one day, a light band for a range, and the title when you point at the marker. The **Annotations** tab lists the annotations in the chart's range, with edit and delete; clicking a marker opens the tab on that annotation.
+
+Admins and developers add, edit and delete annotations; Viewers see them. Every change is in the audit log. Through the API: `GET` and `POST /v2/projects/{project_id}/chart_annotations` (filter with `start_date` and `end_date`), and `GET`, `PATCH` and `DELETE /v2/projects/{project_id}/chart_annotations/{annotation_id}`. Chart data with `include_annotations=true` returns the annotations in its range in RevenueCat's format.
+
+## Share a chart
+
+**…** > **Share preview** makes a public link to a picture of the chart as you see it: its type, range, resolution, filters, segment and Sandbox switch. The link opens a page with the chart, its summary numbers and the values table, and its preview image shows in Slack, X, LinkedIn and email. The numbers are those of the moment you made the link, and the page holds only the chart's numbers and labels, never customer data. Anyone with the link can open it, so share it with care.
+
+The same dialog lists the chart's active links. Copy or open one, or revoke it: a revoked link answers "This link was revoked" at once. Admins and developers make and revoke links; Viewers can open them. Through the API: `GET` and `POST /v2/projects/{project_id}/chart_shares` and `DELETE /v2/projects/{project_id}/chart_shares/{share_id}`.
+
+## Refresh and Ask AI
+
+Charts are computed when you open them. **Refresh** computes the chart, its Customers and Annotations tabs again; the line under the chart says when. **Ask AI** opens [RevenueDot AI](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/revenuedot-ai.md) with the chart mentioned and a question ready to send. The assistant reads the chart with the same range, resolution, segment, filters and Sandbox switch you were looking at.
+
 ## Compare and save charts
 
+- **Export CSV** in the **…** menu downloads the table as shown.
 - **Compare to previous period** draws the window of the same length that ends the day before the current one, at the same resolution, as a dashed grey line. The table gets a "Previous period" row, and each summary number shows its change. A segmented chart compares its total. Cohort tables have no comparison.
-- **Save** stores the chart with its view: the range or dates, resolution, segment, filters, selectors, sandbox switch and comparison. Saved charts are listed at the top of the chart list for everyone in the project. Opening one brings the view back; save again to update it or to save a copy. Through the API: `GET` and `POST /v2/projects/{project_id}/saved_charts`, and `PATCH` and `DELETE /v2/projects/{project_id}/saved_charts/{saved_chart_id}`.
+- **Save** stores the chart with its view: the range or dates, resolution, segment, filters, selectors, sandbox switch, comparison, chart type and the measure shown. Saved charts are listed at the top of the chart list for everyone in the project. Opening one brings the view back; save again to update it or to save a copy. Through the API: `GET` and `POST /v2/projects/{project_id}/saved_charts`, and `PATCH` and `DELETE /v2/projects/{project_id}/saved_charts/{saved_chart_id}`.
 
 ## Use the API
 
@@ -5305,6 +5358,132 @@ FROM periods pe LEFT JOIN snapshot s ON s.period = pe.period
 GROUP BY pe.period ORDER BY pe.period;
 ```
 
+## SQL for the customers behind a chart
+
+These queries list the customers behind four core charts, one row per customer with their part of the chart, and RevenueDot's tests check them against the Customers tab's API. Run them with the same psql variables as above. They count ad revenue reported in USD only; the API also converts ad revenue in other currencies.
+
+### Customers behind revenue query
+
+```sql
+-- Each customer's revenue in the range: purchases, renewals and one-time purchases minus refunds on the refund date,
+-- plus ad revenue reported in USD for that customer.
+WITH ledger AS (
+  SELECT t.*, t.purchased_at AT TIME ZONE 'UTC' AS at
+  FROM transactions t
+  WHERE t.project_id = :'project_id' AND NOT t.is_sandbox AND t.store <> 'promotional'
+    AND NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.customer_id = t.customer_id AND s.store = t.store
+                    AND s.product_identifier = t.product_identifier AND s.ownership_type = 'FAMILY_SHARED')
+),
+money AS (
+  SELECT customer_id, at, revenue_usd AS usd FROM ledger WHERE kind <> 'trial'
+  UNION ALL
+  SELECT coalesce(e.customer_id, a.customer_id), e.occurred_at AT TIME ZONE 'UTC', (e.payload->>'revenue_micros')::numeric / 1000000 FROM sdk_events e
+  LEFT JOIN customer_aliases a ON a.project_id = e.project_id AND a.app_user_id = e.app_user_id
+  WHERE e.project_id = :'project_id' AND NOT e.is_sandbox AND e.type = 'rc_ads_ad_revenue' AND coalesce(e.payload->>'currency', 'USD') = 'USD'
+)
+SELECT customer_id, round(sum(usd)::numeric, 2) AS revenue
+FROM money
+WHERE customer_id IS NOT NULL AND at >= :'start_date'::timestamptz AT TIME ZONE 'UTC' AND at < :'end_date'::timestamptz AT TIME ZONE 'UTC'
+GROUP BY customer_id ORDER BY customer_id;
+```
+
+### Customers behind new customers query
+
+```sql
+-- Customers whose cohort date (the earlier of first seen and first purchase) is in the range.
+WITH ledger AS (
+  SELECT t.*, t.purchased_at AT TIME ZONE 'UTC' AS at
+  FROM transactions t
+  WHERE t.project_id = :'project_id' AND NOT t.is_sandbox AND t.store <> 'promotional'
+    AND NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.customer_id = t.customer_id AND s.store = t.store
+                    AND s.product_identifier = t.product_identifier AND s.ownership_type = 'FAMILY_SHARED')
+),
+cohorts AS (
+  SELECT c.id, LEAST(c.first_seen, (SELECT min(purchased_at) FROM ledger l WHERE l.customer_id = c.id)) AT TIME ZONE 'UTC' AS cohort_at
+  FROM customers c WHERE c.project_id = :'project_id'
+)
+SELECT id AS customer_id, 1 AS new_customers FROM cohorts
+WHERE cohort_at >= :'start_date'::timestamptz AT TIME ZONE 'UTC' AND cohort_at < :'end_date'::timestamptz AT TIME ZONE 'UTC'
+ORDER BY id;
+```
+
+### Customers behind new trials query
+
+```sql
+-- Free trials each customer started in the range.
+WITH ledger AS (
+  SELECT t.*, t.purchased_at AT TIME ZONE 'UTC' AS at
+  FROM transactions t
+  WHERE t.project_id = :'project_id' AND NOT t.is_sandbox AND t.store <> 'promotional'
+    AND NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.customer_id = t.customer_id AND s.store = t.store
+                    AND s.product_identifier = t.product_identifier AND s.ownership_type = 'FAMILY_SHARED')
+)
+SELECT customer_id, count(*) AS new_trials FROM ledger
+WHERE kind = 'trial' AND at >= :'start_date'::timestamptz AT TIME ZONE 'UTC' AND at < :'end_date'::timestamptz AT TIME ZONE 'UTC'
+GROUP BY customer_id ORDER BY customer_id;
+```
+
+### Customers behind MRR query
+
+```sql
+-- Each customer's MRR at the end of the range's last period (the chart's last value).
+WITH periods AS (
+  SELECT p AS period, LEAST(p + ('1 ' || :'resolution')::interval, :'end_date'::timestamptz AT TIME ZONE 'UTC', :'now'::timestamptz AT TIME ZONE 'UTC') AS period_end
+  FROM generate_series(date_trunc(:'resolution', :'start_date'::timestamptz AT TIME ZONE 'UTC'),
+                       (:'end_date'::timestamptz AT TIME ZONE 'UTC') - interval '1 microsecond',
+                       ('1 ' || :'resolution')::interval) AS p
+),
+ledger AS (
+  SELECT t.*, t.purchased_at AT TIME ZONE 'UTC' AS at
+  FROM transactions t
+  WHERE t.project_id = :'project_id' AND NOT t.is_sandbox AND t.store <> 'promotional'
+    AND NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.customer_id = t.customer_id AND s.store = t.store
+                    AND s.product_identifier = t.product_identifier AND s.ownership_type = 'FAMILY_SHARED')
+),
+refunds AS (
+  SELECT store, store_transaction_id, max(purchased_at) AS refunded_at
+  FROM ledger WHERE kind IN ('refund', 'refund_reversal')
+  GROUP BY store, store_transaction_id
+  HAVING count(*) FILTER (WHERE kind = 'refund') > count(*) FILTER (WHERE kind = 'refund_reversal')
+),
+sub_periods AS (
+  SELECT l.customer_id, l.store, coalesce(l.app_id, '') AS app_id, l.product_identifier, l.kind, l.purchased_at AS starts_at,
+         LEAST(GREATEST(coalesce(l.expires_at, 'infinity'),
+                        CASE WHEN s.billing_issues_detected_at IS NOT NULL AND l.expires_at >= s.expires_date - interval '1 hour'
+                             THEN s.grace_period_expires_date END),
+               coalesce(r.refunded_at, 'infinity')) AS ends_at,
+         l.revenue_usd,
+         coalesce(
+           CASE
+             WHEN p.duration ~ '^P\d+Y$' THEN 1.0 / (12 * substring(p.duration from '\d+')::numeric)
+             WHEN p.duration ~ '^P\d+M$' THEN 1.0 / substring(p.duration from '\d+')::numeric
+             WHEN p.duration ~ '^P\d+W$' THEN 4.0 / substring(p.duration from '\d+')::numeric
+             WHEN p.duration ~ '^P\d+D$' THEN 30.0 / substring(p.duration from '\d+')::numeric
+           END,
+           30.0 / GREATEST(1, extract(epoch FROM l.expires_at - l.purchased_at) / 86400)) AS monthly_factor
+  FROM ledger l
+  LEFT JOIN refunds r ON r.store = l.store AND r.store_transaction_id = l.store_transaction_id
+  LEFT JOIN subscriptions s ON s.customer_id = l.customer_id AND s.store = l.store AND s.product_identifier = l.product_identifier
+  LEFT JOIN LATERAL (
+    SELECT duration FROM products p WHERE p.project_id = l.project_id
+      AND (p.store_identifier = l.product_identifier OR split_part(p.store_identifier, ':', 1) = l.product_identifier)
+    ORDER BY (p.app_id = l.app_id) DESC, (p.store_identifier = l.product_identifier) DESC LIMIT 1
+  ) p ON true
+  WHERE l.kind IN ('trial', 'purchase', 'renewal')
+),
+snapshot AS (
+  SELECT DISTINCT ON (pe.period, sp.customer_id, sp.store, sp.app_id) pe.period, sp.customer_id, sp.kind, sp.revenue_usd * sp.monthly_factor AS mrr
+  FROM periods pe
+  JOIN sub_periods sp ON sp.starts_at <= (pe.period_end - interval '1 millisecond') AT TIME ZONE 'UTC'
+                     AND sp.ends_at > (pe.period_end - interval '1 millisecond') AT TIME ZONE 'UTC'
+  ORDER BY pe.period, sp.customer_id, sp.store, sp.app_id, sp.starts_at DESC
+)
+SELECT s.customer_id, round(sum(s.mrr)::numeric, 2) AS mrr
+FROM snapshot s
+WHERE s.kind <> 'trial' AND s.period = (SELECT max(period) FROM periods)
+GROUP BY s.customer_id HAVING sum(s.mrr) > 0 ORDER BY s.customer_id;
+```
+
 ## Differences from RevenueCat
 
 - **Taxes:** the stores do not report tax per purchase, so "revenue net of taxes" equals revenue and proceeds subtract only the store commission. RevenueCat estimates tax per country ([Taxes and commissions](https://www.revenuecat.com/docs/dashboard-and-metrics/taxes-and-commissions)).
@@ -5313,6 +5492,7 @@ GROUP BY pe.period ORDER BY pe.period;
 - **Dimensions** RevenueCat also offers (renewal cycle, offer type, first purchase month, Apple Search Ads claim type, custom attributes) are not available yet; platform and app version are the customer's latest, not their first. Attribution dimensions cover every media source, not only Apple Search Ads.
 - **Prediction Explorer** projects from your own cohorts, not from a model trained on many apps.
 - **App Store Save Outcomes** is always zero, and refund requests cover the App Store only.
+- **Ad revenue in segments:** ad revenue has no product, store or offering, so a Revenue chart segmented by one of them shows it in every segment.
 - **Active Customers** counts days of SDK activity from the update that added it; earlier days only know each customer's first and last visit.
 
 ---
@@ -8176,8 +8356,8 @@ One RevenueDot server answers every API below on one port. The reference is gene
 |---|---|---|---|---|
 | SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 71 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
 | REST API v1 | `/v1/subscribers/...` | secret key | 10 | [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md) |
-| REST API v2 | `/v2/projects/...` | secret key or dashboard session | 167 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
-| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 249 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
+| REST API v2 | `/v2/projects/...` | secret key or dashboard session | 176 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
+| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 252 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
 | RevenueDot Enterprise | `/v2/enterprise`, `/v2/organizations/...`, `/sso/...`, `/scim/v2/...` | session, SCIM token or none | 65 | [Enterprise](https://raw.githubusercontent.com/revenuedot/docs/main/api/enterprise.md) |
 | Webhooks (sent by RevenueDot) | your URL | HMAC signature | 22 event types | [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md) |
 
@@ -12269,7 +12449,7 @@ RevenueDot-only endpoints are on [Extensions](https://raw.githubusercontent.com/
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (167)
+## Operations on this page (176)
 
 - **Projects**: [List projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-projects), [Create a project](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-project)
 - **Apps**: [List apps](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-apps), [Create an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-app), [Get an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-app), [Update an app and its store credentials](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-app-and-its-store-credentials), [Delete an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-app), [Get an app's public SDK key](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-apps-public-sdk-key), [Get a StoreKit configuration file](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-storekit-configuration-file), [Issue a subscriber access token](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#issue-a-subscriber-access-token), [List the products in the app's store](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-the-products-in-the-apps-store), [Import products from the app's store](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#import-products-from-the-apps-store)
@@ -12281,7 +12461,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Subscriptions**: [Find subscriptions by store id](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#find-subscriptions-by-store-id), [Get a subscription](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-subscription), [List the entitlements a subscription unlocks](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-the-entitlements-a-subscription-unlocks), [List a subscription's payments](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-subscriptions-payments), [Cancel a subscription (Google Play)](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#cancel-a-subscription-google-play), [Refund and revoke a subscription (Google Play)](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#refund-and-revoke-a-subscription-google-play), [Extend a subscription](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#extend-a-subscription), [Refund one payment of a subscription (Google Play)](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#refund-one-payment-of-a-subscription-google-play), [Get where the customer manages a subscription](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-where-the-customer-manages-a-subscription)
 - **Purchases**: [Find one-time purchases by store id](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#find-one-time-purchases-by-store-id), [Get a one-time purchase](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-one-time-purchase), [List the entitlements a purchase unlocks](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-the-entitlements-a-purchase-unlocks), [Refund a one-time purchase (Google Play)](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#refund-a-one-time-purchase-google-play)
 - **Metrics**: [Overview metrics](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#overview-metrics), [Revenue over a date range](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#revenue-over-a-date-range)
-- **Charts**: [Get chart data](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-chart-data), [Get available options for a chart](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-available-options-for-a-chart), [List saved charts](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-saved-charts), [Save a chart view](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#save-a-chart-view), [Get a saved chart](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-saved-chart), [Rename or update a saved chart](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#rename-or-update-a-saved-chart), [Delete a saved chart](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-saved-chart)
+- **Charts**: [Get chart data](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-chart-data), [Get available options for a chart](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-available-options-for-a-chart), [List the customers behind a chart](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-the-customers-behind-a-chart), [List chart annotations](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-chart-annotations), [Create a chart annotation](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-chart-annotation), [Get a chart annotation](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-chart-annotation), [Update a chart annotation](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-chart-annotation), [Delete a chart annotation](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-chart-annotation), [List active chart share links](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-active-chart-share-links), [Create a public chart share link](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-public-chart-share-link), [Revoke a chart share link](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#revoke-a-chart-share-link), [List saved charts](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-saved-charts), [Save a chart view](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#save-a-chart-view), [Get a saved chart](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-saved-chart), [Rename or update a saved chart](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#rename-or-update-a-saved-chart), [Delete a saved chart](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-saved-chart)
 - **In-app currencies**: [List in-app currencies](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-in-app-currencies), [Create an in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-in-app-currency), [Get an in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-in-app-currency), [Update an in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-in-app-currency), [Delete an in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-in-app-currency), [Archive an in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#archive-an-in-app-currency), [Unarchive an in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#unarchive-an-in-app-currency), [List a customer's balances](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-balances), [Credit or spend in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#credit-or-spend-in-app-currency), [Change a balance without a ledger entry](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#change-a-balance-without-a-ledger-entry)
 - **Audit log**: [List audit log entries](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-audit-log-entries)
 - **Targeting**: [List audiences](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-audiences), [Create an audience](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-audience), [Preview who matches](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#preview-who-matches), [Known values for attribution and custom-attribute fields](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#known-values-for-attribution-and-custom-attribute-fields), [Get an audience](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-audience), [Update an audience](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-audience), [Delete an unused audience](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-unused-audience), [List targeting rules in order](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-targeting-rules-in-order), [Create a targeting rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-targeting-rule), [Set the evaluation order](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#set-the-evaluation-order), [Get a targeting rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-targeting-rule), [Update a targeting rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-targeting-rule), [Delete a targeting rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-targeting-rule)
@@ -15352,6 +15532,309 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/charts/$CHART_NAME/options" -H 
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
+### List the customers behind a chart
+
+`GET /v2/projects/{project_id}/charts/{chart_name}/customers` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`, `customer_information:customers:read`
+
+The customers whose purchases, subscriptions, trials or activity make up the chart for these parameters (the chart's own), most recent contribution first, each with their part of one of the chart's measures. The values plus `unattributed_value` add up to the chart: over the range (`sum: total`) or at the last period (`sum: last`). Which customers each chart lists: https://revenuedot.app/docs/guides/charts#customers-behind-a-chart.
+
+`format=csv` streams every contributor as CSV (at most 100,000 rows); the response has `X-RevenueDot-Total-Count`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `chart_name` | `actives`, `actives_movement`, `actives_new`, `arr`, `churn`, `cohort_explorer`, `conversion_to_paying`, `customers_new`, `initial_conversion`, `ltv_per_customer`, `ltv_per_paying_customer`, `mrr`, `mrr_movement`, `prediction_explorer`, `refund_rate`, `refund_request`, `refunds`, `revenue`, `subscription_retention`, `subscription_status`, `trials`, `trials_movement`, `trials_new`, `customers_active`, `trial_conversion`, `trial_conversion_rate`, `trial_cancellation`, `non-subscription_purchases`, `ad_revenue`, `ad_impressions`, `ad_clicks`, `ad_monetized_customers`, `ad_arpdau`, `ad_rpm`, `ad_fill_rate`, `ad_ctr`, `paywall_encounter`, `paywall_conversion`, `paywall_ltv`, `paywall_abandonment`, `app_store_save_outcomes`, `play_store_cancel_reasons`, `customer_center_survey_responses` | yes | The chart. `play_store_cancel_reasons` and `customer_center_survey_responses` are RevenueDot names for charts RevenueCat shows only in its dashboard. Definitions: https://revenuedot.app/docs/guides/charts |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `resolution` | string | no | As for chart data. |
+| `start_date` | string | no |  |
+| `end_date` | string | no |  |
+| `expand_periods` | boolean | no |  |
+| `filters` | string | no |  |
+| `selectors` | string | no |  |
+| `segment` | string | no |  |
+| `limit_num_segments` | integer | no |  |
+| `currency` | `USD`, `EUR`, `GBP`, `AUD`, `CAD`, `JPY`, `BRL`, `KRW`, `CNY`, `MXN`, `SEK`, `PLN`, `NZD`, `CHF` | no |  |
+| `environment` | `production`, `sandbox` | no | RevenueDot extension. `sandbox` shows only sandbox and Test Store purchases. Default `production`. |
+| `limit` | integer | no | Customers in `items`, 1–100. Default 100. |
+| `format` | `json`, `csv` | no | Default `json`. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/charts/$CHART_NAME/customers" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The customers, or the CSV export.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### List chart annotations
+
+`GET /v2/projects/{project_id}/chart_annotations` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`
+
+The project's annotations, oldest first, at most 1,000. With dates, only those that overlap them.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `start_date` | string | no |  |
+| `end_date` | string | no |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/chart_annotations" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The annotations.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Create a chart annotation
+
+`POST /v2/projects/{project_id}/chart_annotations` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read_write`
+
+A note on a UTC day or date range that every chart of the project shows. Viewers cannot create one. Audited as `chart_annotation_created`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `title` | string | yes |  |
+| `description` | string or null | no |  |
+| `start_date` | string | yes |  |
+| `end_date` | string or null | no | Default `start_date`; never before it. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/chart_annotations" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"title":"Launched the annual plan","description":"New paywall in 2.4","start_date":"2026-09-14"}'
+```
+
+**Responses**
+
+- **201**: The annotation.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Get a chart annotation
+
+`GET /v2/projects/{project_id}/chart_annotations/{annotation_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `annotation_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/chart_annotations/$ANNOTATION_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The annotation.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Update a chart annotation
+
+`PATCH /v2/projects/{project_id}/chart_annotations/{annotation_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read_write`
+
+Changes any field. A single-day annotation moved with `start_date` stays a single day; `end_date: null` makes any annotation a single day. Audited as `chart_annotation_updated`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `annotation_id` | string | yes |  |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `title` | string | no |  |
+| `description` | string or null | no |  |
+| `start_date` | string | no |  |
+| `end_date` | string or null | no |  |
+
+**Example request**
+
+```bash
+curl -s -X PATCH "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/chart_annotations/$ANNOTATION_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The annotation.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Delete a chart annotation
+
+`DELETE /v2/projects/{project_id}/chart_annotations/{annotation_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `annotation_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/chart_annotations/$ANNOTATION_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deleted.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### List active chart share links
+
+`GET /v2/projects/{project_id}/chart_shares` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`
+
+The project's links that are not revoked, newest first, at most 200.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `chart_name` | `actives`, `actives_movement`, `actives_new`, `arr`, `churn`, `cohort_explorer`, `conversion_to_paying`, `customers_new`, `initial_conversion`, `ltv_per_customer`, `ltv_per_paying_customer`, `mrr`, `mrr_movement`, `prediction_explorer`, `refund_rate`, `refund_request`, `refunds`, `revenue`, `subscription_retention`, `subscription_status`, `trials`, `trials_movement`, `trials_new`, `customers_active`, `trial_conversion`, `trial_conversion_rate`, `trial_cancellation`, `non-subscription_purchases`, `ad_revenue`, `ad_impressions`, `ad_clicks`, `ad_monetized_customers`, `ad_arpdau`, `ad_rpm`, `ad_fill_rate`, `ad_ctr`, `paywall_encounter`, `paywall_conversion`, `paywall_ltv`, `paywall_abandonment`, `app_store_save_outcomes`, `play_store_cancel_reasons`, `customer_center_survey_responses` | no | Only this chart's links. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/chart_shares" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The links.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Create a public chart share link
+
+`POST /v2/projects/{project_id}/chart_shares` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read_write`
+
+Computes the chart for the view now and keeps that snapshot (series, labels, summary values; no customer data) behind an unguessable public link with a PNG preview. Owners, admins and developers can create one; at most 200 active per project. Audited as `chart_share_created`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `chart_name` | `actives`, `actives_movement`, `actives_new`, `arr`, `churn`, `cohort_explorer`, `conversion_to_paying`, `customers_new`, `initial_conversion`, `ltv_per_customer`, `ltv_per_paying_customer`, `mrr`, `mrr_movement`, `prediction_explorer`, `refund_rate`, `refund_request`, `refunds`, `revenue`, `subscription_retention`, `subscription_status`, `trials`, `trials_movement`, `trials_new`, `customers_active`, `trial_conversion`, `trial_conversion_rate`, `trial_cancellation`, `non-subscription_purchases`, `ad_revenue`, `ad_impressions`, `ad_clicks`, `ad_monetized_customers`, `ad_arpdau`, `ad_rpm`, `ad_fill_rate`, `ad_ctr`, `paywall_encounter`, `paywall_conversion`, `paywall_ltv`, `paywall_abandonment`, `app_store_save_outcomes`, `play_store_cancel_reasons`, `customer_center_survey_responses` | yes |  |
+| `view` | object | no |  |
+| `view.range` | string | no | 7d, 30d, 90d, 12m or custom. |
+| `view.start` | string | no | Custom range start, YYYY-MM-DD. |
+| `view.end` | string | no | Custom range end. |
+| `view.res` | string | no | day, week, month, quarter or year. |
+| `view.segment` | string | no |  |
+| `view.filters` | string | no | The filters parameter's JSON. |
+| `view.sel` | string | no | The selectors parameter's JSON. |
+| `view.env` | `production`, `sandbox` | no |  |
+| `view.compare` | boolean | no | Compare to the previous period. |
+| `view.type` | `line`, `stacked_area`, `column`, `stacked_column`, `percent_column` | no | The chart type. Stacked types need two or more series; with one they draw as `line` or `column`. |
+| `view.m` | string | no | The plotted measure group, `0` first. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/chart_shares" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"chart_name":"revenue","view":{"range":"90d","res":"week","segment":"product","type":"stacked_column"}}'
+```
+
+**Responses**
+
+- **201**: The link.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Revoke a chart share link
+
+`DELETE /v2/projects/{project_id}/chart_shares/{share_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read_write`
+
+The public page and images answer 410 from now on. Audited as `chart_share_deleted`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `share_id` | string | yes | The link's `id` (`chartshare…`), not its token. |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/chart_shares/$SHARE_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Revoked.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
 ### List saved charts
 
 `GET /v2/projects/{project_id}/saved_charts` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`
@@ -15387,7 +15870,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/saved_charts" -H "Authorization
 
 `POST /v2/projects/{project_id}/saved_charts` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read_write`
 
-A named chart with the dashboard view that produced it (range, dates, resolution, segment, filters, selectors, environment, compare). Up to 200 per project.
+A named chart with the dashboard view that produced it (range, dates, resolution, segment, filters, selectors, environment, compare, chart type, measure group). Up to 200 per project.
 
 **Path parameters**
 
@@ -15411,6 +15894,8 @@ A named chart with the dashboard view that produced it (range, dates, resolution
 | `view.sel` | string | no | The selectors parameter's JSON. |
 | `view.env` | `production`, `sandbox` | no |  |
 | `view.compare` | boolean | no | Compare to the previous period. |
+| `view.type` | `line`, `stacked_area`, `column`, `stacked_column`, `percent_column` | no | The chart type. Stacked types need two or more series; with one they draw as `line` or `column`. |
+| `view.m` | string | no | The plotted measure group, `0` first. |
 
 **Example request**
 
@@ -15478,6 +15963,8 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/saved_charts/$SAVED_CHART_ID" -
 | `view.sel` | string | no | The selectors parameter's JSON. |
 | `view.env` | `production`, `sandbox` | no |  |
 | `view.compare` | boolean | no | Compare to the previous period. |
+| `view.type` | `line`, `stacked_area`, `column`, `stacked_column`, `percent_column` | no | The chart type. Stacked types need two or more series; with one they draw as `line` or `column`. |
+| `view.m` | string | no | The plotted measure group, `0` first. |
 
 **Example request**
 
@@ -19370,7 +19857,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (249)
+## Operations on this page (252)
 
 - **Dashboard auth**: [Whether sign-up is open](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-sign-up-is-open), [Create a dashboard account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-dashboard-account), [Sign in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-in), [Sign out](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out), [The signed-in user and their projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-signed-in-user-and-their-projects), [Update account settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-account-settings), [Email a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#email-a-password-reset-link), [Check a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-a-password-reset-link), [Set a new password from a reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-a-new-password-from-a-reset-link), [Confirm an email address](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#confirm-an-email-address), [Send a new confirmation email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-new-confirmation-email), [Look up an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#look-up-an-invite), [Accept an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#accept-an-invite)
 - **Members and invites**: [List open invites](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-open-invites), [Invite someone by email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#invite-someone-by-email), [Resend an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#resend-an-invite), [Revoke an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#revoke-an-invite), [Change a member's role](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-a-members-role), [Remove a member, or leave the project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#remove-a-member-or-leave-the-project)
@@ -19406,7 +19893,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Attribution**: [Get a customer's attribution](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-customers-attribution), [Revenue by campaign](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#revenue-by-campaign)
 - **Benchmarks**: [The project's values against peers](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-projects-values-against-peers), [Whether the project shares benchmarks](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-the-project-shares-benchmarks), [Share or stop sharing anonymized benchmarks](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#share-or-stop-sharing-anonymized-benchmarks)
 - **Growth insights**: [This week's growth insights](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#this-weeks-growth-insights), [Write this week's insights now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#write-this-weeks-insights-now), [The digest's opt-out page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-digests-opt-out-page), [Turn the weekly digest off (one click)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#turn-the-weekly-digest-off-one-click)
-- **Share cards**: [Public first-sale page or image](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#public-first-sale-page-or-image)
+- **Share cards**: [Public chart page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#public-chart-page), [Public chart preview image](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#public-chart-preview-image), [Public chart as SVG](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#public-chart-as-svg), [Public first-sale page or image](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#public-first-sale-page-or-image)
 - **OAuth for MCP clients**: [OAuth authorization server metadata](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#oauth-authorization-server-metadata), [Register an OAuth client](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#register-an-oauth-client), [Consent screen](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#consent-screen), [Submit the consent decision](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#submit-the-consent-decision), [Exchange a code for an access token](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#exchange-a-code-for-an-access-token)
 
 ## Dashboard auth
@@ -29538,6 +30025,75 @@ curl -s -X POST "$REVENUEDOT_URL/auth/insights/unsubscribe"
 ## Share cards
 
 Public pages and images RevenueDot makes for sharing, such as the first-sale card. No API key; the token in the URL is the only key.
+
+### Public chart page
+
+`GET /share/charts/{token}` · Auth: none · RevenueDot extension
+
+The chart snapshot as a page: the plot, summary values, the values table, Open Graph and Twitter tags. No scripts, `noindex`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/share/charts/$TOKEN"
+```
+
+**Responses**
+
+- **200**: The page.
+- **304**: Not modified (ETag).
+- **404**: Unknown link.
+- **410**: The link was revoked.
+
+### Public chart preview image
+
+`GET /share/charts/{token}/og.png` · Auth: none · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/share/charts/$TOKEN/og.png"
+```
+
+**Responses**
+
+- **200**: A 1200×630 PNG.
+- **404**: Unknown link.
+- **410**: The link was revoked.
+
+### Public chart as SVG
+
+`GET /share/charts/{token}/chart.svg` · Auth: none · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/share/charts/$TOKEN/chart.svg"
+```
+
+**Responses**
+
+- **200**: The 1200×630 card as SVG.
+- **404**: Unknown link.
+- **410**: The link was revoked.
 
 ### Public first-sale page or image
 
