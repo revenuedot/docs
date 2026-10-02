@@ -20,8 +20,9 @@ const enterprise = (schema) => ({ ...schema, "x-revenuedot-enterprise": true });
 const ORG_ROLES = ["owner", "admin", "member"];
 const REGIONS = ["us", "eu"];
 
-const ADMIN = "Organization owners and admins.";
-const MEMBER = "Any active member of the organization.";
+const SSO_RULE = "When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise).";
+const ADMIN = `Organization owners and admins. ${SSO_RULE}`;
+const MEMBER = `Any active member of the organization. ${SSO_RULE}`;
 const OWNER = "Organization owners only.";
 
 // ---- Objects --------------------------------------------------------------------------------------------------------

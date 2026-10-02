@@ -123,7 +123,8 @@ Example: a **Support agent** role with View customers, Cancel, refund and extend
 - **Project settings → Collaborators** shows **Custom role** in the person's row. Change it in Organization settings, not there.
 - **`GET /v2/projects/{project_id}/collaborators`** returns the custom role's id (`role_...`) as the `role`. Built-in roles keep their names (`admin`, `developer`, `read_only`).
 - **A refused request** answers 403 `authorization_error`: "Your role in this project (a custom role) does not allow this. Ask a project admin."
-- **RevenueDot AI and MCP clients** connected with OAuth only read for someone with a custom role. Each read is still checked against the role.
+- **RevenueDot AI** only reads for someone with a custom role. Each read is still checked against the role.
+- **MCP clients connected with OAuth** get a key with only the role's own permissions, and only the reads among them: a role that can view products but not customers gives a key that cannot read customers. A role with none of the permissions an MCP key carries cannot connect that project.
 - **Changing a role's permissions** applies on each person's next request.
 - **Deleting a role** turns everyone who had it into a Viewer and deletes the group role mappings that gave it.
 - **A role the server cannot find** gives no access at all, never more.

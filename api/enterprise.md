@@ -198,7 +198,7 @@ Example 201 response:
 
 `GET /v2/organizations/{org_id}` · Auth: dashboard session · RevenueDot extension
 
-Any active member of the organization.
+Any active member of the organization. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise).
 
 **Path parameters**
 
@@ -261,7 +261,7 @@ Example 200 response:
 
 `POST /v2/organizations/{org_id}` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins. Changing `audit_retention_days`, `seats` or `billing_email` needs an owner. `sso_enforced: true` needs an enabled SSO connection and a verified domain (422 otherwise). `region` must be one of `selectable_regions`. Each field needs its feature in the licence (403 otherwise). Changes are recorded in the organization audit log as `organization_updated`.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). Changing `audit_retention_days`, `seats` or `billing_email` needs an owner. `sso_enforced: true` needs an enabled SSO connection and a verified domain (422 otherwise). `region` must be one of `selectable_regions`. Each field needs its feature in the licence (403 otherwise). Changes are recorded in the organization audit log as `organization_updated`.
 
 **Path parameters**
 
@@ -374,7 +374,7 @@ Example 200 response:
 
 `GET /v2/organizations/{org_id}/overview` · Auth: dashboard session · RevenueDot extension
 
-Any active member of the organization.
+Any active member of the organization. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise).
 
 **Path parameters**
 
@@ -399,7 +399,7 @@ curl -s "$REVENUEDOT_URL/v2/organizations/$ORG_ID/overview"
 
 `GET /v2/organizations/{org_id}/members` · Auth: dashboard session · RevenueDot extension
 
-Any active member of the organization. Includes deactivated members (`active: false`).
+Any active member of the organization. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). Includes deactivated members (`active: false`).
 
 **Path parameters**
 
@@ -424,7 +424,7 @@ curl -s "$REVENUEDOT_URL/v2/organizations/$ORG_ID/members"
 
 `POST /v2/organizations/{org_id}/members` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins. Only owners add owners. The address must already have a RevenueDot account (404 otherwise); new people join through single sign-on, SCIM or a project invite. Owners and admins become Admins of every organization project; group role mappings apply at once.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). Only owners add owners. The address must already have a RevenueDot account (404 otherwise); new people join through single sign-on, SCIM or a project invite. Owners and admins become Admins of every organization project; group role mappings apply at once.
 
 **Path parameters**
 
@@ -459,7 +459,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/organizations/$ORG_ID/members" \
 
 `POST /v2/organizations/{org_id}/members/{user_id}` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins. Only owners make or unmake owners, and the last owner cannot be demoted (400). Promoting to admin or owner adds Admin access to every organization project; demoting removes the access that came from the organization role.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). Only owners make or unmake owners, and the last owner cannot be demoted (400). Promoting to admin or owner adds Admin access to every organization project; demoting removes the access that came from the organization role.
 
 **Path parameters**
 
@@ -520,7 +520,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/organizations/$ORG_ID/members/$USER_ID"
 
 `GET /v2/organizations/{org_id}/projects` · Auth: dashboard session · RevenueDot extension
 
-Any active member of the organization.
+Any active member of the organization. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise).
 
 **Path parameters**
 
@@ -545,7 +545,7 @@ curl -s "$REVENUEDOT_URL/v2/organizations/$ORG_ID/projects"
 
 `POST /v2/organizations/{org_id}/projects` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins. You must also be an Admin of the project (403 otherwise). A project belongs to one organization at a time (409). The project is recorded in this deployment's region; no data moves. Everyone on the project becomes an organization member, and organization owners and admins become its Admins.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). You must also be an Admin of the project (403 otherwise). A project belongs to one organization at a time (409). The project is recorded in this deployment's region; no data moves. Everyone on the project becomes an organization member, and organization owners and admins become its Admins.
 
 **Path parameters**
 
@@ -579,7 +579,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/organizations/$ORG_ID/projects" \
 
 `DELETE /v2/organizations/{org_id}/projects/{project_id}` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins. Memberships stay. Members with a custom role become Viewers, because the organization's roles no longer apply there.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). Memberships stay. Members with a custom role become Viewers, because the organization's roles no longer apply there.
 
 **Path parameters**
 
@@ -605,7 +605,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/organizations/$ORG_ID/projects/$PROJECT_ID
 
 `POST /v2/organizations/{org_id}/projects/{project_id}/region` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins. Needs the `data_location` feature. On a deployment that enforces regions, a project stays in the region where its data is (422 with the other region's dashboard address, or "not available yet"); moving stored data is a support job. Elsewhere the region is recorded.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). Needs the `data_location` feature. On a deployment that enforces regions, a project stays in the region where its data is (422 with the other region's dashboard address, or "not available yet"); moving stored data is a support job. Elsewhere the region is recorded.
 
 **Path parameters**
 
@@ -640,7 +640,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/organizations/$ORG_ID/projects/$PROJECT_ID/r
 
 `GET /v2/organizations/{org_id}/audit_logs` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins. Newest first. Project audit logs stay at `GET /v2/projects/{project_id}/audit_logs`.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). Newest first. Project audit logs stay at `GET /v2/projects/{project_id}/audit_logs`.
 
 **Path parameters**
 
@@ -679,7 +679,7 @@ Roles built from API v2 scopes, their assignment to project members, and group r
 
 `GET /v2/organizations/{org_id}/scopes` · Auth: dashboard session · RevenueDot extension
 
-Any active member of the organization.
+Any active member of the organization. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise).
 
 **Path parameters**
 
@@ -723,7 +723,7 @@ Example 200 response:
 
 `GET /v2/organizations/{org_id}/roles` · Auth: dashboard session · RevenueDot extension
 
-Any active member of the organization.
+Any active member of the organization. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise).
 
 **Path parameters**
 
@@ -775,7 +775,7 @@ Example 200 response:
 
 `POST /v2/organizations/{org_id}/roles` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins. Unknown scopes and `project_configuration:api_keys:read_write` are refused (400). A name already used in the organization answers 409.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). Unknown scopes and `project_configuration:api_keys:read_write` are refused (400). A name already used in the organization answers 409.
 
 **Path parameters**
 
@@ -832,7 +832,7 @@ Example 201 response:
 
 `GET /v2/organizations/{org_id}/roles/{role_id}` · Auth: dashboard session · RevenueDot extension
 
-Any active member of the organization.
+Any active member of the organization. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise).
 
 **Path parameters**
 
@@ -878,7 +878,7 @@ Example 200 response:
 
 `POST /v2/organizations/{org_id}/roles/{role_id}` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins. New scopes apply to everyone with the role on their next request. A role in use cannot change its project (400).
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). New scopes apply to everyone with the role on their next request. A role in use cannot change its project (400).
 
 **Path parameters**
 
@@ -936,7 +936,7 @@ Example 200 response:
 
 `DELETE /v2/organizations/{org_id}/roles/{role_id}` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins. Everyone with the role becomes a Viewer, and group role mappings that gave it are deleted.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). Everyone with the role becomes a Viewer, and group role mappings that gave it are deleted.
 
 **Path parameters**
 
@@ -962,7 +962,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/organizations/$ORG_ID/roles/$ROLE_ID"
 
 `GET /v2/organizations/{org_id}/projects/{project_id}/members` · Auth: dashboard session · RevenueDot extension
 
-Any active member of the organization.
+Any active member of the organization. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise).
 
 **Path parameters**
 
@@ -1036,7 +1036,7 @@ Example 200 response:
 
 `GET /v2/organizations/{org_id}/role_mappings` · Auth: dashboard session · RevenueDot extension
 
-Any active member of the organization.
+Any active member of the organization. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise).
 
 **Path parameters**
 
@@ -1083,7 +1083,7 @@ Example 200 response:
 
 `POST /v2/organizations/{org_id}/role_mappings` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins. One mapping per group and project: saving the same pair again replaces its role (200). Every member's access is re-applied at once; `memberships_changed` counts the changes.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). One mapping per group and project: saving the same pair again replaces its role (200). Every member's access is re-applied at once; `memberships_changed` counts the changes.
 
 **Path parameters**
 
@@ -1119,7 +1119,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/organizations/$ORG_ID/role_mappings" \
 
 `DELETE /v2/organizations/{org_id}/role_mappings/{mapping_id}` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins. Memberships that the mapping created are removed or lowered at once.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). Memberships that the mapping created are removed or lowered at once.
 
 **Path parameters**
 
@@ -1149,7 +1149,7 @@ SAML 2.0 and OpenID Connect connections, verified email domains, and the public 
 
 `GET /v2/organizations/{org_id}/sso/connections` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise).
 
 **Path parameters**
 
@@ -1174,7 +1174,7 @@ curl -s "$REVENUEDOT_URL/v2/organizations/$ORG_ID/sso/connections"
 
 `POST /v2/organizations/{org_id}/sso/connections` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins. Send `saml` for a SAML connection or `oidc` for OpenID Connect. A connection starts turned off unless `enabled` is true. The answer's `sp` holds the values to enter in the identity provider.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). Send `saml` for a SAML connection or `oidc` for OpenID Connect. A connection starts turned off unless `enabled` is true. The answer's `sp` holds the values to enter in the identity provider.
 
 **Path parameters**
 
@@ -1260,7 +1260,7 @@ Example 201 response:
 
 `GET /v2/organizations/{org_id}/sso/connections/{connection_id}` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise).
 
 **Path parameters**
 
@@ -1320,7 +1320,7 @@ Example 200 response:
 
 `POST /v2/organizations/{org_id}/sso/connections/{connection_id}` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins. Fields you leave out keep their value. An organization that requires SSO cannot turn off its last enabled connection (422).
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). Fields you leave out keep their value. An organization that requires SSO cannot turn off its last enabled connection (422).
 
 **Path parameters**
 
@@ -1407,7 +1407,7 @@ Example 200 response:
 
 `DELETE /v2/organizations/{org_id}/sso/connections/{connection_id}` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins. An organization that requires SSO cannot delete its last enabled connection (422).
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). An organization that requires SSO cannot delete its last enabled connection (422).
 
 **Path parameters**
 
@@ -1434,7 +1434,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/organizations/$ORG_ID/sso/connections/$CON
 
 `GET /v2/organizations/{org_id}/sso/domains` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise).
 
 **Path parameters**
 
@@ -1459,7 +1459,7 @@ curl -s "$REVENUEDOT_URL/v2/organizations/$ORG_ID/sso/domains"
 
 `POST /v2/organizations/{org_id}/sso/domains` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins. Answers the TXT record to publish. Public mail providers such as gmail.com are refused (400). A domain another organization verified answers 409; an unverified claim by another organization does not block you. Adding a domain you already have answers 200.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). Answers the TXT record to publish. Public mail providers such as gmail.com are refused (400). A domain another organization verified answers 409; an unverified claim by another organization does not block you. Adding a domain you already have answers 200.
 
 **Path parameters**
 
@@ -1494,7 +1494,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/organizations/$ORG_ID/sso/domains" \
 
 `POST /v2/organizations/{org_id}/sso/domains/{domain}/actions/verify` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins. Looks up `_revenuedot-sso.<domain>` with DNS over HTTPS (Cloudflare's resolver). At most 10 checks a minute per organization (429). A verified domain stays verified if a later check fails.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). Looks up `_revenuedot-sso.<domain>` with DNS over HTTPS (Cloudflare's resolver). At most 10 checks a minute per organization (429). A verified domain stays verified if a later check fails.
 
 **Path parameters**
 
@@ -1545,7 +1545,7 @@ Example 200 response:
 
 `DELETE /v2/organizations/{org_id}/sso/domains/{domain}` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise).
 
 **Path parameters**
 
@@ -1741,7 +1741,7 @@ SCIM tokens and groups in the dashboard API, and the SCIM 2.0 service (RFC 7643,
 
 `GET /v2/organizations/{org_id}/scim/tokens` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins. Never returns the secret.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). Never returns the secret.
 
 **Path parameters**
 
@@ -1766,7 +1766,7 @@ curl -s "$REVENUEDOT_URL/v2/organizations/$ORG_ID/scim/tokens"
 
 `POST /v2/organizations/{org_id}/scim/tokens` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins. The answer holds the token (`rdscim_` and 64 hex characters) once; RevenueDot stores only its SHA-256. `base_url` is the SCIM base URL for the identity provider.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). The answer holds the token (`rdscim_` and 64 hex characters) once; RevenueDot stores only its SHA-256. `base_url` is the SCIM base URL for the identity provider.
 
 **Path parameters**
 
@@ -1816,7 +1816,7 @@ Example 201 response:
 
 `DELETE /v2/organizations/{org_id}/scim/tokens/{token_id}` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins. Requests with the token answer 401 at once. Revoking twice answers the token again.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). Requests with the token answer 401 at once. Revoking twice answers the token again.
 
 **Path parameters**
 
@@ -1842,7 +1842,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/organizations/$ORG_ID/scim/tokens/$TOKEN_I
 
 `GET /v2/organizations/{org_id}/scim/groups` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins. For picking groups in the role mapping editor.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). For picking groups in the role mapping editor.
 
 **Path parameters**
 
@@ -2829,7 +2829,7 @@ The audit log and an access review as CSV or JSON, signed with Ed25519. See [Aud
 
 `GET /v2/organizations/{org_id}/exports/public_key` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise).
 
 **Path parameters**
 
@@ -2866,7 +2866,7 @@ Example 200 response:
 
 `GET /v2/organizations/{org_id}/exports/{kind}` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins. At most 200,000 rows per file; more answers 400, so choose a shorter date range. CSV cells that start with `=`, `+`, `-`, `@`, a tab or a carriage return get a leading apostrophe. Each download is recorded in the organization audit log as `compliance_export_created` with its SHA-256.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). At most 200,000 rows per file; more answers 400, so choose a shorter date range. CSV cells that start with `=`, `+`, `-`, `@`, a tab or a carriage return get a leading apostrophe. Each download is recorded in the organization audit log as `compliance_export_created` with its SHA-256.
 
 **Path parameters**
 

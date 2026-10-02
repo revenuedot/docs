@@ -31,7 +31,7 @@ Each entry has who did it (a user, a SCIM token, an SSO connection or the system
 
 - **Only owners change retention,** because a shorter retention deletes history for good. The API takes any whole number of days from 30 to 3,650, or `null` for forever.
 - **It covers the organization log and the audit logs of every project in the organization.** Projects outside an organization keep their logs forever.
-- **An hourly job deletes older entries.** Each run that deletes something adds an `audit_logs_purged` entry with the number of rows and the cut-off date.
+- **An hourly job deletes older entries,** up to 5,000 rows a run. When more are left, it runs again a minute later until it has caught up. Each run that deletes something adds an `audit_logs_purged` entry with the number of rows and the cut-off date.
 - Shortening retention in the dashboard asks you to confirm first.
 
 ## Compliance exports

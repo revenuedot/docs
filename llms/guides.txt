@@ -4185,7 +4185,8 @@ Example: a **Support agent** role with View customers, Cancel, refund and extend
 - **Project settings → Collaborators** shows **Custom role** in the person's row. Change it in Organization settings, not there.
 - **`GET /v2/projects/{project_id}/collaborators`** returns the custom role's id (`role_...`) as the `role`. Built-in roles keep their names (`admin`, `developer`, `read_only`).
 - **A refused request** answers 403 `authorization_error`: "Your role in this project (a custom role) does not allow this. Ask a project admin."
-- **RevenueDot AI and MCP clients** connected with OAuth only read for someone with a custom role. Each read is still checked against the role.
+- **RevenueDot AI** only reads for someone with a custom role. Each read is still checked against the role.
+- **MCP clients connected with OAuth** get a key with only the role's own permissions, and only the reads among them: a role that can view products but not customers gives a key that cannot read customers. A role with none of the permissions an MCP key carries cannot connect that project.
 - **Changing a role's permissions** applies on each person's next request.
 - **Deleting a role** turns everyone who had it into a Viewer and deletes the group role mappings that gave it.
 - **A role the server cannot find** gives no access at all, never more.
@@ -4296,6 +4297,7 @@ RevenueDot uses the authorization code flow with PKCE, a state and a nonce. It c
 **Create accounts at first sign-in** (just-in-time provisioning) is on for new connections.
 
 - **On:** a person's first SSO sign-in creates their RevenueDot account, with no password and a confirmed email, and makes them an organization member. Someone who already has an account with that address keeps it and joins the organization.
+- **An existing account whose email was never confirmed loses its password and sessions** at its first SSO sign-in (or when SCIM creates the person). Anyone could have signed up with that address before you set up SSO, so RevenueDot does not let that sign-up share the account. Owners and admins of your organization keep their passwords. The person can set a new password with **Forgot password** unless you require SSO.
 - **Off:** only people who are already organization members can sign in, for example people [SCIM](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/scim.md) created or members you added.
 - **Groups:** the groups your identity provider sends are saved at each sign-in, and [group role mappings](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/scim.md#group-role-mappings) give the person their project roles at once.
 - **Projects:** a new member sees only the projects their organization role, a group mapping or an invite gives them.
@@ -4305,6 +4307,8 @@ Turn on **Require single sign-on** after you have an enabled connection and a ve
 
 - **Password sign-in, sign-up and password reset are refused.** The sign-in page says "Acme Inc. requires single sign-on for @acme.com addresses." and offers **Continue with SSO**. The API answers 403 with `type: "sso_required"` and an `sso_url`.
 - **Sessions that did not start with your organization's SSO lose access to its projects.** They get 403: "This project's organization requires single sign-on. Sign out, then sign in with SSO."
+- **The same goes for Organization settings.** An admin whose password session started before you required SSO must sign in with SSO to manage the organization, so that session cannot turn the requirement off.
+- **MCP clients and RevenueDot AI follow the same rule.** Connecting an MCP client with OAuth needs an SSO session; RevenueDot AI acts with the session of the chat.
 - **Owners keep password sign-in.** If your identity provider is down, an owner can still sign in with a password and fix the connection or turn the requirement off.
 - **People on other domains keep their passwords,** such as contractors and agencies. RevenueDot only requires SSO for domains you verified. RevenueCat removes every existing collaborator when it turns SSO on ([SSO](https://www.revenuecat.com/docs/projects/sso)).
 - **Your last enabled connection** cannot be turned off or deleted while SSO is required.
@@ -4409,6 +4413,7 @@ When the identity provider deactivates or deletes someone:
 - **Every session they have ends at once.** They are signed out of RevenueDot everywhere.
 - **They cannot get back in.** SSO sign-in answers "Your access to this organization was removed." The organization's projects answer 404, even if someone adds them to a project by hand later.
 - **Their account and the audit history stay.** Deleting the SCIM user does not delete the RevenueDot account.
+- **Project API keys stay.** Secret API keys belong to the project, not to a person, including the keys MCP clients got through OAuth (named after the client, such as "OAuth: Claude"). Revoke the ones the person made under **API keys** in each project.
 - **The organization's last owner cannot be deactivated.** SCIM answers 400; make someone else an owner first.
 - Deactivation works even after you removed the person's email domain.
 
@@ -4557,7 +4562,7 @@ Each entry has who did it (a user, a SCIM token, an SSO connection or the system
 
 - **Only owners change retention,** because a shorter retention deletes history for good. The API takes any whole number of days from 30 to 3,650, or `null` for forever.
 - **It covers the organization log and the audit logs of every project in the organization.** Projects outside an organization keep their logs forever.
-- **An hourly job deletes older entries.** Each run that deletes something adds an `audit_logs_purged` entry with the number of rows and the cut-off date.
+- **An hourly job deletes older entries,** up to 5,000 rows a run. When more are left, it runs again a minute later until it has caught up. Each run that deletes something adds an `audit_logs_purged` entry with the number of rows and the cut-off date.
 - Shortening retention in the dashboard asks you to confirm first.
 
 ## Compliance exports

@@ -82,6 +82,7 @@ RevenueDot uses the authorization code flow with PKCE, a state and a nonce. It c
 **Create accounts at first sign-in** (just-in-time provisioning) is on for new connections.
 
 - **On:** a person's first SSO sign-in creates their RevenueDot account, with no password and a confirmed email, and makes them an organization member. Someone who already has an account with that address keeps it and joins the organization.
+- **An existing account whose email was never confirmed loses its password and sessions** at its first SSO sign-in (or when SCIM creates the person). Anyone could have signed up with that address before you set up SSO, so RevenueDot does not let that sign-up share the account. Owners and admins of your organization keep their passwords. The person can set a new password with **Forgot password** unless you require SSO.
 - **Off:** only people who are already organization members can sign in, for example people [SCIM](scim.md) created or members you added.
 - **Groups:** the groups your identity provider sends are saved at each sign-in, and [group role mappings](scim.md#group-role-mappings) give the person their project roles at once.
 - **Projects:** a new member sees only the projects their organization role, a group mapping or an invite gives them.
@@ -91,6 +92,8 @@ Turn on **Require single sign-on** after you have an enabled connection and a ve
 
 - **Password sign-in, sign-up and password reset are refused.** The sign-in page says "Acme Inc. requires single sign-on for @acme.com addresses." and offers **Continue with SSO**. The API answers 403 with `type: "sso_required"` and an `sso_url`.
 - **Sessions that did not start with your organization's SSO lose access to its projects.** They get 403: "This project's organization requires single sign-on. Sign out, then sign in with SSO."
+- **The same goes for Organization settings.** An admin whose password session started before you required SSO must sign in with SSO to manage the organization, so that session cannot turn the requirement off.
+- **MCP clients and RevenueDot AI follow the same rule.** Connecting an MCP client with OAuth needs an SSO session; RevenueDot AI acts with the session of the chat.
 - **Owners keep password sign-in.** If your identity provider is down, an owner can still sign in with a password and fix the connection or turn the requirement off.
 - **People on other domains keep their passwords,** such as contractors and agencies. RevenueDot only requires SSO for domains you verified. RevenueCat removes every existing collaborator when it turns SSO on ([SSO](https://www.revenuecat.com/docs/projects/sso)).
 - **Your last enabled connection** cannot be turned off or deleted while SSO is required.

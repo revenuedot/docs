@@ -61,6 +61,7 @@ When the identity provider deactivates or deletes someone:
 - **Every session they have ends at once.** They are signed out of RevenueDot everywhere.
 - **They cannot get back in.** SSO sign-in answers "Your access to this organization was removed." The organization's projects answer 404, even if someone adds them to a project by hand later.
 - **Their account and the audit history stay.** Deleting the SCIM user does not delete the RevenueDot account.
+- **Project API keys stay.** Secret API keys belong to the project, not to a person, including the keys MCP clients got through OAuth (named after the client, such as "OAuth: Claude"). Revoke the ones the person made under **API keys** in each project.
 - **The organization's last owner cannot be deactivated.** SCIM answers 400; make someone else an owner first.
 - Deactivation works even after you removed the person's email domain.
 
