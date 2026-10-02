@@ -17,11 +17,7 @@ export const V2_ERROR_MEANINGS = {
   authorization_error: "The key lacks a permission, a public app key was used, or the action needs a dashboard admin (403).",
   store_error: "The App Store or Google Play refused the action, or could not be reached (`retryable: true`). Always 422.",
   server_error: "RevenueDot failed (500, `retryable: true`). Retry with backoff.",
-<<<<<<< HEAD
-  resource_locked_error: "The object is busy, or changed while the request ran (409): a delivery being sent right now (`retryable: true`, try again in a minute), a running export, or an experiment whose status another request changed (reload it first).",
-=======
-  resource_locked_error: "The same work is already running (409, `retryable: true`): a commit of the same product file or of another file of the same app, a run of the same data export, or a webhook delivery being sent. Wait for it to finish, then try again.",
->>>>>>> origin/main
+  resource_locked_error: "The object is busy, or changed while the request ran (409): a commit of the same product file or of another file of the same app, a run of the same data export, or a webhook delivery being sent (`retryable: true`; wait for it to finish, then try again), or an experiment whose status another request changed (reload it first).",
   unprocessable_entity_error: "The request is valid but not possible in this state or for this store (422), for example archiving the current offering or refunding an App Store purchase.",
   invalid_request: "The body is not valid JSON (400); a package would get two products of one app with overlapping eligibility (409); or a product file is not in a state that allows the action, such as committing a file with errors (409).",
   entity_references_archived_entities: "The action would make an archived object current (422). Unarchive it first.",

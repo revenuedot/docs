@@ -134,11 +134,7 @@ export function buildDocument() {
     tags: tags(),
     paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...adsPaths, ...lifecyclePaths, ...webPaths, ...assistantPaths, ...insightsPaths, ...recoveryPaths, ...movePaths, ...productEditorPaths, ...settingsPathsAll, ...extensionPaths, ...enterprisePaths },
     webhooks,
-<<<<<<< HEAD
-    components: { schemas: { ...schemas, ...targetingSchemas, ...webSchemas, ...enterpriseSchemas }, parameters, responses, securitySchemes },
-=======
-    components: { schemas: { ...schemas, ...webSchemas, ...productEditorSchemas, ...enterpriseSchemas }, parameters, responses, securitySchemes },
->>>>>>> origin/main
+    components: { schemas: { ...schemas, ...targetingSchemas, ...webSchemas, ...productEditorSchemas, ...enterpriseSchemas }, parameters, responses, securitySchemes },
     security: [{ secretApiKey: [] }],
     externalDocs: { description: "RevenueDot documentation", url: "https://github.com/revenuedot/docs" },
   };
