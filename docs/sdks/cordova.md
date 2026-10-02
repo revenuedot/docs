@@ -28,13 +28,13 @@ Purchases.syncPurchases();
 ```
 
 ## Use the RevenueDot fork
-The fork is [github.com/revenuedot/cordova-plugin-purchases](https://github.com/revenuedot/cordova-plugin-purchases). The plugin id stays `cordova-plugin-purchases` and the global stays `Purchases`, so `config.xml` and your code do not change. Because it trusts RevenueDot's signing key, the verification log noise goes away when your server signs with that key.
+The fork is [github.com/revenuedot/cordova-plugin-purchases](https://github.com/revenuedot/cordova-plugin-purchases). The plugin id stays `cordova-plugin-purchases` and the global stays `Purchases`, so `config.xml` and your code do not change.
 
-**It is not published yet (2026-09-30).** The planned install:
+**Version 8.2.3 is built and waiting for its first npm release.** The install will be:
 ```bash
-cordova plugin add @revenuedot/cordova-plugin-purchases
+cordova plugin add @revenuedot/cordova-plugin-purchases@8.2.3
 ```
-The patch branch `revenuedot/main-patches` is at version 8.2.3. It cannot be installed from git yet, because its native dependencies (`RevenueDotPurchasesHybridCommon` 19.4.1 and `app.revenuedot.purchases:purchases-hybrid-common:19.4.1`) are not published. Use proxy mode until then.
+Its native side is RevenueDot's [hybrid common](hybrid-common.md) 19.4.1, which is published. The release package builds into a cordova-ios 8 app with the `RevenueDotPurchasesHybridCommon` 19.4.1 pod from CocoaPods trunk. Xcode 27 needs an iOS deployment target of 15.0 or newer, with the stock plugin too: set `<preference name="deployment-target" value="15.0" />` in `config.xml`.
 
 ## Trusted Entitlements
 - **Stock plugin:** `configureWith` takes no verification mode, so the native default, informational, applies. Every RevenueDot response is logged as a failed check, and access is still granted. You cannot turn this off from JavaScript.

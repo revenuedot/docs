@@ -31,18 +31,23 @@ await Purchases.syncPurchases();
 ```
 
 ## Use the RevenueDot fork
-The fork is [github.com/revenuedot/purchases-flutter](https://github.com/revenuedot/purchases-flutter). The package names stay `purchases_flutter` and `purchases_ui_flutter`, so every `import 'package:purchases_flutter/purchases_flutter.dart'` keeps working. It also **makes `setProxyURL` work on Flutter web**.
-
-**It is not published yet (2026-09-30).** It will ship as a git dependency with release tags `<version>-revenuedot`, because pub.dev names belong to RevenueCat:
+The fork is [github.com/revenuedot/purchases-flutter](https://github.com/revenuedot/purchases-flutter). The package names stay `purchases_flutter` and `purchases_ui_flutter`, so every `import 'package:purchases_flutter/purchases_flutter.dart'` keeps working. It ships as a git dependency with release tags `<version>-revenuedot`, because the pub.dev names belong to RevenueCat:
 ```yaml
-# pubspec.yaml (planned)
+# pubspec.yaml
 dependencies:
   purchases_flutter:
     git:
       url: https://github.com/revenuedot/purchases-flutter.git
-      ref: <version>-revenuedot
+      ref: 10.13.2-revenuedot
+  purchases_ui_flutter:          # only if you use paywalls
+    git:
+      url: https://github.com/revenuedot/purchases-flutter.git
+      path: purchases_ui_flutter
+      ref: 10.13.2-revenuedot
 ```
-The patch branch `revenuedot/main-patches` is at version 10.13.2. Pointing `ref` at that branch resolves the Dart package, but iOS and Android builds fail today: the native side needs the `RevenueDotPurchasesHybridCommon` pod and the `app.revenuedot.purchases:purchases-hybrid-common` Maven artifact, which are not published. See [Hybrid common](hybrid-common.md).
+Its native side comes from RevenueDot's [hybrid common](hybrid-common.md) 19.4.1: the `RevenueDotPurchasesHybridCommon` pod (or its Swift package) on iOS and `app.revenuedot.purchases:purchases-hybrid-common` on Android. **`Purchases.setProxyURL` works on Flutter web with the fork.** Its web bundle is built from RevenueDot's purchases-js 1.67.0.
+
+Checked with the [Flutter example](https://github.com/revenuedot/examples/tree/main/mobile/flutter) on this tag: a Flutter web build bought the monthly package through the Test Store against a RevenueDot server and the server shows `pro` active, and iOS simulator builds succeed with both CocoaPods and Swift Package Manager.
 
 ## Trusted Entitlements are off by default
 - **Stock package:** `entitlementVerificationMode` defaults to `EntitlementVerificationMode.disabled`, which is right for RevenueDot. `informational` logs every response as a failed signature check, and **`enforced` would fail every request**.

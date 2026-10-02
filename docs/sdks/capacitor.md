@@ -30,18 +30,18 @@ await Purchases.syncPurchases();
 ```
 
 ## Use the RevenueDot fork
-The fork is [github.com/revenuedot/purchases-capacitor](https://github.com/revenuedot/purchases-capacitor). It depends on RevenueDot's [hybrid common](hybrid-common.md) builds, which trust RevenueDot's signing key.
+The fork is [github.com/revenuedot/purchases-capacitor](https://github.com/revenuedot/purchases-capacitor). It depends on RevenueDot's [hybrid common](hybrid-common.md) 19.4.1, which is published.
 
-**It is not published yet (2026-09-30).** Install it **only through the alias** below. Capacitor derives the native pod and Swift package names from the npm package name, so the alias keeps them as `RevenuecatPurchasesCapacitor`. A direct install of `@revenuedot/purchases-capacitor` would change those names and is not supported.
+**Version 13.6.1 is built and waiting for its first npm release.** Install it **only through the alias** below. Capacitor derives the native pod and Swift package names from the npm package name, so the alias keeps them as `RevenuecatPurchasesCapacitor`:
 ```json
 {
   "dependencies": {
-    "@revenuecat/purchases-capacitor": "npm:@revenuedot/purchases-capacitor@<version>",
-    "@revenuecat/purchases-capacitor-ui": "npm:@revenuedot/purchases-capacitor-ui@<version>"
+    "@revenuecat/purchases-capacitor": "npm:@revenuedot/purchases-capacitor@13.6.1",
+    "@revenuecat/purchases-capacitor-ui": "npm:@revenuedot/purchases-capacitor-ui@13.6.1"
   }
 }
 ```
-Then run `npx cap sync`. The patch branch `revenuedot/main-patches` is at version 13.6.1. It cannot be installed from git yet, because its native dependencies (`RevenueDotPurchasesHybridCommon` 19.4.1 and `app.revenuedot.purchases:purchases-hybrid-common:19.4.1`) are not published. Use proxy mode until then.
+Then run `npx cap sync`. Until `@revenuedot/purchases-capacitor` shows up on npm, use proxy mode. The release package builds into a Capacitor 8 iOS app: Swift Package Manager resolves `revenuedot/purchases-hybrid-common` 19.4.1 and `revenuedot/purchases-ios` 5.91.0, and the app binary carries `api.revenuedot.app` and RevenueDot's signing key. The plugin has no web implementation, as upstream.
 
 ## Trusted Entitlements
 - **Stock plugin:** pass `DISABLED`. The native default, `INFORMATIONAL`, logs every RevenueDot response as a failed check but still grants access. **`ENFORCED` would fail every request.**

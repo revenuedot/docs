@@ -34,15 +34,15 @@ Purchases.sharedInstance.awaitSyncPurchases()
 `awaitSyncPurchases` is a suspend function in `com.revenuecat.purchases.kmp.ktx`. The callback form is `syncPurchases(onError = { }, onSuccess = { })`.
 
 ## Use the RevenueDot fork
-The fork is [github.com/revenuedot/purchases-kmp](https://github.com/revenuedot/purchases-kmp). Kotlin packages stay `com.revenuecat.purchases.kmp.*`. It builds its iOS side from RevenueDot's purchases-ios fork (a git submodule at 5.91.0) and its Android side from RevenueDot's Android fork, so both trust RevenueDot's signing key and send events to your proxy URL.
+The fork is [github.com/revenuedot/purchases-kmp](https://github.com/revenuedot/purchases-kmp). Kotlin packages stay `com.revenuecat.purchases.kmp.*`, so imports do not change. Its Android side is RevenueDot's purchases-android 10.22.1 from Maven Central, and its iOS side compiles RevenueDot's purchases-ios 5.90.2.
 
-**It is not published yet (2026-09-30).** The planned Maven coordinates:
+**Version 3.10.1 is on Maven Central:**
 ```kotlin
-// build.gradle.kts, commonMain dependencies (planned; not on Maven Central yet)
-implementation("app.revenuedot.purchases:purchases-kmp-core:<version>")
-implementation("app.revenuedot.purchases:purchases-kmp-ui:<version>") // paywalls, optional
+// build.gradle.kts, commonMain
+implementation("app.revenuedot.purchases:purchases-kmp-core:3.10.1")
+implementation("app.revenuedot.purchases:purchases-kmp-ui:3.10.1") // only if you use paywalls
 ```
-The other published modules are `purchases-kmp-models`, `-mappings`, `-either` and `-result`; `-core` pulls in what it needs. The patch branch `revenuedot/main-patches` is at `3.11.0-SNAPSHOT`. Building it today needs the unpublished Android fork (`app.revenuedot.purchases:purchases`) in a local Maven repository first, so proxy mode is the practical choice until the release.
+The fork's default host is RevenueDot Cloud, so a Cloud project needs no proxy URL. When you self-host, keep setting `Purchases.proxyURL` to your server.
 
 ## Trusted Entitlements are off by default
 - **Stock SDK:** the default is `DISABLED`, which is right for RevenueDot. `INFORMATIONAL` logs every response as a failed check, and **`ENFORCED` would fail every request**.
