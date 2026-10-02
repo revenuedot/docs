@@ -28,23 +28,15 @@ const purchases = Purchases.configure({
 ## Use the RevenueDot fork
 The fork is [github.com/revenuedot/purchases-js](https://github.com/revenuedot/purchases-js). It sends **analytics events to `httpConfig.proxyURL`** too, and the checkout reads "Secure checkout by RevenueDot". Its default host is `https://api.revenuedot.app`, RevenueDot Cloud, so a Cloud project needs no proxy URL with the fork. Self-hosters keep setting `proxyURL` to their own server.
 
-**It is not published yet (2026-09-30).** The planned install keeps your imports through an npm alias:
+**Version 1.67.0 is on npm** as `@revenuedot/purchases-js`. An npm alias keeps every import:
 ```json
 {
   "dependencies": {
-    "@revenuecat/purchases-js": "npm:@revenuedot/purchases-js@<version>"
+    "@revenuecat/purchases-js": "npm:@revenuedot/purchases-js@1.67.0"
   }
 }
 ```
-**To use it today**, build a tarball from the patch branch (version 1.67.0). It needs Node and pnpm:
-```bash
-git clone -b revenuedot/main-patches https://github.com/revenuedot/purchases-js
-cd purchases-js
-pnpm install && pnpm build && pnpm pack
-# In your app:
-npm install "@revenuecat/purchases-js@file:../purchases-js/revenuedot-purchases-js-1.67.0.tgz"
-```
-With the fork you can leave `collectAnalyticsEvents` on. The fork's web build ran end to end against a real RevenueDot server: configure, customer info, offerings, a Test Store purchase, and the `pro` entitlement turning active, with every request going to the proxy URL.
+With the fork you can leave `collectAnalyticsEvents` on. The [purchases-js Vite example](https://github.com/revenuedot/examples/tree/main/web/purchases-js-vite), installed with this alias from npm, passes its four Playwright tests against a RevenueDot server: a Test Store purchase that unlocks `pro` on the server, sign-in keeping `pro`, a cancelled purchase, and the preview plans.
 
 ## Trusted Entitlements do not apply
 purchases-js does not check response signatures, so there is nothing to turn off. The server still signs `/v1` and `/rcbilling` responses when `REVENUEDOT_SIGNING_KEY` is set, for the native SDKs. See [Trusted Entitlements](../guides/trusted-entitlements.md).

@@ -41,21 +41,13 @@ Purchases.sharedInstance.syncPurchases()
 ## Use the RevenueDot fork
 The fork is [github.com/revenuedot/purchases-android](https://github.com/revenuedot/purchases-android). Kotlin packages stay `com.revenuecat.purchases.*`, so imports do not change. On top of the new default host and signing key, it makes **diagnostics, paywall events and ad events follow `proxyURL`**.
 
-**It is not published yet (2026-09-30).** The planned Maven coordinates keep the upstream artifact ids under a new group:
+**It is on Maven Central** under the group `app.revenuedot.purchases`, with upstream's artifact ids and version numbers (10.23.3 is the newest; 10.23.0 and 10.22.1 are there for the wrappers that pin them):
 ```kotlin
-// build.gradle.kts (planned; not on Maven Central yet)
-implementation("app.revenuedot.purchases:purchases:<version>")
-implementation("app.revenuedot.purchases:purchases-ui:<version>") // only if you use RevenueCat UI
+// build.gradle.kts
+implementation("app.revenuedot.purchases:purchases:10.23.3")
+implementation("app.revenuedot.purchases:purchases-ui:10.23.3") // only if you use RevenueCat UI
 ```
-Versions match upstream. The patch branch `revenuedot/main-patches` is at `10.24.0-SNAPSHOT`.
-
-**To try it today**, build it into your local Maven repository. We have not tested this path ourselves.
-```bash
-git clone -b revenuedot/main-patches https://github.com/revenuedot/purchases-android
-cd purchases-android
-./gradlew :purchases:publishToMavenLocal
-```
-Then add `mavenLocal()` to your repositories and depend on `app.revenuedot.purchases:purchases:10.24.0-SNAPSHOT`. The fork's default host is RevenueDot Cloud, so a Cloud project needs no `Purchases.proxyURL`. When you self-host, keep setting it to your server.
+The fork's default host is RevenueDot Cloud, so a Cloud project needs no `Purchases.proxyURL`. When you self-host, keep setting it to your server.
 
 ## Trusted Entitlements
 - **Stock SDK:** it checks signatures with RevenueCat's key, so RevenueDot responses read as failed. The default, `INFORMATIONAL`, logs the failure and still grants access. Set `DISABLED`. **Never use `ENFORCED` with the stock SDK**: every request would fail.

@@ -43,14 +43,17 @@ GetComponent<Purchases>().SyncPurchases();
 ```
 
 ## Use the RevenueDot fork
-The fork is [github.com/revenuedot/purchases-unity](https://github.com/revenuedot/purchases-unity). C# namespaces and assembly names stay the same, so `using RevenueCat;` keeps working. Its native dependencies are RevenueDot's [hybrid common](hybrid-common.md) builds, pulled in by the External Dependency Manager (EDM4U).
+The fork is [github.com/revenuedot/purchases-unity](https://github.com/revenuedot/purchases-unity). C# namespaces and assembly names stay the same, so `using RevenueCat;` keeps working.
 
-**It is not published yet (2026-09-30).** The planned install is from OpenUPM:
+**Version 9.11.1 is on [OpenUPM](https://openupm.com/packages/com.revenuedot.purchases-unity/):**
 ```bash
 openupm add com.revenuedot.purchases-unity
-openupm add com.revenuedot.purchases-ui-unity   # paywalls, optional
 ```
-The patch branch `revenuedot/main-patches` is at version 9.11.1. It cannot build a working app yet, because its native dependencies (`RevenueDotPurchasesHybridCommon` 19.4.1 and `app.revenuedot.purchases:purchases-hybrid-common:19.4.1`) are not published. Use proxy mode until then.
+Or, without OpenUPM, open **Window > Package Manager > + > Add package from git URL** and enter:
+```
+https://github.com/revenuedot/purchases-unity.git?path=RevenueCat#9.11.1-revenuedot
+```
+The paywall package (`RevenueCatUI` folder) installs from git, as upstream. The External Dependency Manager pulls the native side, RevenueDot's [hybrid common](hybrid-common.md) 19.4.1: the `RevenueDotPurchasesHybridCommon` pod and `app.revenuedot.purchases:purchases-hybrid-common`. We have not run the package in the Unity editor yet.
 
 ## Trusted Entitlements
 - **Stock SDK:** the Inspector offers **Disabled** and **Informational**, and the default is Informational. It logs every RevenueDot response as a failed check but still grants access. Choose **Disabled**.
