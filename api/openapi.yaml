@@ -162,6 +162,9 @@ tags:
   - name: Store setup
     description: Notification URLs, credential checks, setup health and App Store mass extensions.
     x-page: extensions
+  - name: Store prices and product editor
+    description: "Prices in every territory, periods and store states read from App Store Connect and Google Play, and the product editor: download a CSV of prices per territory, upload it after changing prices or adding products, review the check, and commit it to the store. See [Product editor](../docs/guides/product-editor.md)."
+    x-page: extensions
   - name: API keys
     description: Secret keys for the REST API.
     x-page: extensions
@@ -4942,9 +4945,10 @@ paths:
               enum:
                 - items.app
                 - items.indicative_price
+                - items.store_details
           style: form
           explode: true
-          description: "`items.app` embeds each product's app. `items.indicative_price` adds each product's Test Store price."
+          description: "`items.app` embeds each product's app. `items.indicative_price` adds each product's indicative price: the Test Store price, else the store price from the last price read (United States first), else the Stripe web product's price. `items.store_details` (RevenueDot extension) adds each product's store status and price; see [store prices](../docs/guides/product-editor.md#store-prices-and-status-on-the-products-page)."
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/StartingAfter"
       responses:
@@ -5003,9 +5007,10 @@ paths:
               type: string
               enum:
                 - indicative_price
+                - store_details
           style: form
           explode: true
-          description: "`indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price)."
+          description: "`indicative_price` adds RevenueCat's IndicativePrice: the Test Store price; else the App Store or Google Play price in the United States from the last store price read (or the in-app purchase's base territory, or the first territory with a price); else the Stripe web product's price; null when none is known. `store_details` (RevenueDot extension) adds the store's status, base price, number of priced territories and when they were read."
       requestBody:
         required: true
         content:
@@ -5135,9 +5140,10 @@ paths:
               enum:
                 - app
                 - indicative_price
+                - store_details
           style: form
           explode: true
-          description: "`app` embeds the app. `indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price)."
+          description: "`app` embeds the app. `indicative_price` adds RevenueCat's IndicativePrice: the Test Store price; else the App Store or Google Play price in the United States from the last store price read (or the in-app purchase's base territory, or the first territory with a price); else the Stripe web product's price; null when none is known. `store_details` (RevenueDot extension) adds the store's status, base price, number of priced territories and when they were read."
       responses:
         "200":
           description: The product.
@@ -5193,9 +5199,10 @@ paths:
               enum:
                 - app
                 - indicative_price
+                - store_details
           style: form
           explode: true
-          description: "`indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price)."
+          description: "`indicative_price` adds RevenueCat's IndicativePrice: the Test Store price; else the App Store or Google Play price in the United States from the last store price read (or the in-app purchase's base territory, or the first territory with a price); else the Stripe web product's price; null when none is known. `store_details` (RevenueDot extension) adds the store's status, base price, number of priced territories and when they were read."
       requestBody:
         required: true
         content:
@@ -40056,6 +40063,914 @@ paths:
                     type: string
       x-source: routes/billing.ts
       x-revenuedot-extension: true
+  /v2/projects/{project_id}/store_prices:
+    get:
+      operationId: listStorePrices
+      tags:
+        - Store prices and product editor
+      summary: List store prices
+      description: |-
+        Every App Store, Mac App Store and Google Play product RevenueDot has read for the project's apps, with its price in every territory, its period and the store's state. The answer comes from RevenueDot's copy of the last read; the store is not asked. `apps` has one item per App Store, Mac App Store and Google Play app: whether RevenueDot can read its prices (and why not), and the last read's outcome. `next_page` is always null.
+
+        Prices are read again on `POST …/apps/{app_id}/store_prices/actions/refresh`, on every product file download and upload, after every commit, and once a day for apps not read in 24 hours. See [Product editor](../docs/guides/product-editor.md#store-prices-and-status-on-the-products-page).
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: app_id
+          in: query
+          schema:
+            type: string
+          description: Only this app's store products. 404 when the app is not in the project.
+      responses:
+        "200":
+          description: The cached store products and each app's last read.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                  - apps
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/StoreListing"
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+                  apps:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/StorePriceSync"
+                    description: One item per App Store, Mac App Store and Google Play app (only `app_id`'s with the filter).
+              example:
+                object: list
+                items:
+                  - object: store_listing
+                    app_id: app1a2b3c4d
+                    store_identifier: pro_monthly
+                    product_id: prod1a2b3c4d5e
+                    type: subscription
+                    display_name: Pro Monthly
+                    duration: P1M
+                    store_state: APPROVED
+                    status: approved
+                    group:
+                      id: "21000001"
+                      name: Pro
+                    store_id: "6743920115"
+                    price:
+                      amount_micros: 9990000
+                      currency: USD
+                      territory: USA
+                    prices:
+                      - territory: DEU
+                        currency: EUR
+                        amount_micros: 9990000
+                      - territory: GBR
+                        currency: GBP
+                        amount_micros: 8990000
+                      - territory: USA
+                        currency: USD
+                        amount_micros: 9990000
+                    editable: true
+                    note: null
+                    refreshed_at: 1790971200000
+                next_page: null
+                url: /v2/projects/proj18pzzkao/store_prices
+                apps:
+                  - object: store_price_sync
+                    app_id: app1a2b3c4d
+                    store: app_store
+                    can_read_prices: true
+                    reason: null
+                    status: ok
+                    error: null
+                    item_count: 3
+                    refreshed_at: 1790971200000
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/product-editor.ts
+      x-scopes:
+        - project_configuration:products:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/apps/{app_id}/store_prices/actions/refresh:
+    post:
+      operationId: refreshStorePrices
+      tags:
+        - Store prices and product editor
+      summary: Read an app's store prices again
+      description: |-
+        Reads every product of the app from the store with its current price in every territory, its period and its state, and replaces RevenueDot's copy for the app, so products deleted in the store disappear. Nothing in the store changes, and the refresh is not written to the audit log.
+
+        - **App Store and Mac App Store** need the App Store Connect API key (`app_store_connect_api_key`, `_id`, `_issuer`): a team key with the App Manager role. Each subscription's prices (`GET /v1/subscriptions/{id}/prices`, the current price per territory), each in-app purchase's price schedule (manual prices and the ones Apple sets from the base territory), and the review state.
+        - **Google Play** needs the service account, with "View app information and download bulk reports (read-only)". Every base plan's regional prices and state, and one-time products' prices.
+
+        When the read fails, the app's sync turns `failing` with the error and the previous prices stay. 422 `unprocessable_entity_error` for another kind of app or a missing or refused key; 422 `store_error` with `retryable: true` while the store cannot be reached.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/AppId"
+      responses:
+        "200":
+          description: What the store has now.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorePriceRefresh"
+              example:
+                object: store_price_refresh
+                app_id: app1a2b3c4d
+                warnings: []
+                sync:
+                  object: store_price_sync
+                  app_id: app1a2b3c4d
+                  store: app_store
+                  can_read_prices: true
+                  reason: null
+                  status: ok
+                  error: null
+                  item_count: 3
+                  refreshed_at: 1790971200000
+                items:
+                  - object: store_listing
+                    app_id: app1a2b3c4d
+                    store_identifier: pro_monthly
+                    product_id: prod1a2b3c4d5e
+                    type: subscription
+                    display_name: Pro Monthly
+                    duration: P1M
+                    store_state: APPROVED
+                    status: approved
+                    group:
+                      id: "21000001"
+                      name: Pro
+                    store_id: "6743920115"
+                    price:
+                      amount_micros: 9990000
+                      currency: USD
+                      territory: USA
+                    prices:
+                      - territory: DEU
+                        currency: EUR
+                        amount_micros: 9990000
+                      - territory: GBR
+                        currency: GBP
+                        amount_micros: 8990000
+                      - territory: USA
+                        currency: USD
+                        amount_micros: 9990000
+                    editable: true
+                    note: null
+                    refreshed_at: 1790971200000
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/product-editor.ts
+      x-scopes:
+        - project_configuration:products:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/apps/{app_id}/store_products/export.csv:
+    get:
+      operationId: exportStoreProductsCsv
+      tags:
+        - Store prices and product editor
+      summary: Download a product file
+      description: |-
+        A CSV with one row per product and territory: the base territory first (the United States when the product has a price there), then the rest by code. The columns are `store_identifier, display_name, type, duration, group, territory, currency, price, action`. `price` is a decimal in the territory's currency (`9.99`, `1740` for yen) and `action` is empty. A product without a price gets one row with empty `territory`, `currency` and `price`. Text cells that start with `=`, `+`, `-` or `@` get a leading apostrophe so spreadsheets do not run them as formulas; the upload removes it.
+
+        The download reads the store again (like a refresh), so the file has today's prices. The `Content-Disposition` file name is `<app>-app-store-products-<date>.csv` or `<app>-play-store-products-<date>.csv`, and `X-Product-Count` is the number of products. See [the CSV format](../docs/guides/product-editor.md#the-csv-has-one-row-per-product-and-territory).
+
+        ```csv
+        store_identifier,display_name,type,duration,group,territory,currency,price,action
+        pro_monthly,Pro Monthly,subscription,P1M,Pro,USA,USD,9.99,
+        pro_monthly,Pro Monthly,subscription,P1M,Pro,DEU,EUR,9.99,
+        pro_monthly,Pro Monthly,subscription,P1M,Pro,GBR,GBP,8.99,
+        ```
+
+        400 without `store_identifiers` or `all=true`, or with more than 2,000 identifiers. 422 `store_error` (`param: store_identifiers`) for identifiers the store does not have for the app, and for Google Play one-time products, which the product editor does not change yet. Other 422s as for a refresh.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/AppId"
+        - name: store_identifiers
+          in: query
+          schema:
+            type: string
+          description: The products to include, comma separated (`pro_monthly,pro_annual`); the parameter may repeat. At most 2,000.
+        - name: all
+          in: query
+          schema:
+            type: boolean
+          description: "`true` includes every product the product editor can change. Use it instead of `store_identifiers`."
+      responses:
+        "200":
+          description: The CSV file.
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: '`attachment; filename="scanner-ios-app-store-products-2026-10-02.csv"`'
+            X-Product-Count:
+              schema:
+                type: string
+              description: How many products the file has.
+          content:
+            text/csv:
+              schema:
+                type: string
+              example: |
+                store_identifier,display_name,type,duration,group,territory,currency,price,action
+                pro_monthly,Pro Monthly,subscription,P1M,Pro,USA,USD,9.99,
+                pro_monthly,Pro Monthly,subscription,P1M,Pro,DEU,EUR,9.99,
+                pro_monthly,Pro Monthly,subscription,P1M,Pro,GBR,GBP,8.99,
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "422":
+          $ref: "#/components/responses/V2Error422"
+      x-source: routes/v2/product-editor.ts
+      x-scopes:
+        - project_configuration:products:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/product_edits:
+    get:
+      operationId: listProductEdits
+      tags:
+        - Store prices and product editor
+      summary: List product files
+      description: Every uploaded product file of the project, newest first (the last 200), with its status, counts and who uploaded it. The dashboard's **Files** tab. `rows` are left out; get one file for them. `next_page` is always null.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: app_id
+          in: query
+          schema:
+            type: string
+          description: Only this app's files. 404 when the app is not in the project.
+      responses:
+        "200":
+          description: The files.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ProductEdit"
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+              example:
+                object: list
+                items:
+                  - object: product_edit
+                    id: pedit3k9x2m7q1z8w4c
+                    app_id: app1a2b3c4d
+                    store: app_store
+                    status: partially_committed
+                    file_name: scanner-ios-app-store-products-2026-10-02.csv
+                    created_at: 1790971500000
+                    updated_at: 1790971620000
+                    committed_at: 1790971620000
+                    created_by: usr_8k2m4q
+                    errors: []
+                    warnings:
+                      - line: 4
+                        message: pro_monthly in GBR changes by +55% (8.99 → 13.95). Check it is not a typo.
+                    summary:
+                      price_changes: 2
+                      new_products: 0
+                      new_product_prices: 0
+                      unchanged: 1
+                      products: 1
+                      rows: 3
+                    options:
+                      preserve_current_price: true
+                    results:
+                      pending: 0
+                      succeeded: 1
+                      failed: 1
+                    created_by_email: dana@example.com
+                next_page: null
+                url: /v2/projects/proj18pzzkao/product_edits
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/product-editor.ts
+      x-scopes:
+        - project_configuration:products:read
+      x-revenuedot-extension: true
+    post:
+      operationId: createProductEdit
+      tags:
+        - Store prices and product editor
+      summary: Upload a product file
+      description: |-
+        Checks a product file against what the store has now and keeps it. RevenueDot reads the store again (and refreshes the cached prices), then checks every line: the columns, each product, territory, currency and price, duplicate product and territory pairs, and the fields new products need. See [every problem the check reports](../docs/guides/product-editor.md#the-check-names-every-problem-with-its-line).
+
+        The answer is 201 either way:
+        - `status: "ready"`: every line is valid. `rows` lists every price that changes and every price of a new product; `summary` counts them and the unchanged rows. Nothing is sent to the store until you commit.
+        - `status: "invalid"`: `errors` lists every problem with its line, and `rows` is empty. The file stays on the Files tab; fix it and upload it again.
+
+        Rows whose price already matches the store are not changes. New values for the name, type, period or group of an existing product are ignored with a warning: the product editor changes prices only.
+
+        400 when `csv` is empty or larger than 1 MB, or `app_id` is not an app of the project. 422 `unprocessable_entity_error` for an app that is not on the App Store, Mac App Store or Google Play, or without the key changing prices needs (App Store Connect API key with the App Manager role; Play service account with "Manage store presence"); 422 `store_error` with `retryable: true` while the store cannot be reached.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                app_id:
+                  type: string
+                  description: The App Store, Mac App Store or Google Play app the file is for.
+                csv:
+                  type: string
+                  description: The file's text, UTF-8. At most 1 MB and 20,000 rows. Comma separated, or semicolon or tab separated when the header line has no comma.
+                  minLength: 1
+                  maxLength: 1000000
+                file_name:
+                  type: string
+                  description: "Shown on the Files tab. Default: products.csv."
+                  maxLength: 200
+                preserve_current_price:
+                  type: boolean
+                  description: "App Store only. Default true: subscription price changes keep existing subscribers on their current price (Apple's `preserveCurrentPrice`)."
+              required:
+                - app_id
+                - csv
+            example:
+              app_id: app1a2b3c4d
+              file_name: scanner-ios-app-store-products-2026-10-02.csv
+              csv: |
+                store_identifier,display_name,type,duration,group,territory,currency,price,action
+                pro_monthly,Pro Monthly,subscription,P1M,Pro,USA,USD,10.99,
+                pro_monthly,Pro Monthly,subscription,P1M,Pro,DEU,EUR,9.99,
+                pro_monthly,Pro Monthly,subscription,P1M,Pro,GBR,GBP,8.99,
+      responses:
+        "201":
+          description: "The file, checked: `ready` with its changes, or `invalid` with its errors."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductEdit"
+              examples:
+                ready:
+                  summary: A valid file
+                  value:
+                    object: product_edit
+                    id: pedit3k9x2m7q1z8w4c
+                    app_id: app1a2b3c4d
+                    store: app_store
+                    status: ready
+                    file_name: scanner-ios-app-store-products-2026-10-02.csv
+                    created_at: 1790971500000
+                    updated_at: 1790971500000
+                    committed_at: null
+                    created_by: usr_8k2m4q
+                    errors: []
+                    warnings:
+                      - line: 4
+                        message: pro_monthly in GBR changes by +55% (8.99 → 13.95). Check it is not a typo.
+                    summary:
+                      price_changes: 2
+                      new_products: 0
+                      new_product_prices: 0
+                      unchanged: 1
+                      products: 1
+                      rows: 3
+                    options:
+                      preserve_current_price: true
+                    results:
+                      pending: 2
+                      succeeded: 0
+                      failed: 0
+                    rows:
+                      - object: product_edit_row
+                        idx: 0
+                        kind: price_change
+                        line: 2
+                        store_identifier: pro_monthly
+                        territory: USA
+                        currency: USD
+                        old_amount_micros: 9990000
+                        new_amount_micros: 10990000
+                        change_percent: 10
+                        product: null
+                        status: pending
+                        error: null
+                        attempts: 0
+                        updated_at: null
+                      - object: product_edit_row
+                        idx: 1
+                        kind: price_change
+                        line: 4
+                        store_identifier: pro_monthly
+                        territory: GBR
+                        currency: GBP
+                        old_amount_micros: 8990000
+                        new_amount_micros: 13950000
+                        change_percent: 55.2
+                        product: null
+                        status: pending
+                        error: null
+                        attempts: 0
+                        updated_at: null
+                invalid:
+                  summary: A file with errors
+                  value:
+                    object: product_edit
+                    id: pedit3k9x2m7q1z8w4c
+                    app_id: app1a2b3c4d
+                    store: app_store
+                    status: invalid
+                    file_name: scanner-ios-app-store-products-2026-10-02.csv
+                    created_at: 1790971500000
+                    updated_at: 1790971620000
+                    committed_at: 1790971620000
+                    created_by: usr_8k2m4q
+                    errors:
+                      - line: 3
+                        message: JPY prices have no decimals; "1740.5" has 1.
+                      - line: 5
+                        message: pro_weekly is not in App Store Connect for this app. Check the identifier, or set action to create to add it as a new product.
+                    warnings: []
+                    summary:
+                      price_changes: 1
+                      new_products: 0
+                      new_product_prices: 0
+                      unchanged: 0
+                      products: 1
+                      rows: 4
+                    options:
+                      preserve_current_price: true
+                    results:
+                      pending: 0
+                      succeeded: 0
+                      failed: 0
+                    rows: []
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "422":
+          description: "The app is not an App Store, Mac App Store or Google Play app, or its store key is missing or refused (`unprocessable_entity_error`, the message names the key and the role or permission it needs), or the store could not be reached (`store_error` with `retryable: true`)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V2Error"
+              example:
+                object: error
+                type: unprocessable_entity_error
+                message: "Changing prices in App Store Connect needs the app's App Store Connect API key: a team key with the App Manager role (.p8 file, key ID and issuer ID). The In-App Purchase key cannot list or change prices."
+                doc_url: https://revenuedot.app/docs/api/errors#unprocessable-entity-error
+                retryable: false
+      x-source: routes/v2/product-editor.ts
+      x-scopes:
+        - project_configuration:products:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/product_edits/{edit_id}:
+    get:
+      operationId: getProductEdit
+      tags:
+        - Store prices and product editor
+      summary: Get a product file
+      description: The file with its errors, warnings, counts, options and every change with its result. Viewers can read it too.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: edit_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product file id (pedit...).
+      responses:
+        "200":
+          description: The file.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductEdit"
+              example:
+                object: product_edit
+                id: pedit3k9x2m7q1z8w4c
+                app_id: app1a2b3c4d
+                store: app_store
+                status: partially_committed
+                file_name: scanner-ios-app-store-products-2026-10-02.csv
+                created_at: 1790971500000
+                updated_at: 1790971620000
+                committed_at: 1790971620000
+                created_by: usr_8k2m4q
+                errors: []
+                warnings:
+                  - line: 4
+                    message: pro_monthly in GBR changes by +55% (8.99 → 13.95). Check it is not a typo.
+                summary:
+                  price_changes: 2
+                  new_products: 0
+                  new_product_prices: 0
+                  unchanged: 1
+                  products: 1
+                  rows: 3
+                options:
+                  preserve_current_price: true
+                results:
+                  pending: 0
+                  succeeded: 1
+                  failed: 1
+                rows:
+                  - object: product_edit_row
+                    idx: 0
+                    kind: price_change
+                    line: 2
+                    store_identifier: pro_monthly
+                    territory: USA
+                    currency: USD
+                    old_amount_micros: 9990000
+                    new_amount_micros: 10990000
+                    change_percent: 10
+                    product: null
+                    status: succeeded
+                    error: null
+                    attempts: 1
+                    updated_at: 1790971620000
+                  - object: product_edit_row
+                    idx: 1
+                    kind: price_change
+                    line: 4
+                    store_identifier: pro_monthly
+                    territory: GBR
+                    currency: GBP
+                    old_amount_micros: 8990000
+                    new_amount_micros: 13950000
+                    change_percent: 55.2
+                    product: null
+                    status: failed
+                    error: The App Store has no price of 13.95 GBP in GBR. The nearest App Store prices are 13.49 and 13.99.
+                    attempts: 1
+                    updated_at: 1790971620000
+                created_by_email: dana@example.com
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/product-editor.ts
+      x-scopes:
+        - project_configuration:products:read
+      x-revenuedot-extension: true
+    post:
+      operationId: updateProductEdit
+      tags:
+        - Store prices and product editor
+      summary: Change a product file's options
+      description: |-
+        App Store files only, before the commit. `preserve_current_price: true` (the default) keeps existing subscribers on their current price when a subscription's price changes. `false` moves them to the new price too; Apple tells them about an increase first and asks some of them to agree ([Apple's rules](https://developer.apple.com/help/app-store-connect/manage-subscriptions/manage-pricing-for-auto-renewable-subscriptions)). In-app purchase prices are not affected.
+
+        400 for a Google Play file. 409 `invalid_request` once the file is committed or when it has errors.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: edit_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product file id (pedit...).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                preserve_current_price:
+                  type: boolean
+              required:
+                - preserve_current_price
+            example:
+              preserve_current_price: false
+      responses:
+        "200":
+          description: The file.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductEdit"
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "409":
+          $ref: "#/components/responses/V2Error409"
+      x-source: routes/v2/product-editor.ts
+      x-scopes:
+        - project_configuration:products:read_write
+      x-revenuedot-extension: true
+    delete:
+      operationId: deleteProductEdit
+      tags:
+        - Store prices and product editor
+      summary: Discard a product file
+      description: "Removes a file that was never committed (`ready` or `invalid`) from the Files tab. Nothing was sent to the store. 409 `invalid_request` for a file that was committed: committed rows stay in the history."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: edit_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product file id (pedit...).
+      responses:
+        "200":
+          description: Discarded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deleted"
+              example:
+                object: product_edit
+                id: pedit3k9x2m7q1z8w4c
+                deleted_at: 1790971560000
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "409":
+          $ref: "#/components/responses/V2Error409"
+      x-source: routes/v2/product-editor.ts
+      x-scopes:
+        - project_configuration:products:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/product_edits/{edit_id}/actions/commit:
+    post:
+      operationId: commitProductEdit
+      tags:
+        - Store prices and product editor
+      summary: Commit a product file to the store
+      description: |-
+        Writes the file's pending changes to App Store Connect or Google Play, one product at a time, and records each row's outcome.
+
+        - **App Store subscription prices:** the price point with exactly that customer price in that territory, then `POST /v1/subscriptionPrices` with `preserveCurrentPrice` from the file's options and no start date. A price with no price point fails, and the message names the two nearest App Store prices.
+        - **App Store in-app purchase prices:** one `POST /v1/inAppPurchasePriceSchedules` per product with its base territory and every manual price: the ones it had plus the changed ones, so prices nobody changed stay.
+        - **Google Play base plan prices:** one `monetization.subscriptions.patch` (`updateMask=basePlans`) per subscription with the changed regional prices; the rest of the subscription is sent back as read. New prices apply to new subscribers; existing subscribers keep theirs until you move them in Play Console ([Google's price changes](https://developer.android.com/google/play/billing/price-changes)).
+        - **New products:** App Store subscriptions (in the subscription group named in `group`, created when it does not exist) and in-app purchases are created, then priced as above. Google Play subscriptions are created with their base plan and regional prices, or the base plan is added to an existing subscription, and each new base plan is activated. Every new product is added to the catalog, like an import.
+
+        Rows that share one store call share its outcome. A row whose store price already equals the new price succeeds without a write. When the store refuses the key, every remaining row fails with that message. The answer's `status` is `committed`, `partially_committed` or `failed`; afterwards RevenueDot reads the store again so the cached prices are current.
+
+        One call writes for at most 20 seconds. When rows are left, it answers `status: "committing"`: call commit again until the status changes. Each call is in the audit log as `product_edit_commit`, and each row adds `store_price_changed` (each new product `store_product_created`) with the territory, the old and new price and the result.
+
+        409 `invalid_request` when the file has errors or is already committed; 409 `resource_locked_error` while a commit of the same file, or of another file of the same app, runs. 422 `unprocessable_entity_error` when the app's key is missing.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: edit_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product file id (pedit...).
+      responses:
+        "200":
+          description: The file after this call, with each row's result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductEdit"
+              example:
+                object: product_edit
+                id: pedit3k9x2m7q1z8w4c
+                app_id: app1a2b3c4d
+                store: app_store
+                status: partially_committed
+                file_name: scanner-ios-app-store-products-2026-10-02.csv
+                created_at: 1790971500000
+                updated_at: 1790971620000
+                committed_at: 1790971620000
+                created_by: usr_8k2m4q
+                errors: []
+                warnings:
+                  - line: 4
+                    message: pro_monthly in GBR changes by +55% (8.99 → 13.95). Check it is not a typo.
+                summary:
+                  price_changes: 2
+                  new_products: 0
+                  new_product_prices: 0
+                  unchanged: 1
+                  products: 1
+                  rows: 3
+                options:
+                  preserve_current_price: true
+                results:
+                  pending: 0
+                  succeeded: 1
+                  failed: 1
+                rows:
+                  - object: product_edit_row
+                    idx: 0
+                    kind: price_change
+                    line: 2
+                    store_identifier: pro_monthly
+                    territory: USA
+                    currency: USD
+                    old_amount_micros: 9990000
+                    new_amount_micros: 10990000
+                    change_percent: 10
+                    product: null
+                    status: succeeded
+                    error: null
+                    attempts: 1
+                    updated_at: 1790971620000
+                  - object: product_edit_row
+                    idx: 1
+                    kind: price_change
+                    line: 4
+                    store_identifier: pro_monthly
+                    territory: GBR
+                    currency: GBP
+                    old_amount_micros: 8990000
+                    new_amount_micros: 13950000
+                    change_percent: 55.2
+                    product: null
+                    status: failed
+                    error: The App Store has no price of 13.95 GBP in GBR. The nearest App Store prices are 13.49 and 13.99.
+                    attempts: 1
+                    updated_at: 1790971620000
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "409":
+          description: The file has errors or is already committed (`invalid_request`), or a commit of it or of another file of the same app is running (`resource_locked_error`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V2Error"
+              example:
+                object: error
+                type: resource_locked_error
+                message: This edit is being committed right now. Wait for it to finish.
+                doc_url: https://revenuedot.app/docs/api/errors#resource-locked-error
+                retryable: false
+        "422":
+          description: "The app is not an App Store, Mac App Store or Google Play app, or its store key is missing or refused (`unprocessable_entity_error`, the message names the key and the role or permission it needs), or the store could not be reached (`store_error` with `retryable: true`)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V2Error"
+              example:
+                object: error
+                type: unprocessable_entity_error
+                message: "Changing prices in App Store Connect needs the app's App Store Connect API key: a team key with the App Manager role (.p8 file, key ID and issuer ID). The In-App Purchase key cannot list or change prices."
+                doc_url: https://revenuedot.app/docs/api/errors#unprocessable-entity-error
+                retryable: false
+      x-source: routes/v2/product-editor.ts
+      x-scopes:
+        - project_configuration:products:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/product_edits/{edit_id}/actions/retry:
+    post:
+      operationId: retryProductEdit
+      tags:
+        - Store prices and product editor
+      summary: Retry the failed rows of a product file
+      description: |-
+        Sets the failed rows back to pending and commits them again, like `…/actions/commit`. Rows that succeeded are not sent again. Products the first commit created are not created twice, and an App Store subscription row whose price is already in the store succeeds without a write. Logged as `product_edit_retry`.
+
+        409 `invalid_request` when no row failed; 409 `resource_locked_error` while a commit of the file, or of another file of the same app, runs.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: edit_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product file id (pedit...).
+      responses:
+        "200":
+          description: The file after the retry.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductEdit"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "409":
+          description: No row failed (`invalid_request`), or a commit of the file or of another file of the same app is running (`resource_locked_error`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V2Error"
+              example:
+                object: error
+                type: invalid_request
+                message: No row failed, so there is nothing to retry.
+                doc_url: https://revenuedot.app/docs/api/errors#invalid-request
+                retryable: false
+        "422":
+          description: "The app is not an App Store, Mac App Store or Google Play app, or its store key is missing or refused (`unprocessable_entity_error`, the message names the key and the role or permission it needs), or the store could not be reached (`store_error` with `retryable: true`)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V2Error"
+              example:
+                object: error
+                type: unprocessable_entity_error
+                message: "Changing prices in App Store Connect needs the app's App Store Connect API key: a team key with the App Manager role (.p8 file, key ID and issuer ID). The In-App Purchase key cannot list or change prices."
+                doc_url: https://revenuedot.app/docs/api/errors#unprocessable-entity-error
+                retryable: false
+      x-source: routes/v2/product-editor.ts
+      x-scopes:
+        - project_configuration:products:read_write
+      x-revenuedot-extension: true
   /v2/projects/{project_id}/actions/transfer_ownership:
     post:
       operationId: transferProjectOwnership
@@ -55935,9 +56850,9 @@ components:
             authorization_error: The key lacks a permission, a public app key was used, or the action needs a dashboard admin (403).
             store_error: "The App Store or Google Play refused the action, or could not be reached (`retryable: true`). Always 422."
             server_error: "RevenueDot failed (500, `retryable: true`). Retry with backoff."
-            resource_locked_error: "The delivery is being sent right now, so it cannot be retried yet (409, `retryable: true`). Try again in a minute."
+            resource_locked_error: "The same work is already running (409, `retryable: true`): a commit of the same product file or of another file of the same app, a run of the same data export, or a webhook delivery being sent. Wait for it to finish, then try again."
             unprocessable_entity_error: The request is valid but not possible in this state or for this store (422), for example archiving the current offering or refunding an App Store purchase.
-            invalid_request: The body is not valid JSON (400), or a package would get two products of one app with overlapping eligibility (409).
+            invalid_request: The body is not valid JSON (400); a package would get two products of one app with overlapping eligibility (409); or a product file is not in a state that allows the action, such as committing a file with errors (409).
             entity_references_archived_entities: The action would make an archived object current (422). Unarchive it first.
         message:
           type: string
@@ -56283,7 +57198,12 @@ components:
           oneOf:
             - $ref: "#/components/schemas/IndicativePrice"
             - type: "null"
-          description: "With `expand=indicative_price`: the Test Store price, or null."
+          description: "With `expand=indicative_price`: the Test Store price; else the App Store or Google Play price in the United States from the last store price read (or the in-app purchase's base territory, or the first territory with a price); else the Stripe web product's price. Null when none is known."
+        store_details:
+          oneOf:
+            - $ref: "#/components/schemas/StoreDetails"
+            - type: "null"
+          description: "RevenueDot extension, with `expand=store_details`: the store's status and price from the last store price read. Null when the product was never read from App Store Connect or Google Play (other stores, or no read yet)."
       required:
         - object
         - id
@@ -56293,6 +57213,84 @@ components:
         - created_at
         - app_id
         - display_name
+    StoreDetails:
+      type: object
+      properties:
+        object:
+          type: string
+          const: store_details
+        status:
+          type:
+            - string
+            - "null"
+          description: "The store's state in lower case: `approved`, `ready_to_submit`, `waiting_for_review`, `in_review`, `rejected`, `developer_action_needed`, `missing_metadata`, `removed_from_sale` (App Store), `active`, `draft`, `inactive` (Google Play)."
+        store_state:
+          type:
+            - string
+            - "null"
+          description: The state as the store spells it, such as `APPROVED` or `ACTIVE`.
+        price:
+          oneOf:
+            - type: object
+              properties:
+                amount_micros:
+                  type: integer
+                  description: "Price in micros: 9.99 is 9990000."
+                  format: int64
+                currency:
+                  type: string
+                  description: ISO 4217 code.
+                territory:
+                  type:
+                    - string
+                    - "null"
+                  description: App Store territory (`USA`) or Google Play region (`US`).
+              required:
+                - amount_micros
+                - currency
+                - territory
+            - type: "null"
+          description: The United States price when the product has one, else the in-app purchase's base territory or the first territory with a price. Null when the store has no price for it.
+        territories:
+          type: integer
+          description: How many territories have a price.
+        duration:
+          type:
+            - string
+            - "null"
+          description: The store's period for a subscription (`P1M` ...).
+        display_name:
+          type:
+            - string
+            - "null"
+          description: The name in the store.
+        editable:
+          type: boolean
+          description: Whether the product editor can change its prices.
+        refreshed_at:
+          type: integer
+          format: int64
+          description: When the prices were read from the store. Epoch milliseconds.
+        refresh_status:
+          type:
+            - string
+            - "null"
+          enum:
+            - ok
+            - failing
+            - null
+          description: "The app's last read: `failing` means it failed and these values are from the read before."
+      required:
+        - object
+        - status
+        - store_state
+        - price
+        - territories
+        - duration
+        - display_name
+        - editable
+        - refreshed_at
+        - refresh_status
     StoreProductImport:
       type: object
       properties:
@@ -56352,7 +57350,10 @@ components:
           type: string
           description: ISO 4217 code.
         country:
-          type: "null"
+          type:
+            - string
+            - "null"
+          description: "`US` for a United States store price, the region code for another Google Play region, else null (Test Store and Stripe prices, other App Store territories)."
         amount_micros:
           type: integer
           description: "Price in micros: 9.99 is 9990000."
@@ -58994,6 +59995,474 @@ components:
         - custom_domain
         - status
         - dns
+    StoreListing:
+      type: object
+      properties:
+        object:
+          type: string
+          enum:
+            - store_listing
+        app_id:
+          type: string
+        store_identifier:
+          type: string
+          description: "The identifier the catalog uses: the App Store product id, or `subscription_id:base_plan_id` (one-time products: the product id) on Google Play."
+        product_id:
+          type:
+            - string
+            - "null"
+          description: The catalog product with this store identifier on this app, or null when the catalog does not have it.
+        type:
+          type: string
+          enum:
+            - subscription
+            - one_time
+            - consumable
+            - non_consumable
+            - non_renewing_subscription
+        display_name:
+          type:
+            - string
+            - "null"
+          description: App Store Connect's reference name, or the Play listing title.
+        duration:
+          type:
+            - string
+            - "null"
+          description: ISO 8601 period of a subscription (`P1M`, `P1Y` ...).
+        store_state:
+          type:
+            - string
+            - "null"
+          description: "The store's own state: App Store review states such as `APPROVED`, `READY_TO_SUBMIT`, `WAITING_FOR_REVIEW`, `MISSING_METADATA`; Google Play base plan states `ACTIVE`, `DRAFT`, `INACTIVE`."
+        status:
+          type:
+            - string
+            - "null"
+          description: "`store_state` in lower case, such as `approved` or `active`."
+        group:
+          oneOf:
+            - type: object
+              properties:
+                id:
+                  type: string
+                name:
+                  type:
+                    - string
+                    - "null"
+              required:
+                - id
+                - name
+            - type: "null"
+          description: The App Store subscription group, or the Google Play subscription.
+        store_id:
+          type:
+            - string
+            - "null"
+          description: "The product's id in the store: the App Store Connect subscription or in-app purchase id, or the Google Play subscription or product id."
+        price:
+          oneOf:
+            - type: object
+              properties:
+                amount_micros:
+                  type: integer
+                  description: "Price in millionths of the currency unit: 9.99 is 9990000."
+                  format: int64
+                currency:
+                  type: string
+                  description: ISO 4217 code.
+                territory:
+                  type: string
+                  description: App Store Connect's three-letter territory code (`USA`) or Google Play's two-letter region code (`US`).
+              required:
+                - amount_micros
+                - currency
+                - territory
+            - type: "null"
+          description: "The price shown for the product: the United States when it has a price there, else the in-app purchase's base territory, else the first territory with a price. Null when the store has no price for it."
+        prices:
+          type: array
+          items:
+            type: object
+            properties:
+              amount_micros:
+                type: integer
+                description: "Price in millionths of the currency unit: 9.99 is 9990000."
+                format: int64
+              currency:
+                type: string
+                description: ISO 4217 code.
+              territory:
+                type: string
+                description: App Store Connect's three-letter territory code (`USA`) or Google Play's two-letter region code (`US`).
+            required:
+              - amount_micros
+              - currency
+              - territory
+          description: The current price in every territory that has one. App Store prices scheduled for a later date are left out; an in-app purchase lists its manual prices and the prices Apple sets from the base territory.
+        editable:
+          type: boolean
+          description: "Whether the product editor can change its prices: true for App Store subscriptions and in-app purchases and Google Play base plans; false for Google Play one-time products and subscriptions without a base plan."
+        note:
+          type:
+            - string
+            - "null"
+          description: Why the product cannot be edited, or a caveat from the store.
+        refreshed_at:
+          type: integer
+          format: int64
+          description: When the prices were read from the store. Epoch milliseconds.
+      required:
+        - object
+        - app_id
+        - store_identifier
+        - product_id
+        - type
+        - display_name
+        - duration
+        - store_state
+        - status
+        - group
+        - store_id
+        - price
+        - prices
+        - editable
+        - note
+        - refreshed_at
+    StorePriceSync:
+      type: object
+      properties:
+        object:
+          type: string
+          enum:
+            - store_price_sync
+        app_id:
+          type: string
+        store:
+          type: string
+          enum:
+            - app_store
+            - mac_app_store
+            - play_store
+        can_read_prices:
+          type: boolean
+          description: Whether the app has the store key reading prices needs.
+        reason:
+          type:
+            - string
+            - "null"
+          description: Why prices cannot be read, such as a missing App Store Connect API key. Null when they can.
+        status:
+          type: string
+          enum:
+            - never
+            - ok
+            - failing
+          description: "`never`: not read yet. `ok`: the last read worked. `failing`: the last read failed and the prices from the read before stay."
+        error:
+          type:
+            - string
+            - "null"
+          description: The last read's error.
+        item_count:
+          type: integer
+          description: Products in the last successful read.
+        refreshed_at:
+          type:
+            - integer
+            - "null"
+          format: int64
+          description: When the app's prices were last read, or tried. Epoch milliseconds, or null.
+      required:
+        - object
+        - app_id
+        - store
+        - can_read_prices
+        - reason
+        - status
+        - error
+        - item_count
+        - refreshed_at
+    StorePriceRefresh:
+      type: object
+      properties:
+        object:
+          type: string
+          enum:
+            - store_price_refresh
+        app_id:
+          type: string
+        warnings:
+          type: array
+          items:
+            type: string
+          description: Set when the store had more products than RevenueDot reads at once (5,000).
+        sync:
+          $ref: "#/components/schemas/StorePriceSync"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/StoreListing"
+          description: Every product the store has for the app, with its prices.
+      required:
+        - object
+        - app_id
+        - warnings
+        - sync
+        - items
+    ProductEditRow:
+      type: object
+      properties:
+        object:
+          type: string
+          enum:
+            - product_edit_row
+        idx:
+          type: integer
+          description: Position of the change in the file's list of changes.
+        kind:
+          type: string
+          enum:
+            - price_change
+            - new_product
+          description: "`price_change`: a new price for an existing product, in a territory it has a price in or a new territory. `new_product`: a price of a product the commit creates."
+        line:
+          type:
+            - integer
+            - "null"
+          description: The CSV line the change comes from.
+        store_identifier:
+          type: string
+        territory:
+          type: string
+          description: App Store territory (`USA`) or Google Play region (`US`).
+        currency:
+          type: string
+          description: ISO 4217 code.
+        old_amount_micros:
+          type:
+            - integer
+            - "null"
+          description: The store's price before the change, or null for a new territory or a new product.
+          format: int64
+        new_amount_micros:
+          type: integer
+          description: The price in the file.
+          format: int64
+        change_percent:
+          type:
+            - number
+            - "null"
+          description: Change from the old price in percent, one decimal (10.0 for 9.99 to 10.99). Null without an old price.
+        product:
+          oneOf:
+            - type: object
+              properties:
+                type:
+                  type: string
+                duration:
+                  type:
+                    - string
+                    - "null"
+                display_name:
+                  type: string
+                group:
+                  type:
+                    - string
+                    - "null"
+              required:
+                - type
+                - duration
+                - display_name
+                - group
+            - type: "null"
+          description: "For `new_product` rows: the product the commit creates, from the file's `type`, `duration`, `display_name` and `group` columns."
+        status:
+          type: string
+          enum:
+            - pending
+            - succeeded
+            - failed
+          description: "`pending` until the commit reaches the row."
+        error:
+          type:
+            - string
+            - "null"
+          description: The store's message when the row failed. On a row that succeeded without a write, a note such as "Already at this price."
+        attempts:
+          type: integer
+          description: How many times the row was sent to the store.
+        updated_at:
+          type:
+            - integer
+            - "null"
+          format: int64
+          description: When the row last changed. Epoch milliseconds, or null.
+      required:
+        - object
+        - idx
+        - kind
+        - line
+        - store_identifier
+        - territory
+        - currency
+        - old_amount_micros
+        - new_amount_micros
+        - change_percent
+        - product
+        - status
+        - error
+        - attempts
+        - updated_at
+    ProductEdit:
+      type: object
+      properties:
+        object:
+          type: string
+          enum:
+            - product_edit
+        id:
+          type: string
+          description: Product file id (pedit...).
+        app_id:
+          type: string
+        store:
+          type: string
+          enum:
+            - app_store
+            - mac_app_store
+            - play_store
+        status:
+          type: string
+          enum:
+            - invalid
+            - ready
+            - committing
+            - committed
+            - partially_committed
+            - failed
+          description: "`invalid`: the file has errors and nothing can be committed. `ready`: checked, waiting for a commit. `committing`: a commit has rows left; call commit again. `committed`: every row succeeded. `partially_committed`: some rows failed. `failed`: every row failed."
+        file_name:
+          type: string
+          description: The uploaded file's name.
+        created_at:
+          type: integer
+          format: int64
+          description: When the file was uploaded. Epoch milliseconds.
+        updated_at:
+          type: integer
+          format: int64
+          description: When the file or its options last changed. Epoch milliseconds.
+        committed_at:
+          type:
+            - integer
+            - "null"
+          format: int64
+          description: When the last commit finished. Epoch milliseconds, or null.
+        created_by:
+          type:
+            - string
+            - "null"
+          description: "Who uploaded it: a user id (usr_...) or an API key id."
+        created_by_email:
+          type:
+            - string
+            - "null"
+          description: The uploader's email, when a user uploaded it. Only in `GET` answers.
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              line:
+                type:
+                  - integer
+                  - "null"
+                description: The CSV line, or null for the whole file.
+              message:
+                type: string
+            required:
+              - line
+              - message
+          description: Every problem the check found (at most 500). Empty unless `status` is `invalid`.
+        warnings:
+          type: array
+          items:
+            type: object
+            properties:
+              line:
+                type:
+                  - integer
+                  - "null"
+              message:
+                type: string
+            required:
+              - line
+              - message
+          description: "Notes that do not stop a commit: ignored columns, ignored product fields, prices that change by more than 50%, rows without a price."
+        summary:
+          type: object
+          properties:
+            price_changes:
+              type: integer
+              description: Prices of existing products that change.
+            new_products:
+              type: integer
+              description: Products the commit creates.
+            new_product_prices:
+              type: integer
+              description: Prices of those new products.
+            unchanged:
+              type: integer
+              description: Rows whose price already matches the store.
+            products:
+              type: integer
+              description: Products with at least one change.
+            rows:
+              type: integer
+              description: Data rows in the file.
+          description: Counts from the check. Empty when the file could not be read at all.
+        options:
+          type: object
+          properties:
+            preserve_current_price:
+              type: boolean
+              description: "App Store only: Apple's `preserveCurrentPrice` for subscription price changes. True (the default) keeps existing subscribers on their current price."
+          description: Empty for Google Play files.
+        results:
+          type: object
+          properties:
+            pending:
+              type: integer
+            succeeded:
+              type: integer
+            failed:
+              type: integer
+          required:
+            - pending
+            - succeeded
+            - failed
+          description: How many changes are pending, succeeded and failed.
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductEditRow"
+          description: Every change, in file order. Not in list answers.
+      required:
+        - object
+        - id
+        - app_id
+        - store
+        - status
+        - file_name
+        - created_at
+        - updated_at
+        - committed_at
+        - created_by
+        - errors
+        - warnings
+        - summary
+        - options
     EnterpriseStatus:
       type: object
       properties:

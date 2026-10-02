@@ -10,7 +10,7 @@ const pathParam = (name, description) => ({ name, in: "path", required: true, sc
 const expand = (values, description) => ({ name: "expand", in: "query", schema: arr(en(values)), style: "form", explode: true, description });
 const testStorePrice = { type: ["object", "null"], required: ["amount_micros", "currency"], properties: { amount_micros: int("Price in micros: 9.99 is 9990000."), currency: str("ISO 4217 code such as USD or EUR. A code with no exchange rate to USD is refused (its purchases would record no revenue).") },
   description: "RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`." };
-const priceExpand = "`indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price)."
+const priceExpand = "`indicative_price` adds RevenueCat's IndicativePrice: the Test Store price; else the App Store or Google Play price in the United States from the last store price read (or the in-app purchase's base territory, or the first territory with a price); else the Stripe web product's price; null when none is known. `store_details` (RevenueDot extension) adds the store's status, base price, number of priced territories and when they were read."
 const E = (...c) => v2Errors(401, 403, ...c);
 const list = (schema, description = "A page of results.", example) => ok(description, listOf(schema), example);
 const del = (object) => ok("Deleted.", ref("Deleted"), { object, id: "…", deleted_at: 1790801342625 });
@@ -100,10 +100,10 @@ RevenueDot extensions in the store object: \`notification_forward_url\` (copy st
   // ---- Products ----------------------------------------------------------------------------------------------------
   [`${P}/products`]: {
     get: op({ id: "listProducts", tag: "Products", summary: "List products", security: SECRET, source: R.products, scopes: ["project_configuration:products:read"],
-      parameters: [project, { name: "app_id", in: "query", schema: str(), description: "Only this app's products." }, expand(["items.app", "items.indicative_price"], "`items.app` embeds each product's app. `items.indicative_price` adds each product's Test Store price."), ...page],
+      parameters: [project, { name: "app_id", in: "query", schema: str(), description: "Only this app's products." }, expand(["items.app", "items.indicative_price", "items.store_details"], "`items.app` embeds each product's app. `items.indicative_price` adds each product's indicative price: the Test Store price, else the store price from the last price read (United States first), else the Stripe web product's price. `items.store_details` (RevenueDot extension) adds each product's store status and price; see [store prices](../docs/guides/product-editor.md#store-prices-and-status-on-the-products-page)."), ...page],
       responses: { 200: list(ref("Product")), ...E(404) } }),
     post: op({ id: "createProduct", tag: "Products", summary: "Create a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read_write"],
-      parameters: [project, expand(["indicative_price"], priceExpand)],
+      parameters: [project, expand(["indicative_price", "store_details"], priceExpand)],
       description: "`store_identifier` is the store's product id. For Google Play subscriptions use `subscriptionId:basePlanId`. Set `subscription.duration` (ISO 8601, for example P1M): the Test Store uses it as the period, and MRR uses it for every store. `test_store_price` sets what the SDK shows for a Test Store product.",
       requestBody: body(obj({
         store_identifier: str(undefined, { maxLength: 255 }), app_id: str(), type: en(["subscription", "one_time", "consumable", "non_consumable", "non_renewing_subscription"]),
@@ -114,8 +114,8 @@ RevenueDot extensions in the store object: \`notification_forward_url\` (copy st
       responses: { 201: ok("The product.", ref("Product"), productExample), ...v2Errors(400, 401, 403, 404, 409) } }),
   },
   [`${P}/products/{product_id}`]: {
-    get: op({ id: "getProduct", tag: "Products", summary: "Get a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read"], parameters: [project, pathParam("product_id", "Product id (prod...)."), expand(["app", "indicative_price"], `\`app\` embeds the app. ${priceExpand}`)], responses: { 200: ok("The product.", ref("Product"), productExample), ...E(404) } }),
-    post: op({ id: "updateProduct", tag: "Products", summary: "Update a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read_write"], parameters: [project, pathParam("product_id", "Product id."), expand(["app", "indicative_price"], priceExpand)],
+    get: op({ id: "getProduct", tag: "Products", summary: "Get a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read"], parameters: [project, pathParam("product_id", "Product id (prod...)."), expand(["app", "indicative_price", "store_details"], `\`app\` embeds the app. ${priceExpand}`)], responses: { 200: ok("The product.", ref("Product"), productExample), ...E(404) } }),
+    post: op({ id: "updateProduct", tag: "Products", summary: "Update a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read_write"], parameters: [project, pathParam("product_id", "Product id."), expand(["app", "indicative_price", "store_details"], priceExpand)],
       description: "RevenueDot also lets you correct `type` and `subscription.duration` (null clears it), and set or clear `test_store_price`.",
       requestBody: body(obj({ display_name: str(), type: en(["subscription", "one_time", "consumable", "non_consumable", "non_renewing_subscription"]), subscription: obj({ duration: nstr() }), test_store_price: testStorePrice }), { display_name: "Pro (monthly)", test_store_price: { amount_micros: 9990000, currency: "USD" } }),
       responses: { 200: ok("The product.", ref("Product")), ...v2Errors(400, 401, 403, 404) } }),

@@ -15,13 +15,14 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Track subscriptions sold with my own Stripe account | [Connect Stripe](stripe.md) |
 | Connect my Stripe account without copying a restricted key | [Connect with Stripe](stripe-connect.md) |
 | Bring the products I already set up in App Store Connect, Google Play or Stripe into the catalog | [Import products](import-products.md) |
+| Change App Store and Google Play prices in every territory from a CSV, or create store products, and see each product's store price and status | [Product editor](product-editor.md) |
 | Sell my app's subscriptions on the web with a hosted Stripe checkout | [Sell on the web with Stripe](web-billing.md) |
 | Share a checkout link for an offering | [Purchase links](purchase-links.md) |
 | Build a multi-step web-to-app funnel (quiz, email, paywall) | [Funnels](funnels.md) |
 | Unlock a web purchase in my app | [Redemption links](redemption-links.md) |
 | Give a discount or a code at web checkout | [Web discounts](web-discounts.md) |
 | Put my purchase links and funnels on my own domain | [Custom domains](custom-domains.md) |
-| Ask questions about my revenue and customers, and make small changes from a chat | [RevenueDot AI](revenuedot-ai.md) |
+| Ask questions about my revenue and customers, and make small changes from a chat, such as drafting products and offerings | [RevenueDot AI](revenuedot-ai.md) |
 | Receive purchase events in my backend and verify them | [Webhooks](webhooks.md) |
 | Send purchase events to any of RevenueCat's 37 integrations (Segment, Amplitude, AppsFlyer, Braze, Branch, Statsig, Superwall ...) or BigQuery, or export my data to S3, R2 or Google Cloud Storage | [Integrations and data exports](integrations.md) |
 | See ad revenue next to subscription revenue, verify rewarded ads on the server, or connect AdMob | [Ads](ads.md) |
