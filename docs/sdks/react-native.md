@@ -33,7 +33,7 @@ await Purchases.syncPurchasesForResult();
 ## Use the RevenueDot fork
 The fork is [github.com/revenuedot/react-native-purchases](https://github.com/revenuedot/react-native-purchases). It depends on RevenueDot's [hybrid common](hybrid-common.md) 19.4.1, which is published (CocoaPods `RevenueDotPurchasesHybridCommon`, Maven `app.revenuedot.purchases:purchases-hybrid-common`, npm `@revenuedot/purchases-typescript-internal`).
 
-**Version 10.10.2 is built and waiting for its first npm release.** The install uses npm aliases, so every `import ... from "react-native-purchases"` stays as it is:
+**Version 10.10.2 is on npm.** The install uses npm aliases, so every `import ... from "react-native-purchases"` stays as it is:
 ```json
 {
   "dependencies": {
@@ -42,7 +42,7 @@ The fork is [github.com/revenuedot/react-native-purchases](https://github.com/re
   }
 }
 ```
-Until `@revenuedot/react-native-purchases` shows up on npm, use proxy mode. The release package already ran the [Expo example](https://github.com/revenuedot/examples/tree/main/mobile/react-native-expo) on the web against a RevenueDot server: configure, customer info, offerings, a Test Store purchase and the `pro` entitlement turning active, with every request going to the server.
+Installed from npm into the [Expo example](https://github.com/revenuedot/examples/tree/main/mobile/react-native-expo) and run on the web against a RevenueDot server, it passes configure, customer info, offerings, a Test Store purchase and the `pro` entitlement turning active, with every request going to the server.
 
 ## Trusted Entitlements are off by default
 - **Stock SDK:** the default is `DISABLED`, which is what you want against RevenueDot. `INFORMATIONAL` logs every response as a failed signature check. **`ENFORCED` would fail every request.**

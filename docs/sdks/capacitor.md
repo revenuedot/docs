@@ -32,7 +32,7 @@ await Purchases.syncPurchases();
 ## Use the RevenueDot fork
 The fork is [github.com/revenuedot/purchases-capacitor](https://github.com/revenuedot/purchases-capacitor). It depends on RevenueDot's [hybrid common](hybrid-common.md) 19.4.1, which is published.
 
-**Version 13.6.1 is built and waiting for its first npm release.** Install it **only through the alias** below. Capacitor derives the native pod and Swift package names from the npm package name, so the alias keeps them as `RevenuecatPurchasesCapacitor`:
+**Version 13.6.1 is on npm.** Install it **only through the alias** below. Capacitor derives the native pod and Swift package names from the npm package name, so the alias keeps them as `RevenuecatPurchasesCapacitor`:
 ```json
 {
   "dependencies": {
@@ -41,7 +41,7 @@ The fork is [github.com/revenuedot/purchases-capacitor](https://github.com/reven
   }
 }
 ```
-Then run `npx cap sync`. Until `@revenuedot/purchases-capacitor` shows up on npm, use proxy mode. The release package builds into a Capacitor 8 iOS app: Swift Package Manager resolves `revenuedot/purchases-hybrid-common` 19.4.1 and `revenuedot/purchases-ios` 5.91.0, and the app binary carries `api.revenuedot.app` and RevenueDot's signing key. The plugin has no web implementation, as upstream.
+Then run `npx cap sync`. Installed from npm, it builds into a Capacitor 8 iOS app: Swift Package Manager resolves `revenuedot/purchases-hybrid-common` 19.4.1 and `revenuedot/purchases-ios` 5.91.0, and the app binary carries `api.revenuedot.app` and RevenueDot's signing key. The plugin has no web implementation, as upstream.
 
 ## Trusted Entitlements
 - **Stock plugin:** pass `DISABLED`. The native default, `INFORMATIONAL`, logs every RevenueDot response as a failed check but still grants access. **`ENFORCED` would fail every request.**

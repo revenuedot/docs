@@ -30,11 +30,18 @@ Purchases.syncPurchases();
 ## Use the RevenueDot fork
 The fork is [github.com/revenuedot/cordova-plugin-purchases](https://github.com/revenuedot/cordova-plugin-purchases). The plugin id stays `cordova-plugin-purchases` and the global stays `Purchases`, so `config.xml` and your code do not change.
 
-**Version 8.2.3 is built and waiting for its first npm release.** The install will be:
+**Version 8.2.3 is on npm:**
 ```bash
 cordova plugin add @revenuedot/cordova-plugin-purchases@8.2.3
 ```
-Its native side is RevenueDot's [hybrid common](hybrid-common.md) 19.4.1, which is published. The release package builds into a cordova-ios 8 app with the `RevenueDotPurchasesHybridCommon` 19.4.1 pod from CocoaPods trunk. Xcode 27 needs an iOS deployment target of 15.0 or newer, with the stock plugin too: set `<preference name="deployment-target" value="15.0" />` in `config.xml`.
+Its native side is RevenueDot's [hybrid common](hybrid-common.md) 19.4.1, which is published. Installed from npm, it builds into a cordova-ios 8 app with the `RevenueDotPurchasesHybridCommon` 19.4.1 pod from CocoaPods trunk, and the app carries `api.revenuedot.app` and RevenueDot's signing key. **Xcode 27** rejects pods that target iOS 13, which the stock plugin's pods do too. Set `<preference name="deployment-target" value="15.0" />` in `config.xml`, and raise the pod targets with a `post_install` block in `platforms/ios/Podfile` (or a Cordova `after_prepare` hook, because `cordova prepare` rewrites the Podfile):
+```ruby
+post_install do |installer|
+  installer.pods_project.targets.each do |t|
+    t.build_configurations.each { |c| c.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0' }
+  end
+end
+```
 
 ## Trusted Entitlements
 - **Stock plugin:** `configureWith` takes no verification mode, so the native default, informational, applies. Every RevenueDot response is logged as a failed check, and access is still granted. You cannot turn this off from JavaScript.

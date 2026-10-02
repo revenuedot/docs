@@ -10,7 +10,7 @@ Set the RevenueCat SDK's proxy URL to RevenueDot (`https://api.revenuedot.app` f
 | Way | What you change in the app | What you get | Status (2026-10-02) |
 |---|---|---|---|
 | [Proxy mode](#proxy-mode-one-setting-in-the-sdk-you-already-ship) | One setting: the proxy URL, plus the verification mode | Every SDK call goes to your server | Works with all 10 SDKs |
-| [Fork packages](#fork-packages-a-package-swap-no-code-change) | The package name in your dependency file | Signed responses verify; no traffic to RevenueCat's hosts | Released for iOS, Android, web, Flutter, Kotlin Multiplatform and Unity; React Native, Capacitor and Cordova wait for their first npm release |
+| [Fork packages](#fork-packages-a-package-swap-no-code-change) | The package name in your dependency file | Signed responses verify; no traffic to RevenueCat's hosts | Released for all ten SDKs |
 | [Keep your RevenueCat keys](#keep-your-revenuecat-api-keys) | Nothing | App versions already in users' hands keep working | Works (importer) |
 
 ## Proxy mode: one setting in the SDK you already ship
@@ -49,7 +49,7 @@ RevenueDot maintains MIT forks of all ten RevenueCat SDKs. They keep every name 
 "react-native-purchases": "npm:@revenuedot/react-native-purchases@10.10.2"
 ```
 
-Each SDK guide has the install line for its fork: CocoaPods and Swift packages for iOS, Maven Central for Android and Kotlin Multiplatform, npm for the web, git tags for Flutter and Unity. React Native, Capacitor and Cordova wait for their first npm release. **A self-hosted server signs with its own key**, so the official forks only verify against RevenueDot Cloud. To verify against your own server, build the forks with your key; see [Trusted Entitlements](../guides/trusted-entitlements.md#verify-against-your-own-server).
+Each SDK guide has the install line for its fork: CocoaPods and Swift packages for iOS, Maven Central for Android and Kotlin Multiplatform, npm for the web, React Native, Capacitor and Cordova, a git tag for Flutter, and OpenUPM for Unity. **A self-hosted server signs with its own key**, so the official forks only verify against RevenueDot Cloud. To verify against your own server, build the forks with your key; see [Trusted Entitlements](../guides/trusted-entitlements.md#verify-against-your-own-server).
 
 ## Keep your RevenueCat API keys
 Apps already in the store send their RevenueCat public key (`appl_...`, `goog_...`). The [importer](../migrate/importer.md) sets each RevenueDot app's public key to that same string, so old app versions work against RevenueDot the moment you point traffic at it. You can also do it for one app with the API:

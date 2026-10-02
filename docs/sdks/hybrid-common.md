@@ -15,7 +15,7 @@ description: purchases-hybrid-common is the shared native and TypeScript layer u
 | TypeScript types | Shared types and enums such as `ENTITLEMENT_VERIFICATION_MODE` | npm `@revenuedot/purchases-typescript-internal` and `-esm` | installed through npm aliases, so imports stay `@revenuecat/...` |
 | Web mappings | Runs purchases-js in browser mode (Expo Go, React Native web, Flutter web) | npm `@revenuedot/purchases-js-hybrid-mappings` | installed through an npm alias |
 
-The fork is [github.com/revenuedot/purchases-hybrid-common](https://github.com/revenuedot/purchases-hybrid-common); release 19.4.1 is the tag `19.4.1-revenuedot`, which Swift Package Manager also uses. Published: both pods on CocoaPods trunk, `purchases-hybrid-common`, `-ui` and `-store-galaxy` on Maven Central, and `@revenuedot/purchases-typescript-internal` and `@revenuedot/purchases-js-hybrid-mappings` on npm. The ESM flavour, `@revenuedot/purchases-typescript-internal-esm`, waits for its first npm release.
+The fork is [github.com/revenuedot/purchases-hybrid-common](https://github.com/revenuedot/purchases-hybrid-common); release 19.4.1 is the tag `19.4.1-revenuedot`, which Swift Package Manager also uses. Published: both pods on CocoaPods trunk, `purchases-hybrid-common`, `-ui` and `-store-galaxy` on Maven Central, and `@revenuedot/purchases-typescript-internal` and `@revenuedot/purchases-js-hybrid-mappings` on npm., and `@revenuedot/purchases-typescript-internal-esm` too.
 
 ## Which wrappers use it
 | Wrapper | Native layer | TypeScript or web packages | Fork pin |
@@ -34,7 +34,7 @@ The RevenueDot forks pin each other, so a wrapper fork gets the RevenueDot build
 - The web mappings depend on RevenueDot's purchases-js fork through an npm alias.
 - Every wrapper fork depends on hybrid-common 19.4.1.
 
-Releases run in that order: iOS and Android first, then hybrid-common, then purchases-js and the web mappings, then the wrappers. Everything up to the wrappers is published; the npm wrappers (React Native, Capacitor, Cordova) wait for their first npm release.
+Releases run in that order: iOS and Android first, then hybrid-common, then purchases-js and the web mappings, then the wrappers. All of them are published.
 
 ## What it means for proxy mode
 - You do nothing here. The wrapper's `setProxyURL` and verification option pass through hybrid-common to the native SDK.
