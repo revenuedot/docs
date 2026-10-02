@@ -340,7 +340,18 @@ export const schemas = {
   }, ["object", "id", "days", "environment", "values"]),
   CustomerSummary: obj({
     object: { type: "string", const: "customer_summary" }, id: str("The id you asked for."), original_app_user_id: str(), aliases: arr(str()),
-    total_revenue_in_usd: num(), sandbox_revenue_in_usd: num(), country: nstr(), platform: nstr(), stores: arr(str()), offering_override: nstr(),
+    total_revenue_in_usd: num(), sandbox_revenue_in_usd: num(), country: nstr(), platform: nstr(), stores: arr(str()),
+    offering_override: { ...obj({ id: str(), lookup_key: str(), display_name: str() }), type: ["object", "null"], description: "The offering set for this customer only; it wins over targeting and experiments." },
+    current_offering: {
+      ...obj({
+        id: str(), lookup_key: str(), display_name: str(),
+        source: { ...en(["override", "experiment", "targeting", "default"]), description: "Why the customer gets it: their override, a running experiment, the first live targeting rule that matches, or the project's current offering." },
+        rule_id: str("With `targeting`."), rule_name: nstr("With `targeting`."),
+        experiment_id: str("With `experiment`."), experiment_name: nstr("With `experiment`."), variant: { ...en(["a", "b"]), description: "With `experiment`." },
+      }, ["id", "lookup_key", "source"]),
+      type: ["object", "null"],
+      description: "The current offering the SDK returns for this customer now, resolved with the platform and app version they last used. Reading it enrolls nobody in an experiment; it shows the variant their next request would get.",
+    },
     blocked: bool("One of the customer's app user ids is blocked: no entitlements anywhere."),
     active_entitlements: arr({ type: "object" }), granted_entitlements: arr({ type: "object" }), subscriptions: arr({ type: "object" }), purchases: arr({ type: "object" }),
   }, ["object", "id", "original_app_user_id"]),

@@ -44675,8 +44675,62 @@ components:
             type: string
         offering_override:
           type:
-            - string
+            - object
             - "null"
+          properties:
+            id:
+              type: string
+            lookup_key:
+              type: string
+            display_name:
+              type: string
+          description: The offering set for this customer only; it wins over targeting and experiments.
+        current_offering:
+          type:
+            - object
+            - "null"
+          properties:
+            id:
+              type: string
+            lookup_key:
+              type: string
+            display_name:
+              type: string
+            source:
+              type: string
+              enum:
+                - override
+                - experiment
+                - targeting
+                - default
+              description: "Why the customer gets it: their override, a running experiment, the first live targeting rule that matches, or the project's current offering."
+            rule_id:
+              type: string
+              description: With `targeting`.
+            rule_name:
+              type:
+                - string
+                - "null"
+              description: With `targeting`.
+            experiment_id:
+              type: string
+              description: With `experiment`.
+            experiment_name:
+              type:
+                - string
+                - "null"
+              description: With `experiment`.
+            variant:
+              type: string
+              enum:
+                - a
+                - b
+              description: With `experiment`.
+          required:
+            - id
+            - lookup_key
+            - source
+          description: The current offering the SDK returns for this customer now, resolved with the platform and app version they last used. Reading it enrolls nobody in an experiment; it shows the variant their next request would get.
         blocked:
           type: boolean
           description: "One of the customer's app user ids is blocked: no entitlements anywhere."
