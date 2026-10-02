@@ -506,6 +506,21 @@ FROM periods pe LEFT JOIN snapshot s ON s.period = pe.period
 GROUP BY pe.period ORDER BY pe.period;
 ```
 
+## How proceeds are computed
+Proceeds are revenue minus the store's commission, worked out per transaction when the chart is read:
+
+| Store | Commission |
+|---|---|
+| App Store, Mac App Store | 30%; 15% inside the app's [Small Business Program](app-store.md#apple-small-business-program) dates |
+| Google Play | Subscriptions 15%; one-time purchases 15% on the first $1M a year, then 30% ([details](google-play.md#google-play-service-fee)) |
+| Amazon Appstore | 30%; 20% inside the app's [Small Business Accelerator](amazon-appstore.md#small-business-accelerator-program) dates |
+| Galaxy Store | 30% |
+| Roku | 20% |
+| Paddle | 5% (Paddle's fee) |
+| Stripe, Web Billing, Test Store, ads | 0% |
+
+Changing program dates recomputes past proceeds here, in metrics, exports and the REST API. Webhooks and integration events already sent keep the rate they were sent with.
+
 ## SQL for the customers behind a chart
 
 These queries list the customers behind four core charts, one row per customer with their part of the chart, and RevenueDot's tests check them against the Customers tab's API. Run them with the same psql variables as above. They count ad revenue reported in USD only; the API also converts ad revenue in other currencies.

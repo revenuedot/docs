@@ -380,7 +380,10 @@ Create an app per store with `POST /v2/projects/{project_id}/apps` or on the das
 | `test_store` | RevenueDot Test Store | `test_` | none | Yes |
 | `amazon` | Amazon Appstore | `amzn_` | `amazon.package_name` | Yes ([guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md)) |
 | `stripe` | Stripe, your own account | `strp_` | none | Yes: posted by your backend ([guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md)), or sold on RevenueDot's hosted checkout ([web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md)) |
-| `rc_billing`, `paddle`, `roku` | RevenueCat Billing and other stores | `rcb_`, `pdl_`, `roku_` | none | No. Sell on the web with a `stripe` app instead |
+| `paddle` | Paddle Billing, your own account | `pdl_` | none | Yes: posted by your backend ([guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paddle.md)) |
+| `roku` | Roku Pay | `roku_` | none (`roku.roku_channel_id` tells channels apart) | Yes ([guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/roku.md)) |
+| `galaxy` | Samsung Galaxy Store (a RevenueDot extension of the v2 API) | `galx_` | `galaxy.package_name` | Yes ([guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/galaxy-store.md)) |
+| `rc_billing` | RevenueCat Billing | `rcb_` | none | No. Sell on the web with a `stripe` app instead |
 
 ```bash
 curl -s -X POST http://localhost:8787/v2/projects/$PROJECT_ID/apps \
@@ -1823,6 +1826,9 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Accept Amazon Appstore purchases on Fire tablets and Fire TV | [Connect the Amazon Appstore](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md) |
 | Track subscriptions sold with my own Stripe account | [Connect Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md) |
 | Connect my Stripe account without copying a restricted key | [Connect with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe-connect.md) |
+| Track web purchases sold through Paddle Billing | [Connect Paddle](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paddle.md) |
+| Sell subscriptions in a Roku channel with Roku Pay | [Connect Roku](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/roku.md) |
+| Accept Samsung Galaxy Store purchases | [Connect the Galaxy Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/galaxy-store.md) |
 | Bring the products I already set up in App Store Connect, Google Play or Stripe into the catalog | [Import products](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/import-products.md) |
 | Change App Store and Google Play prices in every territory from a CSV, or create store products, and see each product's store price and status | [Product editor](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/product-editor.md) |
 | Sell my app's subscriptions on the web with a hosted Stripe checkout | [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md) |
@@ -1950,6 +1956,19 @@ Set these in the app's `app_store` object with `POST /v2/projects/{project_id}/a
 | `allow_unsigned_receipts` | Development only: accept StoreKit 1 receipts without the In-App Purchase key |
 | `app_store_connect_api_key`, `_id`, `_issuer`, `app_store_connect_vendor_number` | A separate App Store Connect API key with the App Manager role. Used to [import your products](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/import-products.md) and to create products in App Store Connect (below) |
 | `shared_secret` | The legacy app-specific shared secret. Stored but not used: RevenueDot does not call Apple's deprecated verifyReceipt endpoint |
+| `small_business_program` | Your dates in Apple's Small Business Program (below). `null` removes them |
+
+## Apple Small Business Program
+Apple keeps 15% instead of 30% while your app is in the [App Store Small Business Program](https://developer.apple.com/app-store/small-business-program/). Tell RevenueDot the dates, and proceeds use 15% for every purchase and renewal made inside them.
+
+- **In the dashboard:** open the app, then **More settings → Apple Small Business Program**. Turn on **Enrolled**, set the entry date and, if you left, the exit date. **Add period** covers a second membership. **Use existing dates from …** copies the dates saved on another App Store app in the project.
+- **With the API:**
+  ```bash
+  curl -s -X POST "$B/apps/$APP_ID" -H "$H" -H "Content-Type: application/json" \
+    -d '{"app_store":{"small_business_program":{"enrolled":true,"periods":[{"entry_date":"2024-01-01","exit_date":null}]}}}'
+  ```
+  Dates are `YYYY-MM-DD` (UTC). The exit date is the first day back at 30%. Up to 10 periods; they must not overlap.
+- **What changes:** charts with revenue type **Proceeds**, metrics, exports and the REST API recompute past proceeds for the dates you enter. New webhook and integration events carry `commission_percentage` 0.15 (`takehome_percentage` 0.85). Events already sent keep their values, as in RevenueCat.
 
 ## What you can do from the server afterwards
 - **Extend a subscription** by 1 to 90 days: `POST /v2/projects/{project_id}/subscriptions/{subscription_id}/actions/extend` with `extend_by_days` and `extend_reason_code`.
@@ -2028,6 +2047,14 @@ By default anyone who knows the URL can post to it, but RevenueDot only trusts w
      -d '{"play_store":{"pubsub_audience":"https://revenuedot.example.com/v1/notifications/google/'$APP_ID'","pubsub_service_account":"pubsub-push@your-project.iam.gserviceaccount.com"}}'
    ```
 From then on, a push without a valid Google-signed token for that audience (and that service account) gets 401.
+
+## Google Play service fee
+Proceeds use Google's [service fees](https://support.google.com/googleplay/android-developer/answer/112622) with nothing to set up:
+
+- **Subscriptions:** 15%.
+- **One-time purchases:** 15% on the app's first $1M of Google Play sales in a calendar year, then 30% for the rest of that year. Under Google's 2026 fees, a purchase above $1M by a customer who first opened the app after the fees started in their country is 25%.
+
+RevenueDot counts the $1M from the purchases it has recorded for the app, so purchases made before you moved to RevenueDot count only if you [imported](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md) them.
 
 ## What you can do from the server afterwards
 - **Refund and revoke** a subscription: `POST /v2/projects/{project_id}/subscriptions/{subscription_id}/actions/refund`.
@@ -2129,11 +2156,195 @@ Webhooks report `store: AMAZON`. Amazon has no subscription pause, and like Reve
 ## Prices
 RVS has no price. The price and currency the SDK posts (the marketplace's local price) are saved with the purchase and converted to USD at the purchase date's rate. Renewals that arrive by notification keep the last known price.
 
+## Small Business Accelerator Program
+Amazon keeps 20% instead of 30% while your app is in its [Small Business Accelerator Program](https://developer.amazon.com/apps-and-games/blogs/2021/06/small-business-accelerator-program). In the dashboard, open the app and use **More settings → Amazon Small Business Accelerator Program**: turn on **Enrolled** and set the entry and exit dates. With the API, send `{"amazon":{"small_business_accelerator":{"enrolled":true,"periods":[{"entry_date":"2024-01-01","exit_date":null}]}}}` to `POST /v2/projects/{project_id}/apps/{app_id}`. Proceeds for purchases inside the dates use 20%, in charts, metrics, exports and new webhook events.
+
 ## Related
 - [Android SDK guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/android.md)
 - [Store notifications not arriving](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/store-notifications-not-arriving.md)
 - [SDK endpoints: Amazon receipt details](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md)
 - [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md)
+
+---
+
+# How do I track Paddle Billing purchases in RevenueDot?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paddle.md
+Description: Create a Paddle app with your Paddle API key, let RevenueDot add its notification destination in Paddle, import your prices, and post each Paddle subscription or transaction from your backend so the same entitlements unlock in your apps.
+
+Four steps: create a Paddle app with a Paddle **API key**, click **Apply in Paddle** so Paddle sends its notifications to RevenueDot, import your **prices** as products, and post each purchase from your backend. Paddle is the merchant of record, so it handles tax; RevenueDot reads every subscription, transaction and refund from your own Paddle account with your key and unlocks the same entitlements as your App Store and Google Play purchases. It works like [RevenueCat's Paddle integration](https://www.revenuecat.com/docs/web/integrations/paddle).
+
+## 1. Create the app and save the API key
+1. In Paddle, open **Developer tools → Authentication** and create an API key. Use the sandbox dashboard for a sandbox key.
+2. Give it **Read** access to Subscriptions, Transactions, Adjustments, Customers, Products and Prices, and **Write** access to Notification settings (for Apply in Paddle) and Customer portal sessions (for management links). Set no expiry: Paddle keys expire after 90 days by default.
+3. In the dashboard, **Apps → Add app → Paddle**, paste the key and click **Check credentials**.
+
+With the API:
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"Scanner Web","type":"paddle","paddle":{"paddle_api_key":"pdl_live_apikey_…"}}'
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/actions/verify_credentials" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+- The key decides the environment: `pdl_sdbx_apikey_…` records **sandbox** purchases, `pdl_live_apikey_…` production ones. A key made before May 2025 (50 characters) carries no environment; set `paddle_is_sandbox` for a sandbox one. Use one Paddle app per Paddle account.
+- The key is sealed on the server and never returned; the app page shows only its environment and last four characters.
+- The check calls Paddle's event types, then reads one product and one subscription. Paddle answers 403 for a wrong, revoked or other-environment key, and names the permission a key lacks.
+
+## 2. Apply in Paddle
+On the app page, **Paddle notifications → Apply in Paddle** creates a notification destination in your Paddle account that sends the subscription, transaction and adjustment events to `https://<your server>/v1/notifications/paddle/{app_id}`, and saves its secret key. Clicking it again updates the same destination.
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/actions/apply_notification_settings" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+To set it up by hand instead, create a destination with that URL and the events listed on the app page, then paste its **secret key** (`pdl_ntfset_…`) into the app's settings.
+
+Every notification must carry a valid `Paddle-Signature`: an HMAC-SHA256 of `"<ts>:<raw body>"` with the secret key, within 5 minutes. Anything else gets 400 and changes nothing. Paddle's simulated events are accepted, show as received and change nothing.
+
+Notifications are optional for subscriptions, which you post anyway, but needed for refunds of one-time purchases.
+
+## 3. Import your prices
+A RevenueDot product of a Paddle app is a **Paddle price** (`pri_…`), as in RevenueCat. **Import products** lists every active price with its product's name, as a subscription with the billing cycle's duration or as a one-time product, and attaches them to entitlements you pick. A catalog product made with the Paddle product id (`pro_…`) also matches when no product has the price id.
+
+## 4. Post purchases from your backend
+After Paddle's `transaction.completed`, post the subscription id or the transaction id with the customer's app user ID and the Paddle app's public key (`pdl_…`):
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/receipts" \
+  -H "Authorization: Bearer pdl_…" -H "X-Platform: paddle" -H "Content-Type: application/json" \
+  -d '{"app_user_id":"user_123","fetch_token":"sub_01h…"}'   # or "txn_01h…"
+```
+
+- A transaction of a subscription is recorded as that subscription; a transaction without one is a one-time purchase.
+- A checkout that is not finished (`draft` or `ready`) answers **503**, so post it again later. An unknown id answers **400**.
+- Also put the app user ID into the checkout's `customData` (for example `{ "app_user_id": "user_123" }`). With **Track new purchases from server-to-server notifications** on, a purchase first seen in a notification is given to that app user ID (the key is set under **Purchases first seen in a notification**), or to an anonymous ID.
+
+## What each Paddle event does
+| Paddle | Event |
+|---|---|
+| First paid transaction (or a trial) | INITIAL_PURCHASE |
+| A renewal transaction completed | RENEWAL (`is_trial_conversion` after a trial) |
+| Cancel scheduled (`scheduled_change.action: cancel`), taken back | CANCELLATION, UNCANCELLATION |
+| Renewal payment failed (`past_due`) | BILLING_ISSUE; access continues for a 30-day grace period, as RevenueCat shows |
+| Canceled | EXPIRATION (BILLING_ERROR when the last renewal was never paid) |
+| Paused with a resume date, resumed | SUBSCRIPTION_PAUSED, RENEWAL |
+| The subscription's price changed | PRODUCT_CHANGE |
+| Approved full refund or chargeback | CANCELLATION (CUSTOMER_SUPPORT), access ends |
+
+Webhooks report `store: PADDLE`. Take-home estimates use Paddle's standard 5% fee (the 50¢ per transaction is not included). The v2 [authenticated management URL](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) of a Paddle subscription is a short-lived Paddle customer portal link.
+
+---
+
+# How do I connect a Roku channel to RevenueDot?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/roku.md
+Description: Create a Roku app with your Roku Pay API key and channel ID, point RevenueCat's Roku SDK at RevenueDot, and set RevenueDot's URL as the Roku Pay push notification URL so renewals, failed payments, cancellations and refunds arrive.
+
+Three steps: create a Roku app with your **Roku Pay API key** and **channel ID**, set the Roku SDK's `proxyUrl` to RevenueDot, and set RevenueDot's URL as the **push notification URL** in the Roku developer dashboard. Your channel keeps using [RevenueCat's Roku SDK](https://github.com/RevenueCat/purchases-roku) unchanged; RevenueDot checks every purchase with Roku Pay's web services, as [RevenueCat does](https://www.revenuecat.com/docs/getting-started/installation/roku).
+
+## 1. Create the app
+1. In the [Roku developer dashboard → Roku Pay web services](https://developer.roku.com/rpay-web-services), copy the **API key**.
+2. In the dashboard, **Apps → Add app → Roku**, paste the key, click **Check credentials**, and add the channel ID and name from your channel's page.
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"Scanner TV","type":"roku","roku":{"roku_api_key":"<your Roku Pay API key>","roku_channel_id":"123456","roku_channel_name":"Scanner"}}'
+```
+
+- The key is sealed and never returned. The check validates a made-up transaction: Roku answers `UNAUTHORIZED` for a wrong key.
+- Create products with `store_identifier` set to each product's **code** from the Roku dashboard. Roku has no API that lists a channel's products, so they cannot be imported.
+
+## 2. Point the SDK at RevenueDot
+```brightscript
+Purchases().configure({
+    apiKey: "roku_…",
+    proxyUrl: "https://api.revenuedot.app/v1/"   ' or your own server, ending in /v1/
+})
+```
+
+The SDK posts each purchase to `POST /v1/receipts` with the Roku transaction id as `fetch_token`. RevenueDot validates it with `validate-transaction` and takes the price and currency from Roku, because the SDK sends a formatted price and no currency.
+
+- **Sandbox:** a sideloaded (developer) channel sends `X-Is-Sandbox: true` and its purchases are sandbox; beta and published channels are production, even for test users who pay nothing. This is RevenueCat's rule.
+- An unknown transaction answers **400**; Roku being down or a rejected key answers **5xx**, so the SDK can try again, and a rejected key marks the app's credentials as failing.
+
+## 3. Set the push notification URL
+1. Copy the app's URL, `https://<your server>/v1/notifications/roku/{app_id}`, from the app page.
+2. In **Roku Pay web services**, set it as the **Push notification URL**. Roku has one URL per developer account: pushes for your other channels go to the project's Roku app with that channel ID.
+
+Every push is a JWT signed by Roku; RevenueDot checks it with Roku's published keys (the test key set for the dashboard's test endpoint), stores it once, validates its transaction again and applies what Roku says. A push that is not signed by Roku gets 400.
+
+## What each Roku push does
+| Roku | Event |
+|---|---|
+| `Sale` (first) | INITIAL_PURCHASE (TRIAL for a free trial) |
+| `Sale` (renewal), `GraceRecovered`, `OnHoldRecovered` | RENEWAL |
+| `GraceInitiated` | BILLING_ISSUE; access continues 3 days |
+| `OnHoldInitiated` | Access ends: EXPIRATION (BILLING_ERROR) |
+| `Cancellation`, `Resubscribe` | CANCELLATION, UNCANCELLATION |
+| `Refund` | CANCELLATION (CUSTOMER_SUPPORT), access ends |
+| `UpgradeSale` | A new subscription for the same customer; the old one is cancelled and expires |
+| `DowngradeSale` | The current plan does not renew; the downgraded plan starts when Roku charges it |
+| `Credit`, chargebacks | Stored, no change |
+
+RevenueCat lists PRODUCT_CHANGE, REFUND_REVERSED and SUBSCRIPTION_PAUSED as not supported for Roku, and so does RevenueDot. Roku never sends "expired": the subscription expires when its date passes. Webhooks report `store: ROKU`; take-home estimates use Roku Pay's standard 20% share.
+
+---
+
+# How do I connect the Samsung Galaxy Store to RevenueDot?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/galaxy-store.md
+Description: Create a Galaxy Store app with your package name and a Seller Portal service account, build your Android app with the RevenueCat SDK's Galaxy module pointed at RevenueDot, and set RevenueDot's URL for Samsung's server notifications.
+
+Three steps: create a Galaxy Store app with your **package name** and a Seller Portal **service account**, build the app with the RevenueCat SDK's Galaxy module pointed at RevenueDot, and set RevenueDot's URL for Samsung's **server notifications**. Purchases from the Galaxy Store unlock the same entitlements as Google Play. Setup mirrors [RevenueCat's Galaxy Store guide](https://www.revenuecat.com/docs/platform-resources/galaxy-platform-resources/galaxy-setup-guide).
+
+## 1. Create the app and the service account
+1. In [Samsung Seller Portal](https://seller.samsungapps.com), open **Assistance → API Service → Create Service Account**, select the **Publishing & Item** and **GSS** scopes, and click **Download Key**. Samsung shows the key only once.
+2. In the dashboard, **Apps → Add app → Galaxy Store**, enter the package name, then paste the service account ID, drop the key file and click **Check credentials**.
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"Scanner Galaxy","type":"galaxy","galaxy":{"package_name":"com.example.scanner","galaxy_service_account_id":"<id>","galaxy_service_account_private_key":"-----BEGIN PRIVATE KEY-----\n…"}}'
+```
+
+- `galaxy` is a RevenueDot extension of the v2 API: RevenueCat's v2 API has no Galaxy app object. The app's public key starts with `galx_`, the prefix the SDK requires.
+- The private key is sealed and never returned. RevenueDot signs a JWT with it for Samsung's access tokens; the check then reads a made-up subscription, so a wrong account or a missing scope shows up here.
+- Create products with `store_identifier` set to each item ID: subscriptions, consumables and non-consumables. **Import products** lists your in-app items; Samsung's API does not list subscriptions, so add those with **New product**.
+
+## 2. Build the app with the Galaxy module
+```kotlin
+// build.gradle: implementation("com.revenuecat.purchases:purchases-store-galaxy:<version>")
+Purchases.proxyURL = URL("https://api.revenuedot.app")   // or your own server, before configure
+Purchases.configure(GalaxyConfiguration.Builder(this, "galx_…").build())
+```
+
+React Native: add `react-native-purchases-store-galaxy` and configure with `store: "GALAXY"`.
+
+The SDK posts each purchase to `POST /v1/receipts` with Samsung's purchase ID as `fetch_token`. RevenueDot reads the receipt from Samsung (no credentials needed), and a subscription's state with the service account. Answers:
+- `purchased_products.<item>.should_consume` is true for products the catalog marks consumable, so the SDK consumes them; everything else is acknowledged.
+- An unknown purchase or another app's purchase answers **400**. Samsung being down, or a subscription without a service account, answers **5xx**: the SDK leaves the purchase unfinished and tries again.
+- Purchases made in IAP test mode by license testers are **sandbox**.
+
+## 3. Server notifications
+1. Copy the app's URL, `https://<your server>/v1/notifications/galaxy/{app_id}`, from the app page and set it in Seller Portal for the app's in-app purchases.
+2. Send Samsung's test notification; the app page turns green.
+3. Optional but recommended: paste the seller's **IAP public key** (Assistance → API Service → IAP Key). Every notification's signature is then checked. Without it, RevenueDot trusts nothing in a notification and reads the purchase from Samsung instead, which is also how RevenueCat works.
+
+| Samsung | Event |
+|---|---|
+| `ARS_SUBSCRIBED`, a new purchase | INITIAL_PURCHASE (TRIAL or INTRO for free and tiered first periods) |
+| `ARS_RENEWED`, `ARS_OUT_GRACE_PERIOD` | RENEWAL |
+| `ARS_UNSUBSCRIBED`, `ARS_RESUBSCRIBED` | CANCELLATION, UNCANCELLATION |
+| `ARS_IN_GRACE_PERIOD` | BILLING_ISSUE; access continues to the grace end |
+| The end date passes | EXPIRATION |
+| `ARS_UPDOWNGRADED` | PRODUCT_CHANGE on the old subscription; the new plan is its own subscription for the same customer |
+| `ARS_REFUNDED`, `ITEM_REFUNDED` | CANCELLATION (CUSTOMER_SUPPORT), access ends |
+| `ARS_PRICECHANGE_AGREED` | PRICE_INCREASE_CONSENT_APPROVED |
+
+Refunds and cancellations also work from the API, through Samsung: `POST /v2/projects/{project_id}/subscriptions/{id}/transactions/{transaction_id}/actions/refund` (RevenueCat's "refund a Play Store or Galaxy subscription's transaction") and `…/subscriptions/{id}/actions/cancel`. Webhooks report `store: GALAXY`; take-home estimates use Samsung's standard 30% share.
 
 ---
 
@@ -3739,6 +3950,9 @@ Attach the products to your entitlement and offering like any other app's produc
 Configure the SDK with the `test_` key and your server as the proxy URL, then call `purchase` as usual. The SDK shows its Test Store dialog; choose the successful purchase. The SDK posts `fetch_token = test_<purchase time in ms>_<id>` to `POST /v1/receipts`, and RevenueDot accepts any token of that form.
 
 The Test Store works with purchases-js, React Native (including Expo Go and the web) and the native SDKs. Use `test_` keys only in development builds; ship your store keys (`appl_`, `goog_`) in releases. Servers built before 2026-09-30 sent product details the native iOS SDK could not read ("No base price found for product"); update the server if you see that.
+
+## Test your setup with the sample app
+The app page has **Test your setup with the sample app**: pick iOS (SwiftUI), Android (Jetpack Compose), Flutter, React Native (Expo) or web, and you get a zip of that app from [revenuedot/examples](https://github.com/revenuedot/examples) with this app's key, your server's URL and your first entitlement already filled in. Unzip it, follow its README, buy in a debug build, and the purchase shows up under **Customers**. App Store, Google Play and Web Billing apps offer the samples that can buy with their key. The same zip comes from `GET /v2/projects/{project_id}/apps/{app_id}/sample_app?platform=ios`. Only public values go in the zip.
 
 ## Buy with curl
 ```bash
@@ -5685,6 +5899,21 @@ SELECT pe.period, round(coalesce(sum(s.mrr) FILTER (WHERE s.kind <> 'trial'), 0)
 FROM periods pe LEFT JOIN snapshot s ON s.period = pe.period
 GROUP BY pe.period ORDER BY pe.period;
 ```
+
+## How proceeds are computed
+Proceeds are revenue minus the store's commission, worked out per transaction when the chart is read:
+
+| Store | Commission |
+|---|---|
+| App Store, Mac App Store | 30%; 15% inside the app's [Small Business Program](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md#apple-small-business-program) dates |
+| Google Play | Subscriptions 15%; one-time purchases 15% on the first $1M a year, then 30% ([details](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md#google-play-service-fee)) |
+| Amazon Appstore | 30%; 20% inside the app's [Small Business Accelerator](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md#small-business-accelerator-program) dates |
+| Galaxy Store | 30% |
+| Roku | 20% |
+| Paddle | 5% (Paddle's fee) |
+| Stripe, Web Billing, Test Store, ads | 0% |
+
+Changing program dates recomputes past proceeds here, in metrics, exports and the REST API. Webhooks and integration events already sent keep the rate they were sent with.
 
 ## SQL for the customers behind a chart
 
@@ -8596,7 +8825,7 @@ Sources: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenue
 - The full list of SDK calls and what each answers is in [`prd/sdk-api/PRD.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/sdk-api/PRD.md#endpoint-inventory).
 
 **Stores and receipts**
-- RevenueDot accepts purchases for App Store, Mac App Store, Google Play, Amazon Appstore, Stripe and Test Store apps ([Amazon guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md), [Stripe guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md)). Receipts for Web Billing (`rcb_`), Paddle and Roku apps answer HTTP 400 with code 7662.
+- RevenueDot accepts purchases for App Store, Mac App Store, Google Play, Amazon Appstore, Stripe, Paddle, Roku, Samsung Galaxy Store and Test Store apps ([Amazon](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md), [Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md), [Paddle](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paddle.md), [Roku](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/roku.md), [Galaxy Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/galaxy-store.md)). Receipts for Web Billing (`rcb_`) apps answer HTTP 400 with code 7662. Paddle, Roku and Galaxy Store purchases are tested against copies of each store's API, not a real store account yet.
 - Like RevenueCat, RevenueDot does not detect refunds of Amazon subscriptions. Stripe Connect OAuth ("Connect with Stripe") is not available; save a restricted key instead. RevenueDot sells on the web through your own Stripe account ([web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md)), not through RevenueCat Billing.
 - purchases-js therefore works only with Test Store (`test_`) keys.
 - StoreKit 1 receipts need the App Store in-app purchase key on the app. Without it RevenueDot answers code 7234 as HTTP 500, so the SDK retries after you add the key. For development, `allow_unsigned_receipts` skips this.
@@ -8613,7 +8842,7 @@ Sources: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenue
 - Restores follow the project's `transfer_behavior`: `transfer` (default), `transfer_if_no_active`, `keep` or `share`. With `keep`, a restore of a receipt another user owns fails with code 7102. See [Customers and app user IDs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/customers-and-app-user-ids.md#who-owns-a-restored-purchase).
 
 ## API
-- **Keys:** the same prefixes as RevenueCat. Public app keys are `appl_`, `mac_`, `goog_`, `test_`, `amzn_`, `strp_`, `rcb_`, `pdl_` and `roku_`; secret keys are `sk_` and belong to one project. See [Projects, apps and API keys](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md).
+- **Keys:** the same prefixes as RevenueCat. Public app keys are `appl_`, `mac_`, `goog_`, `test_`, `amzn_`, `strp_`, `rcb_`, `pdl_`, `roku_` and `galx_`; secret keys are `sk_` and belong to one project. See [Projects, apps and API keys](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md).
 - **REST API v1:** all 15 endpoints, with RevenueCat's shapes. See [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md).
 - **REST API v2:** every one of RevenueCat's 128 v2 operations has a route, with RevenueCat's shapes, pagination and errors. 126 do the real work, including the 10 discount operations, which run RevenueDot's [web discounts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-discounts.md) as Stripe coupons. The 2 invoice operations exist only for RevenueCat Billing and answer on purpose: the list is empty and a file is 404. `restore_purchase_by_order_id` also accepts App Store order ids; `create_in_store` also creates Google Play subscriptions. See [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md).
 - **Extensions that RevenueCat's API does not have:** the import endpoints, `notification_forward_url` on apps, `POST /v2/projects/{project_id}/test_purchases`, store settings and credential checks, mass subscription extension, store prices and the [product editor](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/product-editor.md), webhook delivery logs with retry, web billing (web config, web products, purchase links, funnels, domains), and ads (the Ads Overview, reward rules and the rewards ledger, AdMob). See [REST API extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md).
@@ -8660,7 +8889,7 @@ Built since the first release: [paywalls](https://raw.githubusercontent.com/reve
 - Web billing: "Connect with Stripe" (OAuth), Paddle as a web provider, an embedded checkout inside purchases-js, funnel A/B tests and automatic TLS for custom domains on Cloud.
 - Failed-payment recovery.
 - RevenueDot AI tools that write to App Store Connect and Google Play.
-- Paddle, Roku and Galaxy stores; ad reward callbacks from AppLovin MAX, ironSource and Unity Ads; benchmarks.
+- Paddle checkout inside purchases-js (Paddle purchases are posted from your backend instead); ad reward callbacks from AppLovin MAX, ironSource and Unity Ads; benchmarks.
 
 Sources: [`prd/SCOPE.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/SCOPE.md) and [`docs/STATUS.md`](https://github.com/revenuedot/revenuedot/blob/main/docs/STATUS.md).
 
@@ -8682,10 +8911,10 @@ One RevenueDot server answers every API below on one port. The reference is gene
 
 | API | Paths | Auth | Operations | Reference |
 |---|---|---|---|---|
-| SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 71 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
+| SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 74 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
 | REST API v1 | `/v1/subscribers/...` | secret key | 10 | [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md) |
 | REST API v2 | `/v2/projects/...` | secret key or dashboard session | 176 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
-| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 262 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
+| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 264 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
 | RevenueDot Enterprise | `/v2/enterprise`, `/v2/organizations/...`, `/sso/...`, `/scim/v2/...` | session, SCIM token or none | 65 | [Enterprise](https://raw.githubusercontent.com/revenuedot/docs/main/api/enterprise.md) |
 | Webhooks (sent by RevenueDot) | your URL | HMAC signature | 22 event types | [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md) |
 
@@ -8861,7 +9090,7 @@ RevenueDot answers errors in the format each API's clients already parse: SDK en
 | 7234 | INVALID_APPLE_SUBSCRIPTION_KEY | 400 or 500 | A StoreKit 1 receipt arrived for an App Store app without an in-app purchase key, or the key is incomplete (500, so the SDK retries once you add the key). A promotional offer cannot be signed without the key (400; the SDK reports `invalidAppleSubscriptionKeyError` for that offer). |
 | 7259 | NOT_FOUND | 404 | The customer, entitlement, offering or subscription does not exist. |
 | 7263 | INVALID_SUBSCRIBER_ATTRIBUTES | 400 | Some attributes were not saved; `attribute_errors` lists them. |
-| 7662 | UNSUPPORTED_RECEIPT | 400 | Receipts for this app's store are not supported yet (Web Billing, Paddle, Roku), and the Android SDK's Amazon receipt lookup with a key that is not an Amazon app's. |
+| 7662 | UNSUPPORTED_RECEIPT | 400 | Receipts for this app's store are not supported yet (Web Billing), and the Android SDK's Amazon receipt lookup with a key that is not an Amazon app's. |
 | 7849 | INVALID_WEB_REDEMPTION_TOKEN | 400 | A web purchase redemption token is unknown, malformed or from another project. The SDKs return the `invalidToken` result. |
 | 7852 | PURCHASE_BELONGS_TO_OTHER_USER | 400 | Another customer already redeemed this web purchase. The SDKs return `purchaseBelongsToOtherUser`. |
 | 7853 | EXPIRED_WEB_REDEMPTION_TOKEN | 400 | The redemption link expired. `purchase_redemption_error_info.obfuscated_email` names where a new link was emailed. The SDKs return `expired`. |
@@ -8952,7 +9181,7 @@ Responses under `/v1` and `/rcbilling` are signed when the server has a signing 
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (71)
+## Operations on this page (74)
 
 - **Server**: [Server name and docs link](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#server-name-and-docs-link), [Health check](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#health-check), [Connectivity probe](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#connectivity-probe)
 - **Customer info**: [Get customer info](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#get-customer-info)
@@ -8964,7 +9193,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Web Billing**: [Web offering products](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-offering-products), [Start a hosted web checkout](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#start-a-hosted-web-checkout), [Web Billing purchase (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-billing-purchase-not-available), [Prepare a Web Billing checkout (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#prepare-a-web-billing-checkout-not-available), [Start a Web Billing checkout (not available)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#start-a-web-billing-checkout-not-available), [Web Billing checkout status](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-billing-checkout-status), [Refresh Web Billing checkout pricing](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#refresh-web-billing-checkout-pricing), [Complete a Web Billing checkout](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#complete-a-web-billing-checkout), [Web checkout branding](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-checkout-branding)
 - **Subscriber tokens**: [Get customer info (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#get-customer-info-subscriber-token), [Get offerings (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#get-offerings-subscriber-token), [Intro offer eligibility (StoreKit 1) (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#intro-offer-eligibility-storekit-1-subscriber-token), [Attribution data (deprecated iOS call) (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#attribution-data-deprecated-ios-call-subscriber-token), [Read customer attributes (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#read-customer-attributes-subscriber-token), [Set customer attributes (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#set-customer-attributes-subscriber-token), [Apple AdServices token (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#apple-adservices-token-subscriber-token), [SDK health report (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sdk-health-report-subscriber-token), [Customer Center configuration (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-configuration-subscriber-token), [Customer Center support ticket (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#customer-center-support-ticket-subscriber-token), [Virtual currency balances (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#virtual-currency-balances-subscriber-token), [Restore eligibility (StoreKit 2) (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#restore-eligibility-storekit-2-subscriber-token), [Rewarded ad verification status (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#rewarded-ad-verification-status-subscriber-token), [Web offering products (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#web-offering-products-subscriber-token), [Test Store product details (subscriber token)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#test-store-product-details-subscriber-token), [Spend in-app currency as the subscriber](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#spend-in-app-currency-as-the-subscriber)
 - **Auth sign-in**: [Sign in with an identity provider's ID token](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sign-in-with-an-identity-providers-id-token), [Refresh the access token](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#refresh-the-access-token), [Sign out](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sign-out), [Refresh the access token](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#refresh-the-access-token), [Sign out](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#sign-out), [Public key of RevenueDot's ID and access tokens](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#public-key-of-revenuedots-id-and-access-tokens)
-- **Store notifications**: [App Store Server Notifications v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#app-store-server-notifications-v2), [Google Play real-time developer notifications (Pub/Sub push)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#google-play-real-time-developer-notifications-pubsub-push), [Amazon Appstore Real-time Notifications (SNS)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#amazon-appstore-real-time-notifications-sns), [Stripe webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#stripe-webhooks), [Stripe Connect webhooks (RevenueDot's platform)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#stripe-connect-webhooks-revenuedots-platform)
+- **Store notifications**: [App Store Server Notifications v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#app-store-server-notifications-v2), [Google Play real-time developer notifications (Pub/Sub push)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#google-play-real-time-developer-notifications-pubsub-push), [Amazon Appstore Real-time Notifications (SNS)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#amazon-appstore-real-time-notifications-sns), [Stripe webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#stripe-webhooks), [Paddle notifications](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#paddle-notifications), [Roku Pay push notifications](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#roku-pay-push-notifications), [Galaxy Store server notifications](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#galaxy-store-server-notifications), [Stripe Connect webhooks (RevenueDot's platform)](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#stripe-connect-webhooks-revenuedots-platform)
 - **Response signing**: [Public key for response signatures](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#public-key-for-response-signatures)
 
 ## Server
@@ -9144,6 +9373,9 @@ Every purchase, restore and `syncPurchases()` ends here. RevenueDot verifies the
 - **Google Play:** `fetch_token` is the purchase token. RevenueDot checks it with the Play Developer API and acknowledges it.
 - **Amazon Appstore:** `fetch_token` is the receipt id and `store_user_id` the Amazon user id (`X-Platform: amazon`). RevenueDot checks both with Amazon's Receipt Verification Service.
 - **Stripe:** from your backend, with `X-Platform: stripe` and the Stripe app's public key (`strp_`): `fetch_token` is a subscription id (`sub_…`) or a Checkout Session id (`cs_…`). RevenueDot reads it from Stripe with the app's restricted key. An unpaid first invoice or an open session answers 503, so post it again later.
+- **Paddle:** from your backend, with `X-Platform: paddle` and the Paddle app's public key (`pdl_`): `fetch_token` is a subscription id (`sub_…`) or a transaction id (`txn_…`). RevenueDot reads it from Paddle with the app's API key; a checkout that is not finished answers 503. Products are Paddle price ids (`pri_…`).
+- **Roku:** the Roku SDK posts `fetch_token` = the Roku transaction id (`X-Platform: roku`). RevenueDot validates it with Roku Pay's web services, which also supply the price and currency; `X-Is-Sandbox: true` (a sideloaded channel) records sandbox.
+- **Galaxy Store:** the Android SDK built with `purchases-store-galaxy` posts `fetch_token` = Samsung's purchase id with `X-Platform: android` and the Galaxy app's `galx_` key. RevenueDot reads the receipt from Samsung, and a subscription's state with the app's service account; `purchased_products` tells the SDK which items to consume.
 - **Test Store:** `fetch_token` is `test_<purchase time in ms>_<id>`. Any such token is accepted.
 
 **4xx or 5xx matters.** A 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. RevenueDot answers 5xx for its own and the store's temporary failures so the SDK keeps the purchase and retries.
@@ -11681,6 +11913,132 @@ Example 200 response:
 }
 ```
 
+### Paddle notifications
+
+`POST /v1/notifications/paddle/{app_id}` · Auth: none
+
+A notification destination in your Paddle account (Apply in Paddle creates it: `POST /v2/projects/{project_id}/apps/{app_id}/actions/apply_notification_settings`) with the subscription, transaction and adjustment events.
+Each event is stored once (by `event_id`), forwarded when `notification_forward_url` is set, and applied by reading the subscription or transaction from Paddle, so delivery order does not matter. Approved full refunds and chargebacks (`adjustment.created`, `adjustment.updated`) mark the paid period refunded. Simulated events (`ntfsimevt_…`) count as received and change nothing. Paddle counts only 200 as delivered.
+
+- **200:** handled, a duplicate, simulated, ignored, an unknown purchase (applied only with `track_new_purchases`) or an object Paddle no longer has.
+- **400:** no secret key saved, a missing or wrong `Paddle-Signature`, or not a Paddle event. **404:** no Paddle app with this id.
+- **500:** a temporary failure; Paddle retries. See [Paddle setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paddle.md).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `app_id` | string | yes | App id (app...). |
+
+**Headers**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `Paddle-Signature` | string | yes | `ts=<unix seconds>;h1=<hex HMAC-SHA256 of "<ts>:<body>">`, checked with the destination's secret key (`paddle_webhook_secret`) within 5 minutes. Several `h1` values are accepted while a key rotates. |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `event_id` | string | yes | evt_… |
+| `event_type` | string | yes |  |
+| `occurred_at` | string | no |  |
+| `notification_id` | string | no | ntf_… |
+| `data` | object | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/notifications/paddle/$APP_ID"
+```
+
+**Responses**
+
+- **200**: Handled.
+- **400**: Not accepted. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **404**: Unknown app. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **500**: Temporary failure; Paddle retries. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "status": "processed"
+}
+```
+
+### Roku Pay push notifications
+
+`POST /v1/notifications/roku/{app_id}` · Auth: none
+
+Set this URL as the push notification URL under Roku Pay web services in the Roku developer dashboard. Roku has one URL per developer account: a push for another channel goes to the project's Roku app with that `roku_channel_id`.
+The body is a JWS (RS256) signed with a key from Roku's published key set (the test key set for Roku's test endpoint), with issuer `Roku, Inc. urn:roku:apps:partner-service.roku.com` and `x-Roku-message-type: roku.rpay.push`; the message is base64 JSON in `x-Roku-message`. Each push is stored once (by `x-Roku-message-key`), forwarded when `notification_forward_url` is set, and applied by validating its transaction with Roku again.
+
+- **200:** handled; the body is the push's `responseKey`.
+- **400:** not a signed Roku push (bad signature, unknown key, another issuer or message type). **404:** no Roku app with this id.
+- **500:** a temporary failure; Roku retries for 36 hours. See [Roku setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/roku.md).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `app_id` | string | yes | App id (app...). |
+
+**Request body** (`text/plain`)
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/notifications/roku/$APP_ID"
+```
+
+**Responses**
+
+- **200**: Handled: the push's responseKey.
+- **400**: Not accepted. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **404**: Unknown app. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **500**: Temporary failure; Roku retries. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+### Galaxy Store server notifications
+
+`POST /v1/notifications/galaxy/{app_id}` · Auth: none
+
+Set this URL as the Instant Server Notification URL in Samsung Seller Portal. The body is a JWT (RS256) from `iap.samsungapps.com` whose `aud` names the app's package. With the app's `galaxy_iap_public_key` saved its signature must match; without it nothing in the body is trusted. Either way the purchase it names is read again from Samsung (receipt and subscription APIs) and applied. `TEST` counts as received.
+
+- **200:** handled, a duplicate, ignored or an unknown purchase (applied only with `track_new_purchases`). `verified` says whether the signature was checked.
+- **400:** not a Samsung notification, a signature that does not match, or another package. **404:** no Galaxy Store app with this id.
+- **500:** a temporary failure. See [Galaxy Store setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/galaxy-store.md).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `app_id` | string | yes | App id (app...). |
+
+**Request body** (`text/plain`)
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/notifications/galaxy/$APP_ID"
+```
+
+**Responses**
+
+- **200**: Handled.
+- **400**: Not accepted. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **404**: Unknown app. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+- **500**: Temporary failure. Returns [V1Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#v1error).
+
+Example 200 response:
+
+```json
+{
+  "status": "processed",
+  "verified": true
+}
+```
+
 ### Stripe Connect webhooks (RevenueDot's platform)
 
 `POST /v1/notifications/stripe-connect` · Auth: none · RevenueDot extension
@@ -12893,8 +13251,10 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" -H "Authorization: Bearer
 
 `POST /v2/projects/{project_id}/apps` · Auth: secret key or dashboard session · Permissions: `project_configuration:apps:read_write`
 
-One app per store. `app_store` and `mac_app_store` need `bundle_id`; `play_store` and `amazon` need `package_name`. The app gets a public SDK key with the store's prefix.
-Other fields in the store object are saved as store credentials (for example `subscription_private_key`, `subscription_key_id`, `subscription_key_issuer`, `play_service_account_credentials_json`, Amazon's `shared_secret`, Stripe's `stripe_secret_key` and `stripe_webhook_secret`). They are never returned. A Stripe publishable key (`pk_…`) or a malformed signing secret is refused with 400.
+One app per store. `app_store` and `mac_app_store` need `bundle_id`; `play_store`, `amazon` and `galaxy` need `package_name`. The app gets a public SDK key with the store's prefix (`pdl_` for Paddle, `roku_` for Roku, `galx_` for the Galaxy Store).
+Other fields in the store object are saved as store credentials (for example `subscription_private_key`, `subscription_key_id`, `subscription_key_issuer`, `play_service_account_credentials_json`, Amazon's `shared_secret`, Stripe's `stripe_secret_key` and `stripe_webhook_secret`, Paddle's `paddle_api_key` and `paddle_webhook_secret`, Roku's `roku_api_key`, the Galaxy Store's `galaxy_service_account_id`, `galaxy_service_account_private_key` and `galaxy_iap_public_key`). Secrets are sealed and never returned. A Stripe publishable key (`pk_…`), a Paddle client-side token or a malformed signing secret is refused with 400.
+Store commission programs (RevenueDot extension, as RevenueCat's app settings): `app_store.small_business_program` and `mac_app_store.small_business_program` (Apple's Small Business Program, 15% instead of 30%) and `amazon.small_business_accelerator` (Amazon's Small Business Accelerator Program, 20% instead of 30%) take `{ "enrolled": true, "periods": [{ "entry_date": "2024-01-01", "exit_date": null }] }`: up to 10 periods, `YYYY-MM-DD`, an exit date after its entry date, no overlaps; `null` removes the program. Proceeds in charts, metrics, exports and the REST API are recomputed for the dates; webhooks and integration events already sent keep their values.
+`galaxy` is a RevenueDot extension: RevenueCat's v2 API has no Galaxy app object.
 
 **Path parameters**
 
@@ -12907,15 +13267,16 @@ Other fields in the store object are saved as store credentials (for example `su
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `name` | string | yes |  |
-| `type` | `amazon`, `app_store`, `mac_app_store`, `play_store`, `stripe`, `rc_billing`, `roku`, `paddle`, `test_store` | yes |  |
+| `type` | `amazon`, `app_store`, `mac_app_store`, `play_store`, `stripe`, `rc_billing`, `roku`, `paddle`, `test_store`, `galaxy` | yes |  |
 | `app_store` | object | no | `bundle_id` plus optional credentials. |
 | `mac_app_store` | object | no |  |
 | `play_store` | object | no | `package_name` plus optional credentials. |
 | `amazon` | object | no |  |
 | `stripe` | object | no |  |
 | `rc_billing` | object or null | no |  |
-| `roku` | object or null | no |  |
-| `paddle` | object or null | no |  |
+| `roku` | object or null | no | `roku_api_key` (sealed), `roku_channel_id`, `roku_channel_name`. |
+| `paddle` | object or null | no | `paddle_api_key` (sealed; `pdl_live_apikey_…` or `pdl_sdbx_apikey_…`), `paddle_is_sandbox` (only for keys made before May 2025), `paddle_webhook_secret` (sealed). |
+| `galaxy` | object | no | `package_name` plus `galaxy_service_account_id`, `galaxy_service_account_private_key` (sealed) and the optional `galaxy_iap_public_key`. |
 
 **Example request**
 
@@ -12981,7 +13342,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID" -H "Authorization
 `POST /v2/projects/{project_id}/apps/{app_id}` · Auth: secret key or dashboard session · Permissions: `project_configuration:apps:read_write`
 
 Send only the store object of the app's own type. A field set to null removes that credential; other values replace it.
-RevenueDot extensions in the store object: `notification_forward_url` (copy store notifications to another URL, for example RevenueCat during a dual run; null or "" turns it off), `track_new_purchases`, `allow_unsigned_receipts`, `xcode_certificate`, `app_apple_id`, `pubsub_audience`, `pubsub_service_account`; Amazon `shared_secret`, `sns_topic_arn`; Stripe `stripe_secret_key`, `stripe_webhook_secret`, `stripe_account_id`, `app_user_id_source` (metadata, customer_id, anonymous), `app_user_id_metadata_key`, `register_on` (invoice_paid, invoice_created). See [App Store setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md), [Google Play setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md), [Amazon Appstore setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md) and [Stripe setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md).
+RevenueDot extensions in the store object: `notification_forward_url` (copy store notifications to another URL, for example RevenueCat during a dual run; null or "" turns it off), `track_new_purchases`, `allow_unsigned_receipts`, `xcode_certificate`, `app_apple_id`, `pubsub_audience`, `pubsub_service_account`; Amazon `shared_secret`, `sns_topic_arn`; Stripe `stripe_secret_key`, `stripe_webhook_secret`, `stripe_account_id`, `app_user_id_source` (metadata, customer_id, anonymous), `app_user_id_metadata_key`, `register_on` (invoice_paid, invoice_created); Paddle `paddle_webhook_secret`, `app_user_id_source` (custom_data, anonymous), `app_user_id_custom_data_key`; Galaxy Store `galaxy_iap_public_key`. See [App Store setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md), [Google Play setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md), [Amazon Appstore setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md), [Stripe setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md), [Paddle setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paddle.md), [Roku setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/roku.md) and [Galaxy Store setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/galaxy-store.md).
 
 **Path parameters**
 
@@ -13003,6 +13364,7 @@ RevenueDot extensions in the store object: `notification_forward_url` (copy stor
 | `rc_billing` | object | no |  |
 | `roku` | object | no |  |
 | `paddle` | object | no |  |
+| `galaxy` | object | no |  |
 
 **Example request**
 
@@ -19601,7 +19963,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `id` | string | yes | App id (app...). |
 | `name` | string | yes |  |
 | `created_at` | integer | yes | Creation time. Epoch milliseconds. |
-| `type` | `amazon`, `app_store`, `mac_app_store`, `play_store`, `stripe`, `rc_billing`, `roku`, `paddle`, `test_store` | yes |  |
+| `type` | `amazon`, `app_store`, `mac_app_store`, `play_store`, `stripe`, `rc_billing`, `roku`, `paddle`, `test_store`, `galaxy` | yes |  |
 | `project_id` | string | yes |  |
 | `custom_url_scheme` | string | no | Derived from the public key. |
 | `app_store` | object | no |  |
@@ -19628,8 +19990,10 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `roku.roku_channel_id` | string or null | no |  |
 | `roku.roku_channel_name` | string or null | no |  |
 | `paddle` | object | no |  |
-| `paddle.paddle_is_sandbox` | boolean | no |  |
-| `paddle.paddle_api_key` | null | no |  |
+| `paddle.paddle_is_sandbox` | boolean | no | True for a sandbox key (pdl_sdbx_apikey_…), or for an older key marked sandbox. |
+| `paddle.paddle_api_key` | null | no | Always null: the key is never returned (RevenueCat's field). |
+| `galaxy` | object | no | RevenueDot extension. |
+| `galaxy.package_name` | string | no |  |
 
 ### Collaborator
 
@@ -20201,7 +20565,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (262)
+## Operations on this page (264)
 
 - **Dashboard auth**: [Whether sign-up is open](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-sign-up-is-open), [Create a dashboard account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-dashboard-account), [Sign in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-in), [Sign out](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out), [The signed-in user and their projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-signed-in-user-and-their-projects), [Update account settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-account-settings), [Email a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#email-a-password-reset-link), [Check a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-a-password-reset-link), [Set a new password from a reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-a-new-password-from-a-reset-link), [Confirm an email address](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#confirm-an-email-address), [Send a new confirmation email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-new-confirmation-email), [Look up an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#look-up-an-invite), [Accept an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#accept-an-invite)
 - **Members and invites**: [List open invites](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-open-invites), [Invite someone by email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#invite-someone-by-email), [Resend an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#resend-an-invite), [Revoke an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#revoke-an-invite), [Change a member's role](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-a-members-role), [Remove a member, or leave the project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#remove-a-member-or-leave-the-project)
@@ -20210,7 +20574,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Blocked customers**: [List blocked app user ids](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-blocked-app-user-ids), [Block an app user id](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#block-an-app-user-id), [Is this app user id blocked?](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#is-this-app-user-id-blocked), [Unblock an app user id](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unblock-an-app-user-id)
 - **Verified Metrics**: [Verified Metrics page settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#verified-metrics-page-settings), [Save Verified Metrics page settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#save-verified-metrics-page-settings), [Whether a slug is free](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-a-slug-is-free), [Publish the page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#publish-the-page), [Unpublish the page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unpublish-the-page), [The public Verified Metrics page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-public-verified-metrics-page), [The page's numbers as JSON](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-pages-numbers-as-json), [The page's project icon](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-pages-project-icon), [The page's 1200×630 link preview](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-pages-1200630-link-preview)
 - **Auth**: [Auth on or off](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#auth-on-or-off), [Turn Auth or anonymous sign-in on or off](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#turn-auth-or-anonymous-sign-in-on-or-off), [List identity providers](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-identity-providers), [Add a Firebase or OpenID Connect provider](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#add-a-firebase-or-openid-connect-provider), [Get an identity provider](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-an-identity-provider), [Update or turn off an identity provider](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-or-turn-off-an-identity-provider), [Delete an identity provider](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-an-identity-provider), [Check an ID token without signing in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-an-id-token-without-signing-in), [List signed-in identities](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-signed-in-identities), [Read a signed-in user's balances and entitlements by identity](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#read-a-signed-in-users-balances-and-entitlements-by-identity), [Unlink an identity and sign it out](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unlink-an-identity-and-sign-it-out)
-- **Store setup**: [Store setup state of an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#store-setup-state-of-an-app), [Check store credentials with Apple, Google, Amazon or Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-store-credentials-with-apple-google-amazon-or-stripe), [Extend every active App Store subscriber of a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#status-of-a-mass-extension), [Setup health](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#setup-health)
+- **Store setup**: [Store setup state of an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#store-setup-state-of-an-app), [Download the sample app for this app](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#download-the-sample-app-for-this-app), [Check store credentials with the store](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-store-credentials-with-the-store), [Paddle: create the notification destination (Apply in Paddle)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#paddle-create-the-notification-destination-apply-in-paddle), [Extend every active App Store subscriber of a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#status-of-a-mass-extension), [Setup health](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#setup-health)
 - **Store prices and product editor**: [List store prices](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-store-prices), [Read an app's store prices again](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#read-an-apps-store-prices-again), [Download a product file](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#download-a-product-file), [List product files](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-product-files), [Upload a product file](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#upload-a-product-file), [Get a product file](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-product-file), [Change a product file's options](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-a-product-files-options), [Discard a product file](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#discard-a-product-file), [Commit a product file to the store](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#commit-a-product-file-to-the-store), [Retry the failed rows of a product file](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#retry-the-failed-rows-of-a-product-file)
 - **API keys**: [List secret keys](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-secret-keys), [Create a secret key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-secret-key), [Delete a secret key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-secret-key)
 - **Webhook deliveries**: [Send a TEST event to one webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-each-webhook-is-enabled), [Delivery log of a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delivery-log-of-a-webhook), [One delivery: what was sent and every attempt](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#one-delivery-what-was-sent-and-every-attempt), [Retry a delivery now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#retry-a-delivery-now)
@@ -22497,7 +22861,7 @@ Notification URLs, credential checks, setup health and App Store mass extensions
 
 `GET /v2/projects/{project_id}/apps/{app_id}/store_settings` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read`
 
-The notification URL to paste into App Store Connect, Pub/Sub, the Amazon Appstore Console or Stripe, the notification status, the forwarding URL and which credentials are set. Never a secret.
+The notification URL to paste into App Store Connect, Pub/Sub, the Amazon Appstore Console, Stripe, Paddle, the Roku developer dashboard or Samsung Seller Portal, the notification status, the forwarding URL and which credentials are set. Never a secret.
 
 **Path parameters**
 
@@ -22519,11 +22883,44 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/store_settings" -H
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
-### Check store credentials with Apple, Google, Amazon or Stripe
+### Download the sample app for this app
+
+`GET /v2/projects/{project_id}/apps/{app_id}/sample_app` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read`
+
+"Test your setup with the sample app": a zip of the matching example from [revenuedot/examples](https://github.com/revenuedot/examples) with this app's public key, this server's URL (`api_origin`; `localhost` becomes `10.0.2.2` for the Android emulator) and the project's first entitlement filled in. Flutter, React Native and web samples get a `.env`. Only public values go in. The `X-RevenueDot-Examples-Commit` header names the examples commit.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes | App id (app...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `platform` | `ios`, `android`, `flutter`, `react_native`, `web` | no | `ios`, `android`, `flutter`, `react_native` or `web`; the app's `sample_apps` in store settings lists the ones offered (Test Store: all five; App Store: iOS, Flutter, React Native; Google Play: Android, Flutter, React Native; Web Billing: web). Defaults to the first. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/sample_app" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The zip.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Check store credentials with the store
 
 `POST /v2/projects/{project_id}/apps/{app_id}/actions/verify_credentials` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read`
 
-Makes one harmless call to the App Store Server API, the Play Developer API, Amazon's Receipt Verification Service (a made-up receipt: 496 means a wrong shared key) or Stripe (lists one subscription and one Checkout Session with the key). Values in the body are checked before you save them; missing values fall back to the saved ones. A Stripe app connected with Stripe Connect checks its connection only: Stripe values in the body answer 409.
+Makes one harmless call to the App Store Server API, the Play Developer API, Amazon's Receipt Verification Service (a made-up receipt: 496 means a wrong shared key), Stripe (lists one subscription and one Checkout Session with the key), Paddle (event types, then one product and one subscription; Paddle answers 403 for a wrong, revoked or other-environment key), Roku Pay (a made-up transaction: UNAUTHORIZED means a wrong key) or Samsung (an access token from the service account, then a made-up subscription). Values in the body are checked before you save them; missing values fall back to the saved ones. A Stripe app connected with Stripe Connect checks its connection only: Stripe values in the body answer 409.
 
 **Path parameters**
 
@@ -22555,6 +22952,15 @@ Makes one harmless call to the App Store Server API, the Play Developer API, Ama
 | `stripe` | object | no |  |
 | `stripe.stripe_secret_key` | string or null | no |  |
 | `stripe.stripe_account_id` | string or null | no |  |
+| `paddle` | object | no |  |
+| `paddle.paddle_api_key` | string or null | no |  |
+| `paddle.paddle_is_sandbox` | boolean or null | no |  |
+| `roku` | object | no |  |
+| `roku.roku_api_key` | string or null | no |  |
+| `galaxy` | object | no |  |
+| `galaxy.package_name` | string or null | no |  |
+| `galaxy.galaxy_service_account_id` | string or null | no |  |
+| `galaxy.galaxy_service_account_private_key` | string or null | no |  |
 
 **Example request**
 
@@ -22583,6 +22989,53 @@ Example 200 response:
   "valid": false,
   "message": "No in-app purchase key yet. Add the .p8 file, the key ID and the issuer ID.",
   "checked_at": 1790801342700
+}
+```
+
+### Paddle: create the notification destination (Apply in Paddle)
+
+`POST /v2/projects/{project_id}/apps/{app_id}/actions/apply_notification_settings` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read_write`
+
+Creates a notification destination in the app's Paddle account (or updates the one it created before) that sends the subscription, transaction and adjustment events RevenueDot reads to this app's notification URL, and saves the destination's secret key, sealed. The API key needs write access to Notification settings. Only for Paddle apps (422 otherwise). See [Paddle setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paddle.md).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes | App id (app...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/actions/apply_notification_settings" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The destination.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "notification_settings",
+  "app_id": "app4f1x9k2m",
+  "store": "paddle",
+  "notification_setting_id": "ntfset_01h8d3a0kq7m2x9c4v6b1n5p3r",
+  "destination": "https://api.revenuedot.app/v1/notifications/paddle/app4f1x9k2m",
+  "subscribed_events": [
+    "subscription.created",
+    "subscription.updated",
+    "transaction.completed",
+    "adjustment.created"
+  ],
+  "secret_saved": true
 }
 ```
 
@@ -31423,7 +31876,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `id` | string | yes | App id (app...). |
 | `name` | string | yes |  |
 | `created_at` | integer | yes | Creation time. Epoch milliseconds. |
-| `type` | `amazon`, `app_store`, `mac_app_store`, `play_store`, `stripe`, `rc_billing`, `roku`, `paddle`, `test_store` | yes |  |
+| `type` | `amazon`, `app_store`, `mac_app_store`, `play_store`, `stripe`, `rc_billing`, `roku`, `paddle`, `test_store`, `galaxy` | yes |  |
 | `project_id` | string | yes |  |
 | `custom_url_scheme` | string | no | Derived from the public key. |
 | `app_store` | object | no |  |
@@ -31450,8 +31903,10 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `roku.roku_channel_id` | string or null | no |  |
 | `roku.roku_channel_name` | string or null | no |  |
 | `paddle` | object | no |  |
-| `paddle.paddle_is_sandbox` | boolean | no |  |
-| `paddle.paddle_api_key` | null | no |  |
+| `paddle.paddle_is_sandbox` | boolean | no | True for a sandbox key (pdl_sdbx_apikey_…), or for an older key marked sandbox. |
+| `paddle.paddle_api_key` | null | no | Always null: the key is never returned (RevenueCat's field). |
+| `galaxy` | object | no | RevenueDot extension. |
+| `galaxy.package_name` | string | no |  |
 
 ### Collaborator
 
@@ -31479,6 +31934,8 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `key_id` | string | no |  |
 | `client_email` | string or null | no |  |
 | `mode` | `live`, `test` | no | Stripe: the key's mode. |
+| `environment` | `live`, `sandbox` | no | Paddle: the environment that accepted the key. |
+| `service_account_id` | string | no | Galaxy Store: the service account checked. |
 
 ### Customer
 
@@ -32041,7 +32498,7 @@ One screen of a funnel. Every step has `id` (1-40 lower-case letters, digits, `-
 | `app_id` | string | yes |  |
 | `type` | string | yes |  |
 | `api_origin` | string | yes | This server as the outside world reaches it: the SDK's proxy URL. |
-| `notification_url` | string or null | no | The store notification URL for this app (App Store, Google Play, Amazon or Stripe). |
+| `notification_url` | string or null | no | The store notification URL for this app (App Store, Google Play, Amazon, Stripe, Paddle, Roku or the Galaxy Store). |
 | `notification_forward_url` | string or null | no | Where notifications are copied during a dual run. |
 | `last_notification_at` | integer or null | no | Last notification processed for a known purchase. Epoch milliseconds, or null. |
 | `last_notification_error` | string or null | no |  |
@@ -32078,6 +32535,19 @@ One screen of a funnel. Every step has `id` (1-40 lower-case letters, digits, `-
 | `credentials.stripe_secret_key.last4` | string or null | no | Last four characters of the key; the key itself is never returned. |
 | `credentials.stripe_webhook_secret` | object | no |  |
 | `credentials.stripe_webhook_secret.configured` | boolean | no |  |
+| `credentials.paddle_api_key` | object | no |  |
+| `credentials.paddle_api_key.configured` | boolean | no |  |
+| `credentials.paddle_api_key.environment` | `live`, `sandbox`, null | no |  |
+| `credentials.paddle_api_key.last4` | string or null | no |  |
+| `credentials.paddle_webhook_secret` | object | no |  |
+| `credentials.paddle_webhook_secret.configured` | boolean | no |  |
+| `credentials.roku_api_key` | object | no |  |
+| `credentials.roku_api_key.configured` | boolean | no |  |
+| `credentials.galaxy_service_account` | object | no |  |
+| `credentials.galaxy_service_account.configured` | boolean | no |  |
+| `credentials.galaxy_service_account.service_account_id` | string or null | no |  |
+| `credentials.galaxy_iap_public_key` | object | no |  |
+| `credentials.galaxy_iap_public_key.configured` | boolean | no |  |
 | `sns_topic_arn` | string or null | no | Amazon: the only SNS topic notifications are accepted from, when set. |
 | `stripe` | object or null | no | Stripe apps only. |
 | `stripe.stripe_account_id` | string or null | no |  |
@@ -32085,6 +32555,40 @@ One screen of a funnel. Every step has `id` (1-40 lower-case letters, digits, `-
 | `stripe.app_user_id_metadata_key` | string | no |  |
 | `stripe.register_on` | `invoice_paid`, `invoice_created` | no |  |
 | `stripe.configured` | boolean | no |  |
+| `paddle` | object or null | no | Paddle apps only. |
+| `paddle.environment` | `live`, `sandbox` | no |  |
+| `paddle.paddle_is_sandbox` | boolean | no |  |
+| `paddle.app_user_id_source` | `custom_data`, `anonymous` | no |  |
+| `paddle.app_user_id_custom_data_key` | string | no |  |
+| `paddle.notification_setting_id` | string or null | no | The destination Apply in Paddle created. |
+| `paddle.events` | array of string | no | The events the destination should send. |
+| `paddle.configured` | boolean | no |  |
+| `roku` | object or null | no | Roku apps only. |
+| `roku.roku_channel_id` | string or null | no |  |
+| `roku.roku_channel_name` | string or null | no |  |
+| `roku.configured` | boolean | no |  |
+| `galaxy` | object or null | no | Galaxy Store apps only. |
+| `galaxy.package_name` | string or null | no |  |
+| `galaxy.service_account_id` | string or null | no |  |
+| `galaxy.configured` | boolean | no |  |
+| `galaxy.iap_public_key_configured` | boolean | no |  |
+| `small_business_program` | object or null | no | App Store, Mac App Store and Amazon apps: Apple's Small Business Program or Amazon's Small Business Accelerator Program, and the dates saved on the project's other apps of the store ("Use existing dates"). |
+| `small_business_program.program` | `app_store_small_business_program`, `amazon_small_business_accelerator` | no |  |
+| `small_business_program.rate` | number | no | Commission inside the periods: 0.15 (Apple) or 0.2 (Amazon). |
+| `small_business_program.standard_rate` | number | no | Commission outside them: 0.3. |
+| `small_business_program.enrolled` | boolean | no |  |
+| `small_business_program.periods` | array of object | no |  |
+| `small_business_program.periods[].entry_date` | string | no | YYYY-MM-DD |
+| `small_business_program.periods[].exit_date` | string or null | no | YYYY-MM-DD, exclusive; null while still enrolled. |
+| `small_business_program.other_apps` | array of object | no |  |
+| `small_business_program.other_apps[].app_id` | string | no |  |
+| `small_business_program.other_apps[].name` | string | no |  |
+| `small_business_program.other_apps[].enrolled` | boolean | no |  |
+| `small_business_program.other_apps[].periods` | array of object | no |  |
+| `sample_apps` | array of object | no | Samples GET …/sample_app can build for this app. |
+| `sample_apps[].platform` | `ios`, `android`, `flutter`, `react_native`, `web` | no |  |
+| `sample_apps[].name` | string | no |  |
+| `sample_apps[].example` | string | no | The folder in revenuedot/examples. |
 
 ### Subscription
 
@@ -37187,7 +37691,7 @@ Receipts are accepted today for four app types:
 | `amazon` | Amazon Appstore ([guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md)) |
 | `stripe` | Stripe purchases on your own Stripe account: from RevenueDot's hosted checkout ([web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md)) or posted by your backend ([guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md)) |
 
-RevenueCat Billing (`rcb_`), Paddle and Roku apps can be created, but their receipts answer HTTP 400 with code 7662. See [Projects and apps](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md).
+RevenueCat Billing (`rcb_`) apps can be created, but their receipts answer HTTP 400 with code 7662. Paddle, Roku and Samsung Galaxy Store apps work: see [Paddle](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paddle.md), [Roku](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/roku.md) and [Galaxy Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/galaxy-store.md), and [Projects and apps](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md).
 
 ## Is it production-ready?
 No. The App Store and Google Play code is tested against mocked Apple and Google APIs only. No real App Store or Google Play sandbox purchase has run end to end yet. Use it for evaluation and testing, and keep RevenueCat for live customers until a release says otherwise. See [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md).
@@ -37273,7 +37777,7 @@ Find your symptom below; each row gives the cause and the fix. Most problems com
 | `/v1/receipts` answers 400, code 7103 | The receipt cannot be verified, or is for another bundle ID or package name | See [4xx or 5xx](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/receipt-errors-4xx-vs-5xx.md) |
 | `/v1/receipts` answers 500, code 7234 | A StoreKit 1 receipt, and no App Store in-app purchase key | Add the key. See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md) |
 | `/v1/receipts` answers 503, code 7101 | Apple or Google failed, or the Google service account is wrong | Run **Verify credentials** on the app page. The SDK retries on its own |
-| `/v1/receipts` answers 400, code 7662 | The app is a RevenueCat Billing, Paddle or Roku app | Not supported. Use App Store, Mac App Store, Google Play, Amazon Appstore, Stripe or Test Store |
+| `/v1/receipts` answers 400, code 7662 | The app is a RevenueCat Billing app | Not supported. Use App Store, Mac App Store, Google Play, Amazon Appstore, Stripe, Paddle, Roku, Galaxy Store or Test Store |
 | Restore fails with 7102 | Another user owns the purchase and the transfer behaviour forbids moving it | See [How do I restore purchases?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/restore-purchases.md) |
 | Xcode StoreKit test purchases fail with 7103 | Xcode signs them with its own certificate | Add the `xcode_certificate` credential. See [Test purchases](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/test-sandbox-purchases.md) |
 
@@ -37333,7 +37837,7 @@ The list below is complete as of **2026-09-30**. The biggest gap: **no real App 
 ## Stores and purchases
 1. **Real store purchases are untested end to end.** The App Store and Google Play code passes tests against mocked Apple and Google APIs.
    - Workaround: test with App Store sandbox and Google Play license testers, report what you find, and keep live customers on your current backend. See [Test purchases](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/test-sandbox-purchases.md).
-2. **Six app types accept receipts:** `app_store`, `mac_app_store`, `play_store`, `amazon`, `stripe` and `test_store`. RevenueCat Billing (`rcb_`), Paddle and Roku receipts answer HTTP 400, code 7662. Amazon and Stripe are tested against mocked store APIs only; no real Amazon or Stripe purchase has run yet. That includes [web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md): the hosted checkout, purchase links and funnels run against an in-memory copy of Stripe's API in the tests.
+2. **Nine app types accept receipts:** `app_store`, `mac_app_store`, `play_store`, `amazon`, `stripe`, `paddle`, `roku`, `galaxy` and `test_store`. RevenueCat Billing (`rcb_`) receipts answer HTTP 400, code 7662. Amazon, Stripe, Paddle, Roku and the Galaxy Store are tested against copies of the stores' APIs only; no real purchase in those stores has run yet. That includes [web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md): the hosted checkout, purchase links and funnels run against an in-memory copy of Stripe's API in the tests.
    - Workaround: none yet.
 3. **StoreKit 1 receipts need the App Store in-app purchase key.** Without it, RevenueDot answers HTTP 500, code 7234, so the SDK keeps retrying.
    - Workaround: add the key. For local development only, set the `allow_unsigned_receipts` credential. See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md).
@@ -37488,7 +37992,7 @@ The codes are defined in [`apps/server/src/errors.ts`](https://github.com/revenu
 | 401 | 7225 | Invalid API key | `routes/sdk.ts` | The `Authorization: Bearer` key is missing or unknown. Every SDK call answers this, not only receipts |
 | 400 | 7220 | Invalid app user ID | `routes/sdk.ts` | `app_user_id` is empty or longer than 100 characters |
 | 400 | 7000 | Bad request | `routes/sdk.ts` | A receipt posted with a secret key (`sk_`) has no `X-Platform` header, so RevenueDot cannot tell which app it is for |
-| 400 | 7662 | Receipts for this store are not supported yet | `routes/sdk.ts` | The key belongs to a Web Billing, Paddle or Roku app, or a non-Amazon key asked for Amazon receipt details |
+| 400 | 7662 | Receipts for this store are not supported yet | `routes/sdk.ts` | The key belongs to a Web Billing app, or a non-Amazon key asked for Amazon receipt details |
 | 400 | 7103 | Invalid receipt | `stores/amazon/index.ts` | Amazon does not know the receipt or the Amazon user (`store_user_id` missing or wrong) |
 | 500 | 7101 | Store problem | `stores/amazon/api.ts` | No Amazon shared key saved, or Amazon rejected it (RVS 496). The SDK keeps the purchase |
 | 503 | 7101 | Store problem | `stores/amazon/api.ts` | Amazon's Receipt Verification Service is down, throttling or slow |
@@ -37518,7 +38022,7 @@ A wrong App Store key or Google service account is your setup problem, not the c
 3. **For 7103 from the App Store,** check the app's `bundle_id` matches the build you are testing. For Xcode StoreKit testing, add the `xcode_certificate` credential. See [How do I test purchases without real money?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/test-sandbox-purchases.md)
 4. **For 7103 from Google,** check the app's `package_name`, and that the purchase was made by this app.
 5. **For 7102,** decide who should own restored purchases and set `transfer_behavior`. See [How do I restore purchases?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/restore-purchases.md)
-6. **For 7662,** use an App Store, Mac App Store, Google Play, Amazon Appstore, Stripe or Test Store app. Web Billing, Paddle and Roku are not supported yet.
+6. **For 7662,** use an App Store, Mac App Store, Google Play, Amazon Appstore, Stripe, Paddle, Roku, Galaxy Store or Test Store app. Web Billing is not supported yet.
 7. **For 7234,** add the App Store in-app purchase key to the app. See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md). For local development only, you can set `allow_unsigned_receipts`.
 8. **For 7101 from Google,** run **Verify credentials** on the app page, or `POST /v2/projects/{project_id}/apps/{app_id}/actions/verify_credentials`, and grant the service account access in Play Console. See [Connect Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md).
 9. **For 7110,** read the server log. The error is printed there with its stack. Open an issue if it looks like a bug.

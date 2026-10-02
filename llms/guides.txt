@@ -21,6 +21,9 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Accept Amazon Appstore purchases on Fire tablets and Fire TV | [Connect the Amazon Appstore](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md) |
 | Track subscriptions sold with my own Stripe account | [Connect Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md) |
 | Connect my Stripe account without copying a restricted key | [Connect with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe-connect.md) |
+| Track web purchases sold through Paddle Billing | [Connect Paddle](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paddle.md) |
+| Sell subscriptions in a Roku channel with Roku Pay | [Connect Roku](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/roku.md) |
+| Accept Samsung Galaxy Store purchases | [Connect the Galaxy Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/galaxy-store.md) |
 | Bring the products I already set up in App Store Connect, Google Play or Stripe into the catalog | [Import products](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/import-products.md) |
 | Change App Store and Google Play prices in every territory from a CSV, or create store products, and see each product's store price and status | [Product editor](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/product-editor.md) |
 | Sell my app's subscriptions on the web with a hosted Stripe checkout | [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md) |
@@ -148,6 +151,19 @@ Set these in the app's `app_store` object with `POST /v2/projects/{project_id}/a
 | `allow_unsigned_receipts` | Development only: accept StoreKit 1 receipts without the In-App Purchase key |
 | `app_store_connect_api_key`, `_id`, `_issuer`, `app_store_connect_vendor_number` | A separate App Store Connect API key with the App Manager role. Used to [import your products](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/import-products.md) and to create products in App Store Connect (below) |
 | `shared_secret` | The legacy app-specific shared secret. Stored but not used: RevenueDot does not call Apple's deprecated verifyReceipt endpoint |
+| `small_business_program` | Your dates in Apple's Small Business Program (below). `null` removes them |
+
+## Apple Small Business Program
+Apple keeps 15% instead of 30% while your app is in the [App Store Small Business Program](https://developer.apple.com/app-store/small-business-program/). Tell RevenueDot the dates, and proceeds use 15% for every purchase and renewal made inside them.
+
+- **In the dashboard:** open the app, then **More settings → Apple Small Business Program**. Turn on **Enrolled**, set the entry date and, if you left, the exit date. **Add period** covers a second membership. **Use existing dates from …** copies the dates saved on another App Store app in the project.
+- **With the API:**
+  ```bash
+  curl -s -X POST "$B/apps/$APP_ID" -H "$H" -H "Content-Type: application/json" \
+    -d '{"app_store":{"small_business_program":{"enrolled":true,"periods":[{"entry_date":"2024-01-01","exit_date":null}]}}}'
+  ```
+  Dates are `YYYY-MM-DD` (UTC). The exit date is the first day back at 30%. Up to 10 periods; they must not overlap.
+- **What changes:** charts with revenue type **Proceeds**, metrics, exports and the REST API recompute past proceeds for the dates you enter. New webhook and integration events carry `commission_percentage` 0.15 (`takehome_percentage` 0.85). Events already sent keep their values, as in RevenueCat.
 
 ## What you can do from the server afterwards
 - **Extend a subscription** by 1 to 90 days: `POST /v2/projects/{project_id}/subscriptions/{subscription_id}/actions/extend` with `extend_by_days` and `extend_reason_code`.
@@ -226,6 +242,14 @@ By default anyone who knows the URL can post to it, but RevenueDot only trusts w
      -d '{"play_store":{"pubsub_audience":"https://revenuedot.example.com/v1/notifications/google/'$APP_ID'","pubsub_service_account":"pubsub-push@your-project.iam.gserviceaccount.com"}}'
    ```
 From then on, a push without a valid Google-signed token for that audience (and that service account) gets 401.
+
+## Google Play service fee
+Proceeds use Google's [service fees](https://support.google.com/googleplay/android-developer/answer/112622) with nothing to set up:
+
+- **Subscriptions:** 15%.
+- **One-time purchases:** 15% on the app's first $1M of Google Play sales in a calendar year, then 30% for the rest of that year. Under Google's 2026 fees, a purchase above $1M by a customer who first opened the app after the fees started in their country is 25%.
+
+RevenueDot counts the $1M from the purchases it has recorded for the app, so purchases made before you moved to RevenueDot count only if you [imported](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md) them.
 
 ## What you can do from the server afterwards
 - **Refund and revoke** a subscription: `POST /v2/projects/{project_id}/subscriptions/{subscription_id}/actions/refund`.
@@ -327,11 +351,195 @@ Webhooks report `store: AMAZON`. Amazon has no subscription pause, and like Reve
 ## Prices
 RVS has no price. The price and currency the SDK posts (the marketplace's local price) are saved with the purchase and converted to USD at the purchase date's rate. Renewals that arrive by notification keep the last known price.
 
+## Small Business Accelerator Program
+Amazon keeps 20% instead of 30% while your app is in its [Small Business Accelerator Program](https://developer.amazon.com/apps-and-games/blogs/2021/06/small-business-accelerator-program). In the dashboard, open the app and use **More settings → Amazon Small Business Accelerator Program**: turn on **Enrolled** and set the entry and exit dates. With the API, send `{"amazon":{"small_business_accelerator":{"enrolled":true,"periods":[{"entry_date":"2024-01-01","exit_date":null}]}}}` to `POST /v2/projects/{project_id}/apps/{app_id}`. Proceeds for purchases inside the dates use 20%, in charts, metrics, exports and new webhook events.
+
 ## Related
 - [Android SDK guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/android.md)
 - [Store notifications not arriving](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/store-notifications-not-arriving.md)
 - [SDK endpoints: Amazon receipt details](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md)
 - [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md)
+
+---
+
+# How do I track Paddle Billing purchases in RevenueDot?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paddle.md
+Description: Create a Paddle app with your Paddle API key, let RevenueDot add its notification destination in Paddle, import your prices, and post each Paddle subscription or transaction from your backend so the same entitlements unlock in your apps.
+
+Four steps: create a Paddle app with a Paddle **API key**, click **Apply in Paddle** so Paddle sends its notifications to RevenueDot, import your **prices** as products, and post each purchase from your backend. Paddle is the merchant of record, so it handles tax; RevenueDot reads every subscription, transaction and refund from your own Paddle account with your key and unlocks the same entitlements as your App Store and Google Play purchases. It works like [RevenueCat's Paddle integration](https://www.revenuecat.com/docs/web/integrations/paddle).
+
+## 1. Create the app and save the API key
+1. In Paddle, open **Developer tools → Authentication** and create an API key. Use the sandbox dashboard for a sandbox key.
+2. Give it **Read** access to Subscriptions, Transactions, Adjustments, Customers, Products and Prices, and **Write** access to Notification settings (for Apply in Paddle) and Customer portal sessions (for management links). Set no expiry: Paddle keys expire after 90 days by default.
+3. In the dashboard, **Apps → Add app → Paddle**, paste the key and click **Check credentials**.
+
+With the API:
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"Scanner Web","type":"paddle","paddle":{"paddle_api_key":"pdl_live_apikey_…"}}'
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/actions/verify_credentials" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+- The key decides the environment: `pdl_sdbx_apikey_…` records **sandbox** purchases, `pdl_live_apikey_…` production ones. A key made before May 2025 (50 characters) carries no environment; set `paddle_is_sandbox` for a sandbox one. Use one Paddle app per Paddle account.
+- The key is sealed on the server and never returned; the app page shows only its environment and last four characters.
+- The check calls Paddle's event types, then reads one product and one subscription. Paddle answers 403 for a wrong, revoked or other-environment key, and names the permission a key lacks.
+
+## 2. Apply in Paddle
+On the app page, **Paddle notifications → Apply in Paddle** creates a notification destination in your Paddle account that sends the subscription, transaction and adjustment events to `https://<your server>/v1/notifications/paddle/{app_id}`, and saves its secret key. Clicking it again updates the same destination.
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/actions/apply_notification_settings" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+To set it up by hand instead, create a destination with that URL and the events listed on the app page, then paste its **secret key** (`pdl_ntfset_…`) into the app's settings.
+
+Every notification must carry a valid `Paddle-Signature`: an HMAC-SHA256 of `"<ts>:<raw body>"` with the secret key, within 5 minutes. Anything else gets 400 and changes nothing. Paddle's simulated events are accepted, show as received and change nothing.
+
+Notifications are optional for subscriptions, which you post anyway, but needed for refunds of one-time purchases.
+
+## 3. Import your prices
+A RevenueDot product of a Paddle app is a **Paddle price** (`pri_…`), as in RevenueCat. **Import products** lists every active price with its product's name, as a subscription with the billing cycle's duration or as a one-time product, and attaches them to entitlements you pick. A catalog product made with the Paddle product id (`pro_…`) also matches when no product has the price id.
+
+## 4. Post purchases from your backend
+After Paddle's `transaction.completed`, post the subscription id or the transaction id with the customer's app user ID and the Paddle app's public key (`pdl_…`):
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/receipts" \
+  -H "Authorization: Bearer pdl_…" -H "X-Platform: paddle" -H "Content-Type: application/json" \
+  -d '{"app_user_id":"user_123","fetch_token":"sub_01h…"}'   # or "txn_01h…"
+```
+
+- A transaction of a subscription is recorded as that subscription; a transaction without one is a one-time purchase.
+- A checkout that is not finished (`draft` or `ready`) answers **503**, so post it again later. An unknown id answers **400**.
+- Also put the app user ID into the checkout's `customData` (for example `{ "app_user_id": "user_123" }`). With **Track new purchases from server-to-server notifications** on, a purchase first seen in a notification is given to that app user ID (the key is set under **Purchases first seen in a notification**), or to an anonymous ID.
+
+## What each Paddle event does
+| Paddle | Event |
+|---|---|
+| First paid transaction (or a trial) | INITIAL_PURCHASE |
+| A renewal transaction completed | RENEWAL (`is_trial_conversion` after a trial) |
+| Cancel scheduled (`scheduled_change.action: cancel`), taken back | CANCELLATION, UNCANCELLATION |
+| Renewal payment failed (`past_due`) | BILLING_ISSUE; access continues for a 30-day grace period, as RevenueCat shows |
+| Canceled | EXPIRATION (BILLING_ERROR when the last renewal was never paid) |
+| Paused with a resume date, resumed | SUBSCRIPTION_PAUSED, RENEWAL |
+| The subscription's price changed | PRODUCT_CHANGE |
+| Approved full refund or chargeback | CANCELLATION (CUSTOMER_SUPPORT), access ends |
+
+Webhooks report `store: PADDLE`. Take-home estimates use Paddle's standard 5% fee (the 50¢ per transaction is not included). The v2 [authenticated management URL](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) of a Paddle subscription is a short-lived Paddle customer portal link.
+
+---
+
+# How do I connect a Roku channel to RevenueDot?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/roku.md
+Description: Create a Roku app with your Roku Pay API key and channel ID, point RevenueCat's Roku SDK at RevenueDot, and set RevenueDot's URL as the Roku Pay push notification URL so renewals, failed payments, cancellations and refunds arrive.
+
+Three steps: create a Roku app with your **Roku Pay API key** and **channel ID**, set the Roku SDK's `proxyUrl` to RevenueDot, and set RevenueDot's URL as the **push notification URL** in the Roku developer dashboard. Your channel keeps using [RevenueCat's Roku SDK](https://github.com/RevenueCat/purchases-roku) unchanged; RevenueDot checks every purchase with Roku Pay's web services, as [RevenueCat does](https://www.revenuecat.com/docs/getting-started/installation/roku).
+
+## 1. Create the app
+1. In the [Roku developer dashboard → Roku Pay web services](https://developer.roku.com/rpay-web-services), copy the **API key**.
+2. In the dashboard, **Apps → Add app → Roku**, paste the key, click **Check credentials**, and add the channel ID and name from your channel's page.
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"Scanner TV","type":"roku","roku":{"roku_api_key":"<your Roku Pay API key>","roku_channel_id":"123456","roku_channel_name":"Scanner"}}'
+```
+
+- The key is sealed and never returned. The check validates a made-up transaction: Roku answers `UNAUTHORIZED` for a wrong key.
+- Create products with `store_identifier` set to each product's **code** from the Roku dashboard. Roku has no API that lists a channel's products, so they cannot be imported.
+
+## 2. Point the SDK at RevenueDot
+```brightscript
+Purchases().configure({
+    apiKey: "roku_…",
+    proxyUrl: "https://api.revenuedot.app/v1/"   ' or your own server, ending in /v1/
+})
+```
+
+The SDK posts each purchase to `POST /v1/receipts` with the Roku transaction id as `fetch_token`. RevenueDot validates it with `validate-transaction` and takes the price and currency from Roku, because the SDK sends a formatted price and no currency.
+
+- **Sandbox:** a sideloaded (developer) channel sends `X-Is-Sandbox: true` and its purchases are sandbox; beta and published channels are production, even for test users who pay nothing. This is RevenueCat's rule.
+- An unknown transaction answers **400**; Roku being down or a rejected key answers **5xx**, so the SDK can try again, and a rejected key marks the app's credentials as failing.
+
+## 3. Set the push notification URL
+1. Copy the app's URL, `https://<your server>/v1/notifications/roku/{app_id}`, from the app page.
+2. In **Roku Pay web services**, set it as the **Push notification URL**. Roku has one URL per developer account: pushes for your other channels go to the project's Roku app with that channel ID.
+
+Every push is a JWT signed by Roku; RevenueDot checks it with Roku's published keys (the test key set for the dashboard's test endpoint), stores it once, validates its transaction again and applies what Roku says. A push that is not signed by Roku gets 400.
+
+## What each Roku push does
+| Roku | Event |
+|---|---|
+| `Sale` (first) | INITIAL_PURCHASE (TRIAL for a free trial) |
+| `Sale` (renewal), `GraceRecovered`, `OnHoldRecovered` | RENEWAL |
+| `GraceInitiated` | BILLING_ISSUE; access continues 3 days |
+| `OnHoldInitiated` | Access ends: EXPIRATION (BILLING_ERROR) |
+| `Cancellation`, `Resubscribe` | CANCELLATION, UNCANCELLATION |
+| `Refund` | CANCELLATION (CUSTOMER_SUPPORT), access ends |
+| `UpgradeSale` | A new subscription for the same customer; the old one is cancelled and expires |
+| `DowngradeSale` | The current plan does not renew; the downgraded plan starts when Roku charges it |
+| `Credit`, chargebacks | Stored, no change |
+
+RevenueCat lists PRODUCT_CHANGE, REFUND_REVERSED and SUBSCRIPTION_PAUSED as not supported for Roku, and so does RevenueDot. Roku never sends "expired": the subscription expires when its date passes. Webhooks report `store: ROKU`; take-home estimates use Roku Pay's standard 20% share.
+
+---
+
+# How do I connect the Samsung Galaxy Store to RevenueDot?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/galaxy-store.md
+Description: Create a Galaxy Store app with your package name and a Seller Portal service account, build your Android app with the RevenueCat SDK's Galaxy module pointed at RevenueDot, and set RevenueDot's URL for Samsung's server notifications.
+
+Three steps: create a Galaxy Store app with your **package name** and a Seller Portal **service account**, build the app with the RevenueCat SDK's Galaxy module pointed at RevenueDot, and set RevenueDot's URL for Samsung's **server notifications**. Purchases from the Galaxy Store unlock the same entitlements as Google Play. Setup mirrors [RevenueCat's Galaxy Store guide](https://www.revenuecat.com/docs/platform-resources/galaxy-platform-resources/galaxy-setup-guide).
+
+## 1. Create the app and the service account
+1. In [Samsung Seller Portal](https://seller.samsungapps.com), open **Assistance → API Service → Create Service Account**, select the **Publishing & Item** and **GSS** scopes, and click **Download Key**. Samsung shows the key only once.
+2. In the dashboard, **Apps → Add app → Galaxy Store**, enter the package name, then paste the service account ID, drop the key file and click **Check credentials**.
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"Scanner Galaxy","type":"galaxy","galaxy":{"package_name":"com.example.scanner","galaxy_service_account_id":"<id>","galaxy_service_account_private_key":"-----BEGIN PRIVATE KEY-----\n…"}}'
+```
+
+- `galaxy` is a RevenueDot extension of the v2 API: RevenueCat's v2 API has no Galaxy app object. The app's public key starts with `galx_`, the prefix the SDK requires.
+- The private key is sealed and never returned. RevenueDot signs a JWT with it for Samsung's access tokens; the check then reads a made-up subscription, so a wrong account or a missing scope shows up here.
+- Create products with `store_identifier` set to each item ID: subscriptions, consumables and non-consumables. **Import products** lists your in-app items; Samsung's API does not list subscriptions, so add those with **New product**.
+
+## 2. Build the app with the Galaxy module
+```kotlin
+// build.gradle: implementation("com.revenuecat.purchases:purchases-store-galaxy:<version>")
+Purchases.proxyURL = URL("https://api.revenuedot.app")   // or your own server, before configure
+Purchases.configure(GalaxyConfiguration.Builder(this, "galx_…").build())
+```
+
+React Native: add `react-native-purchases-store-galaxy` and configure with `store: "GALAXY"`.
+
+The SDK posts each purchase to `POST /v1/receipts` with Samsung's purchase ID as `fetch_token`. RevenueDot reads the receipt from Samsung (no credentials needed), and a subscription's state with the service account. Answers:
+- `purchased_products.<item>.should_consume` is true for products the catalog marks consumable, so the SDK consumes them; everything else is acknowledged.
+- An unknown purchase or another app's purchase answers **400**. Samsung being down, or a subscription without a service account, answers **5xx**: the SDK leaves the purchase unfinished and tries again.
+- Purchases made in IAP test mode by license testers are **sandbox**.
+
+## 3. Server notifications
+1. Copy the app's URL, `https://<your server>/v1/notifications/galaxy/{app_id}`, from the app page and set it in Seller Portal for the app's in-app purchases.
+2. Send Samsung's test notification; the app page turns green.
+3. Optional but recommended: paste the seller's **IAP public key** (Assistance → API Service → IAP Key). Every notification's signature is then checked. Without it, RevenueDot trusts nothing in a notification and reads the purchase from Samsung instead, which is also how RevenueCat works.
+
+| Samsung | Event |
+|---|---|
+| `ARS_SUBSCRIBED`, a new purchase | INITIAL_PURCHASE (TRIAL or INTRO for free and tiered first periods) |
+| `ARS_RENEWED`, `ARS_OUT_GRACE_PERIOD` | RENEWAL |
+| `ARS_UNSUBSCRIBED`, `ARS_RESUBSCRIBED` | CANCELLATION, UNCANCELLATION |
+| `ARS_IN_GRACE_PERIOD` | BILLING_ISSUE; access continues to the grace end |
+| The end date passes | EXPIRATION |
+| `ARS_UPDOWNGRADED` | PRODUCT_CHANGE on the old subscription; the new plan is its own subscription for the same customer |
+| `ARS_REFUNDED`, `ITEM_REFUNDED` | CANCELLATION (CUSTOMER_SUPPORT), access ends |
+| `ARS_PRICECHANGE_AGREED` | PRICE_INCREASE_CONSENT_APPROVED |
+
+Refunds and cancellations also work from the API, through Samsung: `POST /v2/projects/{project_id}/subscriptions/{id}/transactions/{transaction_id}/actions/refund` (RevenueCat's "refund a Play Store or Galaxy subscription's transaction") and `…/subscriptions/{id}/actions/cancel`. Webhooks report `store: GALAXY`; take-home estimates use Samsung's standard 30% share.
 
 ---
 
@@ -1937,6 +2145,9 @@ Attach the products to your entitlement and offering like any other app's produc
 Configure the SDK with the `test_` key and your server as the proxy URL, then call `purchase` as usual. The SDK shows its Test Store dialog; choose the successful purchase. The SDK posts `fetch_token = test_<purchase time in ms>_<id>` to `POST /v1/receipts`, and RevenueDot accepts any token of that form.
 
 The Test Store works with purchases-js, React Native (including Expo Go and the web) and the native SDKs. Use `test_` keys only in development builds; ship your store keys (`appl_`, `goog_`) in releases. Servers built before 2026-09-30 sent product details the native iOS SDK could not read ("No base price found for product"); update the server if you see that.
+
+## Test your setup with the sample app
+The app page has **Test your setup with the sample app**: pick iOS (SwiftUI), Android (Jetpack Compose), Flutter, React Native (Expo) or web, and you get a zip of that app from [revenuedot/examples](https://github.com/revenuedot/examples) with this app's key, your server's URL and your first entitlement already filled in. Unzip it, follow its README, buy in a debug build, and the purchase shows up under **Customers**. App Store, Google Play and Web Billing apps offer the samples that can buy with their key. The same zip comes from `GET /v2/projects/{project_id}/apps/{app_id}/sample_app?platform=ios`. Only public values go in the zip.
 
 ## Buy with curl
 ```bash
@@ -3883,6 +4094,21 @@ SELECT pe.period, round(coalesce(sum(s.mrr) FILTER (WHERE s.kind <> 'trial'), 0)
 FROM periods pe LEFT JOIN snapshot s ON s.period = pe.period
 GROUP BY pe.period ORDER BY pe.period;
 ```
+
+## How proceeds are computed
+Proceeds are revenue minus the store's commission, worked out per transaction when the chart is read:
+
+| Store | Commission |
+|---|---|
+| App Store, Mac App Store | 30%; 15% inside the app's [Small Business Program](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md#apple-small-business-program) dates |
+| Google Play | Subscriptions 15%; one-time purchases 15% on the first $1M a year, then 30% ([details](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md#google-play-service-fee)) |
+| Amazon Appstore | 30%; 20% inside the app's [Small Business Accelerator](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md#small-business-accelerator-program) dates |
+| Galaxy Store | 30% |
+| Roku | 20% |
+| Paddle | 5% (Paddle's fee) |
+| Stripe, Web Billing, Test Store, ads | 0% |
+
+Changing program dates recomputes past proceeds here, in metrics, exports and the REST API. Webhooks and integration events already sent keep the rate they were sent with.
 
 ## SQL for the customers behind a chart
 

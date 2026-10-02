@@ -129,8 +129,10 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" -H "Authorization: Bearer
 
 `POST /v2/projects/{project_id}/apps` · Auth: secret key or dashboard session · Permissions: `project_configuration:apps:read_write`
 
-One app per store. `app_store` and `mac_app_store` need `bundle_id`; `play_store` and `amazon` need `package_name`. The app gets a public SDK key with the store's prefix.
-Other fields in the store object are saved as store credentials (for example `subscription_private_key`, `subscription_key_id`, `subscription_key_issuer`, `play_service_account_credentials_json`, Amazon's `shared_secret`, Stripe's `stripe_secret_key` and `stripe_webhook_secret`). They are never returned. A Stripe publishable key (`pk_…`) or a malformed signing secret is refused with 400.
+One app per store. `app_store` and `mac_app_store` need `bundle_id`; `play_store`, `amazon` and `galaxy` need `package_name`. The app gets a public SDK key with the store's prefix (`pdl_` for Paddle, `roku_` for Roku, `galx_` for the Galaxy Store).
+Other fields in the store object are saved as store credentials (for example `subscription_private_key`, `subscription_key_id`, `subscription_key_issuer`, `play_service_account_credentials_json`, Amazon's `shared_secret`, Stripe's `stripe_secret_key` and `stripe_webhook_secret`, Paddle's `paddle_api_key` and `paddle_webhook_secret`, Roku's `roku_api_key`, the Galaxy Store's `galaxy_service_account_id`, `galaxy_service_account_private_key` and `galaxy_iap_public_key`). Secrets are sealed and never returned. A Stripe publishable key (`pk_…`), a Paddle client-side token or a malformed signing secret is refused with 400.
+Store commission programs (RevenueDot extension, as RevenueCat's app settings): `app_store.small_business_program` and `mac_app_store.small_business_program` (Apple's Small Business Program, 15% instead of 30%) and `amazon.small_business_accelerator` (Amazon's Small Business Accelerator Program, 20% instead of 30%) take `{ "enrolled": true, "periods": [{ "entry_date": "2024-01-01", "exit_date": null }] }`: up to 10 periods, `YYYY-MM-DD`, an exit date after its entry date, no overlaps; `null` removes the program. Proceeds in charts, metrics, exports and the REST API are recomputed for the dates; webhooks and integration events already sent keep their values.
+`galaxy` is a RevenueDot extension: RevenueCat's v2 API has no Galaxy app object.
 
 **Path parameters**
 
@@ -143,15 +145,16 @@ Other fields in the store object are saved as store credentials (for example `su
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `name` | string | yes |  |
-| `type` | `amazon`, `app_store`, `mac_app_store`, `play_store`, `stripe`, `rc_billing`, `roku`, `paddle`, `test_store` | yes |  |
+| `type` | `amazon`, `app_store`, `mac_app_store`, `play_store`, `stripe`, `rc_billing`, `roku`, `paddle`, `test_store`, `galaxy` | yes |  |
 | `app_store` | object | no | `bundle_id` plus optional credentials. |
 | `mac_app_store` | object | no |  |
 | `play_store` | object | no | `package_name` plus optional credentials. |
 | `amazon` | object | no |  |
 | `stripe` | object | no |  |
 | `rc_billing` | object or null | no |  |
-| `roku` | object or null | no |  |
-| `paddle` | object or null | no |  |
+| `roku` | object or null | no | `roku_api_key` (sealed), `roku_channel_id`, `roku_channel_name`. |
+| `paddle` | object or null | no | `paddle_api_key` (sealed; `pdl_live_apikey_…` or `pdl_sdbx_apikey_…`), `paddle_is_sandbox` (only for keys made before May 2025), `paddle_webhook_secret` (sealed). |
+| `galaxy` | object | no | `package_name` plus `galaxy_service_account_id`, `galaxy_service_account_private_key` (sealed) and the optional `galaxy_iap_public_key`. |
 
 **Example request**
 
@@ -217,7 +220,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID" -H "Authorization
 `POST /v2/projects/{project_id}/apps/{app_id}` · Auth: secret key or dashboard session · Permissions: `project_configuration:apps:read_write`
 
 Send only the store object of the app's own type. A field set to null removes that credential; other values replace it.
-RevenueDot extensions in the store object: `notification_forward_url` (copy store notifications to another URL, for example RevenueCat during a dual run; null or "" turns it off), `track_new_purchases`, `allow_unsigned_receipts`, `xcode_certificate`, `app_apple_id`, `pubsub_audience`, `pubsub_service_account`; Amazon `shared_secret`, `sns_topic_arn`; Stripe `stripe_secret_key`, `stripe_webhook_secret`, `stripe_account_id`, `app_user_id_source` (metadata, customer_id, anonymous), `app_user_id_metadata_key`, `register_on` (invoice_paid, invoice_created). See [App Store setup](../docs/guides/app-store.md), [Google Play setup](../docs/guides/google-play.md), [Amazon Appstore setup](../docs/guides/amazon-appstore.md) and [Stripe setup](../docs/guides/stripe.md).
+RevenueDot extensions in the store object: `notification_forward_url` (copy store notifications to another URL, for example RevenueCat during a dual run; null or "" turns it off), `track_new_purchases`, `allow_unsigned_receipts`, `xcode_certificate`, `app_apple_id`, `pubsub_audience`, `pubsub_service_account`; Amazon `shared_secret`, `sns_topic_arn`; Stripe `stripe_secret_key`, `stripe_webhook_secret`, `stripe_account_id`, `app_user_id_source` (metadata, customer_id, anonymous), `app_user_id_metadata_key`, `register_on` (invoice_paid, invoice_created); Paddle `paddle_webhook_secret`, `app_user_id_source` (custom_data, anonymous), `app_user_id_custom_data_key`; Galaxy Store `galaxy_iap_public_key`. See [App Store setup](../docs/guides/app-store.md), [Google Play setup](../docs/guides/google-play.md), [Amazon Appstore setup](../docs/guides/amazon-appstore.md), [Stripe setup](../docs/guides/stripe.md), [Paddle setup](../docs/guides/paddle.md), [Roku setup](../docs/guides/roku.md) and [Galaxy Store setup](../docs/guides/galaxy-store.md).
 
 **Path parameters**
 
@@ -239,6 +242,7 @@ RevenueDot extensions in the store object: `notification_forward_url` (copy stor
 | `rc_billing` | object | no |  |
 | `roku` | object | no |  |
 | `paddle` | object | no |  |
+| `galaxy` | object | no |  |
 
 **Example request**
 
@@ -6837,7 +6841,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `id` | string | yes | App id (app...). |
 | `name` | string | yes |  |
 | `created_at` | integer | yes | Creation time. Epoch milliseconds. |
-| `type` | `amazon`, `app_store`, `mac_app_store`, `play_store`, `stripe`, `rc_billing`, `roku`, `paddle`, `test_store` | yes |  |
+| `type` | `amazon`, `app_store`, `mac_app_store`, `play_store`, `stripe`, `rc_billing`, `roku`, `paddle`, `test_store`, `galaxy` | yes |  |
 | `project_id` | string | yes |  |
 | `custom_url_scheme` | string | no | Derived from the public key. |
 | `app_store` | object | no |  |
@@ -6864,8 +6868,10 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `roku.roku_channel_id` | string or null | no |  |
 | `roku.roku_channel_name` | string or null | no |  |
 | `paddle` | object | no |  |
-| `paddle.paddle_is_sandbox` | boolean | no |  |
-| `paddle.paddle_api_key` | null | no |  |
+| `paddle.paddle_is_sandbox` | boolean | no | True for a sandbox key (pdl_sdbx_apikey_…), or for an older key marked sandbox. |
+| `paddle.paddle_api_key` | null | no | Always null: the key is never returned (RevenueCat's field). |
+| `galaxy` | object | no | RevenueDot extension. |
+| `galaxy.package_name` | string | no |  |
 
 ### Collaborator
 

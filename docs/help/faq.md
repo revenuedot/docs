@@ -54,7 +54,7 @@ Receipts are accepted today for four app types:
 | `amazon` | Amazon Appstore ([guide](../guides/amazon-appstore.md)) |
 | `stripe` | Stripe purchases on your own Stripe account: from RevenueDot's hosted checkout ([web billing](../guides/web-billing.md)) or posted by your backend ([guide](../guides/stripe.md)) |
 
-RevenueCat Billing (`rcb_`), Paddle and Roku apps can be created, but their receipts answer HTTP 400 with code 7662. See [Projects and apps](../concepts/projects-and-apps.md).
+RevenueCat Billing (`rcb_`) apps can be created, but their receipts answer HTTP 400 with code 7662. Paddle, Roku and Samsung Galaxy Store apps work: see [Paddle](../guides/paddle.md), [Roku](../guides/roku.md) and [Galaxy Store](../guides/galaxy-store.md), and [Projects and apps](../concepts/projects-and-apps.md).
 
 ## Is it production-ready?
 No. The App Store and Google Play code is tested against mocked Apple and Google APIs only. No real App Store or Google Play sandbox purchase has run end to end yet. Use it for evaluation and testing, and keep RevenueCat for live customers until a release says otherwise. See [Known issues](known-issues.md).
