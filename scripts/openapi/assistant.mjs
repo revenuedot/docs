@@ -30,7 +30,8 @@ const conversation = obj({
 }, ["object", "id", "title", "runtime"]);
 const uiMessage = obj({
   id: str(), role: en(["user", "assistant"]), parts: arr({ type: "object", description: "AI SDK UI message parts: `text`, `file`, `tool-<name>` (with `state`, `input`, `output`, `approval`), `step-start`." }),
-  metadata: obj({ mentions: arr(obj({ type: en(["customer", "offering", "chart"]), id: str(), label: str() }, ["type", "id"])) }),
+  metadata: obj({ mentions: arr(obj({ type: en(["customer", "offering", "chart"]), id: str(), label: str(),
+    params: { type: "object", additionalProperties: { type: "string" }, description: "A chart mention's view, as the chart page's Ask AI sends it: `start_date`, `end_date`, `resolution`, `segment`, `filters`, `selectors`, `environment`. Other keys are ignored." } }, ["type", "id"])) }),
 }, ["id", "role", "parts"]);
 const conversationDetail = { allOf: [conversation, obj({
   messages: arr(uiMessage, { description: "The transcript (self-host runtime; empty for Durable Object conversations, whose messages live in the object)." }),

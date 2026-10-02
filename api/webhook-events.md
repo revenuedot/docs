@@ -30,13 +30,13 @@ RevenueDot POSTs one JSON event per request to each matching webhook: `{ "api_ve
 | [`PRICE_INCREASE_CONSENT_APPROVED`](#price_increase_consent_approved) | The customer accepted the price increase. |
 | [`TRANSFER`](#transfer) | A purchase moved to another customer because that customer restored it (transfer behaviour `transfer` or `transfer_if_no_active`). |
 | [`VIRTUAL_CURRENCY_TRANSACTION`](#virtual_currency_transaction) | An in-app currency was credited because a purchase of a granting product was recorded (`source: in_app_purchase`), or because a rewarded ad was verified and a reward rule granted currency (`source: ad_reward`, a RevenueDot extension; `product_id` and `store` are null and `transaction_id` is the ad network's transaction id). Not sent for adjustments made through the API. |
-| [`EXPERIMENT_ENROLLMENT`](#experiment_enrollment) | A customer was enrolled in an offering experiment. Sent once per customer and experiment. |
+| [`EXPERIMENT_ENROLLMENT`](#experiment_enrollment) | A customer joined an offering experiment: the first offerings request that enrolled them. Its `app_user_id` is the id that asked for offerings. Sent once per customer and experiment, as a production event with no app, so a webhook set to sandbox only or to one app does not get it. See [Experiments](../docs/guides/experiments.md#webhooks). |
 | [`SUBSCRIBER_ALIAS`](#subscriber_alias) | A new app user id joined an existing customer: `logIn` onto an anonymous customer, `logIn` that merged an anonymous customer into an existing one, Android's alias call, or a restore that merged two customers. RevenueCat deprecated this event and sends it only to older projects, so RevenueDot delivers it only to webhooks whose `event_types` filter names `subscriber_alias`; it always appears in the customer's event history. |
 | [`PURCHASE_REDEEMED`](#purchase_redeemed) | A web purchase was redeemed in the app through a redemption link (`POST /v1/subscribers/redeem_purchase`): the anonymous customer who paid on the web was merged into the app user. Fields follow RevenueCat's sample; `app_user_id` is added so analytics tools know who it is. See [Redemption links](../docs/guides/redemption-links.md). |
 | [`FUNNEL_VIEWED`](#funnel_viewed) | RevenueDot type. A visitor opened a published funnel. Opt-in: sent only to webhooks and integrations whose `event_types` names `funnel_viewed`. `app_user_id` is null unless the page URL had `?app_user_id=`. See [Funnels](../docs/guides/funnels.md). |
 | [`FUNNEL_STEP_COMPLETED`](#funnel_step_completed) | RevenueDot type. A visitor finished a funnel step, with the answer for a question (an email step's answer is `provided`, never the address). Opt-in: `funnel_step_completed`. |
 | [`FUNNEL_PURCHASE`](#funnel_purchase) | RevenueDot type. A funnel's checkout was paid. `app_user_id` is the buyer's (anonymous unless the page had one) and `product_id` the Stripe price. Opt-in: `funnel_purchase`. |
-| [`TEST`](#test) | Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase. |
+| [`TEST`](#test) | Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase, for no real customer, so it never carries `experiments`. |
 
 Accepted in a webhook's `event_types` filter but never sent, because RevenueDot never has the fact behind them: `TEMPORARY_ENTITLEMENT_GRANT` (RevenueDot never grants access it has not verified with the store; during a store outage the SDK keeps the purchase and grants access on the device from the [offline entitlement mapping](../docs/guides/offline-entitlements.md)) and `INVOICE_ISSUANCE` (only RevenueCat Billing issues invoices). That makes 19 of RevenueCat's 21 event types sent. `SUBSCRIBER_ALIAS` and RevenueDot's three funnel types (`FUNNEL_VIEWED`, `FUNNEL_STEP_COMPLETED`, `FUNNEL_PURCHASE`) are opt-in: they go only to webhooks whose filter names them.
 
@@ -74,6 +74,10 @@ The first purchase of a subscription, including a free trial start.
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
 | `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md). |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 
 Example:
 
@@ -151,6 +155,10 @@ A new paid period: a renewal, a trial converting (`is_trial_conversion: true`), 
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
 | `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md). |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 | `is_trial_conversion` | boolean | True for the first paid period after a free trial. |
 
 Example:
@@ -230,6 +238,10 @@ Auto-renew was turned off, or the purchase was refunded. Access continues to `ex
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
 | `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md). |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 | `cancel_reason` | `UNSUBSCRIBE`, `BILLING_ERROR`, `DEVELOPER_INITIATED`, `PRICE_INCREASE`, `CUSTOMER_SUPPORT`, `UNKNOWN` |  |
 
 Example (auto-renew turned off):
@@ -352,6 +364,10 @@ Auto-renew was turned back on before the subscription expired.
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
 | `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md). |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 
 Example:
 
@@ -429,6 +445,10 @@ A one-time purchase: consumable, non-consumable or lifetime.
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
 | `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md). |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 
 Example:
 
@@ -506,6 +526,10 @@ A Google Play subscription is scheduled to pause. It will not renew at the end o
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
 | `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md). |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 | `auto_resume_at_ms` | integer or null | When it resumes. Epoch milliseconds. |
 
 Example:
@@ -585,6 +609,10 @@ Access ended: the period ran out, billing retry gave up or the subscription paus
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
 | `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md). |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 | `expiration_reason` | `UNSUBSCRIBE`, `BILLING_ERROR`, `DEVELOPER_INITIATED`, `PRICE_INCREASE`, `CUSTOMER_SUPPORT`, `UNKNOWN`, `SUBSCRIPTION_PAUSED` |  |
 
 Example:
@@ -664,6 +692,10 @@ A renewal charge failed. The store retries; access may continue in a grace perio
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
 | `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md). |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 | `grace_period_expiration_at_ms` | integer or null | End of the grace period, or null when there is none. Epoch milliseconds. |
 
 Example:
@@ -743,6 +775,10 @@ The customer changed product: an upgrade now, or a downgrade or crossgrade sched
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
 | `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md). |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 | `new_product_id` | string | The product the customer changed to. |
 
 Example:
@@ -822,6 +858,10 @@ The current period got longer without a new payment: an App Store renewal extens
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
 | `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md). |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 
 Example:
 
@@ -899,6 +939,10 @@ A refund was reversed and access is back.
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
 | `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md). |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 
 Example:
 
@@ -1146,7 +1190,7 @@ Example:
 
 ## EXPERIMENT_ENROLLMENT
 
-A customer was enrolled in an offering experiment. Sent once per customer and experiment.
+A customer joined an offering experiment: the first offerings request that enrolled them. Its `app_user_id` is the id that asked for offerings. Sent once per customer and experiment, as a production event with no app, so a webhook set to sandbox only or to one app does not get it. See [Experiments](../docs/guides/experiments.md#webhooks).
 
 | Field | Type | Description |
 |---|---|---|
@@ -1157,7 +1201,7 @@ A customer was enrolled in an offering experiment. Sent once per customer and ex
 | `original_app_user_id` | string | The customer's first app user id. |
 | `aliases` | array of string | Every app user id of the customer. |
 | `experiment_id` | string |  |
-| `experiment_variant` | `a`, `b` |  |
+| `experiment_variant` | `a`, `b`, `c`, `d` | `a` is the control; `b`, `c` and `d` are treatments. |
 | `offering_id` | string or null | The variant's offering identifier. |
 | `experiment_enrolled_at_ms` | integer | Epoch milliseconds. |
 
@@ -1197,6 +1241,10 @@ A new app user id joined an existing customer: `logIn` onto an anonymous custome
 | `original_app_user_id` | string | The customer's first app user id. |
 | `aliases` | array of string | Every app user id of the customer. |
 | `subscriber_attributes` | object |  |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 
 Example:
 
@@ -1485,7 +1533,7 @@ Example:
 
 ## TEST
 
-Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase.
+Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase, for no real customer, so it never carries `experiments`.
 
 | Field | Type | Description |
 |---|---|---|
@@ -1517,6 +1565,10 @@ Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
 | `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md). |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 
 Example:
 

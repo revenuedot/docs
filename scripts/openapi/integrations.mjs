@@ -131,8 +131,8 @@ export const integrationPaths = {
   },
   [`${P}/partners/{integration_id}/deliveries/{delivery_id}/retry`]: {
     post: op2({ id: "retryIntegrationDelivery", tag: "Integrations", summary: "Retry a delivery now", source: RI, scopes: WRITE,
-      parameters: [project, id, { name: "delivery_id", in: "path", required: true, schema: str() }], description: "The request is built again, so keys and attributes saved since count.",
-      responses: { 200: ok("The delivery, queued.", delivery), ...E(404) } }),
+      parameters: [project, id, { name: "delivery_id", in: "path", required: true, schema: str() }], description: "The request is built again, so keys and attributes saved since count. 409 (`resource_locked_error`) while a job run is sending it.",
+      responses: { 200: ok("The delivery, queued.", delivery), ...E(404, 409) } }),
   },
   [`${P}/partners/{integration_id}/actions/replay`]: {
     post: op2({ id: "replayIntegrationDeliveries", tag: "Integrations", summary: "Queue failed or skipped deliveries again", source: RI, scopes: WRITE, parameters: [project, id],

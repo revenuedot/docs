@@ -17,9 +17,9 @@ export const V2_ERROR_MEANINGS = {
   authorization_error: "The key lacks a permission, a public app key was used, or the action needs a dashboard admin (403).",
   store_error: "The App Store or Google Play refused the action, or could not be reached (`retryable: true`). Always 422.",
   server_error: "RevenueDot failed (500, `retryable: true`). Retry with backoff.",
-  resource_locked_error: "Reserved for RevenueCat compatibility. RevenueDot does not send it today.",
+  resource_locked_error: "The object is busy, or changed while the request ran (409): a commit of the same product file or of another file of the same app, a run of the same data export, or a webhook delivery being sent (`retryable: true`; wait for it to finish, then try again), or an experiment whose status another request changed (reload it first).",
   unprocessable_entity_error: "The request is valid but not possible in this state or for this store (422), for example archiving the current offering or refunding an App Store purchase.",
-  invalid_request: "The body is not valid JSON (400), or a package would get two products of one app with overlapping eligibility (409).",
+  invalid_request: "The body is not valid JSON (400); a package would get two products of one app with overlapping eligibility (409); or a product file is not in a state that allows the action, such as committing a file with errors (409).",
   entity_references_archived_entities: "The action would make an archived object current (422). Unarchive it first.",
 };
 
@@ -115,7 +115,7 @@ export const schemas = {
     })],
   },
   Offerings: obj({
-    current_offering_id: nstr("Lookup key of the current offering, or the customer's override."),
+    current_offering_id: nstr("Lookup key of the customer's current offering: their override, else their experiment variant's offering, else the first live targeting rule's, else the project's current offering."),
     offerings: arr(obj({
       description: str("Offering display name."),
       identifier: str("Offering lookup key."),
@@ -126,6 +126,11 @@ export const schemas = {
         platform_product_plan_identifier: str("Google Play base plan id, when the product is `subscription:base-plan`."),
       }, ["identifier", "platform_product_identifier"])),
     }, ["description", "identifier", "metadata", "packages"])),
+    placements: obj({
+      fallback_offering_id: nstr("Lookup key of the offering for placements not listed below: the current offering."),
+      offering_ids_by_placement: { type: "object", additionalProperties: { type: ["string", "null"] }, description: "Placement id → offering lookup key, or null for no paywall there: the matching targeting rule's placements, overlaid with the customer's experiment variant's." },
+    }, [], { description: "What `currentOffering(forPlacement:)` reads." }),
+    targeting: obj({ revision: int("The rule's revision."), rule_id: str("The targeting rule that matched.") }, ["revision", "rule_id"], { description: "Present when a targeting rule matched the customer." }),
   }, ["current_offering_id", "offerings"]),
 
   // ---- REST API v2 ------------------------------------------------------------------------------------------------
@@ -179,8 +184,21 @@ export const schemas = {
     one_time: obj({ is_consumable: { type: ["boolean", "null"] } }),
     created_at: ms("Creation time."), app_id: str(), display_name: nstr(),
     app: ref("App"),
-    indicative_price: { oneOf: [ref("IndicativePrice"), { type: "null" }], description: "With `expand=indicative_price`: the Test Store price, or null." },
+    indicative_price: { oneOf: [ref("IndicativePrice"), { type: "null" }], description: "With `expand=indicative_price`: the Test Store price; else the App Store or Google Play price in the United States from the last store price read (or the in-app purchase's base territory, or the first territory with a price); else the Stripe web product's price. Null when none is known." },
+    store_details: { oneOf: [ref("StoreDetails"), { type: "null" }], description: "RevenueDot extension, with `expand=store_details`: the store's status and price from the last store price read. Null when the product was never read from App Store Connect or Google Play (other stores, or no read yet)." },
   }, ["object", "id", "store_identifier", "type", "state", "created_at", "app_id", "display_name"]),
+  StoreDetails: obj({
+    object: { type: "string", const: "store_details" },
+    status: nstr("The store's state in lower case: `approved`, `ready_to_submit`, `waiting_for_review`, `in_review`, `rejected`, `developer_action_needed`, `missing_metadata`, `removed_from_sale` (App Store), `active`, `draft`, `inactive` (Google Play)."),
+    store_state: nstr("The state as the store spells it, such as `APPROVED` or `ACTIVE`."),
+    price: { oneOf: [obj({ amount_micros: int("Price in micros: 9.99 is 9990000.", { format: "int64" }), currency: str("ISO 4217 code."), territory: nstr("App Store territory (`USA`) or Google Play region (`US`).") }, ["amount_micros", "currency", "territory"]), { type: "null" }], description: "The United States price when the product has one, else the in-app purchase's base territory or the first territory with a price. Null when the store has no price for it." },
+    territories: int("How many territories have a price."),
+    duration: nstr("The store's period for a subscription (`P1M` ...)."),
+    display_name: nstr("The name in the store."),
+    editable: bool("Whether the product editor can change its prices."),
+    refreshed_at: ms("When the prices were read from the store."),
+    refresh_status: { type: ["string", "null"], enum: ["ok", "failing", null], description: "The app's last read: `failing` means it failed and these values are from the read before." },
+  }, ["object", "status", "store_state", "price", "territories", "duration", "display_name", "editable", "refreshed_at", "refresh_status"]),
   StoreProductImport: obj({
     object: { type: "string", const: "store_product_import" }, app_id: str(),
     created: arr(ref("Product"), { description: "Products created by this import." }),
@@ -189,7 +207,7 @@ export const schemas = {
     entitlement_ids: arr(str(), { description: "The entitlements every created and existing product is attached to." }),
   }, ["object", "app_id", "created", "existing", "failed", "entitlement_ids"]),
   IndicativePrice: obj({
-    object: { type: "string", const: "indicative_price" }, currency: str("ISO 4217 code."), country: { type: "null" }, amount_micros: int("Price in micros: 9.99 is 9990000."),
+    object: { type: "string", const: "indicative_price" }, currency: str("ISO 4217 code."), country: nstr("`US` for a United States store price, the region code for another Google Play region, else null (Test Store and Stripe prices, other App Store territories)."), amount_micros: int("Price in micros: 9.99 is 9990000."),
   }, ["object", "currency", "country", "amount_micros"]),
   WebhookState: obj({ object: { type: "string", const: "webhook_state" }, id: str("Webhook id (wh_...)."), enabled: bool("False while deliveries are paused.") }, ["object", "id", "enabled"]),
   Entitlement: obj({
@@ -205,7 +223,7 @@ export const schemas = {
   Offering: obj({
     object: { type: "string", const: "offering" }, id: str("Offering id (ofrng...)."), lookup_key: str(), display_name: str(),
     is_current: bool("Exactly one offering per project is current."), created_at: ms("Creation time."), project_id: str(), state: en(["active", "inactive"]),
-    paywall_id: { type: "null" }, metadata: { type: ["object", "null"] }, packages: embeddedList(ref("Package")),
+    paywall_id: nstr("The paywall attached to this offering, or null."), metadata: { type: ["object", "null"] }, packages: embeddedList(ref("Package")),
   }, ["object", "id", "lookup_key", "display_name", "is_current", "created_at", "project_id", "state", "metadata"]),
   ActiveEntitlement: obj({ object: { type: "string", const: "customer.active_entitlement" }, entitlement_id: str("Entitlement id (entl...), not the lookup key."), expires_at: nms("When access ends.") }, ["object", "entitlement_id", "expires_at"]),
   CustomerAttribute: obj({ object: { type: "string", const: "customer.attribute" }, name: str(), value: str(), updated_at: ms("Last update.") }, ["object", "name", "value", "updated_at"]),
@@ -213,8 +231,11 @@ export const schemas = {
     object: { type: "string", const: "customer" }, id: str("The customer's original app user id."), project_id: str(),
     first_seen_at: ms("First seen."), last_seen_at: nms("Last seen."), last_seen_app_version: nstr(), last_seen_country: nstr(),
     last_seen_platform: nstr(), last_seen_platform_version: { type: "null" },
-    active_entitlements: embeddedList(ref("ActiveEntitlement")), experiment: { type: "null" }, attributes: embeddedList(ref("CustomerAttribute")),
+    active_entitlements: embeddedList(ref("ActiveEntitlement")), experiment: { oneOf: [ref("ExperimentEnrollment"), { type: "null" }], description: "The experiment the customer is in (running or paused), else the last one they joined, or null." }, attributes: embeddedList(ref("CustomerAttribute")),
   }, ["object", "id", "project_id", "first_seen_at", "last_seen_at"], { description: "`active_entitlements` and `experiment` are present on single-customer answers; `attributes` only with `expand=attributes`." }),
+  ExperimentEnrollment: obj({
+    object: { type: "string", const: "experiment_enrollment" }, id: str("Experiment id (prexp...)."), name: str("The experiment's name."), variant: en(["a", "b", "c", "d"], "The customer's variant: `a` is the control."),
+  }, ["object", "id", "name", "variant"]),
   CustomerAlias: obj({ object: { type: "string", const: "customer.alias" }, id: str("An app user id of the customer."), created_at: ms("When it was linked.") }, ["object", "id", "created_at"]),
   CustomerEvent: obj({
     object: { type: "string", const: "customer.event" }, id: str(), app_id: nstr(), type: str("Webhook event type, for example INITIAL_PURCHASE."),
@@ -374,7 +395,7 @@ export const schemas = {
         id: str(), lookup_key: str(), display_name: str(),
         source: { ...en(["override", "experiment", "targeting", "default"]), description: "Why the customer gets it: their override, an experiment (one they are in, or a running one their next request would enroll them in), the first live targeting rule that matches, or the project's current offering." },
         rule_id: str("With `targeting`."), rule_name: nstr("With `targeting`."),
-        experiment_id: str("With `experiment`."), experiment_name: nstr("With `experiment`."), variant: { ...en(["a", "b"]), description: "With `experiment`." },
+        experiment_id: str("With `experiment`."), experiment_name: nstr("With `experiment`."), variant: { ...en(["a", "b", "c", "d"]), description: "With `experiment`: the variant, `a` being the control." }, variant_name: str("With `experiment`: the variant's name, such as Control or Treatment B."),
       }, ["id", "lookup_key", "source"]),
       type: ["object", "null"],
       description: "The current offering the SDK returns for this customer now, resolved with the device details of their last SDK request (platform, app and SDK version, SDK flavor, OS version, storefront). Locale conditions never match here because the locale is not stored. Reading it enrolls nobody in an experiment; it shows the variant their next request would get.",

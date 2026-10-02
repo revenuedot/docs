@@ -23,7 +23,7 @@ Open `http://localhost:8787/login` and sign up. **The first account is the owner
 | `revenuedot` container (Node.js 22) | One process: SDK API (`/v1`), REST API (`/v2`), dashboard sign-in (`/auth`), OAuth for MCP clients (`/oauth`), store notifications (`/v1/notifications/...`) and the dashboard's web app. A background job runs every 30 seconds: it records expirations, runs the daily Google Play voided-purchase check, re-checks store credentials, sends webhooks and sends [alert emails](alerts.md) |
 | `db` container (Postgres 16) | Every customer, purchase, event and setting, in the `revenuedot-data` volume |
 
-Run **one** `revenuedot` container per database for now. The background job has no lock across processes, so two containers could send a webhook twice.
+One container is enough for most apps. To run two or more against the same database, behind a load balancer, see [High availability](high-availability.md): migrations and the background job take Postgres locks, so each webhook and email still goes out once. The server answers `GET /healthz` (process alive) and `GET /readyz` (database reachable, not shutting down) for health checks, and finishes requests in flight when it gets SIGTERM.
 
 ## Settings
 Edit `.env` next to `docker-compose.yml`. Store credentials (Apple keys, Google service accounts) are not environment variables: each app holds its own, set in the dashboard or with the REST API.
@@ -50,6 +50,7 @@ Inside the container the server reads:
 | `REVENUEDOT_CUSTOM_DOMAIN_TARGET` | the pay host | The host customers' custom domains must CNAME to |
 | `REVENUEDOT_LICENSE_KEY` | unset | Turns on [RevenueDot Enterprise](enterprise.md) features the key covers. Not passed through by the default `docker-compose.yml`; add it to `docker-compose.override.yml` like the signing key |
 | `REVENUEDOT_EE_DEV` | unset | `true` turns on every Enterprise feature for development and testing only ([development mode](enterprise.md#development-mode)) |
+| `REVENUEDOT_INSIGHTS_DIGEST` | unset | `on` writes and emails the weekly [growth insights](growth-insights.md) digest with your model key. It needs [email](#email). The one-click opt-out link needs `REVENUEDOT_ENCRYPTION_KEY` or `REVENUEDOT_SIGNING_KEY` |
 
 ### Set the signing key
 Generate a key once (`pnpm tsx scripts/signing-keygen.ts` in a checkout with `pnpm install` done), add it to `.env`, and pass it to the container with a `docker-compose.override.yml`, which Compose reads automatically:

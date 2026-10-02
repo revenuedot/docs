@@ -28,7 +28,7 @@ Every platform's version of this line is in the [SDK guides](../sdks/README.md).
 ## How is RevenueDot different from RevenueCat?
 - **You choose where it runs.** Use RevenueDot Cloud, or run it yourself and keep your purchase data in your own Postgres.
 - **The server is open source** under AGPL-3.0, so you can read the code that decides who gets access.
-- **It does far less today.** Paywalls, experiments, targeting, charts beyond the overview, Customer Center and virtual currencies are not built. RevenueCat has all of these ([features](https://www.revenuecat.com/pricing)).
+- **It is catching up feature by feature.** Paywalls, experiments, targeting, the charts, Customer Center and virtual currencies are built; [What differs](../migrate/what-differs.md) lists what is still missing next to RevenueCat ([features](https://www.revenuecat.com/pricing)).
 - **It is newer.** RevenueCat has a longer track record as a hosted service.
 
 ## What does it cost?
@@ -90,7 +90,7 @@ Yes. On RevenueDot Cloud it is at [app.revenuedot.app/login](https://app.revenue
 Yes, with the Test Store: create a `test_store` app and use its `test_` key. See [Test Store](../guides/test-store.md).
 
 ## What happens to paywalls, experiments and Customer Center?
-They are not implemented. The SDK endpoints answer empty or 404 in the way that makes the SDK hide those features, so your app does not crash. Paywalls built in RevenueCat do not render against RevenueDot.
+They work with the stock SDKs: build paywalls in the [paywall editor](../guides/paywalls.md), run [experiments](../guides/experiments.md) with up to four variants, and set up the [Customer Center](../guides/customer-center.md). The importer does not copy RevenueCat's paywalls, targeting rules or experiments, so you recreate them in RevenueDot.
 
 ## Does the web SDK work?
 `purchases-js` works with Test Store (`test_`) keys against RevenueDot. RevenueCat Billing (`rcb_`) and Paddle purchases do not. For real payments on the web, use RevenueDot's hosted checkout on your Stripe account ([web billing](../guides/web-billing.md)), or post purchases from your own Stripe checkout from your backend ([Stripe guide](../guides/stripe.md)). With the stock SDK, turn off analytics events (`flags: { collectAnalyticsEvents: false }`), because the stock SDK sends them to RevenueCat. See the [web guide](../sdks/web.md).

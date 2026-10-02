@@ -10,16 +10,16 @@ const pathParam = (name, description) => ({ name, in: "path", required: true, sc
 const expand = (values, description) => ({ name: "expand", in: "query", schema: arr(en(values)), style: "form", explode: true, description });
 const testStorePrice = { type: ["object", "null"], required: ["amount_micros", "currency"], properties: { amount_micros: int("Price in micros: 9.99 is 9990000."), currency: str("ISO 4217 code such as USD or EUR. A code with no exchange rate to USD is refused (its purchases would record no revenue).") },
   description: "RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`." };
-const priceExpand = "`indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price)."
+const priceExpand = "`indicative_price` adds RevenueCat's IndicativePrice: the Test Store price; else the App Store or Google Play price in the United States from the last store price read (or the in-app purchase's base territory, or the first territory with a price); else the Stripe web product's price; null when none is known. `store_details` (RevenueDot extension) adds the store's status, base price, number of priced territories and when they were read."
 const E = (...c) => v2Errors(401, 403, ...c);
 const list = (schema, description = "A page of results.", example) => ok(description, listOf(schema), example);
 const del = (object) => ok("Deleted.", ref("Deleted"), { object, id: "…", deleted_at: 1790801342625 });
 const archive = (tag, id, what, source, scopes) => ({
-  [`${P}/${what}s/{${what}_id}/actions/archive`]: { post: op({ id: `archive${id}`, tag, summary: `Archive ${/^[aeiou]/.test(what) ? "an" : "a"} ${what}`, security: SECRET, source, scopes, parameters: [project, pathParam(`${what}_id`, `${id} id.`)], responses: { 200: ok(`The archived ${what}.`, ref(id)), ...E(404, ...(what === "offering" ? [422] : [])) } }) },
+  [`${P}/${what}s/{${what}_id}/actions/archive`]: { post: op({ id: `archive${id}`, tag, summary: `Archive ${/^[aeiou]/.test(what) ? "an" : "a"} ${what}`, security: SECRET, source, scopes, parameters: [project, pathParam(`${what}_id`, `${id} id.`)], description: what === "offering" ? "An offering that a draft, running or paused experiment uses cannot be archived (409); the current offering cannot be archived (422)." : undefined, responses: { 200: ok(`The archived ${what}.`, ref(id)), ...E(404, ...(what === "offering" ? [409, 422] : [])) } }) },
 });
 const errBody = obj({ type: str(), message: str() });
 const authErr = ok("Not signed in.", errBody, { type: "authentication_error", message: "Not signed in." });
-const accountUser = obj({ id: str(), email: str(), name: nstr(), email_verified: bool("Whether the user confirmed their email address. Always true for accounts created from an invite or after a password reset."), alert_emails: bool("Whether the user gets alert emails for projects they administer.") });
+const accountUser = obj({ id: str(), email: str(), name: nstr(), email_verified: bool("Whether the user confirmed their email address. Always true for accounts created from an invite or after a password reset."), alert_emails: bool("Whether the user gets alert emails for projects they administer."), insights_emails: bool("Whether the user gets the weekly growth insights digest for projects they administer.") });
 const tokenReason = en(["invalid", "expired", "used"]);
 const inviteToken = pathParam("token", "The `token` from the invite link (`/invite?token=...`).");
 const inviteId = pathParam("invite_id", "Invite id (inv_...).");
@@ -105,10 +105,10 @@ RevenueDot extensions in the store object: \`notification_forward_url\` (copy st
   // ---- Products ----------------------------------------------------------------------------------------------------
   [`${P}/products`]: {
     get: op({ id: "listProducts", tag: "Products", summary: "List products", security: SECRET, source: R.products, scopes: ["project_configuration:products:read"],
-      parameters: [project, { name: "app_id", in: "query", schema: str(), description: "Only this app's products." }, expand(["items.app", "items.indicative_price"], "`items.app` embeds each product's app. `items.indicative_price` adds each product's Test Store price."), ...page],
+      parameters: [project, { name: "app_id", in: "query", schema: str(), description: "Only this app's products." }, expand(["items.app", "items.indicative_price", "items.store_details"], "`items.app` embeds each product's app. `items.indicative_price` adds each product's indicative price: the Test Store price, else the store price from the last price read (United States first), else the Stripe web product's price. `items.store_details` (RevenueDot extension) adds each product's store status and price; see [store prices](../docs/guides/product-editor.md#store-prices-and-status-on-the-products-page)."), ...page],
       responses: { 200: list(ref("Product")), ...E(404) } }),
     post: op({ id: "createProduct", tag: "Products", summary: "Create a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read_write"],
-      parameters: [project, expand(["indicative_price"], priceExpand)],
+      parameters: [project, expand(["indicative_price", "store_details"], priceExpand)],
       description: "`store_identifier` is the store's product id. For Google Play subscriptions use `subscriptionId:basePlanId`. Set `subscription.duration` (ISO 8601, for example P1M): the Test Store uses it as the period, and MRR uses it for every store. `test_store_price` sets what the SDK shows for a Test Store product.",
       requestBody: body(obj({
         store_identifier: str(undefined, { maxLength: 255 }), app_id: str(), type: en(["subscription", "one_time", "consumable", "non_consumable", "non_renewing_subscription"]),
@@ -119,8 +119,8 @@ RevenueDot extensions in the store object: \`notification_forward_url\` (copy st
       responses: { 201: ok("The product.", ref("Product"), productExample), ...v2Errors(400, 401, 403, 404, 409) } }),
   },
   [`${P}/products/{product_id}`]: {
-    get: op({ id: "getProduct", tag: "Products", summary: "Get a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read"], parameters: [project, pathParam("product_id", "Product id (prod...)."), expand(["app", "indicative_price"], `\`app\` embeds the app. ${priceExpand}`)], responses: { 200: ok("The product.", ref("Product"), productExample), ...E(404) } }),
-    post: op({ id: "updateProduct", tag: "Products", summary: "Update a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read_write"], parameters: [project, pathParam("product_id", "Product id."), expand(["app", "indicative_price"], priceExpand)],
+    get: op({ id: "getProduct", tag: "Products", summary: "Get a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read"], parameters: [project, pathParam("product_id", "Product id (prod...)."), expand(["app", "indicative_price", "store_details"], `\`app\` embeds the app. ${priceExpand}`)], responses: { 200: ok("The product.", ref("Product"), productExample), ...E(404) } }),
+    post: op({ id: "updateProduct", tag: "Products", summary: "Update a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read_write"], parameters: [project, pathParam("product_id", "Product id."), expand(["app", "indicative_price", "store_details"], priceExpand)],
       description: "RevenueDot also lets you correct `type` and `subscription.duration` (null clears it), and set or clear `test_store_price`.",
       requestBody: body(obj({ display_name: str(), type: en(["subscription", "one_time", "consumable", "non_consumable", "non_renewing_subscription"]), subscription: obj({ duration: nstr() }), test_store_price: testStorePrice }), { display_name: "Pro (monthly)", test_store_price: { amount_micros: 9990000, currency: "USD" } }),
       responses: { 200: ok("The product.", ref("Product")), ...v2Errors(400, 401, 403, 404) } }),
@@ -174,7 +174,23 @@ RevenueDot extensions in the store object: \`notification_forward_url\` (copy st
       requestBody: body(obj({ display_name: str(), is_current: bool(), metadata: { type: ["object", "null"] } }), { is_current: true }),
       responses: { 200: ok("The offering.", ref("Offering")), ...v2Errors(400, 401, 403, 404, 422) } }),
     delete: op({ id: "deleteOffering", tag: "Offerings", summary: "Delete an offering", security: SECRET, source: R.offerings, scopes: ["project_configuration:offerings:read_write"], parameters: [project, pathParam("offering_id", "Offering id.")],
-      description: "Deletes its packages and clears customer overrides that point to it.", responses: { 200: del("offering"), ...E(404) } }),
+      description: "Deletes its packages and clears customer overrides that point to it. An offering that a draft, running or paused experiment uses (as a variant's offering or a placement offering) answers 409 and names the experiment: stop the experiment or pick another offering in it first. A stopped experiment keeps its results and shows the deleted offering's id.",
+      responses: { 200: del("offering"), ...E(404, 409) } }),
+  },
+  [`${P}/offerings/{offering_id}/actions/duplicate`]: {
+    post: op({ id: "duplicateOffering", tag: "Offerings", summary: "Duplicate an offering", security: SECRET, source: R.offerings, extension: true, scopes: ["project_configuration:offerings:read_write"], parameters: [project, pathParam("offering_id", "The offering to copy.")],
+      description: `Copies an offering with its packages, for an experiment's treatment. The copy is never current. Without \`packages\` the copy is exact: every package in order, with the same products. With \`packages\`, the list sets which packages are copied and in what order, and a package's \`products\` replaces its products (to test another price, period, trial or introductory offer). \`copy_paywall\` copies the offering's paywall, draft and published content, onto the copy.
+
+Answers 400 when a \`source_package_id\` is not a package of this offering or repeats, a product is not in the project or repeats in a package, or \`copy_paywall\` is true and the offering has no paywall. Answers 409 when the \`lookup_key\` is taken, or two products of the same app in a package have overlapping \`eligibility_criteria\`.`,
+      requestBody: body(obj({
+        lookup_key: str(undefined, { maxLength: 200 }), display_name: str(undefined, { maxLength: 1500 }), metadata: { type: ["object", "null"], description: "Default: the source offering's metadata." },
+        packages: arr(obj({
+          source_package_id: str("A package of the source offering (pkge...)."),
+          products: arr(obj({ product_id: str(), eligibility_criteria: en(["all", "google_sdk_lt_6", "google_sdk_ge_6"]) }, ["product_id", "eligibility_criteria"]), { maxItems: 50, description: "Replaces the package's products. Omitted: the source package's products." }),
+        }, ["source_package_id"]), { maxItems: 50, description: "Packages to copy, in the new order. Omitted: every package, as it is." }),
+        copy_paywall: bool("Also copy the offering's paywall onto the copy."),
+      }, ["lookup_key", "display_name"]), { lookup_key: "default_price", display_name: "Standard plans (price point)", packages: [{ source_package_id: "pkge1a2b3c4d5e", products: [{ product_id: "prod9k8j7h6g5f", eligibility_criteria: "all" }] }, { source_package_id: "pkge6f7g8h9i0j" }] }),
+      responses: { 201: ok("The copy, with its packages and their products expanded.", ref("Offering")), ...v2Errors(400, 401, 403, 404, 409) } }),
   },
   ...archive("Offerings", "Offering", "offering", R.offerings, ["project_configuration:offerings:read_write"]),
   [`${P}/offerings/{offering_id}/actions/unarchive`]: {
@@ -378,11 +394,11 @@ With \`invite_token\` (from an invite link), the account joins the inviting proj
   "/auth/logout": { post: op({ id: "logout", tag: "Dashboard auth", summary: "Sign out", security: SESSION, source: R.auth, extension: true, responses: { 200: ok("Signed out.", obj({ ok: bool() }), { ok: true }) } }) },
   "/auth/me": {
     get: op({ id: "me", tag: "Dashboard auth", summary: "The signed-in user and their projects", security: SESSION, source: R.auth, extension: true,
-      responses: { 200: ok("The user.", obj({ user: accountUser, account: obj({ edition: en(["cloud", "self-hosted"]), plan: str("The account plan (`free` on RevenueDot Cloud)."), billing_ready: bool("RevenueDot Cloud: billing is switched on, so the dashboard links the Billing page. Always false on a self-hosted server."), billing_status: nstr("RevenueDot Cloud: `none`, `active`, `past_due`, `unpaid` or `canceled`. Null on a self-hosted server."), email_verification_required: bool("True on RevenueDot Cloud until the user confirms their email. Until then they cannot invite people or create secret API keys. Always false on a self-hosted server.") }), projects: arr({ type: "object" }) }),
+      responses: { 200: ok("The user.", obj({ user: accountUser, account: obj({ edition: en(["cloud", "self-hosted"]), plan: str("The account plan (`free` on RevenueDot Cloud)."), billing_ready: bool("RevenueDot Cloud: billing is switched on, so the dashboard links the Billing page. Always false on a self-hosted server."), billing_status: nstr("RevenueDot Cloud: `none`, `active`, `past_due`, `unpaid` or `canceled`. Null on a self-hosted server."), email_verification_required: bool("True on RevenueDot Cloud until the user confirms their email. Until then they cannot invite people or create secret API keys. Always false on a self-hosted server."), features: obj({ benchmarks: bool("Benchmarks exist on this server (RevenueDot Cloud)."), insights_digest: bool("This server emails the weekly growth insights digest.") }) }), projects: arr({ type: "object" }) }),
         { user: { id: "usr_8k2m4q", email: "dev@example.com", name: "Dana", email_verified: true, alert_emails: true }, account: { edition: "cloud", plan: "free", billing_ready: false, billing_status: "none", email_verification_required: false }, projects: [] }), 401: authErr } }),
     post: op({ id: "updateMe", tag: "Dashboard auth", summary: "Update account settings", security: SESSION, source: R.auth, extension: true,
-      description: "The display name and whether the user gets [alert emails](../docs/guides/alerts.md) for projects they administer. Send only the fields to change. A null or empty `name` clears it.",
-      requestBody: body(obj({ name: nstr(undefined, { maxLength: 100 }), alert_emails: bool("False stops alert emails for every project.") }), { alert_emails: false }),
+      description: "The display name, whether the user gets [alert emails](../docs/guides/alerts.md) and the weekly [growth insights digest](../docs/guides/growth-insights.md) for projects they administer. Send only the fields to change. A null or empty `name` clears it.",
+      requestBody: body(obj({ name: nstr(undefined, { maxLength: 100 }), alert_emails: bool("False stops alert emails for every project."), insights_emails: bool("False stops the weekly growth insights digest for every project.") }), { alert_emails: false }),
       responses: { 200: ok("The updated user.", obj({ user: accountUser }), { user: { id: "usr_8k2m4q", email: "dev@example.com", name: "Dana", email_verified: true, alert_emails: false } }), 400: ok("Invalid field.", errBody), 401: authErr } }),
   },
   "/auth/password/forgot": {
@@ -539,7 +555,9 @@ Bodies can hold customer data, so this needs \`read_write\` (Admins and Develope
   },
   [`${P}/webhooks/{webhook_id}/deliveries/{delivery_id}/retry`]: {
     post: op({ id: "retryWebhookDelivery", tag: "Webhook deliveries", summary: "Retry a delivery now", security: SECRET, source: R.ext, extension: true, scopes: ["project_configuration:integrations:read_write"],
-      parameters: [project, pathParam("webhook_id", "Webhook id."), pathParam("delivery_id", "Delivery id.")], responses: { 200: ok("The delivery, queued.", ref("WebhookDelivery")), ...E(404) } }),
+      parameters: [project, pathParam("webhook_id", "Webhook id."), pathParam("delivery_id", "Delivery id.")],
+      description: "Queues the delivery now, also one waiting for its scheduled retry. 409 (`resource_locked_error`) while a job run is sending it.",
+      responses: { 200: ok("The delivery, queued.", ref("WebhookDelivery")), ...E(404, 409) } }),
   },
   [`${P}/events`]: {
     get: op({ id: "listEvents", tag: "Event log", summary: "Event log", security: SECRET, source: R.ext, extension: true, scopes: ["customer_information:customers:read"],
