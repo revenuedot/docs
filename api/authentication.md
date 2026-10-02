@@ -24,6 +24,7 @@ Send every key as a bearer token: `Authorization: Bearer <key>`. Which key depen
 - **`dashboardSession`**: The dashboard session cookie from `POST /auth/login`. It authorizes `/v2` for every project the user belongs to.
 - **`subscriberToken`**: A subscriber access token: `rdat_...` from `POST /v2/projects/{project_id}/apps/{app_id}/authenticate`, or the JWT `access_token` of an Auth sign-in (`POST /v1/auth/login`). It speaks for one app user id of one app for one hour. An expired or revoked token, or a path or body naming another app user id, answers 401 with code 7224.
 - **`scimToken`**: RevenueDot Enterprise. A SCIM token (`rdscim_` and 64 hex characters) from Organization settings → SCIM provisioning or `POST /v2/organizations/{org_id}/scim/tokens`. It speaks for one organization and works only on `/scim/v2`.
+- **`importToken`**: An import token (`rdi_` and 64 hex characters) from **Receive a project** on the server a project moves to (`POST /v2/imports/tokens`). It lets one project move into the account that created it and lasts 24 hours.
 - **`googlePubSubOidc`**: Google-signed OIDC token of a Pub/Sub push subscription. Checked only when the app's `pubsub_audience` credential is set.
 
 ## Where keys come from

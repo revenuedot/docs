@@ -201,6 +201,12 @@ tags:
   - name: Dashboard data
     description: Series and rows the dashboard shows.
     x-page: extensions
+  - name: Data moves
+    description: "Full exports of a project and moves between RevenueDot servers (self-hosted and Cloud) that keep ids, SDK keys, secret keys and webhook secrets: export jobs and downloads, move states (paused, forwarded), the dashboard's server-run move, and the target side with an import token. See [Move projects and export everything](../docs/guides/move-projects.md)."
+    x-page: extensions
+  - name: Cloud billing
+    description: "RevenueDot Cloud only: the account's plan, tracked revenue and invoices, Stripe Checkout and the Customer Portal on RevenueDot's own Stripe account. See [Cloud billing](../docs/guides/cloud-billing.md)."
+    x-page: extensions
   - name: Migration import
     description: Bulk import from RevenueCat, used by the `revenuedot import` CLI.
     x-page: extensions
@@ -32269,6 +32275,3534 @@ paths:
           description: Unknown card.
       x-source: routes/share.ts
       x-revenuedot-extension: true
+  /v2/projects/{project_id}/exports:
+    post:
+      operationId: createProjectExport
+      tags:
+        - Data moves
+      summary: Export the whole project
+      description: "Starts an export job of everything the project owns (64 tables) as a versioned archive: gzip JSON Lines per table and a manifest with the schema version, row counts and checksums. The job runs in short slices in the background; poll it, or call `actions/advance`. Secrets are left out unless `passphrase` is given (12 or more characters); then they are encrypted with it (AES-256-GCM, PBKDF2-SHA-256). Admins only in the dashboard."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                purpose:
+                  type: string
+                  enum:
+                    - download
+                    - move
+                include_secrets:
+                  type: boolean
+                passphrase:
+                  type: string
+                  description: 12 to 200 characters.
+            example:
+              include_secrets: true
+              passphrase: correct horse battery staple
+      responses:
+        "202":
+          description: The export, queued.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - project_export
+                  id:
+                    type: string
+                  project_id:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - queued
+                      - running
+                      - succeeded
+                      - failed
+                      - expired
+                  purpose:
+                    type: string
+                    enum:
+                      - download
+                      - move
+                  include_secrets:
+                    type: boolean
+                    description: Secrets are in the archive, encrypted with the passphrase.
+                  storage:
+                    type: string
+                    description: "Where the files are: r2, s3, disk or db."
+                  rows:
+                    type: integer
+                    description: Rows in the archive.
+                  bytes:
+                    type: integer
+                    description: Size of the archive files.
+                  tables_done:
+                    type: integer
+                  tables_total:
+                    type: integer
+                  progress:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      table:
+                        type: integer
+                        description: Tables done.
+                      rows_in_table:
+                        type: integer
+                        description: Rows of the current table done.
+                  error:
+                    type:
+                      - string
+                      - "null"
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  finished_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Finished. Epoch milliseconds, or null.
+                  expires_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Deleted after this (7 days). Epoch milliseconds, or null.
+                  manifest:
+                    type: object
+                    description: "Once succeeded: the archive's manifest.json (`format`, `version`, `schema`, `project`, `tables[]` with `columns`, `rows`, `checksum` and `files[]`, `secrets`, `excluded[]`)."
+                  download_url:
+                    type: string
+                    description: "Once succeeded: the whole archive as a .tar. No other auth; expires after an hour."
+                  download_expires_at:
+                    type: integer
+                    format: int64
+                    description: When the download link expires. Epoch milliseconds.
+                required:
+                  - object
+                  - id
+                  - status
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/moves.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+    get:
+      operationId: listProjectExports
+      tags:
+        - Data moves
+      summary: List the project's exports
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: Exports, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - project_export
+                        id:
+                          type: string
+                        project_id:
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                            - queued
+                            - running
+                            - succeeded
+                            - failed
+                            - expired
+                        purpose:
+                          type: string
+                          enum:
+                            - download
+                            - move
+                        include_secrets:
+                          type: boolean
+                          description: Secrets are in the archive, encrypted with the passphrase.
+                        storage:
+                          type: string
+                          description: "Where the files are: r2, s3, disk or db."
+                        rows:
+                          type: integer
+                          description: Rows in the archive.
+                        bytes:
+                          type: integer
+                          description: Size of the archive files.
+                        tables_done:
+                          type: integer
+                        tables_total:
+                          type: integer
+                        progress:
+                          type:
+                            - object
+                            - "null"
+                          properties:
+                            table:
+                              type: integer
+                              description: Tables done.
+                            rows_in_table:
+                              type: integer
+                              description: Rows of the current table done.
+                        error:
+                          type:
+                            - string
+                            - "null"
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: Created. Epoch milliseconds.
+                        finished_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Finished. Epoch milliseconds, or null.
+                        expires_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Deleted after this (7 days). Epoch milliseconds, or null.
+                        manifest:
+                          type: object
+                          description: "Once succeeded: the archive's manifest.json (`format`, `version`, `schema`, `project`, `tables[]` with `columns`, `rows`, `checksum` and `files[]`, `secrets`, `excluded[]`)."
+                        download_url:
+                          type: string
+                          description: "Once succeeded: the whole archive as a .tar. No other auth; expires after an hour."
+                        download_expires_at:
+                          type: integer
+                          format: int64
+                          description: When the download link expires. Epoch milliseconds.
+                      required:
+                        - object
+                        - id
+                        - status
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/moves.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/export:
+    get:
+      operationId: getLatestProjectExport
+      tags:
+        - Data moves
+      summary: Get the latest export
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: The export.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - project_export
+                  id:
+                    type: string
+                  project_id:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - queued
+                      - running
+                      - succeeded
+                      - failed
+                      - expired
+                  purpose:
+                    type: string
+                    enum:
+                      - download
+                      - move
+                  include_secrets:
+                    type: boolean
+                    description: Secrets are in the archive, encrypted with the passphrase.
+                  storage:
+                    type: string
+                    description: "Where the files are: r2, s3, disk or db."
+                  rows:
+                    type: integer
+                    description: Rows in the archive.
+                  bytes:
+                    type: integer
+                    description: Size of the archive files.
+                  tables_done:
+                    type: integer
+                  tables_total:
+                    type: integer
+                  progress:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      table:
+                        type: integer
+                        description: Tables done.
+                      rows_in_table:
+                        type: integer
+                        description: Rows of the current table done.
+                  error:
+                    type:
+                      - string
+                      - "null"
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  finished_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Finished. Epoch milliseconds, or null.
+                  expires_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Deleted after this (7 days). Epoch milliseconds, or null.
+                  manifest:
+                    type: object
+                    description: "Once succeeded: the archive's manifest.json (`format`, `version`, `schema`, `project`, `tables[]` with `columns`, `rows`, `checksum` and `files[]`, `secrets`, `excluded[]`)."
+                  download_url:
+                    type: string
+                    description: "Once succeeded: the whole archive as a .tar. No other auth; expires after an hour."
+                  download_expires_at:
+                    type: integer
+                    format: int64
+                    description: When the download link expires. Epoch milliseconds.
+                required:
+                  - object
+                  - id
+                  - status
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/moves.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/exports/{export_id}:
+    get:
+      operationId: getProjectExport
+      tags:
+        - Data moves
+      summary: Get an export
+      description: Once `succeeded`, it has the `manifest` and a `download_url` valid for an hour. Each archive file can also be read one by one with `GET …/exports/{export_id}/files/{name}` (`manifest.json`, `members.json`, `tables/<table>/0001.jsonl.gz`, `secrets/<table>/0001.json.enc`).
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: export_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: An export id.
+      responses:
+        "200":
+          description: The export.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - project_export
+                  id:
+                    type: string
+                  project_id:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - queued
+                      - running
+                      - succeeded
+                      - failed
+                      - expired
+                  purpose:
+                    type: string
+                    enum:
+                      - download
+                      - move
+                  include_secrets:
+                    type: boolean
+                    description: Secrets are in the archive, encrypted with the passphrase.
+                  storage:
+                    type: string
+                    description: "Where the files are: r2, s3, disk or db."
+                  rows:
+                    type: integer
+                    description: Rows in the archive.
+                  bytes:
+                    type: integer
+                    description: Size of the archive files.
+                  tables_done:
+                    type: integer
+                  tables_total:
+                    type: integer
+                  progress:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      table:
+                        type: integer
+                        description: Tables done.
+                      rows_in_table:
+                        type: integer
+                        description: Rows of the current table done.
+                  error:
+                    type:
+                      - string
+                      - "null"
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  finished_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Finished. Epoch milliseconds, or null.
+                  expires_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Deleted after this (7 days). Epoch milliseconds, or null.
+                  manifest:
+                    type: object
+                    description: "Once succeeded: the archive's manifest.json (`format`, `version`, `schema`, `project`, `tables[]` with `columns`, `rows`, `checksum` and `files[]`, `secrets`, `excluded[]`)."
+                  download_url:
+                    type: string
+                    description: "Once succeeded: the whole archive as a .tar. No other auth; expires after an hour."
+                  download_expires_at:
+                    type: integer
+                    format: int64
+                    description: When the download link expires. Epoch milliseconds.
+                required:
+                  - object
+                  - id
+                  - status
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/moves.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+    delete:
+      operationId: deleteProjectExport
+      tags:
+        - Data moves
+      summary: Delete an export's files now
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: export_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: An export id.
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - project_export
+                  id:
+                    type: string
+                  deleted:
+                    type: boolean
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/moves.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/exports/{export_id}/actions/advance:
+    post:
+      operationId: advanceProjectExport
+      tags:
+        - Data moves
+      summary: Do the next slice of an export now
+      description: Works for about eight seconds and returns the export. `npx revenuedot export` and `move` drive exports with it; the server's scheduled tick also advances queued exports.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: export_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: An export id.
+      responses:
+        "200":
+          description: The export.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - project_export
+                  id:
+                    type: string
+                  project_id:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - queued
+                      - running
+                      - succeeded
+                      - failed
+                      - expired
+                  purpose:
+                    type: string
+                    enum:
+                      - download
+                      - move
+                  include_secrets:
+                    type: boolean
+                    description: Secrets are in the archive, encrypted with the passphrase.
+                  storage:
+                    type: string
+                    description: "Where the files are: r2, s3, disk or db."
+                  rows:
+                    type: integer
+                    description: Rows in the archive.
+                  bytes:
+                    type: integer
+                    description: Size of the archive files.
+                  tables_done:
+                    type: integer
+                  tables_total:
+                    type: integer
+                  progress:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      table:
+                        type: integer
+                        description: Tables done.
+                      rows_in_table:
+                        type: integer
+                        description: Rows of the current table done.
+                  error:
+                    type:
+                      - string
+                      - "null"
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  finished_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Finished. Epoch milliseconds, or null.
+                  expires_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Deleted after this (7 days). Epoch milliseconds, or null.
+                  manifest:
+                    type: object
+                    description: "Once succeeded: the archive's manifest.json (`format`, `version`, `schema`, `project`, `tables[]` with `columns`, `rows`, `checksum` and `files[]`, `secrets`, `excluded[]`)."
+                  download_url:
+                    type: string
+                    description: "Once succeeded: the whole archive as a .tar. No other auth; expires after an hour."
+                  download_expires_at:
+                    type: integer
+                    format: int64
+                    description: When the download link expires. Epoch milliseconds.
+                required:
+                  - object
+                  - id
+                  - status
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/moves.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/exports/download/{token}:
+    get:
+      operationId: downloadProjectExport
+      tags:
+        - Data moves
+      summary: Download an archive
+      description: The whole archive as one uncompressed .tar whose members are the archive files. The token is signed and expires after an hour; it is the only auth.
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+            description: The signed token from `download_url`.
+      responses:
+        "200":
+          description: The archive.
+          content:
+            application/x-tar:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Expired or unknown link, or the export is gone.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/imports.ts
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/move:
+    get:
+      operationId: getProjectMoveState
+      tags:
+        - Data moves
+      summary: Get the project's move state
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: The state.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - project_move_state
+                  project_id:
+                    type: string
+                  state:
+                    type:
+                      - string
+                      - "null"
+                    enum:
+                      - paused
+                      - forwarded
+                      - incoming
+                      - null
+                    description: "`paused`: writes answer 503/423 during the last copy. `forwarded`: every SDK, REST and store notification request is passed to `moved_to_url`. `incoming`: the copy on the target, not live yet. Null: normal."
+                  moved_to_url:
+                    type:
+                      - string
+                      - "null"
+                    description: Where a forwarded project went.
+                  moved_in_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When the project was copied in. Epoch milliseconds, or null.
+                  moved_in_from:
+                    type:
+                      - string
+                      - "null"
+                    description: The server it came from.
+                  updated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last state change. Epoch milliseconds, or null.
+                  move:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      object:
+                        type: string
+                        enum:
+                          - project_move
+                      id:
+                        type: string
+                      status:
+                        type: string
+                        enum:
+                          - running
+                          - ready
+                          - copied
+                          - finished
+                          - failed
+                          - cancelled
+                      target_url:
+                        type: string
+                      mode:
+                        type: string
+                      dry_run:
+                        type: boolean
+                      phase:
+                        type: string
+                        description: The step running now.
+                      files_copied:
+                        type: integer
+                      plan:
+                        type:
+                          - object
+                          - "null"
+                        properties:
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type:
+                                  - string
+                                  - "null"
+                              exists:
+                                type: boolean
+                                description: The project is on the target already.
+                              state:
+                                type:
+                                  - string
+                                  - "null"
+                                description: Its move state there (only shown to an Admin of that project).
+                          conflicts:
+                            type: array
+                            items:
+                              type: string
+                            description: "Why the archive cannot load here: another project uses the id, a public SDK key, the web address or the Verified Metrics address."
+                          needs_replace:
+                            type: boolean
+                            description: "A moved-away copy of this project is on the target; load with `replace: true`."
+                          tables:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                name:
+                                  type: string
+                                archive_rows:
+                                  type: integer
+                                target_rows:
+                                  type: integer
+                                  description: "Rows the target has now. 0 when the project there belongs to someone else: only its Admins see its numbers."
+                          secrets_included:
+                            type: boolean
+                        description: "The dry run: rows per table on the target against the archive."
+                      verify:
+                        type:
+                          - object
+                          - "null"
+                        description: Per table rows and checksums on both servers.
+                      report:
+                        type:
+                          - object
+                          - "null"
+                        properties:
+                          project_id:
+                            type: string
+                          webhooks_with_new_secrets:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                name:
+                                  type: string
+                                url:
+                                  type: string
+                            description: Webhooks that got a new signing secret because the archive had no secrets.
+                          apps_needing_credentials:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                name:
+                                  type: string
+                                type:
+                                  type: string
+                            description: Store apps whose credentials must be entered again.
+                          members_added:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                email:
+                                  type: string
+                                role:
+                                  type: string
+                            description: "Always empty: collaborators are listed to invite, never added directly."
+                          members_to_invite:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                email:
+                                  type: string
+                                role:
+                                  type: string
+                            description: The collaborators from members.json, to invite on this server.
+                          notification_urls:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                app_id:
+                                  type: string
+                                app_name:
+                                  type: string
+                                store:
+                                  type: string
+                                url:
+                                  type: string
+                                  description: The notification URL on this server.
+                                where:
+                                  type: string
+                                  description: Where to change it in the store's console.
+                          domains_to_verify:
+                            type: array
+                            items:
+                              type: string
+                            description: "Custom domains for hosted pages. A domain is verified per server: open Project settings → Domains here for its new TXT value, point the CNAME here, then Verify."
+                        description: After finish.
+                      error:
+                        type:
+                          - string
+                          - "null"
+                      created_at:
+                        type: integer
+                        format: int64
+                        description: Started. Epoch milliseconds.
+                      updated_at:
+                        type: integer
+                        format: int64
+                        description: Last step. Epoch milliseconds.
+                    description: The latest move this server ran (the dashboard's flow).
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/moves.ts
+      x-scopes:
+        - project_configuration:projects:read
+      x-revenuedot-extension: true
+    post:
+      operationId: startProjectMove
+      tags:
+        - Data moves
+      summary: Move the project to another server (run by this server)
+      description: "The dashboard's move: this server exports the project and copies it to `to_url` with the target's import token, then verifies. `dry_run` only compares rows per table. Poll `GET …/move` or call `move/actions/advance`; then `move/finish`."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                to_url:
+                  type: string
+                  description: The target server, e.g. https://api.revenuedot.app.
+                to_token:
+                  type: string
+                  description: An import token (rdi_…) from the target's Receive a project.
+                dry_run:
+                  type: boolean
+              required:
+                - to_url
+                - to_token
+            example:
+              to_url: https://api.revenuedot.app
+              to_token: rdi_…
+              dry_run: true
+      responses:
+        "202":
+          description: The move.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - project_move
+                  id:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - running
+                      - ready
+                      - copied
+                      - finished
+                      - failed
+                      - cancelled
+                  target_url:
+                    type: string
+                  mode:
+                    type: string
+                  dry_run:
+                    type: boolean
+                  phase:
+                    type: string
+                    description: The step running now.
+                  files_copied:
+                    type: integer
+                  plan:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      project:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type:
+                              - string
+                              - "null"
+                          exists:
+                            type: boolean
+                            description: The project is on the target already.
+                          state:
+                            type:
+                              - string
+                              - "null"
+                            description: Its move state there (only shown to an Admin of that project).
+                      conflicts:
+                        type: array
+                        items:
+                          type: string
+                        description: "Why the archive cannot load here: another project uses the id, a public SDK key, the web address or the Verified Metrics address."
+                      needs_replace:
+                        type: boolean
+                        description: "A moved-away copy of this project is on the target; load with `replace: true`."
+                      tables:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                            archive_rows:
+                              type: integer
+                            target_rows:
+                              type: integer
+                              description: "Rows the target has now. 0 when the project there belongs to someone else: only its Admins see its numbers."
+                      secrets_included:
+                        type: boolean
+                    description: "The dry run: rows per table on the target against the archive."
+                  verify:
+                    type:
+                      - object
+                      - "null"
+                    description: Per table rows and checksums on both servers.
+                  report:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      project_id:
+                        type: string
+                      webhooks_with_new_secrets:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                            url:
+                              type: string
+                        description: Webhooks that got a new signing secret because the archive had no secrets.
+                      apps_needing_credentials:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                            type:
+                              type: string
+                        description: Store apps whose credentials must be entered again.
+                      members_added:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            email:
+                              type: string
+                            role:
+                              type: string
+                        description: "Always empty: collaborators are listed to invite, never added directly."
+                      members_to_invite:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            email:
+                              type: string
+                            role:
+                              type: string
+                        description: The collaborators from members.json, to invite on this server.
+                      notification_urls:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            app_id:
+                              type: string
+                            app_name:
+                              type: string
+                            store:
+                              type: string
+                            url:
+                              type: string
+                              description: The notification URL on this server.
+                            where:
+                              type: string
+                              description: Where to change it in the store's console.
+                      domains_to_verify:
+                        type: array
+                        items:
+                          type: string
+                        description: "Custom domains for hosted pages. A domain is verified per server: open Project settings → Domains here for its new TXT value, point the CNAME here, then Verify."
+                    description: After finish.
+                  error:
+                    type:
+                      - string
+                      - "null"
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Started. Epoch milliseconds.
+                  updated_at:
+                    type: integer
+                    format: int64
+                    description: Last step. Epoch milliseconds.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "409":
+          description: The project is already moving.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V2Error"
+      x-source: routes/v2/moves.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/move/actions/advance:
+    post:
+      operationId: advanceProjectMove
+      tags:
+        - Data moves
+      summary: Do the next step of the move now
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: The move.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - project_move
+                  id:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - running
+                      - ready
+                      - copied
+                      - finished
+                      - failed
+                      - cancelled
+                  target_url:
+                    type: string
+                  mode:
+                    type: string
+                  dry_run:
+                    type: boolean
+                  phase:
+                    type: string
+                    description: The step running now.
+                  files_copied:
+                    type: integer
+                  plan:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      project:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type:
+                              - string
+                              - "null"
+                          exists:
+                            type: boolean
+                            description: The project is on the target already.
+                          state:
+                            type:
+                              - string
+                              - "null"
+                            description: Its move state there (only shown to an Admin of that project).
+                      conflicts:
+                        type: array
+                        items:
+                          type: string
+                        description: "Why the archive cannot load here: another project uses the id, a public SDK key, the web address or the Verified Metrics address."
+                      needs_replace:
+                        type: boolean
+                        description: "A moved-away copy of this project is on the target; load with `replace: true`."
+                      tables:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                            archive_rows:
+                              type: integer
+                            target_rows:
+                              type: integer
+                              description: "Rows the target has now. 0 when the project there belongs to someone else: only its Admins see its numbers."
+                      secrets_included:
+                        type: boolean
+                    description: "The dry run: rows per table on the target against the archive."
+                  verify:
+                    type:
+                      - object
+                      - "null"
+                    description: Per table rows and checksums on both servers.
+                  report:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      project_id:
+                        type: string
+                      webhooks_with_new_secrets:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                            url:
+                              type: string
+                        description: Webhooks that got a new signing secret because the archive had no secrets.
+                      apps_needing_credentials:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                            type:
+                              type: string
+                        description: Store apps whose credentials must be entered again.
+                      members_added:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            email:
+                              type: string
+                            role:
+                              type: string
+                        description: "Always empty: collaborators are listed to invite, never added directly."
+                      members_to_invite:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            email:
+                              type: string
+                            role:
+                              type: string
+                        description: The collaborators from members.json, to invite on this server.
+                      notification_urls:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            app_id:
+                              type: string
+                            app_name:
+                              type: string
+                            store:
+                              type: string
+                            url:
+                              type: string
+                              description: The notification URL on this server.
+                            where:
+                              type: string
+                              description: Where to change it in the store's console.
+                      domains_to_verify:
+                        type: array
+                        items:
+                          type: string
+                        description: "Custom domains for hosted pages. A domain is verified per server: open Project settings → Domains here for its new TXT value, point the CNAME here, then Verify."
+                    description: After finish.
+                  error:
+                    type:
+                      - string
+                      - "null"
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Started. Epoch milliseconds.
+                  updated_at:
+                    type: integer
+                    format: int64
+                    description: Last step. Epoch milliseconds.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/moves.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/move/finish:
+    post:
+      operationId: finishProjectMove
+      tags:
+        - Data moves
+      summary: Switch to the target
+      description: Pauses writes here, copies again, verifies, puts the project live on the target and forwards this server's traffic there. A verification failure lifts the pause.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "202":
+          description: The move.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - project_move
+                  id:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - running
+                      - ready
+                      - copied
+                      - finished
+                      - failed
+                      - cancelled
+                  target_url:
+                    type: string
+                  mode:
+                    type: string
+                  dry_run:
+                    type: boolean
+                  phase:
+                    type: string
+                    description: The step running now.
+                  files_copied:
+                    type: integer
+                  plan:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      project:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type:
+                              - string
+                              - "null"
+                          exists:
+                            type: boolean
+                            description: The project is on the target already.
+                          state:
+                            type:
+                              - string
+                              - "null"
+                            description: Its move state there (only shown to an Admin of that project).
+                      conflicts:
+                        type: array
+                        items:
+                          type: string
+                        description: "Why the archive cannot load here: another project uses the id, a public SDK key, the web address or the Verified Metrics address."
+                      needs_replace:
+                        type: boolean
+                        description: "A moved-away copy of this project is on the target; load with `replace: true`."
+                      tables:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                            archive_rows:
+                              type: integer
+                            target_rows:
+                              type: integer
+                              description: "Rows the target has now. 0 when the project there belongs to someone else: only its Admins see its numbers."
+                      secrets_included:
+                        type: boolean
+                    description: "The dry run: rows per table on the target against the archive."
+                  verify:
+                    type:
+                      - object
+                      - "null"
+                    description: Per table rows and checksums on both servers.
+                  report:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      project_id:
+                        type: string
+                      webhooks_with_new_secrets:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                            url:
+                              type: string
+                        description: Webhooks that got a new signing secret because the archive had no secrets.
+                      apps_needing_credentials:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                            type:
+                              type: string
+                        description: Store apps whose credentials must be entered again.
+                      members_added:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            email:
+                              type: string
+                            role:
+                              type: string
+                        description: "Always empty: collaborators are listed to invite, never added directly."
+                      members_to_invite:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            email:
+                              type: string
+                            role:
+                              type: string
+                        description: The collaborators from members.json, to invite on this server.
+                      notification_urls:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            app_id:
+                              type: string
+                            app_name:
+                              type: string
+                            store:
+                              type: string
+                            url:
+                              type: string
+                              description: The notification URL on this server.
+                            where:
+                              type: string
+                              description: Where to change it in the store's console.
+                      domains_to_verify:
+                        type: array
+                        items:
+                          type: string
+                        description: "Custom domains for hosted pages. A domain is verified per server: open Project settings → Domains here for its new TXT value, point the CNAME here, then Verify."
+                    description: After finish.
+                  error:
+                    type:
+                      - string
+                      - "null"
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Started. Epoch milliseconds.
+                  updated_at:
+                    type: integer
+                    format: int64
+                    description: Last step. Epoch milliseconds.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "409":
+          description: The move is not copied yet, or it failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V2Error"
+      x-source: routes/v2/moves.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/move/pause:
+    post:
+      operationId: pauseProjectMove
+      tags:
+        - Data moves
+      summary: Pause writes for the last copy
+      description: "Reads keep working. SDK writes and store notifications answer 503 with `Retry-After: 60` (the SDKs and the stores retry); API v2 writes answer 423. `npx revenuedot move --finish` calls it."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: The state.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - project_move_state
+                  project_id:
+                    type: string
+                  state:
+                    type:
+                      - string
+                      - "null"
+                    enum:
+                      - paused
+                      - forwarded
+                      - incoming
+                      - null
+                    description: "`paused`: writes answer 503/423 during the last copy. `forwarded`: every SDK, REST and store notification request is passed to `moved_to_url`. `incoming`: the copy on the target, not live yet. Null: normal."
+                  moved_to_url:
+                    type:
+                      - string
+                      - "null"
+                    description: Where a forwarded project went.
+                  moved_in_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When the project was copied in. Epoch milliseconds, or null.
+                  moved_in_from:
+                    type:
+                      - string
+                      - "null"
+                    description: The server it came from.
+                  updated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last state change. Epoch milliseconds, or null.
+                  move:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      object:
+                        type: string
+                        enum:
+                          - project_move
+                      id:
+                        type: string
+                      status:
+                        type: string
+                        enum:
+                          - running
+                          - ready
+                          - copied
+                          - finished
+                          - failed
+                          - cancelled
+                      target_url:
+                        type: string
+                      mode:
+                        type: string
+                      dry_run:
+                        type: boolean
+                      phase:
+                        type: string
+                        description: The step running now.
+                      files_copied:
+                        type: integer
+                      plan:
+                        type:
+                          - object
+                          - "null"
+                        properties:
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type:
+                                  - string
+                                  - "null"
+                              exists:
+                                type: boolean
+                                description: The project is on the target already.
+                              state:
+                                type:
+                                  - string
+                                  - "null"
+                                description: Its move state there (only shown to an Admin of that project).
+                          conflicts:
+                            type: array
+                            items:
+                              type: string
+                            description: "Why the archive cannot load here: another project uses the id, a public SDK key, the web address or the Verified Metrics address."
+                          needs_replace:
+                            type: boolean
+                            description: "A moved-away copy of this project is on the target; load with `replace: true`."
+                          tables:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                name:
+                                  type: string
+                                archive_rows:
+                                  type: integer
+                                target_rows:
+                                  type: integer
+                                  description: "Rows the target has now. 0 when the project there belongs to someone else: only its Admins see its numbers."
+                          secrets_included:
+                            type: boolean
+                        description: "The dry run: rows per table on the target against the archive."
+                      verify:
+                        type:
+                          - object
+                          - "null"
+                        description: Per table rows and checksums on both servers.
+                      report:
+                        type:
+                          - object
+                          - "null"
+                        properties:
+                          project_id:
+                            type: string
+                          webhooks_with_new_secrets:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                name:
+                                  type: string
+                                url:
+                                  type: string
+                            description: Webhooks that got a new signing secret because the archive had no secrets.
+                          apps_needing_credentials:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                name:
+                                  type: string
+                                type:
+                                  type: string
+                            description: Store apps whose credentials must be entered again.
+                          members_added:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                email:
+                                  type: string
+                                role:
+                                  type: string
+                            description: "Always empty: collaborators are listed to invite, never added directly."
+                          members_to_invite:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                email:
+                                  type: string
+                                role:
+                                  type: string
+                            description: The collaborators from members.json, to invite on this server.
+                          notification_urls:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                app_id:
+                                  type: string
+                                app_name:
+                                  type: string
+                                store:
+                                  type: string
+                                url:
+                                  type: string
+                                  description: The notification URL on this server.
+                                where:
+                                  type: string
+                                  description: Where to change it in the store's console.
+                          domains_to_verify:
+                            type: array
+                            items:
+                              type: string
+                            description: "Custom domains for hosted pages. A domain is verified per server: open Project settings → Domains here for its new TXT value, point the CNAME here, then Verify."
+                        description: After finish.
+                      error:
+                        type:
+                          - string
+                          - "null"
+                      created_at:
+                        type: integer
+                        format: int64
+                        description: Started. Epoch milliseconds.
+                      updated_at:
+                        type: integer
+                        format: int64
+                        description: Last step. Epoch milliseconds.
+                    description: The latest move this server ran (the dashboard's flow).
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "409":
+          description: The project is forwarded or incoming.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V2Error"
+      x-source: routes/v2/moves.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/move/forward:
+    post:
+      operationId: forwardProjectMove
+      tags:
+        - Data moves
+      summary: Forward the paused project to its new server
+      description: Every `/v1`, `/rcbilling` and secret-key `/v2` request for the project, and every store notification, is passed to `to_url` with the same method, path, headers and body; the answer comes back unchanged with an `x-revenuedot-moved-to` header. A forwarding loop answers 508.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                to_url:
+                  type: string
+              required:
+                - to_url
+            example:
+              to_url: https://api.revenuedot.app
+      responses:
+        "200":
+          description: The state.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - project_move_state
+                  project_id:
+                    type: string
+                  state:
+                    type:
+                      - string
+                      - "null"
+                    enum:
+                      - paused
+                      - forwarded
+                      - incoming
+                      - null
+                    description: "`paused`: writes answer 503/423 during the last copy. `forwarded`: every SDK, REST and store notification request is passed to `moved_to_url`. `incoming`: the copy on the target, not live yet. Null: normal."
+                  moved_to_url:
+                    type:
+                      - string
+                      - "null"
+                    description: Where a forwarded project went.
+                  moved_in_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When the project was copied in. Epoch milliseconds, or null.
+                  moved_in_from:
+                    type:
+                      - string
+                      - "null"
+                    description: The server it came from.
+                  updated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last state change. Epoch milliseconds, or null.
+                  move:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      object:
+                        type: string
+                        enum:
+                          - project_move
+                      id:
+                        type: string
+                      status:
+                        type: string
+                        enum:
+                          - running
+                          - ready
+                          - copied
+                          - finished
+                          - failed
+                          - cancelled
+                      target_url:
+                        type: string
+                      mode:
+                        type: string
+                      dry_run:
+                        type: boolean
+                      phase:
+                        type: string
+                        description: The step running now.
+                      files_copied:
+                        type: integer
+                      plan:
+                        type:
+                          - object
+                          - "null"
+                        properties:
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type:
+                                  - string
+                                  - "null"
+                              exists:
+                                type: boolean
+                                description: The project is on the target already.
+                              state:
+                                type:
+                                  - string
+                                  - "null"
+                                description: Its move state there (only shown to an Admin of that project).
+                          conflicts:
+                            type: array
+                            items:
+                              type: string
+                            description: "Why the archive cannot load here: another project uses the id, a public SDK key, the web address or the Verified Metrics address."
+                          needs_replace:
+                            type: boolean
+                            description: "A moved-away copy of this project is on the target; load with `replace: true`."
+                          tables:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                name:
+                                  type: string
+                                archive_rows:
+                                  type: integer
+                                target_rows:
+                                  type: integer
+                                  description: "Rows the target has now. 0 when the project there belongs to someone else: only its Admins see its numbers."
+                          secrets_included:
+                            type: boolean
+                        description: "The dry run: rows per table on the target against the archive."
+                      verify:
+                        type:
+                          - object
+                          - "null"
+                        description: Per table rows and checksums on both servers.
+                      report:
+                        type:
+                          - object
+                          - "null"
+                        properties:
+                          project_id:
+                            type: string
+                          webhooks_with_new_secrets:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                name:
+                                  type: string
+                                url:
+                                  type: string
+                            description: Webhooks that got a new signing secret because the archive had no secrets.
+                          apps_needing_credentials:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                name:
+                                  type: string
+                                type:
+                                  type: string
+                            description: Store apps whose credentials must be entered again.
+                          members_added:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                email:
+                                  type: string
+                                role:
+                                  type: string
+                            description: "Always empty: collaborators are listed to invite, never added directly."
+                          members_to_invite:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                email:
+                                  type: string
+                                role:
+                                  type: string
+                            description: The collaborators from members.json, to invite on this server.
+                          notification_urls:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                app_id:
+                                  type: string
+                                app_name:
+                                  type: string
+                                store:
+                                  type: string
+                                url:
+                                  type: string
+                                  description: The notification URL on this server.
+                                where:
+                                  type: string
+                                  description: Where to change it in the store's console.
+                          domains_to_verify:
+                            type: array
+                            items:
+                              type: string
+                            description: "Custom domains for hosted pages. A domain is verified per server: open Project settings → Domains here for its new TXT value, point the CNAME here, then Verify."
+                        description: After finish.
+                      error:
+                        type:
+                          - string
+                          - "null"
+                      created_at:
+                        type: integer
+                        format: int64
+                        description: Started. Epoch milliseconds.
+                      updated_at:
+                        type: integer
+                        format: int64
+                        description: Last step. Epoch milliseconds.
+                    description: The latest move this server ran (the dashboard's flow).
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "409":
+          description: Pause and copy the project first.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V2Error"
+      x-source: routes/v2/moves.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/move/cancel:
+    post:
+      operationId: cancelProjectMove
+      tags:
+        - Data moves
+      summary: Serve the project here again
+      description: Stops a running move and clears `paused` or `forwarded`. A copy already on the target stays there.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: The state.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - project_move_state
+                  project_id:
+                    type: string
+                  state:
+                    type:
+                      - string
+                      - "null"
+                    enum:
+                      - paused
+                      - forwarded
+                      - incoming
+                      - null
+                    description: "`paused`: writes answer 503/423 during the last copy. `forwarded`: every SDK, REST and store notification request is passed to `moved_to_url`. `incoming`: the copy on the target, not live yet. Null: normal."
+                  moved_to_url:
+                    type:
+                      - string
+                      - "null"
+                    description: Where a forwarded project went.
+                  moved_in_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When the project was copied in. Epoch milliseconds, or null.
+                  moved_in_from:
+                    type:
+                      - string
+                      - "null"
+                    description: The server it came from.
+                  updated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Last state change. Epoch milliseconds, or null.
+                  move:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      object:
+                        type: string
+                        enum:
+                          - project_move
+                      id:
+                        type: string
+                      status:
+                        type: string
+                        enum:
+                          - running
+                          - ready
+                          - copied
+                          - finished
+                          - failed
+                          - cancelled
+                      target_url:
+                        type: string
+                      mode:
+                        type: string
+                      dry_run:
+                        type: boolean
+                      phase:
+                        type: string
+                        description: The step running now.
+                      files_copied:
+                        type: integer
+                      plan:
+                        type:
+                          - object
+                          - "null"
+                        properties:
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type:
+                                  - string
+                                  - "null"
+                              exists:
+                                type: boolean
+                                description: The project is on the target already.
+                              state:
+                                type:
+                                  - string
+                                  - "null"
+                                description: Its move state there (only shown to an Admin of that project).
+                          conflicts:
+                            type: array
+                            items:
+                              type: string
+                            description: "Why the archive cannot load here: another project uses the id, a public SDK key, the web address or the Verified Metrics address."
+                          needs_replace:
+                            type: boolean
+                            description: "A moved-away copy of this project is on the target; load with `replace: true`."
+                          tables:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                name:
+                                  type: string
+                                archive_rows:
+                                  type: integer
+                                target_rows:
+                                  type: integer
+                                  description: "Rows the target has now. 0 when the project there belongs to someone else: only its Admins see its numbers."
+                          secrets_included:
+                            type: boolean
+                        description: "The dry run: rows per table on the target against the archive."
+                      verify:
+                        type:
+                          - object
+                          - "null"
+                        description: Per table rows and checksums on both servers.
+                      report:
+                        type:
+                          - object
+                          - "null"
+                        properties:
+                          project_id:
+                            type: string
+                          webhooks_with_new_secrets:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                name:
+                                  type: string
+                                url:
+                                  type: string
+                            description: Webhooks that got a new signing secret because the archive had no secrets.
+                          apps_needing_credentials:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                name:
+                                  type: string
+                                type:
+                                  type: string
+                            description: Store apps whose credentials must be entered again.
+                          members_added:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                email:
+                                  type: string
+                                role:
+                                  type: string
+                            description: "Always empty: collaborators are listed to invite, never added directly."
+                          members_to_invite:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                email:
+                                  type: string
+                                role:
+                                  type: string
+                            description: The collaborators from members.json, to invite on this server.
+                          notification_urls:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                app_id:
+                                  type: string
+                                app_name:
+                                  type: string
+                                store:
+                                  type: string
+                                url:
+                                  type: string
+                                  description: The notification URL on this server.
+                                where:
+                                  type: string
+                                  description: Where to change it in the store's console.
+                          domains_to_verify:
+                            type: array
+                            items:
+                              type: string
+                            description: "Custom domains for hosted pages. A domain is verified per server: open Project settings → Domains here for its new TXT value, point the CNAME here, then Verify."
+                        description: After finish.
+                      error:
+                        type:
+                          - string
+                          - "null"
+                      created_at:
+                        type: integer
+                        format: int64
+                        description: Started. Epoch milliseconds.
+                      updated_at:
+                        type: integer
+                        format: int64
+                        description: Last step. Epoch milliseconds.
+                    description: The latest move this server ran (the dashboard's flow).
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "409":
+          description: The project is being copied in here.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V2Error"
+      x-source: routes/v2/moves.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/imports/tokens:
+    post:
+      operationId: createImportToken
+      tags:
+        - Data moves
+      summary: Create an import token (Receive a project)
+      description: A token (`rdi_` and 64 hex characters) that lets one project move into the signed-in account on this server. Shown once; lasts 24 hours. RevenueDot Cloud needs a confirmed email address.
+      security:
+        - dashboardSession: []
+      responses:
+        "201":
+          description: The token.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - import_token
+                  id:
+                    type: string
+                  token:
+                    type: string
+                  expires_at:
+                    type: integer
+                    format: int64
+                    description: Expires. Epoch milliseconds.
+                  url:
+                    type: string
+                    description: This server's API address.
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "403":
+          description: Confirm your email first, or the request did not come from the dashboard.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/imports.ts
+      x-revenuedot-extension: true
+  /v2/imports:
+    get:
+      operationId: listImports
+      tags:
+        - Data moves
+      summary: List your moves into this server
+      security:
+        - dashboardSession: []
+      responses:
+        "200":
+          description: The last 20 imports.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - project_import
+                        id:
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                            - open
+                            - importing
+                            - finished
+                            - cancelled
+                        project_id:
+                          type:
+                            - string
+                            - "null"
+                        source_url:
+                          type:
+                            - string
+                            - "null"
+                        files_done:
+                          type: object
+                          description: Archive files loaded, by name.
+                        files_total:
+                          type: integer
+                        report:
+                          type: object
+                        verify:
+                          type:
+                            - object
+                            - "null"
+                        expires_at:
+                          type: integer
+                          format: int64
+                          description: The token's expiry. Epoch milliseconds.
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: Created. Epoch milliseconds.
+                        finished_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Finished. Epoch milliseconds, or null.
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/imports.ts
+      x-revenuedot-extension: true
+    post:
+      operationId: beginImport
+      tags:
+        - Data moves
+      summary: Check or start loading an archive
+      description: "With `dry_run`: what loading would do (conflicts, rows per table here now against the archive); nothing is written. Without: starts the import (the project is created `incoming`). Then send each file with `PUT /v2/imports/{import_id}/files/{name}` (its SHA-256 must match the manifest; tables upsert by primary key and never change another project's rows; a row whose parent record is not here, such as an alias of a customer created on the source during the export, is left out and counted; a file already loaded answers `applied: false`), `members.json` to `…/members`, then `…/verify` and `…/finish`. Sending a new manifest starts the incoming copy over."
+      security:
+        - importToken: []
+        - dashboardSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                manifest:
+                  type: object
+                  description: The archive's manifest.json.
+                passphrase:
+                  type: string
+                  description: Needed when the archive includes secrets.
+                dry_run:
+                  type: boolean
+                replace:
+                  type: boolean
+                  description: Replace a moved-away copy of the project that is still here.
+              required:
+                - manifest
+      responses:
+        "200":
+          description: The plan (dry run).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - import_plan
+                  import_id:
+                    type: string
+                  plan:
+                    type: object
+                    properties:
+                      project:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type:
+                              - string
+                              - "null"
+                          exists:
+                            type: boolean
+                            description: The project is on the target already.
+                          state:
+                            type:
+                              - string
+                              - "null"
+                            description: Its move state there (only shown to an Admin of that project).
+                      conflicts:
+                        type: array
+                        items:
+                          type: string
+                        description: "Why the archive cannot load here: another project uses the id, a public SDK key, the web address or the Verified Metrics address."
+                      needs_replace:
+                        type: boolean
+                        description: "A moved-away copy of this project is on the target; load with `replace: true`."
+                      tables:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                            archive_rows:
+                              type: integer
+                            target_rows:
+                              type: integer
+                              description: "Rows the target has now. 0 when the project there belongs to someone else: only its Admins see its numbers."
+                      secrets_included:
+                        type: boolean
+        "201":
+          description: The import.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - project_import
+                  id:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - open
+                      - importing
+                      - finished
+                      - cancelled
+                  project_id:
+                    type:
+                      - string
+                      - "null"
+                  source_url:
+                    type:
+                      - string
+                      - "null"
+                  files_done:
+                    type: object
+                    description: Archive files loaded, by name.
+                  files_total:
+                    type: integer
+                  report:
+                    type: object
+                  verify:
+                    type:
+                      - object
+                      - "null"
+                  expires_at:
+                    type: integer
+                    format: int64
+                    description: The token's expiry. Epoch milliseconds.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  finished_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Finished. Epoch milliseconds, or null.
+        "400":
+          description: Bad manifest or passphrase.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "401":
+          description: Missing or expired import token.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "409":
+          description: A conflict with another project here, or the import is finished.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "422":
+          description: The archive was written by a newer RevenueDot.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/imports.ts
+      x-revenuedot-extension: true
+  /v2/imports/{import_id}:
+    get:
+      operationId: getImport
+      tags:
+        - Data moves
+      summary: Get an import
+      security:
+        - importToken: []
+        - dashboardSession: []
+      parameters:
+        - name: import_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: An import id.
+      responses:
+        "200":
+          description: The import.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - project_import
+                  id:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - open
+                      - importing
+                      - finished
+                      - cancelled
+                  project_id:
+                    type:
+                      - string
+                      - "null"
+                  source_url:
+                    type:
+                      - string
+                      - "null"
+                  files_done:
+                    type: object
+                    description: Archive files loaded, by name.
+                  files_total:
+                    type: integer
+                  report:
+                    type: object
+                  verify:
+                    type:
+                      - object
+                      - "null"
+                  expires_at:
+                    type: integer
+                    format: int64
+                    description: The token's expiry. Epoch milliseconds.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Created. Epoch milliseconds.
+                  finished_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Finished. Epoch milliseconds, or null.
+        "401":
+          description: Missing token.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "404":
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/imports.ts
+      x-revenuedot-extension: true
+  /v2/imports/{import_id}/members:
+    post:
+      operationId: importMembers
+      tags:
+        - Data moves
+      summary: List the project's collaborators to invite
+      description: The archive's members.json. Everyone in it is listed to invite on this server (the finish report repeats the list); nobody is added directly, even with an account here. The person who imports owns the project.
+      security:
+        - importToken: []
+        - dashboardSession: []
+      parameters:
+        - name: import_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: An import id.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                members:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      email:
+                        type: string
+                      role:
+                        type: string
+      responses:
+        "200":
+          description: To invite.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - import_members
+                  added:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        email:
+                          type: string
+                        role:
+                          type: string
+                    description: Always empty.
+                  invite:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        email:
+                          type: string
+                        role:
+                          type: string
+        "401":
+          description: Missing token.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "409":
+          description: Nothing imported yet, or the import is finished.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/imports.ts
+      x-revenuedot-extension: true
+  /v2/imports/{import_id}/verify:
+    post:
+      operationId: verifyImport
+      tags:
+        - Data moves
+      summary: Verify the copy
+      description: "Recomputes the rows and checksum of every table here and compares them with the manifest. Large projects take several calls: `done: false` until finished."
+      security:
+        - importToken: []
+        - dashboardSession: []
+      parameters:
+        - name: import_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: An import id.
+      responses:
+        "200":
+          description: Progress or the result.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - import_verify
+                  done:
+                    type: boolean
+                  tables_done:
+                    type: integer
+                  ok:
+                    type: boolean
+                  tables:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        source_rows:
+                          type: integer
+                        target_rows:
+                          type: integer
+                        skipped_rows:
+                          type: integer
+                          description: Rows left out because the record they belong to was created on the source after its table was exported (such as a new app user's alias). They count towards the match; a `--finish` copy brings them.
+                        source_checksum:
+                          type: string
+                        target_checksum:
+                          type: string
+                        match:
+                          type: boolean
+        "401":
+          description: Missing token.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "409":
+          description: Nothing imported yet, or verification failed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/imports.ts
+      x-revenuedot-extension: true
+  /v2/imports/{import_id}/finish:
+    post:
+      operationId: finishImport
+      tags:
+        - Data moves
+      summary: Put the project live here
+      description: Every file must be loaded. Webhooks without a secret get a new one. The answer lists the store notification URLs to change and where.
+      security:
+        - importToken: []
+        - dashboardSession: []
+      parameters:
+        - name: import_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: An import id.
+      responses:
+        "200":
+          description: The report.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - type: object
+                    properties:
+                      object:
+                        type: string
+                        enum:
+                          - import_report
+                  - type: object
+                    properties:
+                      project_id:
+                        type: string
+                      webhooks_with_new_secrets:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                            url:
+                              type: string
+                        description: Webhooks that got a new signing secret because the archive had no secrets.
+                      apps_needing_credentials:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                            type:
+                              type: string
+                        description: Store apps whose credentials must be entered again.
+                      members_added:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            email:
+                              type: string
+                            role:
+                              type: string
+                        description: "Always empty: collaborators are listed to invite, never added directly."
+                      members_to_invite:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            email:
+                              type: string
+                            role:
+                              type: string
+                        description: The collaborators from members.json, to invite on this server.
+                      notification_urls:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            app_id:
+                              type: string
+                            app_name:
+                              type: string
+                            store:
+                              type: string
+                            url:
+                              type: string
+                              description: The notification URL on this server.
+                            where:
+                              type: string
+                              description: Where to change it in the store's console.
+                      domains_to_verify:
+                        type: array
+                        items:
+                          type: string
+                        description: "Custom domains for hosted pages. A domain is verified per server: open Project settings → Domains here for its new TXT value, point the CNAME here, then Verify."
+        "401":
+          description: Missing token.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "409":
+          description: Files are missing, or the import is finished.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/imports.ts
+      x-revenuedot-extension: true
+  /v2/billing:
+    get:
+      operationId: getBilling
+      tags:
+        - Cloud billing
+      summary: The account's plan, usage and invoices
+      description: RevenueDot Cloud only; a self-hosted server answers 404. Tracked revenue is the USD sum of the month's production purchases, renewals and one-time purchases in the projects the account owns.
+      security:
+        - dashboardSession: []
+      responses:
+        "200":
+          description: Billing.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - billing
+                  edition:
+                    type: string
+                    enum:
+                      - cloud
+                  account:
+                    type: object
+                    properties:
+                      plan:
+                        type: string
+                        enum:
+                          - free
+                          - standard
+                          - enterprise
+                      status:
+                        type: string
+                        enum:
+                          - none
+                          - active
+                          - past_due
+                          - unpaid
+                          - canceled
+                      cancel_at:
+                        type:
+                          - integer
+                          - "null"
+                        format: int64
+                        description: A cancelled plan ends. Epoch milliseconds, or null.
+                      current_period_end:
+                        type:
+                          - integer
+                          - "null"
+                        format: int64
+                        description: Period end. Epoch milliseconds, or null.
+                      has_payment_method:
+                        type: boolean
+                  plans:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        rate:
+                          type: number
+                          description: Share of tracked revenue above free_up_to_usd.
+                        free_up_to_usd:
+                          type: number
+                        cap_usd:
+                          type:
+                            - number
+                            - "null"
+                        limit_usd:
+                          type:
+                            - number
+                            - "null"
+                  usage:
+                    type: object
+                    properties:
+                      month:
+                        type: string
+                        description: YYYY-MM (UTC).
+                      tracked_revenue_usd:
+                        type: number
+                      projects:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            project_id:
+                              type: string
+                            name:
+                              type: string
+                            tracked_revenue_usd:
+                              type: number
+                            transactions:
+                              type: integer
+                      bill_usd:
+                        type: number
+                        description: The bill so far on the current plan.
+                      standard_bill_usd:
+                        type: number
+                        description: What Cloud Standard would cost.
+                      free_limit_usd:
+                        type: number
+                      cap_usd:
+                        type: number
+                      ceiling_usd:
+                        type: number
+                      period_end:
+                        type: integer
+                        format: int64
+                        description: Month end. Epoch milliseconds.
+                  flags:
+                    type: array
+                    items:
+                      type: string
+                      enum:
+                        - past_due
+                        - unpaid
+                        - over_free_limit
+                        - over_standard_limit
+                  invoices:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        number:
+                          type:
+                            - string
+                            - "null"
+                        status:
+                          type: string
+                        amount_due:
+                          type: number
+                        amount_paid:
+                          type: number
+                        currency:
+                          type: string
+                        period_start:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Start. Epoch milliseconds, or null.
+                        period_end:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: End. Epoch milliseconds, or null.
+                        hosted_invoice_url:
+                          type:
+                            - string
+                            - "null"
+                        invoice_pdf:
+                          type:
+                            - string
+                            - "null"
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: Created. Epoch milliseconds.
+                  stripe_ready:
+                    type: boolean
+                    description: Checkout and the Portal can open.
+                  stripe_problem:
+                    type:
+                      - string
+                      - "null"
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "404":
+          description: "Self-hosted: billing is only on RevenueDot Cloud."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/billing.ts
+      x-revenuedot-extension: true
+  /v2/billing/checkout:
+    post:
+      operationId: createBillingCheckout
+      tags:
+        - Cloud billing
+      summary: Upgrade to Cloud Standard with Stripe Checkout
+      description: "A Stripe Checkout session on RevenueDot's own Stripe account: the metered Standard price, billing from the 1st of next month, no proration."
+      security:
+        - dashboardSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                plan:
+                  type: string
+                  enum:
+                    - standard
+              required:
+                - plan
+            example:
+              plan: standard
+      responses:
+        "200":
+          description: Go to url.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - checkout
+                  url:
+                    type: string
+                  id:
+                    type: string
+        "400":
+          description: Only Standard has a self-serve checkout.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "409":
+          description: Already on Standard.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "502":
+          description: Stripe refused.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "503":
+          description: Billing is not set up on this server.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/billing.ts
+      x-revenuedot-extension: true
+  /v2/billing/portal:
+    post:
+      operationId: createBillingPortal
+      tags:
+        - Cloud billing
+      summary: Open the Stripe Customer Portal
+      description: Change the card, see invoices or cancel at period end.
+      security:
+        - dashboardSession: []
+      responses:
+        "200":
+          description: Go to url.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - portal
+                  url:
+                    type: string
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "409":
+          description: No payment method yet.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "502":
+          description: Stripe refused.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "503":
+          description: Billing is not set up on this server.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/billing.ts
+      x-revenuedot-extension: true
+  /v2/billing/stripe/webhook:
+    post:
+      operationId: billingStripeWebhook
+      tags:
+        - Cloud billing
+      summary: Webhook of RevenueDot's own Stripe account
+      description: "Stripe only, signed with `REVENUEDOT_BILLING_STRIPE_WEBHOOK_SECRET`: `checkout.session.completed`, `customer.subscription.*` and `invoice.*` events keep the plan, the payment status and the invoices."
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: A Stripe event.
+      responses:
+        "200":
+          description: Handled.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received:
+                    type: boolean
+                  result:
+                    type: string
+        "400":
+          description: Bad signature or body.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "503":
+          description: Billing webhooks are not set up.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - error
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/billing.ts
+      x-revenuedot-extension: true
   /v2/projects/{project_id}/actions/transfer_ownership:
     post:
       operationId: transferProjectOwnership
@@ -36197,6 +39731,14 @@ paths:
                       plan:
                         type: string
                         description: The account plan (`free` on RevenueDot Cloud).
+                      billing_ready:
+                        type: boolean
+                        description: "RevenueDot Cloud: billing is switched on, so the dashboard links the Billing page. Always false on a self-hosted server."
+                      billing_status:
+                        type:
+                          - string
+                          - "null"
+                        description: "RevenueDot Cloud: `none`, `active`, `past_due`, `unpaid` or `canceled`. Null on a self-hosted server."
                       email_verification_required:
                         type: boolean
                         description: True on RevenueDot Cloud until the user confirms their email. Until then they cannot invite people or create secret API keys. Always false on a self-hosted server.
@@ -36214,6 +39756,8 @@ paths:
                 account:
                   edition: cloud
                   plan: free
+                  billing_ready: false
+                  billing_status: none
                   email_verification_required: false
                 projects: []
         "401":
@@ -51884,6 +55428,10 @@ components:
       type: http
       scheme: bearer
       description: RevenueDot Enterprise. A SCIM token (`rdscim_` and 64 hex characters) from Organization settings → SCIM provisioning or `POST /v2/organizations/{org_id}/scim/tokens`. It speaks for one organization and works only on `/scim/v2`.
+    importToken:
+      type: http
+      scheme: bearer
+      description: An import token (`rdi_` and 64 hex characters) from **Receive a project** on the server a project moves to (`POST /v2/imports/tokens`). It lets one project move into the account that created it and lasts 24 hours.
     googlePubSubOidc:
       type: http
       scheme: bearer

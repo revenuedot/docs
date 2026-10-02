@@ -17,6 +17,7 @@ import { adsPaths } from "./ads.mjs";
 import { settingsPathsAll } from "./settings.mjs";
 import { assistantPaths } from "./assistant.mjs";
 import { enterprisePaths, enterpriseSchemas } from "./enterprise.mjs";
+import { movePaths } from "./moves.mjs";
 
 /**
  * Tags in reading order. `x-page` is the generated Markdown page (api/<page>.md) the tag's operations go to.
@@ -79,6 +80,8 @@ export const TAGS = [
   ["Event log", "extensions", "Every recorded event and money movement."],
   ["Test Store", "extensions", "Simulated purchases and lifecycles for development."],
   ["Dashboard data", "extensions", "Series and rows the dashboard shows."],
+  ["Data moves", "extensions", "Full exports of a project and moves between RevenueDot servers (self-hosted and Cloud) that keep ids, SDK keys, secret keys and webhook secrets: export jobs and downloads, move states (paused, forwarded), the dashboard's server-run move, and the target side with an import token. See [Move projects and export everything](../docs/guides/move-projects.md)."],
+  ["Cloud billing", "extensions", "RevenueDot Cloud only: the account's plan, tracked revenue and invoices, Stripe Checkout and the Customer Portal on RevenueDot's own Stripe account. See [Cloud billing](../docs/guides/cloud-billing.md)."],
   ["Migration import", "extensions", "Bulk import from RevenueCat, used by the `revenuedot import` CLI."],
   ["Web billing", "extensions", "Sell on the web through your own Stripe account: web providers and the setup checklist, the web config (checkout look, success page, deep link scheme), web products created in Stripe, web discounts with RevenueDot's extra settings, and the project's web address and custom domain. See [Sell on the web with Stripe](../docs/guides/web-billing.md)."],
   ["Purchase links", "extensions", "A hosted checkout page for one offering. See [Purchase links](../docs/guides/purchase-links.md)."],
@@ -120,7 +123,7 @@ export function buildDocument() {
       { url: "https://{host}", description: "Your self-hosted RevenueDot", variables: { host: { default: "revenuedot.example.com" } } },
     ],
     tags: tags(),
-    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...adsPaths, ...lifecyclePaths, ...webPaths, ...assistantPaths, ...settingsPathsAll, ...extensionPaths, ...enterprisePaths },
+    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...adsPaths, ...lifecyclePaths, ...webPaths, ...assistantPaths, ...movePaths, ...settingsPathsAll, ...extensionPaths, ...enterprisePaths },
     webhooks,
     components: { schemas: { ...schemas, ...webSchemas, ...enterpriseSchemas }, parameters, responses, securitySchemes },
     security: [{ secretApiKey: [] }],

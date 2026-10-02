@@ -1822,7 +1822,7 @@ That chain is why the wrapper forks cannot be used before release: nothing in it
 # Which guide do I need?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/README.md
-Description: Step-by-step guides for stores, web billing, webhooks, integrations and data exports, ads, refunds, retention and win-back, support, customer lists, testing, your team, Enterprise, project settings, Auth, alerts, and self-hosting.
+Description: Step-by-step guides for stores, web billing, webhooks, integrations and data exports, ads, refunds, retention, support, testing, your team, project settings, Auth, moving between self-host and Cloud, Cloud billing, Enterprise, and self-hosting.
 
 Each guide is one task, start to finish. Connect a store first, then receive webhooks; run the server yourself with the self-hosting guides.
 
@@ -1849,6 +1849,8 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Run RevenueDot on my own servers | [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md) |
 | Upgrade my server | [Upgrades](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/upgrades.md) |
 | Back up and restore | [Backups](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/backups.md) |
+| Move a project between my own server and RevenueDot Cloud, or download everything a project owns | [Move projects and export everything](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/move-projects.md) |
+| Know what RevenueDot Cloud costs, upgrade, or change my card | [Cloud billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/cloud-billing.md) |
 | Check everything before real customers arrive | [Going to production](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/going-to-production.md) |
 | Invite teammates to a project and set their roles | [Invite your team](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/team.md) |
 | Group projects into an organization, turn on RevenueDot Enterprise, or build custom roles | [Enterprise](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/enterprise.md) |
@@ -3727,10 +3729,210 @@ After a restore, the database is as it was at the dump. Purchases made since the
 docker compose down -v   # deletes the volume: every customer and purchase
 ```
 
+## Export one project
+`pg_dump` copies the whole server. To keep or load a single project, download its full export (**Project settings → Export and move → Export project**, or `npx revenuedot export`): every table as JSON Lines with a manifest and checksums, loadable into any RevenueDot server. See [Move projects and export everything](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/move-projects.md).
+
 ## Related
+- [Move projects and export everything](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/move-projects.md)
 - [Upgrades](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/upgrades.md)
 - [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md)
 - [Going to production](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/going-to-production.md)
+
+---
+
+# How do I move a project between self-hosted RevenueDot and RevenueDot Cloud, or export everything?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/move-projects.md
+Description: One command or the dashboard copies a project to another RevenueDot server with its ids, SDK keys, secret keys and webhook signing secrets, verifies every table, then forwards the old server's traffic. A full export gives you every table as JSON Lines with a manifest and checksums.
+
+Run `npx revenuedot move --from <old server> --to <new server>`, or use **Project settings → Export and move** in the dashboard. The project arrives on the new server with the same project, app and customer ids, the same public SDK keys (`appl_`, `goog_`, `test_` …), the same secret API keys (`sk_`) and the same webhook signing secrets. Your apps and your backend keep working without a change. After the switch the old server forwards every SDK call, REST call and store notification to the new one until you point your app and the stores at the new address.
+
+It works in both directions: from your own server to RevenueDot Cloud (`https://api.revenuedot.app`), from Cloud to your own server, or between two self-hosted servers.
+
+## What moves
+
+Everything the project owns, 64 tables in all: the project and its settings, apps and their store credentials, the catalog (products, entitlements, offerings, packages), customers with their aliases and attributes, subscriptions, one-time purchases, transactions, events, webhooks and their delivery log, integrations, scheduled data exports, paywalls with their versions and images, audiences, targeting rules, experiments, in-app currencies with balances and the ledger, Refund Control, retention offers, win-back campaigns, support tickets, web billing (web products, purchase links, funnels, discounts, domains), Auth providers, blocked customers, Verified Metrics and the audit log.
+
+What does not move:
+
+- **Your teammates' accounts and passwords.** The archive lists each collaborator's email and role, and the move lists them for you to invite on the new server (**Project settings → Collaborators**). Nobody is added without an invite, even with an account there. The person who receives the project owns it there.
+- **A custom domain's verification.** DNS proves a domain to one server, so on the new server the domain waits for **Verify**: open **Project settings → Domains** there for its new TXT value, point the CNAME at the new server, then verify. The finish step lists the domain.
+- RevenueDot AI conversations (they belong to one person), pending invites, sessions and subscriber access tokens (they last an hour).
+
+## Move with the command line
+
+1. **On the new server, create an import token.** Sign in, open the project switcher and choose **Receive a project** (or go to `/projects/receive`), then **Create import token**. Copy the token (`rdi_…`); it is shown once and works for 24 hours. RevenueDot Cloud asks you to confirm your email address first.
+2. **On the old server, create a secret API key** for the project with the **project configuration: read and write** permission (API keys page).
+3. **Check what will move.** Nothing is written on either server:
+
+   ```bash
+   npx revenuedot move --from https://revenuedot.example.com --to https://api.revenuedot.app --dry-run
+   ```
+
+   The CLI asks for the secret key and the import token and hides what you type. In CI, set `REVENUEDOT_FROM_KEY` and `REVENUEDOT_TO_TOKEN` instead. The dry run prints, per table, the rows in the archive, the rows the new server has now and the difference.
+4. **Copy and verify.** The old server keeps serving your apps:
+
+   ```bash
+   npx revenuedot move --from https://revenuedot.example.com --to https://api.revenuedot.app
+   ```
+
+   The CLI exports the project, copies each file, then has the new server recompute the row count and a checksum of every table and compares them with the archive. It ends with `All 64 tables match`. If the copy stops (network, laptop sleep), run the same command again: a state file in the current folder (`revenuedot-move-<old host>-to-<new host>.json`, or `--state <file>`) remembers which files are done.
+
+   Your apps keep using the old server during the copy, and it is read table by table. A row that belongs to something created after its table was read, such as the alias of a user who installed the app a minute ago, is left out and counted, and the verification says how many. `--finish` copies everything again, so nothing is lost.
+5. **Switch.** When you are ready:
+
+   ```bash
+   npx revenuedot move --from https://revenuedot.example.com --to https://api.revenuedot.app --finish
+   ```
+
+   `--finish` pauses writes on the old server, waits 10 seconds so every server process sees the pause, copies again so nothing written in the meantime is lost, verifies, puts the project live on the new server and makes the old one forward. If anything fails before the project is live on the new server (verification finds a difference, the network drops), the pause is lifted and the old server keeps serving; run the same command again to retry.
+
+Exit codes: `0` done, `1` failed or verification found differences, `2` a usage error, `130` cancelled.
+
+## Move from the dashboard
+
+On the old server open **Project settings → Export and move → Move this project**. Choose **RevenueDot Cloud** or type another server's URL, paste the import token from the new server's **Receive a project** page, then:
+
+1. **Check**: the same dry run, as a table of rows per table.
+2. **Copy data**: the old server runs the copy and the verification itself. You can close the page; the progress is kept.
+3. **Finish move**: pauses, copies the last changes, verifies, goes live there and forwards from here. **Cancel move** stops at any point before that.
+
+Only project Admins can export or move a project.
+
+## During and after the switch
+
+| State | Where | What happens |
+|---|---|---|
+| Paused | Old server, for the last copy | Reads work. Purchases (`POST /v1/receipts` and the other SDK writes) and store notifications answer `503` with `Retry-After: 60`: the SDK keeps the transaction and retries, Apple and Google retry notifications. API v2 writes answer `423`. Webhooks waiting to be sent move with the data and are sent once, by the new server |
+| Forwarded | Old server, after the switch | Every `/v1`, `/rcbilling` and secret-key `/v2` request for the project, and every store notification, is passed to the new server with the same method, path, headers and body. The answer, response signature included, comes back unchanged with an `x-revenuedot-moved-to` header. The dashboard shows "This project moved to …" |
+| Incoming | New server, while copying | The project is not live. Reads work; SDK writes and store notifications answer `503` and API v2 writes answer `423`. Nothing runs on a schedule for it. An Admin can still delete it, for example after giving up on a move |
+
+Then, at your own pace:
+
+1. **Point your app at the new server** in your next release: set the SDK's proxy URL (`Purchases.proxyURL` on iOS, `setProxyURL` elsewhere) to the new server. Old app versions keep working through the forward.
+2. **Change the store notification URLs.** Only the host changes; the path keeps the app id: `https://<new server>/v1/notifications/{apple|google|amazon|stripe}/{app_id}`. The finish step prints the exact URL for each app and where to change it:
+   - App Store Connect → your app → App Information → App Store Server Notifications (production and sandbox URLs).
+   - Play Console → Monetize → Monetization setup → Real-time developer notifications: the endpoint of the Pub/Sub push subscription.
+   - Amazon Developer Console → Real-time Notifications: the SNS subscription.
+   - Stripe Dashboard → Developers → Webhooks.
+3. **Keep the old server running** until no traffic reaches it. Its request log shows the forwarded calls.
+
+To undo a finished move, call `POST /v2/projects/{project_id}/move/cancel` on the old server: it serves the project again, and the copy on the new server stays.
+
+## Export everything
+
+**Project settings → Export and move → Export project** makes one archive of everything listed above. It is built in the background in short slices and kept for 7 days; **Download** gives a link that works for an hour. From the command line:
+
+```bash
+npx revenuedot export --from https://api.revenuedot.app --out my-project.tar
+```
+
+The archive is a `.tar` with:
+
+```
+manifest.json                      format, version, schema, the project, and per table: columns, rows and checksum
+members.json                       email and role of each collaborator (no passwords)
+tables/<table>/0001.jsonl.gz       one row per line, as stored (UTC timestamps)
+secrets/<table>/0001.json.enc      only with a passphrase
+```
+
+Each table's `checksum` is the hex sum, modulo 2^256, of the SHA-256 of every row line, so it does not depend on row order or how rows are split into files. Each file entry also has the SHA-256 of its gzip bytes.
+
+**Secrets** (store credentials, Amazon and Stripe keys, integration secrets, webhook signing secrets and authorization headers) are left out unless you give a passphrase of 12 or more characters (`--include-secrets`, or the passphrase field in the dashboard). Then they are encrypted with AES-256-GCM and a key derived from the passphrase with PBKDF2-SHA-256. Without them, a server that loads the archive gives each webhook a new signing secret and lists the apps whose store credentials you must enter again. `npx revenuedot move` always encrypts secrets with a random passphrase it never shows, so a move keeps them.
+
+Load an archive into a server with `npx revenuedot move --from-archive my-project.tar --to <server>`.
+
+### Where archives are stored
+
+| Server | Storage |
+|---|---|
+| RevenueDot Cloud | RevenueDot Cloud's own storage, deleted after 7 days |
+| Self-hosted | A folder on disk, `REVENUEDOT_ARCHIVE_DIR` (default `.data/archives`, a volume in `docker-compose.yml`). An S3-compatible bucket (AWS S3, Cloudflare R2, MinIO) when `REVENUEDOT_ARCHIVE_S3_BUCKET` is set, with `REVENUEDOT_ARCHIVE_S3_ENDPOINT`, `REVENUEDOT_ARCHIVE_S3_REGION`, `REVENUEDOT_ARCHIVE_S3_ACCESS_KEY_ID` and `REVENUEDOT_ARCHIVE_S3_SECRET_ACCESS_KEY`. `REVENUEDOT_ARCHIVE_DIR=db` keeps them in Postgres |
+
+## API
+
+Every step has an endpoint, so you can script a move. See the [API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#data-moves): `POST /v2/projects/{project_id}/exports`, `POST /v2/imports/tokens`, `POST /v2/imports`, `PUT /v2/imports/{import_id}/files/{name}`, `POST /v2/imports/{import_id}/verify`, `POST /v2/imports/{import_id}/finish`, and the move state endpoints `pause`, `forward` and `cancel`.
+
+## Troubleshooting
+
+- **"That is not an import token"**: copy the token from the new server's **Receive a project** page; it starts with `rdi_` and lasts 24 hours.
+- **"The archive collides with another project on this server"**: the new server already has a project with the same id or public key, usually a copy left from an earlier move. Run again with `--replace` to replace it.
+- **"A project with id … already exists on this server"** after a copy you gave up on: the unfinished copy is still on the new server. Delete it there (**Project settings → General → Delete project**), create a new import token and move again.
+- **The archive was written by a newer server**: upgrade the server you load it into. An archive loads into a server with the same or a newer schema.
+
+Moving from RevenueCat instead? See [Migrate from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md).
+
+---
+
+# How does RevenueDot Cloud billing work?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/cloud-billing.md
+Description: RevenueDot Cloud is free up to $10,000 of tracked revenue a month. Cloud Standard costs 0.5% of the tracked revenue above $10,000, never more than $999 a month. Self-hosting is free and unmetered. See your usage, upgrade and manage your card on the Billing page.
+
+Billing is not switched on yet: until it is, every RevenueDot Cloud account is free, no usage emails are sent, and the **Billing** link is not in the account menu. This page describes how it works once it is on.
+
+RevenueDot Cloud measures the **tracked revenue** of the projects you own each calendar month. Up to $10,000 a month is free. Above that, Cloud Standard costs 0.5% of the part above $10,000, and never more than $999 a month. A self-hosted RevenueDot has no billing, no meter and no limits.
+
+## Plans
+
+| Plan | Price | Tracked revenue |
+|---|---|---|
+| **Cloud Free** | $0 | Up to $10,000 a month |
+| **Cloud Standard** | 0.5% of tracked revenue above $10,000 a month, capped at $999 a month. The rate never rises | Up to $1,000,000 a month |
+| **Enterprise** | From $50,000 a year | No limit. Write to [hello@revenuedot.app](mailto:hello@revenuedot.app) |
+
+Examples of a month's Cloud Standard bill:
+
+| Tracked revenue in the month | Bill |
+|---|---|
+| $9,000 | $0 |
+| $10,001 | $0.01 |
+| $50,000 | $200 |
+| $209,800 or more | $999 (the cap) |
+
+Prices are on [revenuedot.app/pricing](https://revenuedot.app/pricing).
+
+## What counts as tracked revenue
+
+The sum, in US dollars at the exchange rate of the purchase date, of the **production** purchases of a month in every project you own:
+
+- Counted: new purchases, renewals and one-time purchases, from every store, in the calendar month they were made (UTC).
+- Not counted: sandbox and Test Store purchases, free trials, and anything copied in by a [move](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/move-projects.md) from another server (that revenue was tracked there).
+- Refunds are not subtracted: a refunded purchase was still processed when it was made.
+
+The Billing page updates the numbers about once an hour.
+
+## The Billing page
+
+Open your account menu → **Billing** (`/account/billing`). It shows:
+
+- Your plan and its status, and when a cancelled plan ends.
+- **Tracked revenue** this month, in total and per project, against the plan's limit, and the **bill so far**.
+- The three plans, with **Upgrade to Standard**, **Manage billing** or **Contact us**.
+- **Invoices**, with links to Stripe's invoice page and PDF.
+
+## Upgrade, change your card or cancel
+
+- **Upgrade to Standard** opens Stripe Checkout. Billing starts on the 1st of the next month with no proration, and each invoice charges the month's bill. RevenueDot uses its own Stripe account for this; it never touches the Stripe account you sell with.
+- **Manage billing** opens Stripe's Customer Portal: change the card, see invoices, or cancel. A cancelled plan stays active until the end of the period, then returns to Cloud Free.
+
+## Emails and banners
+
+- Cloud Free: an email at 80% and at 100% of $10,000 in a month, once each, with an upgrade link, and a banner on the Billing page while you are above the limit.
+- Cloud Standard: an email when the month's bill reaches the $999 cap ("you will not pay more this month"), and at 80% and 100% of $1,000,000.
+- **A failed payment** shows a banner on every page with a link to update your card and sends one email per invoice. Stripe retries the payment over the next days. If every retry fails, the account goes back to Cloud Free.
+
+## Your apps never stop
+
+Billing never changes what your apps get. A failed payment, a cancelled plan or a month above the free limit does not block SDK calls, purchases, webhooks, integrations or the REST API. The limits decide which plan fits; they are not switches.
+
+## Self-hosting is free
+
+On a self-hosted RevenueDot the Billing page says billing is only on RevenueDot Cloud, and `/v2/billing` answers 404. There is no metering and nothing is sent anywhere. See [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md), and [Move between self-host and Cloud](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/move-projects.md) to switch either way.
+
+## API
+
+`GET /v2/billing` returns the plan, this month's usage, the bill so far and the invoices for the signed-in account. `POST /v2/billing/checkout` and `POST /v2/billing/portal` return the Stripe URLs. They take a dashboard session, not an API key. See the [API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#cloud-billing).
 
 ---
 
@@ -7244,7 +7446,7 @@ One RevenueDot server answers every API below on one port. The reference is gene
 | SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 70 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
 | REST API v1 | `/v1/subscribers/...` | secret key | 10 | [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md) |
 | REST API v2 | `/v2/projects/...` | secret key or dashboard session | 163 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
-| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 193 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
+| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 218 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
 | RevenueDot Enterprise | `/v2/enterprise`, `/v2/organizations/...`, `/sso/...`, `/scim/v2/...` | session, SCIM token or none | 65 | [Enterprise](https://raw.githubusercontent.com/revenuedot/docs/main/api/enterprise.md) |
 | Webhooks (sent by RevenueDot) | your URL | HMAC signature | 22 event types | [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md) |
 
@@ -7324,6 +7526,7 @@ Send every key as a bearer token: `Authorization: Bearer <key>`. Which key depen
 - **`dashboardSession`**: The dashboard session cookie from `POST /auth/login`. It authorizes `/v2` for every project the user belongs to.
 - **`subscriberToken`**: A subscriber access token: `rdat_...` from `POST /v2/projects/{project_id}/apps/{app_id}/authenticate`, or the JWT `access_token` of an Auth sign-in (`POST /v1/auth/login`). It speaks for one app user id of one app for one hour. An expired or revoked token, or a path or body naming another app user id, answers 401 with code 7224.
 - **`scimToken`**: RevenueDot Enterprise. A SCIM token (`rdscim_` and 64 hex characters) from Organization settings → SCIM provisioning or `POST /v2/organizations/{org_id}/scim/tokens`. It speaks for one organization and works only on `/scim/v2`.
+- **`importToken`**: An import token (`rdi_` and 64 hex characters) from **Receive a project** on the server a project moves to (`POST /v2/imports/tokens`). It lets one project move into the account that created it and lasts 24 hours.
 - **`googlePubSubOidc`**: Google-signed OIDC token of a Pub/Sub push subscription. Checked only when the app's `pubsub_audience` credential is set.
 
 ## Where keys come from
@@ -17959,7 +18162,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (193)
+## Operations on this page (218)
 
 - **Dashboard auth**: [Whether sign-up is open](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-sign-up-is-open), [Create a dashboard account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-dashboard-account), [Sign in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-in), [Sign out](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out), [The signed-in user and their projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-signed-in-user-and-their-projects), [Update account settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-account-settings), [Email a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#email-a-password-reset-link), [Check a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-a-password-reset-link), [Set a new password from a reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-a-new-password-from-a-reset-link), [Confirm an email address](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#confirm-an-email-address), [Send a new confirmation email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-new-confirmation-email), [Look up an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#look-up-an-invite), [Accept an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#accept-an-invite)
 - **Members and invites**: [List open invites](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-open-invites), [Invite someone by email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#invite-someone-by-email), [Resend an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#resend-an-invite), [Revoke an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#revoke-an-invite), [Change a member's role](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-a-members-role), [Remove a member, or leave the project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#remove-a-member-or-leave-the-project)
@@ -17982,6 +18185,8 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Event log**: [Event log](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#event-log), [Transaction feed](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#transaction-feed)
 - **Test Store**: [Simulate a Test Store purchase or lifecycle](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#simulate-a-test-store-purchase-or-lifecycle)
 - **Dashboard data**: [Daily history of an overview metric](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#daily-history-of-an-overview-metric), [Dashboard rows for customers](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#dashboard-rows-for-customers)
+- **Data moves**: [List the project's exports](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-the-projects-exports), [Export the whole project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#export-the-whole-project), [Get the latest export](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-the-latest-export), [Get an export](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-an-export), [Delete an export's files now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-an-exports-files-now), [Do the next slice of an export now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#do-the-next-slice-of-an-export-now), [Download an archive](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#download-an-archive), [Get the project's move state](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-the-projects-move-state), [Move the project to another server (run by this server)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#move-the-project-to-another-server-run-by-this-server), [Do the next step of the move now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#do-the-next-step-of-the-move-now), [Switch to the target](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#switch-to-the-target), [Pause writes for the last copy](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#pause-writes-for-the-last-copy), [Forward the paused project to its new server](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#forward-the-paused-project-to-its-new-server), [Serve the project here again](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#serve-the-project-here-again), [Create an import token (Receive a project)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-an-import-token-receive-a-project), [List your moves into this server](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-your-moves-into-this-server), [Check or start loading an archive](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-or-start-loading-an-archive), [Get an import](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-an-import), [List the project's collaborators to invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-the-projects-collaborators-to-invite), [Verify the copy](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#verify-the-copy), [Put the project live here](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#put-the-project-live-here)
+- **Cloud billing**: [The account's plan, usage and invoices](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-accounts-plan-usage-and-invoices), [Upgrade to Cloud Standard with Stripe Checkout](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#upgrade-to-cloud-standard-with-stripe-checkout), [Open the Stripe Customer Portal](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#open-the-stripe-customer-portal), [Webhook of RevenueDot's own Stripe account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#webhook-of-revenuedots-own-stripe-account)
 - **Migration import**: [Import customers with their purchases](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#import-customers-with-their-purchases), [Keep an app's existing SDK key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#keep-an-apps-existing-sdk-key), [What still needs attention after an import](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#what-still-needs-attention-after-an-import)
 - **Web billing**: [List web discounts with their settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-web-discounts-with-their-settings), [Get the Web page: providers and checklist](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-the-web-page-providers-and-checklist), [Get a Stripe app's web config](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-stripe-apps-web-config), [Save a Stripe app's web config](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#save-a-stripe-apps-web-config), [List a Stripe app's web products](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-a-stripe-apps-web-products), [Create a web product in Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-web-product-in-stripe), [Get the project's web address and custom domain](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-the-projects-web-address-and-custom-domain), [Change the project's slug or custom domain](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-the-projects-slug-or-custom-domain), [Check the custom domain's DNS records](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-the-custom-domains-dns-records)
 - **Purchase links**: [List purchase links](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-purchase-links), [Create a purchase link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-purchase-link), [Get a purchase link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-purchase-link), [Update a purchase link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-a-purchase-link), [Delete a purchase link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-purchase-link)
@@ -18144,6 +18349,8 @@ Example 200 response:
   "account": {
     "edition": "cloud",
     "plan": "free",
+    "billing_ready": false,
+    "billing_status": "none",
     "email_verification_required": false
   },
   "projects": []
@@ -23596,6 +23803,639 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_summaries" -H "Authori
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+## Data moves
+
+Full exports of a project and moves between RevenueDot servers (self-hosted and Cloud) that keep ids, SDK keys, secret keys and webhook secrets: export jobs and downloads, move states (paused, forwarded), the dashboard's server-run move, and the target side with an import token. See [Move projects and export everything](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/move-projects.md).
+
+### List the project's exports
+
+`GET /v2/projects/{project_id}/exports` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/exports" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Exports, newest first.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Export the whole project
+
+`POST /v2/projects/{project_id}/exports` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Starts an export job of everything the project owns (64 tables) as a versioned archive: gzip JSON Lines per table and a manifest with the schema version, row counts and checksums. The job runs in short slices in the background; poll it, or call `actions/advance`. Secrets are left out unless `passphrase` is given (12 or more characters); then they are encrypted with it (AES-256-GCM, PBKDF2-SHA-256). Admins only in the dashboard.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `purpose` | `download`, `move` | no |  |
+| `include_secrets` | boolean | no |  |
+| `passphrase` | string | no | 12 to 200 characters. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/exports" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"include_secrets":true,"passphrase":"correct horse battery staple"}'
+```
+
+**Responses**
+
+- **202**: The export, queued.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Get the latest export
+
+`GET /v2/projects/{project_id}/export` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/export" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The export.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Get an export
+
+`GET /v2/projects/{project_id}/exports/{export_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Once `succeeded`, it has the `manifest` and a `download_url` valid for an hour. Each archive file can also be read one by one with `GET …/exports/{export_id}/files/{name}` (`manifest.json`, `members.json`, `tables/<table>/0001.jsonl.gz`, `secrets/<table>/0001.json.enc`).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `export_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/exports/$EXPORT_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The export.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Delete an export's files now
+
+`DELETE /v2/projects/{project_id}/exports/{export_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `export_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/exports/$EXPORT_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deleted.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Do the next slice of an export now
+
+`POST /v2/projects/{project_id}/exports/{export_id}/actions/advance` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Works for about eight seconds and returns the export. `npx revenuedot export` and `move` drive exports with it; the server's scheduled tick also advances queued exports.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `export_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/exports/$EXPORT_ID/actions/advance" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The export.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Download an archive
+
+`GET /v2/exports/download/{token}` · Auth: none · RevenueDot extension
+
+The whole archive as one uncompressed .tar whose members are the archive files. The token is signed and expires after an hour; it is the only auth.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/exports/download/$TOKEN"
+```
+
+**Responses**
+
+- **200**: The archive.
+- **404**: Expired or unknown link, or the export is gone.
+
+### Get the project's move state
+
+`GET /v2/projects/{project_id}/move` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/move" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The state.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Move the project to another server (run by this server)
+
+`POST /v2/projects/{project_id}/move` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+The dashboard's move: this server exports the project and copies it to `to_url` with the target's import token, then verifies. `dry_run` only compares rows per table. Poll `GET …/move` or call `move/actions/advance`; then `move/finish`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `to_url` | string | yes | The target server, e.g. https://api.revenuedot.app. |
+| `to_token` | string | yes | An import token (rdi_…) from the target's Receive a project. |
+| `dry_run` | boolean | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/move" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"to_url":"https://api.revenuedot.app","to_token":"rdi_…","dry_run":true}'
+```
+
+**Responses**
+
+- **202**: The move.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **409**: The project is already moving. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Do the next step of the move now
+
+`POST /v2/projects/{project_id}/move/actions/advance` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/move/actions/advance" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The move.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Switch to the target
+
+`POST /v2/projects/{project_id}/move/finish` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Pauses writes here, copies again, verifies, puts the project live on the target and forwards this server's traffic there. A verification failure lifts the pause.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/move/finish" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **202**: The move.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **409**: The move is not copied yet, or it failed. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Pause writes for the last copy
+
+`POST /v2/projects/{project_id}/move/pause` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Reads keep working. SDK writes and store notifications answer 503 with `Retry-After: 60` (the SDKs and the stores retry); API v2 writes answer 423. `npx revenuedot move --finish` calls it.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/move/pause" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The state.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **409**: The project is forwarded or incoming. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Forward the paused project to its new server
+
+`POST /v2/projects/{project_id}/move/forward` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Every `/v1`, `/rcbilling` and secret-key `/v2` request for the project, and every store notification, is passed to `to_url` with the same method, path, headers and body; the answer comes back unchanged with an `x-revenuedot-moved-to` header. A forwarding loop answers 508.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `to_url` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/move/forward" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"to_url":"https://api.revenuedot.app"}'
+```
+
+**Responses**
+
+- **200**: The state.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **409**: Pause and copy the project first. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Serve the project here again
+
+`POST /v2/projects/{project_id}/move/cancel` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Stops a running move and clears `paused` or `forwarded`. A copy already on the target stays there.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/move/cancel" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The state.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **409**: The project is being copied in here. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Create an import token (Receive a project)
+
+`POST /v2/imports/tokens` · Auth: dashboard session · RevenueDot extension
+
+A token (`rdi_` and 64 hex characters) that lets one project move into the signed-in account on this server. Shown once; lasts 24 hours. RevenueDot Cloud needs a confirmed email address.
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/imports/tokens"
+```
+
+**Responses**
+
+- **201**: The token.
+- **401**: Not signed in.
+- **403**: Confirm your email first, or the request did not come from the dashboard.
+
+### List your moves into this server
+
+`GET /v2/imports` · Auth: dashboard session · RevenueDot extension
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/imports"
+```
+
+**Responses**
+
+- **200**: The last 20 imports.
+- **401**: Not signed in.
+
+### Check or start loading an archive
+
+`POST /v2/imports` · Auth: dashboard session · RevenueDot extension
+
+With `dry_run`: what loading would do (conflicts, rows per table here now against the archive); nothing is written. Without: starts the import (the project is created `incoming`). Then send each file with `PUT /v2/imports/{import_id}/files/{name}` (its SHA-256 must match the manifest; tables upsert by primary key and never change another project's rows; a row whose parent record is not here, such as an alias of a customer created on the source during the export, is left out and counted; a file already loaded answers `applied: false`), `members.json` to `…/members`, then `…/verify` and `…/finish`. Sending a new manifest starts the incoming copy over.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `manifest` | object | yes | The archive's manifest.json. |
+| `passphrase` | string | no | Needed when the archive includes secrets. |
+| `dry_run` | boolean | no |  |
+| `replace` | boolean | no | Replace a moved-away copy of the project that is still here. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/imports"
+```
+
+**Responses**
+
+- **200**: The plan (dry run).
+- **201**: The import.
+- **400**: Bad manifest or passphrase.
+- **401**: Missing or expired import token.
+- **409**: A conflict with another project here, or the import is finished.
+- **422**: The archive was written by a newer RevenueDot.
+
+### Get an import
+
+`GET /v2/imports/{import_id}` · Auth: dashboard session · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `import_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/imports/$IMPORT_ID"
+```
+
+**Responses**
+
+- **200**: The import.
+- **401**: Missing token.
+- **404**: Not found.
+
+### List the project's collaborators to invite
+
+`POST /v2/imports/{import_id}/members` · Auth: dashboard session · RevenueDot extension
+
+The archive's members.json. Everyone in it is listed to invite on this server (the finish report repeats the list); nobody is added directly, even with an account here. The person who imports owns the project.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `import_id` | string | yes |  |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `members` | array of object | no |  |
+| `members[].email` | string | no |  |
+| `members[].role` | string | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/imports/$IMPORT_ID/members"
+```
+
+**Responses**
+
+- **200**: To invite.
+- **401**: Missing token.
+- **409**: Nothing imported yet, or the import is finished.
+
+### Verify the copy
+
+`POST /v2/imports/{import_id}/verify` · Auth: dashboard session · RevenueDot extension
+
+Recomputes the rows and checksum of every table here and compares them with the manifest. Large projects take several calls: `done: false` until finished.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `import_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/imports/$IMPORT_ID/verify"
+```
+
+**Responses**
+
+- **200**: Progress or the result.
+- **401**: Missing token.
+- **409**: Nothing imported yet, or verification failed.
+
+### Put the project live here
+
+`POST /v2/imports/{import_id}/finish` · Auth: dashboard session · RevenueDot extension
+
+Every file must be loaded. Webhooks without a secret get a new one. The answer lists the store notification URLs to change and where.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `import_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/imports/$IMPORT_ID/finish"
+```
+
+**Responses**
+
+- **200**: The report.
+- **401**: Missing token.
+- **409**: Files are missing, or the import is finished.
+
+## Cloud billing
+
+RevenueDot Cloud only: the account's plan, tracked revenue and invoices, Stripe Checkout and the Customer Portal on RevenueDot's own Stripe account. See [Cloud billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/cloud-billing.md).
+
+### The account's plan, usage and invoices
+
+`GET /v2/billing` · Auth: dashboard session · RevenueDot extension
+
+RevenueDot Cloud only; a self-hosted server answers 404. Tracked revenue is the USD sum of the month's production purchases, renewals and one-time purchases in the projects the account owns.
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/billing"
+```
+
+**Responses**
+
+- **200**: Billing.
+- **401**: Not signed in.
+- **404**: Self-hosted: billing is only on RevenueDot Cloud.
+
+### Upgrade to Cloud Standard with Stripe Checkout
+
+`POST /v2/billing/checkout` · Auth: dashboard session · RevenueDot extension
+
+A Stripe Checkout session on RevenueDot's own Stripe account: the metered Standard price, billing from the 1st of next month, no proration.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `plan` | `standard` | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/billing/checkout" \
+  -H "Content-Type: application/json" -d '{"plan":"standard"}'
+```
+
+**Responses**
+
+- **200**: Go to url.
+- **400**: Only Standard has a self-serve checkout.
+- **401**: Not signed in.
+- **409**: Already on Standard.
+- **502**: Stripe refused.
+- **503**: Billing is not set up on this server.
+
+### Open the Stripe Customer Portal
+
+`POST /v2/billing/portal` · Auth: dashboard session · RevenueDot extension
+
+Change the card, see invoices or cancel at period end.
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/billing/portal"
+```
+
+**Responses**
+
+- **200**: Go to url.
+- **401**: Not signed in.
+- **409**: No payment method yet.
+- **502**: Stripe refused.
+- **503**: Billing is not set up on this server.
+
+### Webhook of RevenueDot's own Stripe account
+
+`POST /v2/billing/stripe/webhook` · Auth: none · RevenueDot extension
+
+Stripe only, signed with `REVENUEDOT_BILLING_STRIPE_WEBHOOK_SECRET`: `checkout.session.completed`, `customer.subscription.*` and `invoice.*` events keep the plan, the payment status and the invoices.
+
+**Request body** (`application/json`)
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/billing/stripe/webhook"
+```
+
+**Responses**
+
+- **200**: Handled.
+- **400**: Bad signature or body.
+- **503**: Billing webhooks are not set up.
 
 ## Migration import
 
@@ -32250,7 +33090,7 @@ Every platform's version of this line is in the [SDK guides](https://raw.githubu
 - **It is newer.** RevenueCat has a longer track record as a hosted service.
 
 ## What does it cost?
-RevenueDot Cloud is free up to $10,000 in monthly tracked revenue. Sign-up is open at [app.revenuedot.app/signup](https://app.revenuedot.app/signup), every account is on the free plan, and paid plans have not shipped. Self-hosting is free: you pay only for your server and database. RevenueCat's Pro plan is free up to $2,500 in monthly tracked revenue and then charges 1% of tracked revenue ([pricing](https://www.revenuecat.com/pricing)).
+RevenueDot Cloud is free up to $10,000 in monthly tracked revenue. Sign-up is open at [app.revenuedot.app/signup](https://app.revenuedot.app/signup), every account is on the free plan. Cloud Standard, 0.5% of tracked revenue above $10,000 a month capped at $999 a month, is built and starts when billing is switched on; see [Cloud billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/cloud-billing.md). Self-hosting is free: you pay only for your server and database. RevenueCat's Pro plan is free up to $2,500 in monthly tracked revenue and then charges 1% of tracked revenue ([pricing](https://www.revenuecat.com/pricing)).
 
 ## Which licenses apply?
 - The server and dashboard are AGPL-3.0.
@@ -32278,7 +33118,7 @@ RevenueCat Billing (`rcb_`), Paddle and Roku apps can be created, but their rece
 No. The App Store and Google Play code is tested against mocked Apple and Google APIs only. No real App Store or Google Play sandbox purchase has run end to end yet. Use it for evaluation and testing, and keep RevenueCat for live customers until a release says otherwise. See [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md).
 
 ## Who owns the data?
-On RevenueDot Cloud, RevenueDot stores your customers, purchases, receipts and events for you, and you can read all of them through the dashboard and the REST API. When you self-host, they live in your own Postgres database and nothing is sent to RevenueDot. Back up a self-hosted database like any other production database: see [Backups](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/backups.md).
+On RevenueDot Cloud, RevenueDot stores your customers, purchases, receipts and events for you, and you can read all of them through the dashboard and the REST API. When you self-host, they live in your own Postgres database and nothing is sent to RevenueDot. Back up a self-hosted database like any other production database: see [Backups](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/backups.md). Either way you can download everything a project owns as one archive, or move it between Cloud and your own server with `npx revenuedot move`: see [Move projects and export everything](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/move-projects.md).
 
 ## Does it support StoreKit 2?
 Yes. The server verifies StoreKit 2 signed transactions (JWS) against Apple's certificate chain. It also accepts StoreKit 1 app receipts, but only when the app's App Store in-app purchase key is set, because an unsigned receipt could be forged. See [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md).
