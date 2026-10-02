@@ -1823,13 +1823,14 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Track subscriptions sold with my own Stripe account | [Connect Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md) |
 | Connect my Stripe account without copying a restricted key | [Connect with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe-connect.md) |
 | Bring the products I already set up in App Store Connect, Google Play or Stripe into the catalog | [Import products](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/import-products.md) |
+| Change App Store and Google Play prices in every territory from a CSV, or create store products, and see each product's store price and status | [Product editor](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/product-editor.md) |
 | Sell my app's subscriptions on the web with a hosted Stripe checkout | [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md) |
 | Share a checkout link for an offering | [Purchase links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md) |
 | Build a multi-step web-to-app funnel (quiz, email, paywall) | [Funnels](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md) |
 | Unlock a web purchase in my app | [Redemption links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md) |
 | Give a discount or a code at web checkout | [Web discounts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-discounts.md) |
 | Put my purchase links and funnels on my own domain | [Custom domains](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/custom-domains.md) |
-| Ask questions about my revenue and customers, and make small changes from a chat | [RevenueDot AI](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/revenuedot-ai.md) |
+| Ask questions about my revenue and customers, and make small changes from a chat, such as drafting products and offerings | [RevenueDot AI](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/revenuedot-ai.md) |
 | Receive purchase events in my backend and verify them | [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md) |
 | Send purchase events to any of RevenueCat's 37 integrations (Segment, Amplitude, AppsFlyer, Braze, Branch, Statsig, Superwall ...) or BigQuery, or export my data to S3, R2 or Google Cloud Storage | [Integrations and data exports](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md) |
 | See ad revenue next to subscription revenue, verify rewarded ads on the server, or connect AdMob | [Ads](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/ads.md) |
@@ -2258,7 +2259,7 @@ When a credential is missing or the store refuses it, the dialog says which one 
 - **Google Play:** one product per **base plan**, as `subscription_id:base_plan_id` (for example `premium:monthly`), with the base plan's billing period; prepaid and installment plans are marked. One-time products come in as `one_time` by product ID. A subscription without a base plan is listed but cannot be imported until it has one. A one-time product with no backwards-compatible purchase option is importable, with a note: SDK versions that predate purchase options cannot buy it. RevenueCat asks you to add those by hand.
 - **Stripe:** one product per **active price** (`price_…`), named after its Stripe product. Recurring prices become subscriptions with their interval; one-time prices become non-consumables (change them to consumable if they can be bought again). Prices whose product ID is already in the catalog count as imported. Metered prices and products without a price cannot be imported. Flat-rate prices can also be sold through [web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md) right away. RevenueCat imports the Stripe product and has you pick one price ([RevenueCat docs](https://www.revenuecat.com/docs/web/integrations/stripe)); importing prices lets a monthly and a yearly price of one Stripe product both be in the catalog.
 
-Prices from Apple and Google are not imported yet: the Products page shows each subscription's duration.
+The import does not copy prices into the catalog. The Products page reads each App Store and Google Play product's price and status separately, and the [product editor](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/product-editor.md) changes them; see [Store prices and status](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/product-editor.md#store-prices-and-status-on-the-products-page).
 
 ## In the dashboard
 1. Click **Import products** and choose the app.
@@ -2299,6 +2300,330 @@ The answer has `created`, `existing` (left unchanged) and `failed` (`not_in_stor
 ## Related
 - [Products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md)
 - [App Store setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md), [Google Play setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md), [Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md)
+
+---
+
+# How do I change App Store and Google Play prices with the product editor?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/product-editor.md
+Description: Download a CSV of your App Store or Google Play products with a price per territory, change prices or add products, upload it, review every change, and commit it to the store. The Products page shows each product's store price and status.
+
+**The product editor changes prices in App Store Connect and Google Play from one CSV file.** It works in three steps:
+
+1. **Update product file.** Download a CSV of the products you pick, with one row per product and territory. Change the `price` column, or add rows for new products, and upload the file.
+2. **Review changes.** RevenueDot reads the store again and checks every line. It lists every problem with its line number, or shows every price change and every new product next to the current price.
+3. **Commit to store.** RevenueDot sends the changes to App Store Connect or Google Play and shows each row's result. You can retry the rows that failed.
+
+Open it from **Product catalog → Products → Product editor** (marked Beta). Nothing changes in the store until you commit. RevenueCat's dashboard has a product editor with the same download, review and commit steps ([RevenueCat docs](https://www.revenuecat.com/docs/offerings/products-overview)).
+
+The product editor works with App Store, Mac App Store and Google Play apps. Test Store prices are set on each product in RevenueDot, and Stripe prices come with the [imported web products](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/import-products.md).
+
+## Each store needs a key that can change prices
+| Store | Credential on the app | To read prices | To change prices and create products |
+|---|---|---|---|
+| App Store, Mac App Store | The **App Store Connect API key**: the `.p8` file, its key ID and the issuer ID (app page → App Store Connect API key) | A team key with the **App Manager** role | The same key |
+| Google Play | The **service account JSON** you already use for purchases | **View app information and download bulk reports (read-only)** | **Manage store presence** |
+
+The **In-App Purchase key** (a `SubscriptionKey_….p8` file) cannot read or change prices, because App Store Connect accepts it only on the App Store Server API. Create a team key under [Users and Access → Integrations → App Store Connect API](https://appstoreconnect.apple.com/access/integrations/api) with the App Manager role, and save it in the app's App Store Connect API key fields. The app can keep both keys. Google Play permissions are set in [Play Console → Users and permissions](https://play.google.com/console/developers/users-and-permissions).
+
+When a key is missing or the store refuses it, the product editor says which key and which role or permission it needs, and links to the app's settings.
+
+## 1. Download a CSV of the products you pick
+1. Pick **App Store** or **Play Store**, and the app when you have more than one.
+2. On the **Products** tab, tick the products to change, or tick the box in the header to select them all. The list shows each product's price, how many territories have a price, and its store status.
+3. Click **Download .csv**. The download reads the store again, so the file has today's prices.
+
+Google Play one-time products are listed with their prices, but they cannot be selected: Play Store one-time purchases aren't supported yet. Change their prices in Play Console.
+
+The file is named after the app, the store and the date, for example `scanner-ios-app-store-products-2026-10-02.csv`.
+
+## The CSV has one row per product and territory
+The first line names the columns. RevenueDot reads the columns by name, so their order does not matter, and it ignores columns it does not know (with a note). `store_identifier`, `territory`, `currency` and `price` are required.
+
+| Column | What it holds |
+|---|---|
+| `store_identifier` | The product's ID in the store. App Store: the product ID, such as `com.example.pro.monthly`. Google Play: `subscription_id:base_plan_id`, such as `pro:monthly` |
+| `display_name` | The store name: the reference name in App Store Connect, or the subscription's title in Play Console. Read only for new products |
+| `type` | `subscription`, `consumable`, `non_consumable` or `non_renewing_subscription`. Read only for new products |
+| `duration` | The period of a subscription as an ISO 8601 period, such as `P1M` or `P1Y`. Read only for new products |
+| `group` | The App Store subscription group's reference name. Read only for new App Store subscriptions; Google Play ignores it |
+| `territory` | Where the price applies. App Store: App Store Connect's three-letter territory code, such as `USA`, `GBR` or `JPN`. Google Play: the two-letter region code, such as `US`, `GB` or `JP` |
+| `currency` | The currency the store uses in that territory, such as `USD`, `GBP` or `JPY` |
+| `price` | The customer price in that currency, with a period as the decimal point and no thousands separator: `9.99`, or `1740` for yen |
+| `action` | Empty (or `update`) to change an existing product's prices. `create` to add a new product |
+
+A downloaded file lists each product's base territory first (the United States when the product has a price there), then the other territories by code. A product with no price yet gets one row with empty `territory`, `currency` and `price`.
+
+**Prices have as many decimals as the currency allows**: two for USD, EUR and GBP, none for JPY and KRW, and three for KWD. Trailing zeros are fine, so `9.990` is `9.99` and `1740.00` is `1740`. A price must be above 0 and at most 100,000,000.
+
+**Only rows that change something count.** A row whose price already matches the store is unchanged. A row with no territory, currency and price is skipped. A row with a price in a territory where the product has no price yet adds that territory.
+
+**The product editor changes prices only.** A new name, type, period or group on an existing product is ignored with a note; change those in the store.
+
+**Spreadsheets are fine.** A file saved with semicolons or tabs instead of commas is read too, as long as the header line has no comma. Quoted cells, Windows line endings and a UTF-8 byte order mark are fine. In the download, a name or group that starts with `=`, `+`, `-` or `@` gets a leading apostrophe so a spreadsheet does not run it as a formula, and the upload removes the apostrophe again.
+
+### Example: two price changes and a new App Store subscription
+```csv
+store_identifier,display_name,type,duration,group,territory,currency,price,action
+pro_monthly,Pro Monthly,subscription,P1M,Pro,USA,USD,10.99,
+pro_monthly,Pro Monthly,subscription,P1M,Pro,GBR,GBP,9.99,
+pro_monthly,Pro Monthly,subscription,P1M,Pro,DEU,EUR,9.99,
+pro_weekly,Pro Weekly,subscription,P1W,Pro,USA,USD,3.99,create
+pro_weekly,,,,,GBR,GBP,3.99,create
+```
+
+The first three rows set `pro_monthly`'s price in the United States, the United Kingdom and Germany; a row whose price is already in the store counts as unchanged. The last two rows create `pro_weekly` in the `Pro` subscription group with a price in two territories. Later rows of a new product may leave the product columns empty.
+
+### Example: a new Google Play base plan
+```csv
+store_identifier,display_name,type,duration,group,territory,currency,price,action
+premium:monthly,Premium,subscription,P1M,Premium,US,USD,7.99,
+premium:yearly,Premium,subscription,P1Y,,US,USD,59.99,create
+premium:yearly,,,,,DE,EUR,59.99,create
+```
+
+The first row changes the US price of the `monthly` base plan. The other rows add a `yearly` base plan to the existing `premium` subscription, priced in the United States and Germany.
+
+### New products need a type, a period and a name
+Set `action` to `create` on every row of a new product. The first row names the product; later rows may leave `display_name`, `type`, `duration` and `group` empty, but a different value is an error. A new product needs a price in at least one territory.
+
+**App Store**
+- The product ID uses letters, digits, periods and underscores, up to 100 characters.
+- `type` is `subscription`, `consumable`, `non_consumable` or `non_renewing_subscription`.
+- A subscription needs a `duration` of `P1W`, `P1M`, `P2M`, `P3M`, `P6M` or `P1Y`, and a `group`: the subscription group's reference name. RevenueDot uses the group with that name, or creates it.
+- `display_name` is required, up to 64 characters. It becomes the reference name.
+- The App Store sells a subscription only in the territories where it has a price. The check notes when a new subscription has a price in fewer territories than the App Store has.
+
+**Google Play**
+- `store_identifier` is `subscription_id:base_plan_id`. The subscription ID starts with a lowercase letter or digit and uses lowercase letters, digits, periods and underscores, up to 40 characters. The base plan ID starts with a lowercase letter or digit and uses lowercase letters, digits and hyphens, up to 63 characters.
+- `type` is `subscription`. Play Store one-time purchases aren't supported yet; create them in Play Console.
+- `duration` is `P1W`, `P1M`, `P2M`, `P3M`, `P4M`, `P6M` or `P1Y`.
+- `display_name` is required, up to 55 characters. It becomes the subscription's title when the subscription is new.
+- A new base plan of an existing subscription works too: it is added to that subscription.
+
+## The check names every problem with its line
+When you upload a file, RevenueDot reads the store again and checks the whole file. A file with problems is kept with the status **Has errors**, and the page lists every problem (up to 500) with its line number. Nothing changes in the store. Fix the file and upload it again.
+
+**The file**
+- It is not a CSV file, for example because a quote is never closed.
+- It is empty, has a header but no rows, or has more than 20,000 rows. The upload itself refuses files over 1 MB.
+- A column appears twice, or the first line does not name `store_identifier`, `territory`, `currency` and `price`.
+- It changes nothing, because every price already matches the store.
+
+**A row**
+- `store_identifier` is empty or has a space in it.
+- `action` is not `create`, `update` or empty.
+- The product is not in the store for this app. Check the identifier, or set `action` to `create` to add it. On Google Play, a subscription ID without a base plan gets a hint with the right `subscription_id:base_plan_id`.
+- `action` is `create`, but the product already exists. Leave `action` empty to change its prices.
+- The product is a Google Play one-time product, or another product the product editor cannot change.
+- The territory is not a three-letter App Store code (or a two-letter Google Play code), or the store does not sell in it.
+- The currency is empty or is not the territory's currency, for example `EUR` for `GBR`.
+- The price is not a number such as 9.99 (use a dot for decimals and no thousands separators, also in spreadsheets that write `10,99`), has more decimals than the currency allows, is 0 or less, or is above 100,000,000. A price left as it was downloaded always counts as unchanged.
+- The same product and territory appear twice. The error names both lines.
+- A new product has no price, or a row of it has no territory, currency or price.
+- A new product breaks a rule from the list above: an invalid ID, an unknown type, a missing period, group or name, a name that is too long, or values that differ from its first row.
+- A new product's name or group has characters that could not be read, because the file was not saved as UTF-8 (Excel's plain **CSV** format on Windows). Save it as **CSV UTF-8** and upload it again.
+
+### Notes do not stop a commit
+The review also lists notes to check. They never block the file:
+- A column RevenueDot does not use.
+- A row with a territory but no price, which changes nothing.
+- A new name, type, period or group for an existing product, which is ignored.
+- A price that changes by more than 50%, in case it is a typo.
+- A new subscription priced in fewer territories than the store has.
+
+## 2. Review every change before it reaches the store
+A valid file gets the status **Ready to commit**. The page shows:
+- Four counts: price changes, new products, unchanged rows and products.
+- One table per product with each territory's current price, the new price and the change in percent ("new" for a new territory or a new product).
+- The notes to check.
+
+Two store rules decide who pays the new price:
+- **App Store subscriptions** keep existing subscribers on their current price by default. This is Apple's `preserveCurrentPrice` option, shown as **Keep existing subscribers on their current price**. Turn it off to move existing subscribers to the new price too; Apple tells them about an increase first and asks some of them to agree ([Apple's rules](https://developer.apple.com/help/app-store-connect/manage-subscriptions/manage-pricing-for-auto-renewable-subscriptions)). The option does not apply to in-app purchases.
+- **Google Play base plan prices** apply to new subscribers. Existing subscribers keep their price until you move them to the new price in Play Console ([Google's price changes](https://developer.android.com/google/play/billing/price-changes)).
+
+**Discard file** removes a file you do not want to commit. Nothing was sent to the store.
+
+## 3. Commit sends each change to the store
+Click **Commit N changes to App Store Connect** (or **to Google Play**) and confirm. RevenueDot works through the file one product at a time, and each row ends **Committed** or **Failed** with the store's message. The file ends **Committed**, **Partly committed** or **Failed**. Afterwards RevenueDot reads the store again, so the Products page shows the new prices.
+
+### App Store prices use Apple's price points
+- **Subscriptions:** for each territory, RevenueDot finds Apple's price point with exactly that customer price and schedules it with no start date, so Apple applies it as soon as it can. A price that has no price point fails, and the message names the two nearest App Store prices. Upload a new file with one of them. Apple keeps one scheduled price change per territory, and a new price replaces it, so a territory with a price change scheduled for a later date is left alone: its row fails and says so. Change that price in App Store Connect, or remove the scheduled change and retry. Dates follow App Store Connect, which counts days in US Pacific time.
+- **In-app purchases** (consumable, non-consumable and non-renewing): RevenueDot sends one price schedule per product with its base territory and every manual price: the ones it already had plus the ones you changed. Manual prices nobody changed stay as they are, and territories without a manual price keep following the base territory's price. A new in-app purchase gets the United States as its base territory when the file prices it there, else the first territory in the file. Writing a schedule replaces the whole schedule, so an in-app purchase that has a price change scheduled for a later date in App Store Connect is left alone: its rows fail and name the territories with the scheduled change. Change its prices in App Store Connect, or remove the scheduled change and retry. Changing the base territory's price also moves Apple's automatic prices in every territory without a manual price; the review notes it.
+
+### Google Play changes one subscription at a time
+RevenueDot sends one update per subscription with the changed regional prices of its base plans, and sends the rest of the subscription back as it was. All rows of one subscription share that update's result, except rows that were already at their price.
+
+### New products are created, then priced
+- **App Store:** RevenueDot finds the app in App Store Connect by its bundle ID, creates the subscription in its group (or the in-app purchase), and then sets its prices as above. Add a review screenshot and localizations in App Store Connect before you submit it for review.
+- **Google Play:** RevenueDot creates the subscription with its base plan and regional prices, or adds the base plan to the existing subscription, and then activates the base plan. When the activation fails, the row says so and the base plan stays a draft; retry, or activate it in Play Console. A base plan that someone created in Play Console after the file was uploaded is left alone: RevenueDot does not change its prices or activate it, and its rows fail and say so.
+- Every new product is added to RevenueDot's catalog, like an [import](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/import-products.md). Attach it to an entitlement and a package to sell it.
+
+### Details that matter for large files
+- Rows that share one store call share its result. On the App Store those are the rows of one in-app purchase; on Google Play, the rows of one subscription.
+- A row whose store price already equals the new price succeeds without a write and says "Already at this price."
+- When the store refuses the key during a commit, every remaining row fails with that message. Rows written before the refusal keep their result.
+- One commit request writes for up to 20 seconds. The dashboard keeps going until every row has a result, and it continues when you open the file again; another tab follows its progress. Only one file of an app commits at a time, because price schedules and Play subscriptions are read, changed and written back whole: a second file of the same app waits until the first is done.
+
+## Failed rows can be retried
+**Retry N failed** sets the failed rows back to pending and commits them again. Rows that went through are not sent again, and new products are not created twice.
+
+## The Files tab keeps every upload
+The **Files** tab lists every file uploaded for the app, newest first: its name, when and by whom it was uploaded (an email, or "API key"), its status (**Has errors**, **Ready to commit**, **Committing**, **Committed**, **Partly committed** or **Failed**), the number of changes or errors, and the results. Open a file to see its review or its results again.
+
+## The audit log records every store write
+Find these in **Project settings → Audit logs**, or with `GET /v2/projects/{project_id}/audit_logs`:
+
+| Entry | Written when |
+|---|---|
+| `product_edit_created` | A file is uploaded |
+| `product_edit_updated` | The App Store option changes |
+| `product_edit_deleted` | A file is discarded |
+| `product_edit_commit` | A commit request runs |
+| `product_edit_retry` | A retry runs |
+| `store_price_changed` | One per row that gets a result, with the app, store, file id, line, territory, currency, old and new price, and the result (and the error when it failed) |
+| `store_product_created` | One per new product created in the store, with the app, store, file id, the store's id, type, period and name |
+
+## Admins and developers commit; viewers read and download
+- **Admins and developers** (API permission `project_configuration:products:read_write`) upload files, change the option, commit, retry, discard files and refresh prices.
+- **Viewers** (`project_configuration:products:read`) see the product list, download the CSV and read past files.
+
+## With the API
+Every step of the dashboard is an API call. The reference is under [Store prices and product editor](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#store-prices-and-product-editor).
+
+Download the file for two products, or pass `all=true` for every product the product editor can change:
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/store_products/export.csv?store_identifiers=pro_monthly,pro_annual" \
+  -H "Authorization: Bearer $SECRET_KEY" -o products.csv
+```
+
+Upload it after editing. The answer is 201 with the checked file: `status` is `ready` with every change in `rows`, or `invalid` with every problem in `errors`:
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/product_edits" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d "$(jq -n --arg app "$APP_ID" --rawfile csv products.csv '{app_id: $app, file_name: "products.csv", csv: $csv}')"
+```
+
+```json
+{
+  "object": "product_edit", "id": "pedit3k9x2m7q1z8w4c", "app_id": "app1a2b3c4d", "store": "app_store", "status": "ready",
+  "errors": [], "warnings": [],
+  "summary": { "price_changes": 1, "new_products": 0, "new_product_prices": 0, "unchanged": 2, "products": 1, "rows": 3 },
+  "options": { "preserve_current_price": true },
+  "results": { "pending": 1, "succeeded": 0, "failed": 0 },
+  "rows": [
+    { "object": "product_edit_row", "idx": 0, "kind": "price_change", "line": 2, "store_identifier": "pro_monthly", "territory": "USA", "currency": "USD",
+      "old_amount_micros": 9990000, "new_amount_micros": 10990000, "change_percent": 10, "product": null, "status": "pending", "error": null, "attempts": 0, "updated_at": null }
+  ]
+}
+```
+
+To move existing App Store subscribers to the new price, turn the option off before you commit:
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/product_edits/$EDIT_ID" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" -d '{"preserve_current_price":false}'
+```
+
+Commit. One request writes for up to 20 seconds and answers `committing` while rows are left, so call it until the status changes:
+
+```bash
+while :; do
+  STATUS=$(curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/product_edits/$EDIT_ID/actions/commit" \
+    -H "Authorization: Bearer $SECRET_KEY" | jq -r .status)
+  [ "$STATUS" != "committing" ] && break
+done
+echo "$STATUS"   # committed, partially_committed or failed
+```
+
+Retry the failed rows, read one file with every row's result, or list the files of an app:
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/product_edits/$EDIT_ID/actions/retry" -H "Authorization: Bearer $SECRET_KEY"
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/product_edits/$EDIT_ID" -H "Authorization: Bearer $SECRET_KEY"
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/product_edits?app_id=$APP_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+`DELETE /v2/projects/{project_id}/product_edits/{edit_id}` discards a file that was never committed.
+
+What the errors mean:
+- **400** `parameter_error`: `csv` is empty or larger than 1 MB, `app_id` is not an app of the project, the download has neither `store_identifiers` nor `all=true` (or more than 2,000 identifiers), or `preserve_current_price` was sent for a Google Play file.
+- **403**: the key lacks `project_configuration:products:read_write` (or `:read` for reads).
+- **404**: the app or the file is not in the project.
+- **409** `invalid_request`: the file has errors, is already committed, has no failed row to retry, or can no longer be changed or discarded. **409** `resource_locked_error`: a commit of the same file, or of another file of the same app, is running.
+- **422** `unprocessable_entity_error`: the app is not an App Store, Mac App Store or Google Play app, or its key is missing or refused. The message names the key and the role or permission. **422** `store_error` with `retryable: true`: the store could not be reached; try again later.
+
+A file with problems is not an error: it answers 201 with `status: "invalid"`.
+
+## Store prices and status on the Products page
+**The Products page shows what App Store Connect and Google Play charge for each product, and each product's state in the store.**
+
+- **Price and period as the row label.** Each product row leads with its price and period, such as `$89.99/year` or `$3.99/week` (one-time products show the price alone), with the store identifier under it. Products with no known price show their name or identifier.
+- **Status column.** The store's state: **Approved**, **Ready to submit**, **Waiting for review**, **In review**, **Rejected**, **Developer action needed**, **Missing metadata** or **Removed from sale** for App Store review, and **Active**, **Draft** or **Inactive** for Google Play base plans. Test Store products show "Test Store". A dash means the store was not read yet.
+- **Refresh.** Each App Store and Google Play app group says where its prices come from and when they were read, such as "Prices and status from App Store Connect · read 5 minutes ago", with **Refresh prices** for admins and developers. When the app's key cannot read prices, the group says why and links to the app's settings. When the last read failed, it shows the error, and the prices from the read before stay.
+- **Daily refresh.** RevenueDot also reads prices on every product editor download and upload, after every commit, once a day for apps not read in the last 24 hours (a few apps at a time), and the first time an admin or developer opens the Products page for an app that was never read.
+- **Prices by territory.** A product's page shows its store price and store status, and a **Prices by territory** table with every territory's price, the base territory first. **Edit in Product editor** opens the product editor with that product selected.
+
+What RevenueDot reads, with the keys from the table at the top:
+- **App Store:** each subscription's current price in every territory (prices scheduled for a later date are left out), each in-app purchase's manual prices and the prices Apple sets from its base territory, and the review state.
+- **Google Play:** every base plan's regional prices and its state, and one-time products' prices.
+
+Reading never changes anything in the store. A product deleted in the store disappears on the next read.
+
+### In the API
+`expand=items.store_details` on `GET /v2/projects/{project_id}/products` (or `expand=store_details` on one product) adds `store_details`, a RevenueDot extension: the store's status, the base price and its territory, how many territories have a price, the period, and when it was read. It is null for products that were never read from App Store Connect or Google Play.
+
+`expand=items.indicative_price` (RevenueCat's field) now also comes from the stores. RevenueDot uses the first price it knows:
+1. The Test Store price set on the product.
+2. The store price from the last read: the United States price when the product has one, else the in-app purchase's base territory, else the first territory with a price. `country` is `US` for a United States price, the region code for another Google Play region, and null otherwise.
+3. The price of the Stripe web product.
+
+It is null when none is known.
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products?app_id=$APP_ID&expand=items.indicative_price&expand=items.store_details" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+```json
+{
+  "object": "product", "id": "prod1a2b3c4d5e", "store_identifier": "pro_annual", "type": "subscription", "state": "active",
+  "subscription": { "duration": "P1Y", "grace_period_duration": null, "trial_duration": null },
+  "created_at": 1790800900948, "app_id": "app1a2b3c4d", "display_name": "Pro Annual",
+  "indicative_price": { "object": "indicative_price", "currency": "USD", "country": "US", "amount_micros": 89990000 },
+  "store_details": {
+    "object": "store_details", "status": "approved", "store_state": "APPROVED",
+    "price": { "amount_micros": 89990000, "currency": "USD", "territory": "USA" },
+    "territories": 175, "duration": "P1Y", "display_name": "Pro Annual", "editable": true,
+    "refreshed_at": 1790971200000, "refresh_status": "ok"
+  }
+}
+```
+
+`GET /v2/projects/{project_id}/store_prices` lists every cached store product with its price in every territory, and each app's last read. `POST /v2/projects/{project_id}/apps/{app_id}/store_prices/actions/refresh` reads one app again. See [List store prices](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-store-prices) and [Read an app's store prices again](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#read-an-apps-store-prices-again).
+
+## Create products and offerings with AI
+**New product** on the Products page and **New offering** on the Offerings page open a menu with two choices:
+- **Create from scratch** opens the usual form.
+- **Create with AI** asks what to create, such as "Pro: $9.99 monthly and $59.99 yearly on iOS and Android", and opens a [RevenueDot AI](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/revenuedot-ai.md) conversation with that request.
+
+RevenueDot AI reads your apps, products and entitlements first, then drafts everything in one change:
+- **Create products** (`create-products`) adds up to 50 products. Each has an app, a store identifier and a type, and optionally a period, a name and, on the Test Store, a price. It can also attach every product to one entitlement, which it creates when the lookup key is new. Products that already exist on their app are skipped and reported.
+- **Create offering** (`create-offering`) adds an offering with its lookup key, name and metadata, its packages (RevenueCat's package IDs such as `$rc_monthly` and `$rc_annual`, or your own) and their products, and can make it the current offering. A product named by its store identifier is added once per app; names it cannot find are reported.
+
+The approval card lists every value the change will write. **Approve** writes it once. **Deny** writes nothing. The tools call the API as you, so your role, the API's checks and the audit log apply, and the entries say "RevenueDot AI on behalf of" you.
+
+These products are created in RevenueDot's catalog, not in the stores. To create App Store or Google Play products with their prices, add `create` rows to a product file.
+
+**Create with AI** is greyed out, with the reason, when the server has no AI model, the project's AI setting is **Read only** or **Disabled**, or your role is Viewer. RevenueCat's dashboard offers its own assistant, Rico, for small product changes ([RevenueCat docs](https://www.revenuecat.com/docs/offerings/products-overview)).
+
+## Related
+- [Import products](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/import-products.md)
+- [App Store setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md), [Google Play setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md)
+- [Products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md)
+- [RevenueDot AI](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/revenuedot-ai.md)
+- [API reference: store prices and product editor](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#store-prices-and-product-editor)
 
 ---
 
@@ -4309,13 +4634,15 @@ These tools change your project. Each one stops and asks first:
 | Grant entitlement | Gives a customer promotional access until a date, for example "Grant pro to wjqx8kd2rn1 for 7 days" |
 | Revoke entitlement | Ends promotional access that was granted |
 | Create product | Adds a product to an app |
+| Create products | Adds up to 50 products in one approval, optionally attached to one entitlement (created when new). Used by **Create with AI** on the Products page |
+| Create offering | Adds an offering with its packages and their products, and can make it current. Used by **Create with AI** on the Offerings page |
 | Attach products to entitlement / package | Makes products unlock an entitlement, or puts them in a package |
 | Set current offering | Changes the offering apps show by default |
 | Start experiment / Pause experiment | Starts or pauses an offering A/B test |
 | Retry webhook delivery / Replay failed deliveries | Sends failed webhook deliveries again |
 | Import StoreKit products | Creates products from an attached `.storekit` file |
 
-The card says what will change and lists every value the change will use. **Approve** runs it once and shows the result; **Deny** changes nothing and the assistant says so. Approving the same card again, or from a second tab, does not repeat the change. RevenueDot AI cannot create API keys, webhooks, apps or store credentials, cannot delete customers, and never reads or shows secrets.
+The card says what will change and lists every value the change will use. **Create with AI** in the **New product** and **New offering** menus starts a conversation that drafts everything in one Create products or Create offering card; see [Create products and offerings with AI](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/product-editor.md#create-products-and-offerings-with-ai). **Approve** runs it once and shows the result; **Deny** changes nothing and the assistant says so. Approving the same card again, or from a second tab, does not repeat the change. RevenueDot AI cannot create API keys, webhooks, apps or store credentials, cannot delete customers, and never reads or shows secrets.
 
 Customer attributes, product names and attached files are data the assistant reads, and anyone who can write them could put instructions in them. The approval card is what stops such text from changing your project: nothing changes until you approve. Answers never load images, so a reply cannot send your data to another site without a click.
 
@@ -7613,7 +7940,7 @@ Sources: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenue
 - Temporary failures, RevenueDot's or a store's, answer 5xx so the SDK retries. A 4xx means the purchase is permanently bad. See [Receipt errors: 4xx vs 5xx](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/receipt-errors-4xx-vs-5xx.md).
 
 **Test Store**
-- Test Store prices are set on the product with `test_store_price` (`amount_micros`, `currency`) on product create and update, not with RevenueCat's separate `test_store_prices` endpoint. Read them with `expand=indicative_price`.
+- Test Store prices are set on the product with `test_store_price` (`amount_micros`, `currency`) on product create and update, not with RevenueCat's separate `test_store_prices` endpoint. Read them with `expand=indicative_price`, which also reports App Store, Google Play and Stripe prices for other products ([store prices](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/product-editor.md#store-prices-and-status-on-the-products-page)).
 - Servers older than the 2026-09-30 fix send `cycle_count: null` in `GET /rcbilling/v1/subscribers/{id}/products`, and the native iOS SDK then reports "No base price found for product". Update the server if you see it.
 - Test Store purchases are always sandbox purchases. See [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
 
@@ -7625,7 +7952,7 @@ Sources: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenue
 - **Keys:** the same prefixes as RevenueCat. Public app keys are `appl_`, `mac_`, `goog_`, `test_`, `amzn_`, `strp_`, `rcb_`, `pdl_` and `roku_`; secret keys are `sk_` and belong to one project. See [Projects, apps and API keys](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md).
 - **REST API v1:** all 15 endpoints, with RevenueCat's shapes. See [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md).
 - **REST API v2:** every one of RevenueCat's 128 v2 operations has a route, with RevenueCat's shapes, pagination and errors. 126 do the real work, including the 10 discount operations, which run RevenueDot's [web discounts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-discounts.md) as Stripe coupons. The 2 invoice operations exist only for RevenueCat Billing and answer on purpose: the list is empty and a file is 404. `restore_purchase_by_order_id` also accepts App Store order ids; `create_in_store` also creates Google Play subscriptions. See [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md).
-- **Extensions that RevenueCat's API does not have:** the import endpoints, `notification_forward_url` on apps, `POST /v2/projects/{project_id}/test_purchases`, store settings and credential checks, mass subscription extension, webhook delivery logs with retry, web billing (web config, web products, purchase links, funnels, domains), and ads (the Ads Overview, reward rules and the rewards ledger, AdMob). See [REST API extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md).
+- **Extensions that RevenueCat's API does not have:** the import endpoints, `notification_forward_url` on apps, `POST /v2/projects/{project_id}/test_purchases`, store settings and credential checks, mass subscription extension, store prices and the [product editor](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/product-editor.md), webhook delivery logs with retry, web billing (web config, web products, purchase links, funnels, domains), and ads (the Ads Overview, reward rules and the rewards ledger, AdMob). See [REST API extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md).
 - **Dashboard sessions** can call `/v2` for every project you belong to; a secret key covers one project.
 - **The importer** is RevenueDot's own; see [The importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md).
 
@@ -7694,7 +8021,7 @@ One RevenueDot server answers every API below on one port. The reference is gene
 | SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 71 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
 | REST API v1 | `/v1/subscribers/...` | secret key | 10 | [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md) |
 | REST API v2 | `/v2/projects/...` | secret key or dashboard session | 163 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
-| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 240 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
+| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 250 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
 | RevenueDot Enterprise | `/v2/enterprise`, `/v2/organizations/...`, `/sso/...`, `/scim/v2/...` | session, SCIM token or none | 65 | [Enterprise](https://raw.githubusercontent.com/revenuedot/docs/main/api/enterprise.md) |
 | Webhooks (sent by RevenueDot) | your URL | HMAC signature | 22 event types | [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md) |
 
@@ -7929,7 +8256,7 @@ RevenueDot failed (500, `retryable: true`). Retry with backoff.
 
 ### resource_locked_error
 
-The delivery is being sent right now, so it cannot be retried yet (409, `retryable: true`). Try again in a minute.
+The same work is already running (409, `retryable: true`): a commit of the same product file or of another file of the same app, a run of the same data export, or a webhook delivery being sent. Wait for it to finish, then try again.
 
 ### unprocessable_entity_error
 
@@ -7937,7 +8264,7 @@ The request is valid but not possible in this state or for this store (422), for
 
 ### invalid_request
 
-The body is not valid JSON (400), or a package would get two products of one app with overlapping eligibility (409).
+The body is not valid JSON (400); a package would get two products of one app with overlapping eligibility (409); or a product file is not in a state that allows the action, such as committing a file with errors (409).
 
 ### entity_references_archived_entities
 
@@ -12327,7 +12654,7 @@ Store products.
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `app_id` | string | no | Only this app's products. |
-| `expand` | array of `items.app`, `items.indicative_price` | no | `items.app` embeds each product's app. `items.indicative_price` adds each product's Test Store price. |
+| `expand` | array of `items.app`, `items.indicative_price`, `items.store_details` | no | `items.app` embeds each product's app. `items.indicative_price` adds each product's indicative price: the Test Store price, else the store price from the last price read (United States first), else the Stripe web product's price. `items.store_details` (RevenueDot extension) adds each product's store status and price; see [store prices](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/product-editor.md#store-prices-and-status-on-the-products-page). |
 | `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
 | `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
 
@@ -12360,7 +12687,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products" -H "Authorization: Be
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `expand` | array of `indicative_price` | no | `indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price). |
+| `expand` | array of `indicative_price`, `store_details` | no | `indicative_price` adds RevenueCat's IndicativePrice: the Test Store price; else the App Store or Google Play price in the United States from the last store price read (or the in-app purchase's base territory, or the first territory with a price); else the Stripe web product's price; null when none is known. `store_details` (RevenueDot extension) adds the store's status, base price, number of priced territories and when they were read. |
 
 **Request body** (`application/json`)
 
@@ -12429,7 +12756,7 @@ Example 201 response:
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `expand` | array of `app`, `indicative_price` | no | `app` embeds the app. `indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price). |
+| `expand` | array of `app`, `indicative_price`, `store_details` | no | `app` embeds the app. `indicative_price` adds RevenueCat's IndicativePrice: the Test Store price; else the App Store or Google Play price in the United States from the last store price read (or the in-app purchase's base territory, or the first territory with a price); else the Stripe web product's price; null when none is known. `store_details` (RevenueDot extension) adds the store's status, base price, number of priced territories and when they were read. |
 
 **Example request**
 
@@ -12481,7 +12808,7 @@ RevenueDot also lets you correct `type` and `subscription.duration` (null clears
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `expand` | array of `app`, `indicative_price` | no | `indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price). |
+| `expand` | array of `app`, `indicative_price`, `store_details` | no | `indicative_price` adds RevenueCat's IndicativePrice: the Test Store price; else the App Store or Google Play price in the United States from the last store price read (or the in-app purchase's base territory, or the first territory with a price); else the Stripe web product's price; null when none is known. `store_details` (RevenueDot extension) adds the store's status, base price, number of priced territories and when they were read. |
 
 **Request body** (`application/json`)
 
@@ -18213,7 +18540,7 @@ A percentage discount (RevenueCat's shape).
 |---|---|---|---|
 | `object` | `"indicative_price"` | yes |  |
 | `currency` | string | yes | ISO 4217 code. |
-| `country` | null | yes |  |
+| `country` | string or null | yes | `US` for a United States store price, the region code for another Google Play region, else null (Test Store and Stripe prices, other App Store territories). |
 | `amount_micros` | integer | yes | Price in micros: 9.99 is 9990000. |
 
 ### MonetaryAmount
@@ -18305,7 +18632,8 @@ A percentage discount (RevenueCat's shape).
 | `app_id` | string | yes |  |
 | `display_name` | string or null | yes |  |
 | `app` | App | no | Only the object for the app's own `type` is present. Store secrets are never returned. |
-| `indicative_price` | IndicativePrice or null | no | With `expand=indicative_price`: the Test Store price, or null. |
+| `indicative_price` | IndicativePrice or null | no | With `expand=indicative_price`: the Test Store price; else the App Store or Google Play price in the United States from the last store price read (or the in-app purchase's base territory, or the first territory with a price); else the Stripe web product's price. Null when none is known. |
+| `store_details` | StoreDetails or null | no | RevenueDot extension, with `expand=store_details`: the store's status and price from the last store price read. Null when the product was never read from App Store Connect or Google Play (other stores, or no read yet). |
 
 ### Project
 
@@ -18353,6 +18681,21 @@ A percentage discount (RevenueCat's shape).
 | `store_purchase_identifier` | string | no |  |
 | `ownership` | `purchased` | no |  |
 | `country` | string | no |  |
+
+### StoreDetails
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"store_details"` | yes |  |
+| `status` | string or null | yes | The store's state in lower case: `approved`, `ready_to_submit`, `waiting_for_review`, `in_review`, `rejected`, `developer_action_needed`, `missing_metadata`, `removed_from_sale` (App Store), `active`, `draft`, `inactive` (Google Play). |
+| `store_state` | string or null | yes | The state as the store spells it, such as `APPROVED` or `ACTIVE`. |
+| `price` | object or null | yes | The United States price when the product has one, else the in-app purchase's base territory or the first territory with a price. Null when the store has no price for it. |
+| `territories` | integer | yes | How many territories have a price. |
+| `duration` | string or null | yes | The store's period for a subscription (`P1M` ...). |
+| `display_name` | string or null | yes | The name in the store. |
+| `editable` | boolean | yes | Whether the product editor can change its prices. |
+| `refreshed_at` | integer | yes | When the prices were read from the store. Epoch milliseconds. |
+| `refresh_status` | `ok`, `failing`, null | yes | The app's last read: `failing` means it failed and these values are from the read before. |
 
 ### StoreProductImport
 
@@ -18450,13 +18793,13 @@ A percentage discount (RevenueCat's shape).
 # Which API endpoints are RevenueDot extensions?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md
-Description: RevenueDot-only endpoints: dashboard sign-in, OAuth for MCP clients, project settings, store setup, API keys, webhook deliveries, event log, Test Store, web billing, purchase links, funnels, hosted pages, dashboard data and migration import.
+Description: RevenueDot-only endpoints: dashboard sign-in, OAuth for MCP clients, project settings, store setup, store prices and the product editor, API keys, webhook deliveries, event log, Test Store, web billing, purchase links, funnels, hosted pages, dashboard data and migration import.
 
 These endpoints exist only in RevenueDot. They use the same auth, errors and list envelope as [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md). The dashboard is built on them, so everything the dashboard does, a script or an AI agent can do too.
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (240)
+## Operations on this page (250)
 
 - **Dashboard auth**: [Whether sign-up is open](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-sign-up-is-open), [Create a dashboard account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-dashboard-account), [Sign in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-in), [Sign out](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out), [The signed-in user and their projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-signed-in-user-and-their-projects), [Update account settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-account-settings), [Email a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#email-a-password-reset-link), [Check a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-a-password-reset-link), [Set a new password from a reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-a-new-password-from-a-reset-link), [Confirm an email address](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#confirm-an-email-address), [Send a new confirmation email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-new-confirmation-email), [Look up an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#look-up-an-invite), [Accept an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#accept-an-invite)
 - **Members and invites**: [List open invites](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-open-invites), [Invite someone by email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#invite-someone-by-email), [Resend an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#resend-an-invite), [Revoke an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#revoke-an-invite), [Change a member's role](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-a-members-role), [Remove a member, or leave the project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#remove-a-member-or-leave-the-project)
@@ -18466,6 +18809,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Verified Metrics**: [Verified Metrics page settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#verified-metrics-page-settings), [Save Verified Metrics page settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#save-verified-metrics-page-settings), [Whether a slug is free](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-a-slug-is-free), [Publish the page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#publish-the-page), [Unpublish the page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unpublish-the-page), [The public Verified Metrics page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-public-verified-metrics-page), [The page's numbers as JSON](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-pages-numbers-as-json), [The page's project icon](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-pages-project-icon), [The page's 1200×630 link preview](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-pages-1200630-link-preview)
 - **Auth**: [Auth on or off](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#auth-on-or-off), [Turn Auth or anonymous sign-in on or off](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#turn-auth-or-anonymous-sign-in-on-or-off), [List identity providers](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-identity-providers), [Add a Firebase or OpenID Connect provider](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#add-a-firebase-or-openid-connect-provider), [Get an identity provider](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-an-identity-provider), [Update or turn off an identity provider](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-or-turn-off-an-identity-provider), [Delete an identity provider](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-an-identity-provider), [Check an ID token without signing in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-an-id-token-without-signing-in), [List signed-in identities](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-signed-in-identities), [Read a signed-in user's balances and entitlements by identity](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#read-a-signed-in-users-balances-and-entitlements-by-identity), [Unlink an identity and sign it out](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unlink-an-identity-and-sign-it-out)
 - **Store setup**: [Store setup state of an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#store-setup-state-of-an-app), [Check store credentials with Apple, Google, Amazon or Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-store-credentials-with-apple-google-amazon-or-stripe), [Extend every active App Store subscriber of a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#status-of-a-mass-extension), [Setup health](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#setup-health)
+- **Store prices and product editor**: [List store prices](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-store-prices), [Read an app's store prices again](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#read-an-apps-store-prices-again), [Download a product file](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#download-a-product-file), [List product files](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-product-files), [Upload a product file](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#upload-a-product-file), [Get a product file](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-product-file), [Change a product file's options](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-a-product-files-options), [Discard a product file](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#discard-a-product-file), [Commit a product file to the store](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#commit-a-product-file-to-the-store), [Retry the failed rows of a product file](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#retry-the-failed-rows-of-a-product-file)
 - **API keys**: [List secret keys](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-secret-keys), [Create a secret key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-secret-key), [Delete a secret key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-secret-key)
 - **Webhook deliveries**: [Send a TEST event to one webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-each-webhook-is-enabled), [Delivery log of a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delivery-log-of-a-webhook), [One delivery: what was sent and every attempt](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#one-delivery-what-was-sent-and-every-attempt), [Retry a delivery now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#retry-a-delivery-now)
 - **Integrations**: [What each integration needs](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#what-each-integration-needs), [List integrations](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-integrations), [Connect an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#connect-an-integration), [Get an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-an-integration), [Update, enable or disable an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-enable-or-disable-an-integration), [Disconnect an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#disconnect-an-integration), [Send a TEST event to one integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-test-event-to-one-integration), [Delivery log of an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delivery-log-of-an-integration), [One delivery with every attempt](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#one-delivery-with-every-attempt), [Retry a delivery now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#retry-a-delivery-now), [Queue failed or skipped deliveries again](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#queue-failed-or-skipped-deliveries-again)
@@ -20935,6 +21279,772 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/setup_health" -H "Authorization
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+## Store prices and product editor
+
+Prices in every territory, periods and store states read from App Store Connect and Google Play, and the product editor: download a CSV of prices per territory, upload it after changing prices or adding products, review the check, and commit it to the store. See [Product editor](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/product-editor.md).
+
+### List store prices
+
+`GET /v2/projects/{project_id}/store_prices` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:products:read`
+
+Every App Store, Mac App Store and Google Play product RevenueDot has read for the project's apps, with its price in every territory, its period and the store's state. The answer comes from RevenueDot's copy of the last read; the store is not asked. `apps` has one item per App Store, Mac App Store and Google Play app: whether RevenueDot can read its prices (and why not), and the last read's outcome. `next_page` is always null.
+
+Prices are read again on `POST …/apps/{app_id}/store_prices/actions/refresh`, on every product file download and upload, after every commit, and once a day for apps not read in 24 hours. See [Product editor](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/product-editor.md#store-prices-and-status-on-the-products-page).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `app_id` | string | no | Only this app's store products. 404 when the app is not in the project. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/store_prices" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The cached store products and each app's last read. Returns a list of [StoreListing](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#storelisting).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "items": [
+    {
+      "object": "store_listing",
+      "app_id": "app1a2b3c4d",
+      "store_identifier": "pro_monthly",
+      "product_id": "prod1a2b3c4d5e",
+      "type": "subscription",
+      "display_name": "Pro Monthly",
+      "duration": "P1M",
+      "store_state": "APPROVED",
+      "status": "approved",
+      "group": {
+        "id": "21000001",
+        "name": "Pro"
+      },
+      "store_id": "6743920115",
+      "price": {
+        "amount_micros": 9990000,
+        "currency": "USD",
+        "territory": "USA"
+      },
+      "prices": [
+        {
+          "territory": "DEU",
+          "currency": "EUR",
+          "amount_micros": 9990000
+        },
+        {
+          "territory": "GBR",
+          "currency": "GBP",
+          "amount_micros": 8990000
+        },
+        {
+          "territory": "USA",
+          "currency": "USD",
+          "amount_micros": 9990000
+        }
+      ],
+      "editable": true,
+      "note": null,
+      "refreshed_at": 1790971200000
+    }
+  ],
+  "next_page": null,
+  "url": "/v2/projects/proj18pzzkao/store_prices",
+  "apps": [
+    {
+      "object": "store_price_sync",
+      "app_id": "app1a2b3c4d",
+      "store": "app_store",
+      "can_read_prices": true,
+      "reason": null,
+      "status": "ok",
+      "error": null,
+      "item_count": 3,
+      "refreshed_at": 1790971200000
+    }
+  ]
+}
+```
+
+### Read an app's store prices again
+
+`POST /v2/projects/{project_id}/apps/{app_id}/store_prices/actions/refresh` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:products:read_write`
+
+Reads every product of the app from the store with its current price in every territory, its period and its state, and replaces RevenueDot's copy for the app, so products deleted in the store disappear. Nothing in the store changes, and the refresh is not written to the audit log.
+
+- **App Store and Mac App Store** need the App Store Connect API key (`app_store_connect_api_key`, `_id`, `_issuer`): a team key with the App Manager role. Each subscription's prices (`GET /v1/subscriptions/{id}/prices`, the current price per territory), each in-app purchase's price schedule (manual prices and the ones Apple sets from the base territory), and the review state.
+- **Google Play** needs the service account, with "View app information and download bulk reports (read-only)". Every base plan's regional prices and state, and one-time products' prices.
+
+When the read fails, the app's sync turns `failing` with the error and the previous prices stay. 422 `unprocessable_entity_error` for another kind of app or a missing or refused key; 422 `store_error` with `retryable: true` while the store cannot be reached.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes | App id (app...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/store_prices/actions/refresh" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: What the store has now. Returns [StorePriceRefresh](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#storepricerefresh).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "store_price_refresh",
+  "app_id": "app1a2b3c4d",
+  "warnings": [],
+  "sync": {
+    "object": "store_price_sync",
+    "app_id": "app1a2b3c4d",
+    "store": "app_store",
+    "can_read_prices": true,
+    "reason": null,
+    "status": "ok",
+    "error": null,
+    "item_count": 3,
+    "refreshed_at": 1790971200000
+  },
+  "items": [
+    {
+      "object": "store_listing",
+      "app_id": "app1a2b3c4d",
+      "store_identifier": "pro_monthly",
+      "product_id": "prod1a2b3c4d5e",
+      "type": "subscription",
+      "display_name": "Pro Monthly",
+      "duration": "P1M",
+      "store_state": "APPROVED",
+      "status": "approved",
+      "group": {
+        "id": "21000001",
+        "name": "Pro"
+      },
+      "store_id": "6743920115",
+      "price": {
+        "amount_micros": 9990000,
+        "currency": "USD",
+        "territory": "USA"
+      },
+      "prices": [
+        {
+          "territory": "DEU",
+          "currency": "EUR",
+          "amount_micros": 9990000
+        },
+        {
+          "territory": "GBR",
+          "currency": "GBP",
+          "amount_micros": 8990000
+        },
+        {
+          "territory": "USA",
+          "currency": "USD",
+          "amount_micros": 9990000
+        }
+      ],
+      "editable": true,
+      "note": null,
+      "refreshed_at": 1790971200000
+    }
+  ]
+}
+```
+
+### Download a product file
+
+`GET /v2/projects/{project_id}/apps/{app_id}/store_products/export.csv` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:products:read`
+
+A CSV with one row per product and territory: the base territory first (the United States when the product has a price there), then the rest by code. The columns are `store_identifier, display_name, type, duration, group, territory, currency, price, action`. `price` is a decimal in the territory's currency (`9.99`, `1740` for yen) and `action` is empty. A product without a price gets one row with empty `territory`, `currency` and `price`. Text cells that start with `=`, `+`, `-` or `@` get a leading apostrophe so spreadsheets do not run them as formulas; the upload removes it.
+
+The download reads the store again (like a refresh), so the file has today's prices. The `Content-Disposition` file name is `<app>-app-store-products-<date>.csv` or `<app>-play-store-products-<date>.csv`, and `X-Product-Count` is the number of products. See [the CSV format](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/product-editor.md#the-csv-has-one-row-per-product-and-territory).
+
+```csv
+store_identifier,display_name,type,duration,group,territory,currency,price,action
+pro_monthly,Pro Monthly,subscription,P1M,Pro,USA,USD,9.99,
+pro_monthly,Pro Monthly,subscription,P1M,Pro,DEU,EUR,9.99,
+pro_monthly,Pro Monthly,subscription,P1M,Pro,GBR,GBP,8.99,
+```
+
+400 without `store_identifiers` or `all=true`, or with more than 2,000 identifiers. 422 `store_error` (`param: store_identifiers`) for identifiers the store does not have for the app, and for Google Play one-time products, which the product editor does not change yet. Other 422s as for a refresh.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes | App id (app...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `store_identifiers` | string | no | The products to include, comma separated (`pro_monthly,pro_annual`); the parameter may repeat. At most 2,000. |
+| `all` | boolean | no | `true` includes every product the product editor can change. Use it instead of `store_identifiers`. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/store_products/export.csv" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The CSV file.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### List product files
+
+`GET /v2/projects/{project_id}/product_edits` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:products:read`
+
+Every uploaded product file of the project, newest first (the last 200), with its status, counts and who uploaded it. The dashboard's **Files** tab. `rows` are left out; get one file for them. `next_page` is always null.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `app_id` | string | no | Only this app's files. 404 when the app is not in the project. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/product_edits" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The files. Returns a list of [ProductEdit](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#productedit).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "items": [
+    {
+      "object": "product_edit",
+      "id": "pedit3k9x2m7q1z8w4c",
+      "app_id": "app1a2b3c4d",
+      "store": "app_store",
+      "status": "partially_committed",
+      "file_name": "scanner-ios-app-store-products-2026-10-02.csv",
+      "created_at": 1790971500000,
+      "updated_at": 1790971620000,
+      "committed_at": 1790971620000,
+      "created_by": "usr_8k2m4q",
+      "errors": [],
+      "warnings": [
+        {
+          "line": 4,
+          "message": "pro_monthly in GBR changes by +55% (8.99 → 13.95). Check it is not a typo."
+        }
+      ],
+      "summary": {
+        "price_changes": 2,
+        "new_products": 0,
+        "new_product_prices": 0,
+        "unchanged": 1,
+        "products": 1,
+        "rows": 3
+      },
+      "options": {
+        "preserve_current_price": true
+      },
+      "results": {
+        "pending": 0,
+        "succeeded": 1,
+        "failed": 1
+      },
+      "created_by_email": "dana@example.com"
+    }
+  ],
+  "next_page": null,
+  "url": "/v2/projects/proj18pzzkao/product_edits"
+}
+```
+
+### Upload a product file
+
+`POST /v2/projects/{project_id}/product_edits` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:products:read_write`
+
+Checks a product file against what the store has now and keeps it. RevenueDot reads the store again (and refreshes the cached prices), then checks every line: the columns, each product, territory, currency and price, duplicate product and territory pairs, and the fields new products need. See [every problem the check reports](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/product-editor.md#the-check-names-every-problem-with-its-line).
+
+The answer is 201 either way:
+- `status: "ready"`: every line is valid. `rows` lists every price that changes and every price of a new product; `summary` counts them and the unchanged rows. Nothing is sent to the store until you commit.
+- `status: "invalid"`: `errors` lists every problem with its line, and `rows` is empty. The file stays on the Files tab; fix it and upload it again.
+
+Rows whose price already matches the store are not changes. New values for the name, type, period or group of an existing product are ignored with a warning: the product editor changes prices only.
+
+400 when `csv` is empty or larger than 1 MB, or `app_id` is not an app of the project. 422 `unprocessable_entity_error` for an app that is not on the App Store, Mac App Store or Google Play, or without the key changing prices needs (App Store Connect API key with the App Manager role; Play service account with "Manage store presence"); 422 `store_error` with `retryable: true` while the store cannot be reached.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `app_id` | string | yes | The App Store, Mac App Store or Google Play app the file is for. |
+| `csv` | string | yes | The file's text, UTF-8. At most 1 MB and 20,000 rows. Comma separated, or semicolon or tab separated when the header line has no comma. |
+| `file_name` | string | no | Shown on the Files tab. Default: products.csv. |
+| `preserve_current_price` | boolean | no | App Store only. Default true: subscription price changes keep existing subscribers on their current price (Apple's `preserveCurrentPrice`). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/product_edits" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"app_id":"app1a2b3c4d","file_name":"scanner-ios-app-store-products-2026-10-02.csv","csv":"store_identifier,display_name,type,duration,group,territory,currency,price,action\npro_monthly,Pro Monthly,subscription,P1M,Pro,USA,USD,10.99,\npro_monthly,Pro Monthly,subscription,P1M,Pro,DEU,EUR,9.99,\npro_monthly,Pro Monthly,subscription,P1M,Pro,GBR,GBP,8.99,\n"}'
+```
+
+**Responses**
+
+- **201**: The file, checked: `ready` with its changes, or `invalid` with its errors. Returns [ProductEdit](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#productedit).
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **422**: The app is not an App Store, Mac App Store or Google Play app, or its store key is missing or refused (`unprocessable_entity_error`, the message names the key and the role or permission it needs), or the store could not be reached (`store_error` with `retryable: true`). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 201 response:
+
+```json
+{
+  "object": "product_edit",
+  "id": "pedit3k9x2m7q1z8w4c",
+  "app_id": "app1a2b3c4d",
+  "store": "app_store",
+  "status": "ready",
+  "file_name": "scanner-ios-app-store-products-2026-10-02.csv",
+  "created_at": 1790971500000,
+  "updated_at": 1790971500000,
+  "committed_at": null,
+  "created_by": "usr_8k2m4q",
+  "errors": [],
+  "warnings": [
+    {
+      "line": 4,
+      "message": "pro_monthly in GBR changes by +55% (8.99 → 13.95). Check it is not a typo."
+    }
+  ],
+  "summary": {
+    "price_changes": 2,
+    "new_products": 0,
+    "new_product_prices": 0,
+    "unchanged": 1,
+    "products": 1,
+    "rows": 3
+  },
+  "options": {
+    "preserve_current_price": true
+  },
+  "results": {
+    "pending": 2,
+    "succeeded": 0,
+    "failed": 0
+  },
+  "rows": [
+    {
+      "object": "product_edit_row",
+      "idx": 0,
+      "kind": "price_change",
+      "line": 2,
+      "store_identifier": "pro_monthly",
+      "territory": "USA",
+      "currency": "USD",
+      "old_amount_micros": 9990000,
+      "new_amount_micros": 10990000,
+      "change_percent": 10,
+      "product": null,
+      "status": "pending",
+      "error": null,
+      "attempts": 0,
+      "updated_at": null
+    },
+    {
+      "object": "product_edit_row",
+      "idx": 1,
+      "kind": "price_change",
+      "line": 4,
+      "store_identifier": "pro_monthly",
+      "territory": "GBR",
+      "currency": "GBP",
+      "old_amount_micros": 8990000,
+      "new_amount_micros": 13950000,
+      "change_percent": 55.2,
+      "product": null,
+      "status": "pending",
+      "error": null,
+      "attempts": 0,
+      "updated_at": null
+    }
+  ]
+}
+```
+
+### Get a product file
+
+`GET /v2/projects/{project_id}/product_edits/{edit_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:products:read`
+
+The file with its errors, warnings, counts, options and every change with its result. Viewers can read it too.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `edit_id` | string | yes | Product file id (pedit...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/product_edits/$EDIT_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The file. Returns [ProductEdit](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#productedit).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "product_edit",
+  "id": "pedit3k9x2m7q1z8w4c",
+  "app_id": "app1a2b3c4d",
+  "store": "app_store",
+  "status": "partially_committed",
+  "file_name": "scanner-ios-app-store-products-2026-10-02.csv",
+  "created_at": 1790971500000,
+  "updated_at": 1790971620000,
+  "committed_at": 1790971620000,
+  "created_by": "usr_8k2m4q",
+  "errors": [],
+  "warnings": [
+    {
+      "line": 4,
+      "message": "pro_monthly in GBR changes by +55% (8.99 → 13.95). Check it is not a typo."
+    }
+  ],
+  "summary": {
+    "price_changes": 2,
+    "new_products": 0,
+    "new_product_prices": 0,
+    "unchanged": 1,
+    "products": 1,
+    "rows": 3
+  },
+  "options": {
+    "preserve_current_price": true
+  },
+  "results": {
+    "pending": 0,
+    "succeeded": 1,
+    "failed": 1
+  },
+  "rows": [
+    {
+      "object": "product_edit_row",
+      "idx": 0,
+      "kind": "price_change",
+      "line": 2,
+      "store_identifier": "pro_monthly",
+      "territory": "USA",
+      "currency": "USD",
+      "old_amount_micros": 9990000,
+      "new_amount_micros": 10990000,
+      "change_percent": 10,
+      "product": null,
+      "status": "succeeded",
+      "error": null,
+      "attempts": 1,
+      "updated_at": 1790971620000
+    },
+    {
+      "object": "product_edit_row",
+      "idx": 1,
+      "kind": "price_change",
+      "line": 4,
+      "store_identifier": "pro_monthly",
+      "territory": "GBR",
+      "currency": "GBP",
+      "old_amount_micros": 8990000,
+      "new_amount_micros": 13950000,
+      "change_percent": 55.2,
+      "product": null,
+      "status": "failed",
+      "error": "The App Store has no price of 13.95 GBP in GBR. The nearest App Store prices are 13.49 and 13.99.",
+      "attempts": 1,
+      "updated_at": 1790971620000
+    }
+  ],
+  "created_by_email": "dana@example.com"
+}
+```
+
+### Change a product file's options
+
+`POST /v2/projects/{project_id}/product_edits/{edit_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:products:read_write`
+
+App Store files only, before the commit. `preserve_current_price: true` (the default) keeps existing subscribers on their current price when a subscription's price changes. `false` moves them to the new price too; Apple tells them about an increase first and asks some of them to agree ([Apple's rules](https://developer.apple.com/help/app-store-connect/manage-subscriptions/manage-pricing-for-auto-renewable-subscriptions)). In-app purchase prices are not affected.
+
+400 for a Google Play file. 409 `invalid_request` once the file is committed or when it has errors.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `edit_id` | string | yes | Product file id (pedit...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `preserve_current_price` | boolean | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/product_edits/$EDIT_ID" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"preserve_current_price":false}'
+```
+
+**Responses**
+
+- **200**: The file. Returns [ProductEdit](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#productedit).
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Discard a product file
+
+`DELETE /v2/projects/{project_id}/product_edits/{edit_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:products:read_write`
+
+Removes a file that was never committed (`ready` or `invalid`) from the Files tab. Nothing was sent to the store. 409 `invalid_request` for a file that was committed: committed rows stay in the history.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `edit_id` | string | yes | Product file id (pedit...). |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/product_edits/$EDIT_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Discarded. Returns [Deleted](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#deleted).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "product_edit",
+  "id": "pedit3k9x2m7q1z8w4c",
+  "deleted_at": 1790971560000
+}
+```
+
+### Commit a product file to the store
+
+`POST /v2/projects/{project_id}/product_edits/{edit_id}/actions/commit` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:products:read_write`
+
+Writes the file's pending changes to App Store Connect or Google Play, one product at a time, and records each row's outcome.
+
+- **App Store subscription prices:** the price point with exactly that customer price in that territory, then `POST /v1/subscriptionPrices` with `preserveCurrentPrice` from the file's options and no start date. A price with no price point fails, and the message names the two nearest App Store prices.
+- **App Store in-app purchase prices:** one `POST /v1/inAppPurchasePriceSchedules` per product with its base territory and every manual price: the ones it had plus the changed ones, so prices nobody changed stay.
+- **Google Play base plan prices:** one `monetization.subscriptions.patch` (`updateMask=basePlans`) per subscription with the changed regional prices; the rest of the subscription is sent back as read. New prices apply to new subscribers; existing subscribers keep theirs until you move them in Play Console ([Google's price changes](https://developer.android.com/google/play/billing/price-changes)).
+- **New products:** App Store subscriptions (in the subscription group named in `group`, created when it does not exist) and in-app purchases are created, then priced as above. Google Play subscriptions are created with their base plan and regional prices, or the base plan is added to an existing subscription, and each new base plan is activated. Every new product is added to the catalog, like an import.
+
+Rows that share one store call share its outcome. A row whose store price already equals the new price succeeds without a write. When the store refuses the key, every remaining row fails with that message. The answer's `status` is `committed`, `partially_committed` or `failed`; afterwards RevenueDot reads the store again so the cached prices are current.
+
+One call writes for at most 20 seconds. When rows are left, it answers `status: "committing"`: call commit again until the status changes. Each call is in the audit log as `product_edit_commit`, and each row adds `store_price_changed` (each new product `store_product_created`) with the territory, the old and new price and the result.
+
+409 `invalid_request` when the file has errors or is already committed; 409 `resource_locked_error` while a commit of the same file, or of another file of the same app, runs. 422 `unprocessable_entity_error` when the app's key is missing.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `edit_id` | string | yes | Product file id (pedit...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/product_edits/$EDIT_ID/actions/commit" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The file after this call, with each row's result. Returns [ProductEdit](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#productedit).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **409**: The file has errors or is already committed (`invalid_request`), or a commit of it or of another file of the same app is running (`resource_locked_error`). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **422**: The app is not an App Store, Mac App Store or Google Play app, or its store key is missing or refused (`unprocessable_entity_error`, the message names the key and the role or permission it needs), or the store could not be reached (`store_error` with `retryable: true`). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "product_edit",
+  "id": "pedit3k9x2m7q1z8w4c",
+  "app_id": "app1a2b3c4d",
+  "store": "app_store",
+  "status": "partially_committed",
+  "file_name": "scanner-ios-app-store-products-2026-10-02.csv",
+  "created_at": 1790971500000,
+  "updated_at": 1790971620000,
+  "committed_at": 1790971620000,
+  "created_by": "usr_8k2m4q",
+  "errors": [],
+  "warnings": [
+    {
+      "line": 4,
+      "message": "pro_monthly in GBR changes by +55% (8.99 → 13.95). Check it is not a typo."
+    }
+  ],
+  "summary": {
+    "price_changes": 2,
+    "new_products": 0,
+    "new_product_prices": 0,
+    "unchanged": 1,
+    "products": 1,
+    "rows": 3
+  },
+  "options": {
+    "preserve_current_price": true
+  },
+  "results": {
+    "pending": 0,
+    "succeeded": 1,
+    "failed": 1
+  },
+  "rows": [
+    {
+      "object": "product_edit_row",
+      "idx": 0,
+      "kind": "price_change",
+      "line": 2,
+      "store_identifier": "pro_monthly",
+      "territory": "USA",
+      "currency": "USD",
+      "old_amount_micros": 9990000,
+      "new_amount_micros": 10990000,
+      "change_percent": 10,
+      "product": null,
+      "status": "succeeded",
+      "error": null,
+      "attempts": 1,
+      "updated_at": 1790971620000
+    },
+    {
+      "object": "product_edit_row",
+      "idx": 1,
+      "kind": "price_change",
+      "line": 4,
+      "store_identifier": "pro_monthly",
+      "territory": "GBR",
+      "currency": "GBP",
+      "old_amount_micros": 8990000,
+      "new_amount_micros": 13950000,
+      "change_percent": 55.2,
+      "product": null,
+      "status": "failed",
+      "error": "The App Store has no price of 13.95 GBP in GBR. The nearest App Store prices are 13.49 and 13.99.",
+      "attempts": 1,
+      "updated_at": 1790971620000
+    }
+  ]
+}
+```
+
+### Retry the failed rows of a product file
+
+`POST /v2/projects/{project_id}/product_edits/{edit_id}/actions/retry` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:products:read_write`
+
+Sets the failed rows back to pending and commits them again, like `…/actions/commit`. Rows that succeeded are not sent again. Products the first commit created are not created twice, and an App Store subscription row whose price is already in the store succeeds without a write. Logged as `product_edit_retry`.
+
+409 `invalid_request` when no row failed; 409 `resource_locked_error` while a commit of the file, or of another file of the same app, runs.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `edit_id` | string | yes | Product file id (pedit...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/product_edits/$EDIT_ID/actions/retry" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The file after the retry. Returns [ProductEdit](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#productedit).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **409**: No row failed (`invalid_request`), or a commit of the file or of another file of the same app is running (`resource_locked_error`). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **422**: The app is not an App Store, Mac App Store or Google Play app, or its store key is missing or refused (`unprocessable_entity_error`, the message names the key and the role or permission it needs), or the store could not be reached (`store_error` with `retryable: true`). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
 ## API keys
 
@@ -28841,7 +29951,7 @@ One screen of a funnel. Every step has `id` (1-40 lower-case letters, digits, `-
 |---|---|---|---|
 | `object` | `"indicative_price"` | yes |  |
 | `currency` | string | yes | ISO 4217 code. |
-| `country` | null | yes |  |
+| `country` | string or null | yes | `US` for a United States store price, the region code for another Google Play region, else null (Test Store and Stripe prices, other App Store territories). |
 | `amount_micros` | integer | yes | Price in micros: 9.99 is 9990000. |
 
 ### Invite
@@ -28929,7 +30039,64 @@ One screen of a funnel. Every step has `id` (1-40 lower-case letters, digits, `-
 | `app_id` | string | yes |  |
 | `display_name` | string or null | yes |  |
 | `app` | App | no | Only the object for the app's own `type` is present. Store secrets are never returned. |
-| `indicative_price` | IndicativePrice or null | no | With `expand=indicative_price`: the Test Store price, or null. |
+| `indicative_price` | IndicativePrice or null | no | With `expand=indicative_price`: the Test Store price; else the App Store or Google Play price in the United States from the last store price read (or the in-app purchase's base territory, or the first territory with a price); else the Stripe web product's price. Null when none is known. |
+| `store_details` | StoreDetails or null | no | RevenueDot extension, with `expand=store_details`: the store's status and price from the last store price read. Null when the product was never read from App Store Connect or Google Play (other stores, or no read yet). |
+
+### ProductEdit
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `product_edit` | yes |  |
+| `id` | string | yes | Product file id (pedit...). |
+| `app_id` | string | yes |  |
+| `store` | `app_store`, `mac_app_store`, `play_store` | yes |  |
+| `status` | `invalid`, `ready`, `committing`, `committed`, `partially_committed`, `failed` | yes | `invalid`: the file has errors and nothing can be committed. `ready`: checked, waiting for a commit. `committing`: a commit has rows left; call commit again. `committed`: every row succeeded. `partially_committed`: some rows failed. `failed`: every row failed. |
+| `file_name` | string | yes | The uploaded file's name. |
+| `created_at` | integer | yes | When the file was uploaded. Epoch milliseconds. |
+| `updated_at` | integer | yes | When the file or its options last changed. Epoch milliseconds. |
+| `committed_at` | integer or null | yes | When the last commit finished. Epoch milliseconds, or null. |
+| `created_by` | string or null | yes | Who uploaded it: a user id (usr_...) or an API key id. |
+| `created_by_email` | string or null | no | The uploader's email, when a user uploaded it. Only in `GET` answers. |
+| `errors` | array of object | yes | Every problem the check found (at most 500). Empty unless `status` is `invalid`. |
+| `errors[].line` | integer or null | yes | The CSV line, or null for the whole file. |
+| `errors[].message` | string | yes |  |
+| `warnings` | array of object | yes | Notes that do not stop a commit: ignored columns, ignored product fields, prices that change by more than 50%, rows without a price. |
+| `warnings[].line` | integer or null | yes |  |
+| `warnings[].message` | string | yes |  |
+| `summary` | object | yes | Counts from the check. Empty when the file could not be read at all. |
+| `summary.price_changes` | integer | no | Prices of existing products that change. |
+| `summary.new_products` | integer | no | Products the commit creates. |
+| `summary.new_product_prices` | integer | no | Prices of those new products. |
+| `summary.unchanged` | integer | no | Rows whose price already matches the store. |
+| `summary.products` | integer | no | Products with at least one change. |
+| `summary.rows` | integer | no | Data rows in the file. |
+| `options` | object | yes | Empty for Google Play files. |
+| `options.preserve_current_price` | boolean | no | App Store only: Apple's `preserveCurrentPrice` for subscription price changes. True (the default) keeps existing subscribers on their current price. |
+| `results` | object | no | How many changes are pending, succeeded and failed. |
+| `results.pending` | integer | yes |  |
+| `results.succeeded` | integer | yes |  |
+| `results.failed` | integer | yes |  |
+| `rows` | array of ProductEditRow | no | Every change, in file order. Not in list answers. |
+
+### ProductEditRow
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `product_edit_row` | yes |  |
+| `idx` | integer | yes | Position of the change in the file's list of changes. |
+| `kind` | `price_change`, `new_product` | yes | `price_change`: a new price for an existing product, in a territory it has a price in or a new territory. `new_product`: a price of a product the commit creates. |
+| `line` | integer or null | yes | The CSV line the change comes from. |
+| `store_identifier` | string | yes |  |
+| `territory` | string | yes | App Store territory (`USA`) or Google Play region (`US`). |
+| `currency` | string | yes | ISO 4217 code. |
+| `old_amount_micros` | integer or null | yes | The store's price before the change, or null for a new territory or a new product. |
+| `new_amount_micros` | integer | yes | The price in the file. |
+| `change_percent` | number or null | yes | Change from the old price in percent, one decimal (10.0 for 9.99 to 10.99). Null without an old price. |
+| `product` | object or null | yes | For `new_product` rows: the product the commit creates, from the file's `type`, `duration`, `display_name` and `group` columns. |
+| `status` | `pending`, `succeeded`, `failed` | yes | `pending` until the commit reaches the row. |
+| `error` | string or null | yes | The store's message when the row failed. On a row that succeeded without a write, a note such as "Already at this price." |
+| `attempts` | integer | yes | How many times the row was sent to the store. |
+| `updated_at` | integer or null | yes | When the row last changed. Epoch milliseconds, or null. |
 
 ### Project
 
@@ -29054,6 +30221,69 @@ One screen of a funnel. Every step has `id` (1-40 lower-case letters, digits, `-
 | `webhooks.failing[].last_attempt_at` | integer | no |  |
 | `webhooks.failing[].delivery_status` | string | no |  |
 | `sdk_versions` | array of object | yes |  |
+
+### StoreDetails
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"store_details"` | yes |  |
+| `status` | string or null | yes | The store's state in lower case: `approved`, `ready_to_submit`, `waiting_for_review`, `in_review`, `rejected`, `developer_action_needed`, `missing_metadata`, `removed_from_sale` (App Store), `active`, `draft`, `inactive` (Google Play). |
+| `store_state` | string or null | yes | The state as the store spells it, such as `APPROVED` or `ACTIVE`. |
+| `price` | object or null | yes | The United States price when the product has one, else the in-app purchase's base territory or the first territory with a price. Null when the store has no price for it. |
+| `territories` | integer | yes | How many territories have a price. |
+| `duration` | string or null | yes | The store's period for a subscription (`P1M` ...). |
+| `display_name` | string or null | yes | The name in the store. |
+| `editable` | boolean | yes | Whether the product editor can change its prices. |
+| `refreshed_at` | integer | yes | When the prices were read from the store. Epoch milliseconds. |
+| `refresh_status` | `ok`, `failing`, null | yes | The app's last read: `failing` means it failed and these values are from the read before. |
+
+### StoreListing
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `store_listing` | yes |  |
+| `app_id` | string | yes |  |
+| `store_identifier` | string | yes | The identifier the catalog uses: the App Store product id, or `subscription_id:base_plan_id` (one-time products: the product id) on Google Play. |
+| `product_id` | string or null | yes | The catalog product with this store identifier on this app, or null when the catalog does not have it. |
+| `type` | `subscription`, `one_time`, `consumable`, `non_consumable`, `non_renewing_subscription` | yes |  |
+| `display_name` | string or null | yes | App Store Connect's reference name, or the Play listing title. |
+| `duration` | string or null | yes | ISO 8601 period of a subscription (`P1M`, `P1Y` ...). |
+| `store_state` | string or null | yes | The store's own state: App Store review states such as `APPROVED`, `READY_TO_SUBMIT`, `WAITING_FOR_REVIEW`, `MISSING_METADATA`; Google Play base plan states `ACTIVE`, `DRAFT`, `INACTIVE`. |
+| `status` | string or null | yes | `store_state` in lower case, such as `approved` or `active`. |
+| `group` | object or null | yes | The App Store subscription group, or the Google Play subscription. |
+| `store_id` | string or null | yes | The product's id in the store: the App Store Connect subscription or in-app purchase id, or the Google Play subscription or product id. |
+| `price` | object or null | yes | The price shown for the product: the United States when it has a price there, else the in-app purchase's base territory, else the first territory with a price. Null when the store has no price for it. |
+| `prices` | array of object | yes | The current price in every territory that has one. App Store prices scheduled for a later date are left out; an in-app purchase lists its manual prices and the prices Apple sets from the base territory. |
+| `prices[].amount_micros` | integer | yes | Price in millionths of the currency unit: 9.99 is 9990000. |
+| `prices[].currency` | string | yes | ISO 4217 code. |
+| `prices[].territory` | string | yes | App Store Connect's three-letter territory code (`USA`) or Google Play's two-letter region code (`US`). |
+| `editable` | boolean | yes | Whether the product editor can change its prices: true for App Store subscriptions and in-app purchases and Google Play base plans; false for Google Play one-time products and subscriptions without a base plan. |
+| `note` | string or null | yes | Why the product cannot be edited, or a caveat from the store. |
+| `refreshed_at` | integer | yes | When the prices were read from the store. Epoch milliseconds. |
+
+### StorePriceRefresh
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `store_price_refresh` | yes |  |
+| `app_id` | string | yes |  |
+| `warnings` | array of string | yes | Set when the store had more products than RevenueDot reads at once (5,000). |
+| `sync` | StorePriceSync | yes |  |
+| `items` | array of StoreListing | yes | Every product the store has for the app, with its prices. |
+
+### StorePriceSync
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `store_price_sync` | yes |  |
+| `app_id` | string | yes |  |
+| `store` | `app_store`, `mac_app_store`, `play_store` | yes |  |
+| `can_read_prices` | boolean | yes | Whether the app has the store key reading prices needs. |
+| `reason` | string or null | yes | Why prices cannot be read, such as a missing App Store Connect API key. Null when they can. |
+| `status` | `never`, `ok`, `failing` | yes | `never`: not read yet. `ok`: the last read worked. `failing`: the last read failed and the prices from the read before stay. |
+| `error` | string or null | yes | The last read's error. |
+| `item_count` | integer | yes | Products in the last successful read. |
+| `refreshed_at` | integer or null | yes | When the app's prices were last read, or tried. Epoch milliseconds, or null. |
 
 ### StoreSettings
 

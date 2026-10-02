@@ -111,7 +111,7 @@ RevenueDot failed (500, `retryable: true`). Retry with backoff.
 
 ### resource_locked_error
 
-The delivery is being sent right now, so it cannot be retried yet (409, `retryable: true`). Try again in a minute.
+The same work is already running (409, `retryable: true`): a commit of the same product file or of another file of the same app, a run of the same data export, or a webhook delivery being sent. Wait for it to finish, then try again.
 
 <a id="unprocessable-entity-error"></a>
 
@@ -123,7 +123,7 @@ The request is valid but not possible in this state or for this store (422), for
 
 ### invalid_request
 
-The body is not valid JSON (400), or a package would get two products of one app with overlapping eligibility (409).
+The body is not valid JSON (400); a package would get two products of one app with overlapping eligibility (409); or a product file is not in a state that allows the action, such as committing a file with errors (409).
 
 <a id="entity-references-archived-entities"></a>
 

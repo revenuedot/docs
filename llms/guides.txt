@@ -617,10 +617,11 @@ When you upload a file, RevenueDot reads the store again and checks the whole fi
 - The product is a Google Play one-time product, or another product the product editor cannot change.
 - The territory is not a three-letter App Store code (or a two-letter Google Play code), or the store does not sell in it.
 - The currency is empty or is not the territory's currency, for example `EUR` for `GBR`.
-- The price is not a number such as 9.99 (use a dot for decimals and no thousands separators, also in spreadsheets that write `10,99`), has more decimals than the currency allows, is 0 or less, or is above 100,000,000.
+- The price is not a number such as 9.99 (use a dot for decimals and no thousands separators, also in spreadsheets that write `10,99`), has more decimals than the currency allows, is 0 or less, or is above 100,000,000. A price left as it was downloaded always counts as unchanged.
 - The same product and territory appear twice. The error names both lines.
 - A new product has no price, or a row of it has no territory, currency or price.
 - A new product breaks a rule from the list above: an invalid ID, an unknown type, a missing period, group or name, a name that is too long, or values that differ from its first row.
+- A new product's name or group has characters that could not be read, because the file was not saved as UTF-8 (Excel's plain **CSV** format on Windows). Save it as **CSV UTF-8** and upload it again.
 
 ### Notes do not stop a commit
 The review also lists notes to check. They never block the file:
@@ -646,7 +647,7 @@ Two store rules decide who pays the new price:
 Click **Commit N changes to App Store Connect** (or **to Google Play**) and confirm. RevenueDot works through the file one product at a time, and each row ends **Committed** or **Failed** with the store's message. The file ends **Committed**, **Partly committed** or **Failed**. Afterwards RevenueDot reads the store again, so the Products page shows the new prices.
 
 ### App Store prices use Apple's price points
-- **Subscriptions:** for each territory, RevenueDot finds Apple's price point with exactly that customer price and schedules it with no start date, so Apple applies it as soon as it can. A price that has no price point fails, and the message names the two nearest App Store prices. Upload a new file with one of them.
+- **Subscriptions:** for each territory, RevenueDot finds Apple's price point with exactly that customer price and schedules it with no start date, so Apple applies it as soon as it can. A price that has no price point fails, and the message names the two nearest App Store prices. Upload a new file with one of them. Apple keeps one scheduled price change per territory, and a new price replaces it, so a territory with a price change scheduled for a later date is left alone: its row fails and says so. Change that price in App Store Connect, or remove the scheduled change and retry. Dates follow App Store Connect, which counts days in US Pacific time.
 - **In-app purchases** (consumable, non-consumable and non-renewing): RevenueDot sends one price schedule per product with its base territory and every manual price: the ones it already had plus the ones you changed. Manual prices nobody changed stay as they are, and territories without a manual price keep following the base territory's price. A new in-app purchase gets the United States as its base territory when the file prices it there, else the first territory in the file. Writing a schedule replaces the whole schedule, so an in-app purchase that has a price change scheduled for a later date in App Store Connect is left alone: its rows fail and name the territories with the scheduled change. Change its prices in App Store Connect, or remove the scheduled change and retry. Changing the base territory's price also moves Apple's automatic prices in every territory without a manual price; the review notes it.
 
 ### Google Play changes one subscription at a time
@@ -654,13 +655,13 @@ RevenueDot sends one update per subscription with the changed regional prices of
 
 ### New products are created, then priced
 - **App Store:** RevenueDot finds the app in App Store Connect by its bundle ID, creates the subscription in its group (or the in-app purchase), and then sets its prices as above. Add a review screenshot and localizations in App Store Connect before you submit it for review.
-- **Google Play:** RevenueDot creates the subscription with its base plan and regional prices, or adds the base plan to the existing subscription, and then activates the base plan. When the activation fails, the row says so and the base plan stays a draft; activate it in Play Console.
+- **Google Play:** RevenueDot creates the subscription with its base plan and regional prices, or adds the base plan to the existing subscription, and then activates the base plan. When the activation fails, the row says so and the base plan stays a draft; retry, or activate it in Play Console. A base plan that someone created in Play Console after the file was uploaded is left alone: RevenueDot does not change its prices or activate it, and its rows fail and say so.
 - Every new product is added to RevenueDot's catalog, like an [import](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/import-products.md). Attach it to an entitlement and a package to sell it.
 
 ### Details that matter for large files
 - Rows that share one store call share its result. On the App Store those are the rows of one in-app purchase; on Google Play, the rows of one subscription.
 - A row whose store price already equals the new price succeeds without a write and says "Already at this price."
-- When the store refuses the key during a commit, every remaining row fails with that message.
+- When the store refuses the key during a commit, every remaining row fails with that message. Rows written before the refusal keep their result.
 - One commit request writes for up to 20 seconds. The dashboard keeps going until every row has a result, and it continues when you open the file again; another tab follows its progress. Only one file of an app commits at a time, because price schedules and Play subscriptions are read, changed and written back whole: a second file of the same app waits until the first is done.
 
 ## Failed rows can be retried
