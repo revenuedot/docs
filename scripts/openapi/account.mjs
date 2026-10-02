@@ -12,7 +12,7 @@ const authErr = ok("Not signed in.", errBody, { type: "authentication_error", me
 const csrf = ok("A write from another site (Sec-Fetch-Site: cross-site or same-site).", errBody, { type: "authorization_error", message: "Dashboard requests must come from the dashboard." });
 const limited = (message) => ok("Too many attempts.", errBody, { type: "rate_limit_error", message });
 const codeFields = { code: str("A 6-digit code from the authenticator app. Needed when two-factor authentication is on."), recovery_code: str("A recovery code (`abcde-fghjk`) instead of `code`.") };
-const badCode = ok("Wrong code (`invalid_code`) or wrong current password (`invalid_password`).", errBody, { type: "invalid_code", message: "That code is not right. Check your authenticator app, or use a recovery code." });
+const badCode = ok("Wrong or missing code (`invalid_code`), or an invalid body (`invalid_request`).", errBody, { type: "invalid_code", message: "That code is not right. Check your authenticator app, or use a recovery code." });
 const session = obj({
   object: { type: "string", const: "session" }, id: str("A hash of the session, never the cookie."), current: bool("This browser."),
   method: en(["password", "two_factor", "signup", "reset", "invite", "email_change", "sso"], "How the session began."),
@@ -30,10 +30,10 @@ export const accountPaths = {
       description: `
 With two-factor authentication on, \`POST /auth/login\` (and \`POST /auth/password/reset\`) answer \`{ "two_factor_required": true, "challenge": "…" }\` without a session. Send the challenge here with a code from the authenticator app or a recovery code. The challenge works once and expires after 10 minutes. A code is never accepted twice.
 
-Limits: 5 attempts per challenge (then sign in again), 10 code attempts per account in 15 minutes.`,
+Limits: 5 attempts per challenge (then sign in again), and 10 wrong codes per account in 15 minutes, counted with the code checks of Account settings (then 429 until 15 minutes after the first). A right code does not count. A password change or reset ends the challenges that began with the old password.`,
       requestBody: body(obj({ challenge: str(undefined, { maxLength: 200 }), ...codeFields }, ["challenge"]), { challenge: "…", code: "123456" }),
       responses: { 200: ok("Signed in; `rd_session` is set. A recovery code also answers how many are left.", obj({ ok: bool(), recovery_codes_left: int() }), { ok: true }),
-        400: ok("The challenge expired, was used, or two-factor was turned off (`challenge_invalid` with a `reason`).", obj({ type: str(), reason: en(["invalid", "expired", "used"]), message: str() })),
+        400: ok("The challenge expired, was used, or two-factor was turned off (`challenge_invalid` with a `reason`), or a missing challenge (`invalid_request`).", obj({ type: str(), reason: en(["invalid", "expired", "used"]), message: str() })),
         401: ok("Wrong code.", errBody, { type: "authentication_error", message: "That code is not right. Check your authenticator app, or use a recovery code." }), 429: limited("Too many wrong codes. Enter your password again.") } }),
   },
   "/auth/logout/all": {
@@ -55,15 +55,15 @@ Emails a link (\`/confirm-email?token=…\`, 24 hours, works once) to the new ad
   },
   "/auth/email/change/confirm": {
     post: op({ id: "confirmEmailChange", tag: TAG, summary: "Confirm an email change", security: NONE, source: SRC, extension: true,
-      description: "The link from the confirmation email; works in any browser. The account moves to the new address, which counts as confirmed, and every link sent to the old address stops working. The old address gets a notice.",
+      description: "The link from the confirmation email; works in any browser. The dashboard's `/confirm-email` page sends this only when the person clicks **Confirm new email**, never on load, so a mail scanner that opens the link changes nothing. The account moves to the new address, which counts as confirmed, and every link sent to the old address stops working. The old address gets a notice.",
       requestBody: body(obj({ token: str(undefined, { maxLength: 200 }) }, ["token"])),
       responses: { 200: ok("The account uses the new address.", obj({ ok: bool(), email: str() }), { ok: true, email: "dana@newcompany.com" }),
         400: ok("The link is not valid (`token_invalid` with a `reason`).", obj({ type: str(), reason: en(["invalid", "expired", "used"]), message: str() }), { type: "token_invalid", reason: "expired", message: "This link has expired. Change your email again from Account settings." }),
-        409: ok("Another account started using the address.", errBody) } }),
+        409: ok("Another account started using the address, even a moment before (`email_taken`).", errBody, { type: "email_taken", message: "Another RevenueDot account started using that address. Pick another one." }) } }),
   },
   "/auth/password/change": {
     post: op({ id: "changePassword", tag: TAG, summary: "Change the password", security: SESSION, source: SRC, extension: true,
-      description: "Needs the current password (10 wrong attempts per 15 minutes, then 429). Every other session is signed out, open password reset links stop working, and the account gets an email.",
+      description: "Needs the current password (10 password checks per 15 minutes, counted with two-factor setup, email change and deletion, then 429). Every other session is signed out, open password reset links and half-done two-factor sign-ins stop working, and the account gets an email.",
       requestBody: body(obj({ current_password: str(), new_password: str(undefined, { minLength: 8, maxLength: 200 }) }, ["current_password", "new_password"])),
       responses: { 200: ok("Changed.", obj({ ok: bool(), sessions_revoked: int("Other sessions signed out.") }), { ok: true, sessions_revoked: 1 }),
         400: ok("Wrong current password (`invalid_password`), a short password, the same password, or an account without one (`no_password`).", errBody), 401: authErr,
@@ -130,7 +130,7 @@ Emails a link (\`/confirm-email?token=…\`, 24 hours, works once) to the new ad
   "/auth/account/projects": {
     get: op({ id: "listAccountProjects", tag: TAG, summary: "List your projects with role and plan", security: SESSION, source: SRC, extension: true,
       description: "Owned projects first. `plan` is the owner's RevenueDot Cloud plan, or Self-hosted.",
-      responses: { 200: ok("Projects.", obj({ object: { type: "string", const: "list" }, edition: en(["cloud", "self-hosted"]), items: arr(obj({ object: { type: "string", const: "account_project" }, id: str(), name: str(), role: en(["admin", "developer", "viewer"]), is_owner: bool(), members: int(), owner: { type: ["object", "null"], properties: { id: str(), name: nstr(), email: str() } }, plan: obj({ id: str(), name: str() }), created_at: ms("Created.") })) })), 401: authErr } }),
+      responses: { 200: ok("Projects.", obj({ object: { type: "string", const: "list" }, edition: en(["cloud", "self-hosted"]), items: arr(obj({ object: { type: "string", const: "account_project" }, id: str(), name: str(), role: str("admin, developer, viewer, or a custom role id (RevenueDot Enterprise)."), is_owner: bool(), members: int(), owner: { type: ["object", "null"], properties: { id: str(), name: nstr(), email: str() } }, plan: obj({ id: str(), name: str() }), created_at: ms("Created.") })) })), 401: authErr } }),
   },
   "/auth/account/delete": {
     get: op({ id: "checkAccountDeletion", tag: TAG, summary: "What deleting the account would do", security: SESSION, source: SRC, extension: true,
@@ -138,7 +138,7 @@ Emails a link (\`/confirm-email?token=…\`, 24 hours, works once) to the new ad
       responses: { 200: ok("The check.", obj({ object: { type: "string", const: "account_deletion" }, allowed: bool(), type: str(), message: str(), projects: arr(obj({ id: str(), name: str(), reason: en(["owner", "last_admin"]), members: int() })), projects_deleted: arr(obj({ id: str(), name: str() })), projects_left: arr(obj({ id: str(), name: str() })) })), 401: authErr } }),
     post: op({ id: "deleteAccount", tag: TAG, summary: "Delete the account", security: SESSION, source: SRC, extension: true,
       description: `
-Refused (409) while you own a project with other members or are the last admin of one (\`ownership_transfer_required\`), while Cloud Standard is active (\`billing_active\`), or when an enterprise organization still needs you as its owner. Deletes the account, its sessions, links, recovery codes, preferences and AI conversations, the OAuth keys you granted, and the projects where you are the only member. Audit log entries stay. Sends a confirmation email and clears the cookie.`,
+Refused (409) while you own a project with other members or are the last admin of one (\`ownership_transfer_required\`), while Cloud Standard is active (\`billing_active\`), or when an enterprise organization still needs you as its owner (\`extension_refused\`). Deletes the account, its sessions, links, recovery codes, preferences and AI conversations, the OAuth keys listed by \`GET /auth/oauth_tokens\`, and the projects where you are the only member. Audit log entries stay, and every project you leave gets a \`collaborator_account_deleted\` entry with your email. Sends a confirmation email and clears the cookie.`,
       requestBody: body(obj({ email: str("Your email, typed to confirm."), password: str("Needed when the account has a password."), ...codeFields }, ["email"]), { email: "dana@example.com", password: "current-password" }),
       responses: { 200: ok("Deleted.", obj({ ok: bool(), deleted: bool(), projects_deleted: arr(str()) }), { ok: true, deleted: true, projects_deleted: [] }),
         400: ok("The typed email does not match (`confirmation_mismatch`), or a wrong password or code.", errBody), 401: authErr, 403: csrf,
@@ -146,8 +146,18 @@ Refused (409) while you own a project with other members or are the last admin o
   },
   "/auth/notifications": {
     get: op({ id: "getNotificationSettings", tag: TAG, summary: "Get notification choices", security: SESSION, source: SRC, extension: true,
-      description: "Alert emails, and per project the weekly summary, experiment results and revenue anomaly alerts. Everything is off until you turn it on.",
-      responses: { 200: ok("Choices.", obj({ object: { type: "string", const: "notification_settings" }, alert_emails: bool(), projects: arr(obj({ project: obj({ id: str(), name: str(), role: str() }), ...prefs.properties })) })), 401: authErr } }),
+      description: "Alert emails (on by default), and per project the weekly summary, experiment results and revenue anomaly alerts, which are off until you turn them on.",
+      responses: { 200: ok("Choices.", obj({ object: { type: "string", const: "notification_settings" }, alert_emails: bool(), projects: arr(obj({ project: obj({ id: str(), name: str(), role: str("admin, developer, viewer, or a custom role id (RevenueDot Enterprise).") }), ...prefs.properties })) })), 401: authErr } }),
+  },
+  "/auth/notifications/unsubscribe/{token}": {
+    get: op({ id: "showUnsubscribe", tag: TAG, summary: "Open an email's unsubscribe link", security: NONE, source: SRC, extension: true,
+      parameters: [{ name: "token", in: "path", required: true, schema: str(), description: "From the email's Unsubscribe link or its `List-Unsubscribe` header." }],
+      description: "An HTML page with an **Unsubscribe** button. Opening the link changes nothing, because mail scanners open links too.",
+      responses: { 200: ok("The page.", { type: "string", description: "text/html" }), 404: ok("Unknown link (an HTML page).", { type: "string", description: "text/html" }) } }),
+    post: op({ id: "unsubscribe", tag: TAG, summary: "Unsubscribe from one email", security: NONE, source: SRC, extension: true,
+      parameters: [{ name: "token", in: "path", required: true, schema: str() }],
+      description: "Turns off the email this link came with (the weekly summary, experiment results or revenue anomaly alerts) for that one project, without a session. Each such email carries `List-Unsubscribe` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`, so mail apps can send this POST themselves (RFC 8058).",
+      responses: { 200: ok("Unsubscribed (an HTML page).", { type: "string", description: "text/html" }), 404: ok("Unknown link (an HTML page).", { type: "string", description: "text/html" }) } }),
   },
   "/auth/notifications/{project_id}": {
     put: op({ id: "updateNotificationSettings", tag: TAG, summary: "Choose a project's emails", security: SESSION, source: SRC, extension: true,
@@ -160,6 +170,7 @@ Refused (409) while you own a project with other members or are the last admin o
     get: op({ id: "getDisplayRate", tag: TAG, summary: "The display currency's exchange rate", security: SESSION, source: SRC, extension: true,
       parameters: [{ name: "currency", in: "query", schema: str(), description: "Default: your display currency. One of USD, EUR, GBP, AUD, CAD, JPY, BRL, KRW, CNY, MXN, SEK, PLN, NZD, CHF." }],
       description: "Units of the currency per 1 USD on the latest day with a European Central Bank reference rate (cached, with bundled rates when the source cannot be reached). The dashboard multiplies USD amounts by it.",
-      responses: { 200: ok("The rate.", obj({ object: { type: "string", const: "fx_rate" }, base: { type: "string", const: "USD" }, currency: str(), rate: num(), date: str("YYYY-MM-DD."), source: str() }), { object: "fx_rate", base: "USD", currency: "EUR", rate: 0.8531, date: "2026-10-01", source: "ecb" }), 400: ok("Unknown currency.", errBody), 401: authErr } }),
+      responses: { 200: ok("The rate.", obj({ object: { type: "string", const: "fx_rate" }, base: { type: "string", const: "USD" }, currency: str(), rate: num(), date: str("YYYY-MM-DD."), source: en(["ecb", "currency-api", "identity"], "identity: USD itself.") }), { object: "fx_rate", base: "USD", currency: "EUR", rate: 0.8531, date: "2026-10-01", source: "ecb" }), 400: ok("Unknown currency.", errBody), 401: authErr,
+        502: ok("No exchange rate for that currency right now.", errBody) } }),
   },
 };

@@ -341,9 +341,8 @@ With \`invite_token\` (from an invite link), the account joins the inviting proj
   },
   "/auth/login": {
     post: op({ id: "login", tag: "Dashboard auth", summary: "Sign in", security: NONE, source: R.auth, extension: true,
-      description: "The dashboard's sign-in. A request with an `Authorization` header is an app's Auth sign-in instead: see `POST /v1/auth/login`, which takes the same body at this path for the RevenueCat SDKs' token login.",
+      description: "The dashboard's sign-in. A request with an `Authorization` header is an app's Auth sign-in instead: see `POST /v1/auth/login`, which takes the same body at this path for the RevenueCat SDKs' token login. With two-factor authentication on, a correct password answers `two_factor_required: true` and a `challenge` instead of a session; finish with `POST /auth/login/2fa`.",
       requestBody: body(obj({ email: str(), password: str() }, ["email", "password"])),
-      description: "With two-factor authentication on, a correct password answers `two_factor_required: true` and a `challenge` instead of a session; finish with `POST /auth/login/2fa`.",
       responses: { 200: ok("Signed in (`rd_session` is set), or the two-factor step.", obj({ ok: bool(), two_factor_required: bool(), challenge: str("For `POST /auth/login/2fa`; 10 minutes."), methods: arr(str()), message: str() }), { ok: true }), 400: ok("Missing fields.", obj({ type: str(), message: str() })), 401: ok("Wrong email or password.", obj({ type: str(), message: str() }), { type: "authentication_error", message: "Email or password is incorrect." }) } }),
   },
   "/.well-known/oauth-authorization-server": {
@@ -401,9 +400,9 @@ Limits: 5 requests per IP address per 15 minutes (then 429), and 3 emails per ad
   },
   "/auth/password/reset": {
     post: op({ id: "resetPassword", tag: "Dashboard auth", summary: "Set a new password from a reset link", security: NONE, source: R.auth, extension: true,
-      description: "Sets the password, signs the user out on every device, marks the email as confirmed (the link proved the inbox) and signs this browser in with a new `rd_session` cookie. Every other open reset link of the user stops working. With two-factor authentication on, it answers `two_factor_required: true` and a `challenge` instead of signing in; finish with `POST /auth/login/2fa`.",
+      description: "Sets the password, signs the user out on every device, marks the email as confirmed (the link proved the inbox) and signs this browser in with a new `rd_session` cookie. Every other open reset link of the user stops working, and so do two-factor sign-ins begun with the old password. With two-factor authentication on, it answers `two_factor_required: true` and a `challenge` instead of signing in; finish with `POST /auth/login/2fa`.",
       requestBody: body(obj({ token: str(undefined, { maxLength: 200 }), password: str(undefined, { minLength: 8, maxLength: 200 }) }, ["token", "password"]), { token: "…", password: "a-new-long-password" }),
-      responses: { 200: ok("Password changed and signed in.", obj({ ok: bool() }), { ok: true }), 400: ok("The password is too short or too long, or the link is not valid (`token_invalid` with a `reason`).", obj({ type: str(), reason: tokenReason, message: str() }), { type: "token_invalid", reason: "used", message: "This link was already used. Ask for a new one if you still need it." }) } }),
+      responses: { 200: ok("Password changed and signed in, or the two-factor step.", obj({ ok: bool(), two_factor_required: bool(), challenge: str("For `POST /auth/login/2fa`; 10 minutes."), methods: arr(str()), message: str(), password_reset: bool() }), { ok: true }), 400: ok("The password is too short or too long, or the link is not valid (`token_invalid` with a `reason`).", obj({ type: str(), reason: tokenReason, message: str() }), { type: "token_invalid", reason: "used", message: "This link was already used. Ask for a new one if you still need it." }) } }),
   },
   "/auth/email/verify": {
     post: op({ id: "verifyEmail", tag: "Dashboard auth", summary: "Confirm an email address", security: NONE, source: R.auth, extension: true,

@@ -4060,25 +4060,26 @@ Open the project switcher at the top of the sidebar and choose **Account setting
 
 ## General
 - **Name.** Shown to teammates and in invites you send.
-- **Email.** Click **Change email**, enter the new address and your current password (and a two-factor code if it is on). RevenueDot emails a link to the new address and tells the old address about the change. The account moves only when you open the link. The link works once and expires after 24 hours. Until then the old address keeps working, and **Cancel change** stops the link. Links sent to the old address earlier (password resets) stop working once the account moves.
-- **Stripe accounts.** Every Stripe account you connected with **Connect with Stripe** to a Stripe app in your projects, with its mode (Live or Test) and status. Connect and disconnect on the app's page; see [Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md).
+- **Email.** Click **Change email**, enter the new address and your current password (and a two-factor code if it is on). RevenueDot emails a link to the new address and tells the old address about the change. The account moves only when you open the link and click **Confirm new email**; opening the link alone changes nothing, so a mail scanner cannot confirm it. The link works once and expires after 24 hours. Until then the old address keeps working, and **Cancel change** stops the link. Links sent to the old address earlier (password resets) stop working once the account moves.
+- **Stripe accounts.** Every Stripe account connected with **Connect with Stripe** to a Stripe app in your projects, by you or a teammate, with its mode (Live or Test) and status. Connect and disconnect on the app's page; see [Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md).
 - **Log out** signs out this browser. **Log out of all sessions** signs out every browser, this one included.
-- **Delete account.** Type your email, your password and, with two-factor on, a code. RevenueDot deletes your account, your sessions, your two-factor settings, your notification choices, the OAuth keys you gave to AI assistants and every project in which you are the only member. Projects other people use stay with them. Deletion is refused while:
+- **Delete account.** Type your email, your password and, with two-factor on, a code. RevenueDot deletes your account, your sessions, your two-factor settings, your notification choices, the OAuth keys listed under **Active OAuth tokens** and every project in which you are the only member. Projects other people use stay with them, and their audit log records that you left, with your email. Deletion is refused while:
   - you **own a project that has other members**: transfer ownership first in **Project settings → General** ([Project settings](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/project-settings.md)), or remove the members;
   - you are the **last admin** of a project with other members: make someone else an admin;
-  - a **Cloud Standard plan** is still active: cancel it on the Billing page first ([Cloud billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/cloud-billing.md)).
+  - a **Cloud Standard plan** is still active: cancel it on the Billing page first ([Cloud billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/cloud-billing.md));
+  - you are the **only owner of an organization** that has other members (RevenueDot Enterprise): make someone else an owner of the organization first.
 
 ## Billing
 **Owned projects** lists the projects you own with your role, the number of members and the plan. The projects you belong to but do not own follow with their owner. On RevenueDot Cloud the plan, this month's tracked revenue, the bill so far and your invoices follow ([Cloud billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/cloud-billing.md)). Self-hosted servers are free and have no billing.
 
 ## Security
-- **Update password.** Enter the current password and the new one twice. Every other session is signed out, and you get an email. After 10 wrong current passwords in 15 minutes, RevenueDot waits 15 minutes.
+- **Update password.** Enter the current password and the new one twice. Every other session is signed out, a sign-in that is waiting for its two-factor code has to start again, and you get an email. After 10 password checks in 15 minutes (here, in two-factor setup, email change or deletion), RevenueDot refuses more until 15 minutes after the first.
 - **Two-factor authentication.** Click **Set up**, confirm your password, scan the QR code with an authenticator app (Google Authenticator, 1Password, Authy or any app that reads TOTP codes) or type the key, then enter the 6-digit code it shows. You get **10 recovery codes** once: keep them in a password manager. Each signs you in once without your phone.
   - From then on, sign-in asks for the code after your password. A code works once; you have one step (30 seconds) of clock drift either way.
-  - **Lost your phone?** On the code screen choose **Use a recovery code**. RevenueDot emails you when a recovery code is used and says how many are left. **Make new codes** replaces them all.
+  - **Lost your phone?** On the code screen choose **Use a recovery code**. RevenueDot emails you when a recovery code signs you in and says how many are left. **Make new codes** replaces them all.
   - **Turn off** needs a current code or a recovery code.
   - A password reset on an account with two-factor still asks for the code before it signs you in.
-  - Five wrong codes end a sign-in attempt; ten in 15 minutes pause code checks for the account.
+  - Five wrong codes end a sign-in attempt. Ten wrong codes in 15 minutes, at sign-in and in these settings together, pause code checks for the account until 15 minutes after the first; a new sign-in does not reset them. Right codes do not count.
   - Single sign-on sessions ([Single sign-on](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/single-sign-on.md)) never ask for the code: your identity provider handles the second factor.
 - **Sessions.** Every browser signed in to your account, with the browser, the IP address, how it signed in and when it was last active. **Sign out** ends one; **Sign out other sessions** ends all but this one.
 - **Active OAuth tokens.** Every AI assistant or app you connected with **Allow access** ([Connect AI assistants](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/connect-ai-assistants.md)): the client, its address, the project, the access and when it was last used. **Revoke** stops it at once. Keys granted before this list existed are on the project's **API keys** page.
@@ -4096,7 +4097,9 @@ Open the project switcher at the top of the sidebar and choose **Account setting
 | Medium (default) | 3 spreads | 30%, and $20 or 3 subscriptions |
 | High | 2 spreads | 20%, and $10 or 2 subscriptions |
 
-The usual value is the median of the 28 days, and the spread is their median absolute deviation, so one odd day in the past does not hide a real drop. A project needs 14 days with some revenue before it can alert.
+The usual value is the median of the 28 days, and the spread is 1.4826 times their median absolute deviation (at least 10% of the usual value), so one odd day in the past does not hide a real drop. A series needs 14 of the 28 days with some revenue (or some new subscriptions) before it can alert, so a new app, or one that sells on one day in three, gets no alerts yet.
+
+Every summary, experiment and anomaly email has an **Unsubscribe** link at the bottom, and mail apps show their own one-click unsubscribe. It turns off that email for that project only; no sign-in needed.
 
 ## Interface
 - **Theme**: System (follows your computer), Light or Dark. It is saved on your account, so it follows you to other browsers; the moon button in the top bar changes it too.
@@ -4104,17 +4107,17 @@ The usual value is the median of the 28 days, and the spread is their median abs
 
 ## Date and region
 - **Start week on**: Sunday to Saturday (Monday by default). Weekly charts, the date pickers and your weekly summary start their weeks on that day. Through the API, add `week_start=0` (Sunday) to `6` (Saturday) to `GET /v2/projects/{project_id}/charts/{chart_name}`.
-- **Display currency**: one of USD, EUR, GBP, AUD, CAD, JPY, BRL, KRW, CNY, MXN, SEK, PLN, NZD or CHF. Charts convert each day at that day's rate; the Overview, customers, transactions and other amounts use the latest European Central Bank rate, shown on the page. Prices in a store's own currency stay as they are. The API answers in USD, and RevenueDot Cloud bills in USD.
+- **Display currency**: one of USD, EUR, GBP, AUD, CAD, JPY, BRL, KRW, CNY, MXN, SEK, PLN, NZD or CHF. Charts convert each day at that day's rate; the Overview, customers, transactions and other amounts use the latest European Central Bank rate, shown on the page. Until the rate has loaded, or when it cannot be loaded, amounts show in USD and say so. Prices in a store's own currency stay as they are. The API answers in USD unless a chart request sets `currency`, and RevenueDot Cloud bills in USD.
 
 ## API
 Account settings use the dashboard session (`rd_session`), never an API key. The endpoints are in the [API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/README.md) under **Account settings**: `POST /auth/email/change`, `POST /auth/password/change`, `GET /auth/sessions`, `POST /auth/2fa/setup`, `POST /auth/login/2fa`, `GET /auth/oauth_tokens`, `GET /auth/stripe_accounts`, `POST /auth/account/delete`, `GET /auth/notifications` and `GET /auth/fx`.
 
 ## Questions
-**Can a self-hosted server use two-factor authentication?** Yes. The secret is sealed with the server's `REVENUEDOT_ENCRYPTION_KEY` (or a key derived from `REVENUEDOT_SIGNING_KEY`). If that key changes, authenticator codes stop working; sign in with a recovery code and set two-factor up again.
+**Can a self-hosted server use two-factor authentication?** Yes. The secret is sealed with AES-256-GCM using the server's `REVENUEDOT_ENCRYPTION_KEY` (or a key derived from `REVENUEDOT_SIGNING_KEY`). A server with neither key stores it unencrypted, like its other integration secrets, and never returns it after setup: set `REVENUEDOT_ENCRYPTION_KEY` (`openssl rand -base64 32`). If the key changes, authenticator codes stop working: sign in with a recovery code, choose **Turn off** with another recovery code, then set two-factor up again.
 
 **I lost my phone and my recovery codes.** Ask the server's operator: on a self-hosted server, `revenuedot admin reset-password` resets the password but not two-factor, so the operator clears it in the database (`UPDATE users SET totp_secret = NULL, totp_enabled_at = NULL, totp_last_step = NULL WHERE email = '…'`). On RevenueDot Cloud, write to hello@revenuedot.app from the account's address.
 
-**Why did I not get a weekly summary?** It goes out on the first day of your week, from 06:00 UTC, for weeks with any production revenue, customers or trials. Check that the project is turned on under Notifications.
+**Why did I not get a weekly summary?** It goes out on the first day of your week from 06:00 UTC (by the end of the third day at the latest), when that week or the week before had any production MRR, revenue, new customers, new trials or churned subscriptions. Check that the project is turned on under Notifications.
 
 ---
 
@@ -7639,7 +7642,7 @@ One RevenueDot server answers every API below on one port. The reference is gene
 | SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 71 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
 | REST API v1 | `/v1/subscribers/...` | secret key | 10 | [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md) |
 | REST API v2 | `/v2/projects/...` | secret key or dashboard session | 163 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
-| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 262 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
+| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 264 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
 | RevenueDot Enterprise | `/v2/enterprise`, `/v2/organizations/...`, `/sso/...`, `/scim/v2/...` | session, SCIM token or none | 65 | [Enterprise](https://raw.githubusercontent.com/revenuedot/docs/main/api/enterprise.md) |
 | Webhooks (sent by RevenueDot) | your URL | HMAC signature | 22 event types | [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md) |
 
@@ -18402,10 +18405,10 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (262)
+## Operations on this page (264)
 
 - **Dashboard auth**: [Whether sign-up is open](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-sign-up-is-open), [Create a dashboard account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-dashboard-account), [Sign in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-in), [Sign out](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out), [The signed-in user and their projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-signed-in-user-and-their-projects), [Update account settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-account-settings), [Email a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#email-a-password-reset-link), [Check a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-a-password-reset-link), [Set a new password from a reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-a-new-password-from-a-reset-link), [Confirm an email address](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#confirm-an-email-address), [Send a new confirmation email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-new-confirmation-email), [Look up an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#look-up-an-invite), [Accept an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#accept-an-invite)
-- **Account settings**: [Finish a sign-in with a two-factor code](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#finish-a-sign-in-with-a-two-factor-code), [Sign out of every session](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out-of-every-session), [Change the account's email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-the-accounts-email), [Cancel a waiting email change](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#cancel-a-waiting-email-change), [Confirm an email change](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#confirm-an-email-change), [Change the password](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-the-password), [List signed-in sessions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-signed-in-sessions), [Sign out one session](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out-one-session), [Sign out every other session](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out-every-other-session), [Start two-factor setup](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#start-two-factor-setup), [Turn two-factor authentication on](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#turn-two-factor-authentication-on), [Turn two-factor authentication off](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#turn-two-factor-authentication-off), [Make new recovery codes](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#make-new-recovery-codes), [List OAuth tokens you granted](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-oauth-tokens-you-granted), [Revoke an OAuth token](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#revoke-an-oauth-token), [List connected Stripe accounts](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-connected-stripe-accounts), [List your projects with role and plan](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-your-projects-with-role-and-plan), [What deleting the account would do](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#what-deleting-the-account-would-do), [Delete the account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-the-account), [Get notification choices](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-notification-choices), [Choose a project's emails](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#choose-a-projects-emails), [The display currency's exchange rate](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-display-currencys-exchange-rate)
+- **Account settings**: [Finish a sign-in with a two-factor code](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#finish-a-sign-in-with-a-two-factor-code), [Sign out of every session](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out-of-every-session), [Change the account's email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-the-accounts-email), [Cancel a waiting email change](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#cancel-a-waiting-email-change), [Confirm an email change](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#confirm-an-email-change), [Change the password](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-the-password), [List signed-in sessions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-signed-in-sessions), [Sign out one session](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out-one-session), [Sign out every other session](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out-every-other-session), [Start two-factor setup](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#start-two-factor-setup), [Turn two-factor authentication on](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#turn-two-factor-authentication-on), [Turn two-factor authentication off](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#turn-two-factor-authentication-off), [Make new recovery codes](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#make-new-recovery-codes), [List OAuth tokens you granted](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-oauth-tokens-you-granted), [Revoke an OAuth token](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#revoke-an-oauth-token), [List connected Stripe accounts](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-connected-stripe-accounts), [List your projects with role and plan](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-your-projects-with-role-and-plan), [What deleting the account would do](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#what-deleting-the-account-would-do), [Delete the account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-the-account), [Get notification choices](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-notification-choices), [Open an email's unsubscribe link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#open-an-emails-unsubscribe-link), [Unsubscribe from one email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unsubscribe-from-one-email), [Choose a project's emails](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#choose-a-projects-emails), [The display currency's exchange rate](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-display-currencys-exchange-rate)
 - **Members and invites**: [List open invites](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-open-invites), [Invite someone by email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#invite-someone-by-email), [Resend an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#resend-an-invite), [Revoke an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#revoke-an-invite), [Change a member's role](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-a-members-role), [Remove a member, or leave the project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#remove-a-member-or-leave-the-project)
 - **Project settings**: [Get a project with its settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-project-with-its-settings), [Update a project's name, transfer behaviour and sandbox testing access](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-a-projects-name-transfer-behaviour-and-sandbox-testing-access), [Delete a project and everything in it](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-project-and-everything-in-it), [Get the Customer Center configuration of the project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-the-customer-center-configuration-of-the-project), [Set the Customer Center configuration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-the-customer-center-configuration), [Transfer project ownership to an admin](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#transfer-project-ownership-to-an-admin)
 - **Brand**: [Colour and gradient presets](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#colour-and-gradient-presets), [Replace colour or gradient presets](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#replace-colour-or-gradient-presets)
@@ -18512,7 +18515,7 @@ Example 201 response:
 
 `POST /auth/login` · Auth: none · RevenueDot extension
 
-With two-factor authentication on, a correct password answers `two_factor_required: true` and a `challenge` instead of a session; finish with `POST /auth/login/2fa`.
+The dashboard's sign-in. A request with an `Authorization` header is an app's Auth sign-in instead: see `POST /v1/auth/login`, which takes the same body at this path for the RevenueCat SDKs' token login. With two-factor authentication on, a correct password answers `two_factor_required: true` and a `challenge` instead of a session; finish with `POST /auth/login/2fa`.
 
 **Request body** (`application/json`)
 
@@ -18717,7 +18720,7 @@ Example 200 response:
 
 `POST /auth/password/reset` · Auth: none · RevenueDot extension
 
-Sets the password, signs the user out on every device, marks the email as confirmed (the link proved the inbox) and signs this browser in with a new `rd_session` cookie. Every other open reset link of the user stops working. With two-factor authentication on, it answers `two_factor_required: true` and a `challenge` instead of signing in; finish with `POST /auth/login/2fa`.
+Sets the password, signs the user out on every device, marks the email as confirmed (the link proved the inbox) and signs this browser in with a new `rd_session` cookie. Every other open reset link of the user stops working, and so do two-factor sign-ins begun with the old password. With two-factor authentication on, it answers `two_factor_required: true` and a `challenge` instead of signing in; finish with `POST /auth/login/2fa`.
 
 **Request body** (`application/json`)
 
@@ -18735,7 +18738,7 @@ curl -s -X POST "$REVENUEDOT_URL/auth/password/reset" \
 
 **Responses**
 
-- **200**: Password changed and signed in.
+- **200**: Password changed and signed in, or the two-factor step.
 - **400**: The password is too short or too long, or the link is not valid (`token_invalid` with a `reason`).
 
 Example 200 response:
@@ -18893,7 +18896,7 @@ Everything that belongs to the signed-in person: email change, password, session
 
 With two-factor authentication on, `POST /auth/login` (and `POST /auth/password/reset`) answer `{ "two_factor_required": true, "challenge": "…" }` without a session. Send the challenge here with a code from the authenticator app or a recovery code. The challenge works once and expires after 10 minutes. A code is never accepted twice.
 
-Limits: 5 attempts per challenge (then sign in again), 10 code attempts per account in 15 minutes.
+Limits: 5 attempts per challenge (then sign in again), and 10 wrong codes per account in 15 minutes, counted with the code checks of Account settings (then 429 until 15 minutes after the first). A right code does not count. A password change or reset ends the challenges that began with the old password.
 
 **Request body** (`application/json`)
 
@@ -18913,7 +18916,7 @@ curl -s -X POST "$REVENUEDOT_URL/auth/login/2fa" \
 **Responses**
 
 - **200**: Signed in; `rd_session` is set. A recovery code also answers how many are left.
-- **400**: The challenge expired, was used, or two-factor was turned off (`challenge_invalid` with a `reason`).
+- **400**: The challenge expired, was used, or two-factor was turned off (`challenge_invalid` with a `reason`), or a missing challenge (`invalid_request`).
 - **401**: Wrong code.
 - **429**: Too many attempts.
 
@@ -19014,7 +19017,7 @@ Example 200 response:
 
 `POST /auth/email/change/confirm` · Auth: none · RevenueDot extension
 
-The link from the confirmation email; works in any browser. The account moves to the new address, which counts as confirmed, and every link sent to the old address stops working. The old address gets a notice.
+The link from the confirmation email; works in any browser. The dashboard's `/confirm-email` page sends this only when the person clicks **Confirm new email**, never on load, so a mail scanner that opens the link changes nothing. The account moves to the new address, which counts as confirmed, and every link sent to the old address stops working. The old address gets a notice.
 
 **Request body** (`application/json`)
 
@@ -19032,7 +19035,7 @@ curl -s -X POST "$REVENUEDOT_URL/auth/email/change/confirm"
 
 - **200**: The account uses the new address.
 - **400**: The link is not valid (`token_invalid` with a `reason`).
-- **409**: Another account started using the address.
+- **409**: Another account started using the address, even a moment before (`email_taken`).
 
 Example 200 response:
 
@@ -19047,7 +19050,7 @@ Example 200 response:
 
 `POST /auth/password/change` · Auth: dashboard session · RevenueDot extension
 
-Needs the current password (10 wrong attempts per 15 minutes, then 429). Every other session is signed out, open password reset links stop working, and the account gets an email.
+Needs the current password (10 password checks per 15 minutes, counted with two-factor setup, email change and deletion, then 429). Every other session is signed out, open password reset links and half-done two-factor sign-ins stop working, and the account gets an email.
 
 **Request body** (`application/json`)
 
@@ -19208,7 +19211,7 @@ curl -s -X POST "$REVENUEDOT_URL/auth/2fa/enable" \
 **Responses**
 
 - **200**: On.
-- **400**: Wrong code (`invalid_code`) or wrong current password (`invalid_password`).
+- **400**: Wrong or missing code (`invalid_code`), or an invalid body (`invalid_request`).
 - **401**: Not signed in.
 - **403**: A write from another site (Sec-Fetch-Site: cross-site or same-site).
 - **409**: Already on, or no setup to finish.
@@ -19236,7 +19239,7 @@ curl -s -X POST "$REVENUEDOT_URL/auth/2fa/disable"
 **Responses**
 
 - **200**: Off.
-- **400**: Wrong code (`invalid_code`) or wrong current password (`invalid_password`).
+- **400**: Wrong or missing code (`invalid_code`), or an invalid body (`invalid_request`).
 - **401**: Not signed in.
 - **403**: A write from another site (Sec-Fetch-Site: cross-site or same-site).
 - **409**: Two-factor is off.
@@ -19273,7 +19276,7 @@ curl -s -X POST "$REVENUEDOT_URL/auth/2fa/recovery_codes"
 **Responses**
 
 - **200**: New codes.
-- **400**: Wrong code (`invalid_code`) or wrong current password (`invalid_password`).
+- **400**: Wrong or missing code (`invalid_code`), or an invalid body (`invalid_request`).
 - **401**: Not signed in.
 - **403**: A write from another site (Sec-Fetch-Site: cross-site or same-site).
 - **409**: Two-factor is off.
@@ -19376,7 +19379,7 @@ curl -s "$REVENUEDOT_URL/auth/account/delete"
 
 `POST /auth/account/delete` · Auth: dashboard session · RevenueDot extension
 
-Refused (409) while you own a project with other members or are the last admin of one (`ownership_transfer_required`), while Cloud Standard is active (`billing_active`), or when an enterprise organization still needs you as its owner. Deletes the account, its sessions, links, recovery codes, preferences and AI conversations, the OAuth keys you granted, and the projects where you are the only member. Audit log entries stay. Sends a confirmation email and clears the cookie.
+Refused (409) while you own a project with other members or are the last admin of one (`ownership_transfer_required`), while Cloud Standard is active (`billing_active`), or when an enterprise organization still needs you as its owner (`extension_refused`). Deletes the account, its sessions, links, recovery codes, preferences and AI conversations, the OAuth keys listed by `GET /auth/oauth_tokens`, and the projects where you are the only member. Audit log entries stay, and every project you leave gets a `collaborator_account_deleted` entry with your email. Sends a confirmation email and clears the cookie.
 
 **Request body** (`application/json`)
 
@@ -19417,7 +19420,7 @@ Example 200 response:
 
 `GET /auth/notifications` · Auth: dashboard session · RevenueDot extension
 
-Alert emails, and per project the weekly summary, experiment results and revenue anomaly alerts. Everything is off until you turn it on.
+Alert emails (on by default), and per project the weekly summary, experiment results and revenue anomaly alerts, which are off until you turn them on.
 
 **Example request**
 
@@ -19429,6 +19432,52 @@ curl -s "$REVENUEDOT_URL/auth/notifications"
 
 - **200**: Choices.
 - **401**: Not signed in.
+
+### Open an email's unsubscribe link
+
+`GET /auth/notifications/unsubscribe/{token}` · Auth: none · RevenueDot extension
+
+An HTML page with an **Unsubscribe** button. Opening the link changes nothing, because mail scanners open links too.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes | From the email's Unsubscribe link or its `List-Unsubscribe` header. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/auth/notifications/unsubscribe/$TOKEN"
+```
+
+**Responses**
+
+- **200**: The page.
+- **404**: Unknown link (an HTML page).
+
+### Unsubscribe from one email
+
+`POST /auth/notifications/unsubscribe/{token}` · Auth: none · RevenueDot extension
+
+Turns off the email this link came with (the weekly summary, experiment results or revenue anomaly alerts) for that one project, without a session. Each such email carries `List-Unsubscribe` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`, so mail apps can send this POST themselves (RFC 8058).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/auth/notifications/unsubscribe/$TOKEN"
+```
+
+**Responses**
+
+- **200**: Unsubscribed (an HTML page).
+- **404**: Unknown link (an HTML page).
 
 ### Choose a project's emails
 
@@ -19489,6 +19538,7 @@ curl -s "$REVENUEDOT_URL/auth/fx"
 - **200**: The rate.
 - **400**: Unknown currency.
 - **401**: Not signed in.
+- **502**: No exchange rate for that currency right now.
 
 Example 200 response:
 

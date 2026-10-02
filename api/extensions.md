@@ -11,10 +11,10 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (262)
+## Operations on this page (264)
 
 - **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects), [Update account settings](#update-account-settings), [Email a password reset link](#email-a-password-reset-link), [Check a password reset link](#check-a-password-reset-link), [Set a new password from a reset link](#set-a-new-password-from-a-reset-link), [Confirm an email address](#confirm-an-email-address), [Send a new confirmation email](#send-a-new-confirmation-email), [Look up an invite](#look-up-an-invite), [Accept an invite](#accept-an-invite)
-- **Account settings**: [Finish a sign-in with a two-factor code](#finish-a-sign-in-with-a-two-factor-code), [Sign out of every session](#sign-out-of-every-session), [Change the account's email](#change-the-accounts-email), [Cancel a waiting email change](#cancel-a-waiting-email-change), [Confirm an email change](#confirm-an-email-change), [Change the password](#change-the-password), [List signed-in sessions](#list-signed-in-sessions), [Sign out one session](#sign-out-one-session), [Sign out every other session](#sign-out-every-other-session), [Start two-factor setup](#start-two-factor-setup), [Turn two-factor authentication on](#turn-two-factor-authentication-on), [Turn two-factor authentication off](#turn-two-factor-authentication-off), [Make new recovery codes](#make-new-recovery-codes), [List OAuth tokens you granted](#list-oauth-tokens-you-granted), [Revoke an OAuth token](#revoke-an-oauth-token), [List connected Stripe accounts](#list-connected-stripe-accounts), [List your projects with role and plan](#list-your-projects-with-role-and-plan), [What deleting the account would do](#what-deleting-the-account-would-do), [Delete the account](#delete-the-account), [Get notification choices](#get-notification-choices), [Choose a project's emails](#choose-a-projects-emails), [The display currency's exchange rate](#the-display-currencys-exchange-rate)
+- **Account settings**: [Finish a sign-in with a two-factor code](#finish-a-sign-in-with-a-two-factor-code), [Sign out of every session](#sign-out-of-every-session), [Change the account's email](#change-the-accounts-email), [Cancel a waiting email change](#cancel-a-waiting-email-change), [Confirm an email change](#confirm-an-email-change), [Change the password](#change-the-password), [List signed-in sessions](#list-signed-in-sessions), [Sign out one session](#sign-out-one-session), [Sign out every other session](#sign-out-every-other-session), [Start two-factor setup](#start-two-factor-setup), [Turn two-factor authentication on](#turn-two-factor-authentication-on), [Turn two-factor authentication off](#turn-two-factor-authentication-off), [Make new recovery codes](#make-new-recovery-codes), [List OAuth tokens you granted](#list-oauth-tokens-you-granted), [Revoke an OAuth token](#revoke-an-oauth-token), [List connected Stripe accounts](#list-connected-stripe-accounts), [List your projects with role and plan](#list-your-projects-with-role-and-plan), [What deleting the account would do](#what-deleting-the-account-would-do), [Delete the account](#delete-the-account), [Get notification choices](#get-notification-choices), [Open an email's unsubscribe link](#open-an-emails-unsubscribe-link), [Unsubscribe from one email](#unsubscribe-from-one-email), [Choose a project's emails](#choose-a-projects-emails), [The display currency's exchange rate](#the-display-currencys-exchange-rate)
 - **Members and invites**: [List open invites](#list-open-invites), [Invite someone by email](#invite-someone-by-email), [Resend an invite](#resend-an-invite), [Revoke an invite](#revoke-an-invite), [Change a member's role](#change-a-members-role), [Remove a member, or leave the project](#remove-a-member-or-leave-the-project)
 - **Project settings**: [Get a project with its settings](#get-a-project-with-its-settings), [Update a project's name, transfer behaviour and sandbox testing access](#update-a-projects-name-transfer-behaviour-and-sandbox-testing-access), [Delete a project and everything in it](#delete-a-project-and-everything-in-it), [Get the Customer Center configuration of the project](#get-the-customer-center-configuration-of-the-project), [Set the Customer Center configuration](#set-the-customer-center-configuration), [Transfer project ownership to an admin](#transfer-project-ownership-to-an-admin)
 - **Brand**: [Colour and gradient presets](#colour-and-gradient-presets), [Replace colour or gradient presets](#replace-colour-or-gradient-presets)
@@ -121,7 +121,7 @@ Example 201 response:
 
 `POST /auth/login` · Auth: none · RevenueDot extension
 
-With two-factor authentication on, a correct password answers `two_factor_required: true` and a `challenge` instead of a session; finish with `POST /auth/login/2fa`.
+The dashboard's sign-in. A request with an `Authorization` header is an app's Auth sign-in instead: see `POST /v1/auth/login`, which takes the same body at this path for the RevenueCat SDKs' token login. With two-factor authentication on, a correct password answers `two_factor_required: true` and a `challenge` instead of a session; finish with `POST /auth/login/2fa`.
 
 **Request body** (`application/json`)
 
@@ -326,7 +326,7 @@ Example 200 response:
 
 `POST /auth/password/reset` · Auth: none · RevenueDot extension
 
-Sets the password, signs the user out on every device, marks the email as confirmed (the link proved the inbox) and signs this browser in with a new `rd_session` cookie. Every other open reset link of the user stops working. With two-factor authentication on, it answers `two_factor_required: true` and a `challenge` instead of signing in; finish with `POST /auth/login/2fa`.
+Sets the password, signs the user out on every device, marks the email as confirmed (the link proved the inbox) and signs this browser in with a new `rd_session` cookie. Every other open reset link of the user stops working, and so do two-factor sign-ins begun with the old password. With two-factor authentication on, it answers `two_factor_required: true` and a `challenge` instead of signing in; finish with `POST /auth/login/2fa`.
 
 **Request body** (`application/json`)
 
@@ -344,7 +344,7 @@ curl -s -X POST "$REVENUEDOT_URL/auth/password/reset" \
 
 **Responses**
 
-- **200**: Password changed and signed in.
+- **200**: Password changed and signed in, or the two-factor step.
 - **400**: The password is too short or too long, or the link is not valid (`token_invalid` with a `reason`).
 
 Example 200 response:
@@ -502,7 +502,7 @@ Everything that belongs to the signed-in person: email change, password, session
 
 With two-factor authentication on, `POST /auth/login` (and `POST /auth/password/reset`) answer `{ "two_factor_required": true, "challenge": "…" }` without a session. Send the challenge here with a code from the authenticator app or a recovery code. The challenge works once and expires after 10 minutes. A code is never accepted twice.
 
-Limits: 5 attempts per challenge (then sign in again), 10 code attempts per account in 15 minutes.
+Limits: 5 attempts per challenge (then sign in again), and 10 wrong codes per account in 15 minutes, counted with the code checks of Account settings (then 429 until 15 minutes after the first). A right code does not count. A password change or reset ends the challenges that began with the old password.
 
 **Request body** (`application/json`)
 
@@ -522,7 +522,7 @@ curl -s -X POST "$REVENUEDOT_URL/auth/login/2fa" \
 **Responses**
 
 - **200**: Signed in; `rd_session` is set. A recovery code also answers how many are left.
-- **400**: The challenge expired, was used, or two-factor was turned off (`challenge_invalid` with a `reason`).
+- **400**: The challenge expired, was used, or two-factor was turned off (`challenge_invalid` with a `reason`), or a missing challenge (`invalid_request`).
 - **401**: Wrong code.
 - **429**: Too many attempts.
 
@@ -623,7 +623,7 @@ Example 200 response:
 
 `POST /auth/email/change/confirm` · Auth: none · RevenueDot extension
 
-The link from the confirmation email; works in any browser. The account moves to the new address, which counts as confirmed, and every link sent to the old address stops working. The old address gets a notice.
+The link from the confirmation email; works in any browser. The dashboard's `/confirm-email` page sends this only when the person clicks **Confirm new email**, never on load, so a mail scanner that opens the link changes nothing. The account moves to the new address, which counts as confirmed, and every link sent to the old address stops working. The old address gets a notice.
 
 **Request body** (`application/json`)
 
@@ -641,7 +641,7 @@ curl -s -X POST "$REVENUEDOT_URL/auth/email/change/confirm"
 
 - **200**: The account uses the new address.
 - **400**: The link is not valid (`token_invalid` with a `reason`).
-- **409**: Another account started using the address.
+- **409**: Another account started using the address, even a moment before (`email_taken`).
 
 Example 200 response:
 
@@ -656,7 +656,7 @@ Example 200 response:
 
 `POST /auth/password/change` · Auth: dashboard session · RevenueDot extension
 
-Needs the current password (10 wrong attempts per 15 minutes, then 429). Every other session is signed out, open password reset links stop working, and the account gets an email.
+Needs the current password (10 password checks per 15 minutes, counted with two-factor setup, email change and deletion, then 429). Every other session is signed out, open password reset links and half-done two-factor sign-ins stop working, and the account gets an email.
 
 **Request body** (`application/json`)
 
@@ -817,7 +817,7 @@ curl -s -X POST "$REVENUEDOT_URL/auth/2fa/enable" \
 **Responses**
 
 - **200**: On.
-- **400**: Wrong code (`invalid_code`) or wrong current password (`invalid_password`).
+- **400**: Wrong or missing code (`invalid_code`), or an invalid body (`invalid_request`).
 - **401**: Not signed in.
 - **403**: A write from another site (Sec-Fetch-Site: cross-site or same-site).
 - **409**: Already on, or no setup to finish.
@@ -845,7 +845,7 @@ curl -s -X POST "$REVENUEDOT_URL/auth/2fa/disable"
 **Responses**
 
 - **200**: Off.
-- **400**: Wrong code (`invalid_code`) or wrong current password (`invalid_password`).
+- **400**: Wrong or missing code (`invalid_code`), or an invalid body (`invalid_request`).
 - **401**: Not signed in.
 - **403**: A write from another site (Sec-Fetch-Site: cross-site or same-site).
 - **409**: Two-factor is off.
@@ -882,7 +882,7 @@ curl -s -X POST "$REVENUEDOT_URL/auth/2fa/recovery_codes"
 **Responses**
 
 - **200**: New codes.
-- **400**: Wrong code (`invalid_code`) or wrong current password (`invalid_password`).
+- **400**: Wrong or missing code (`invalid_code`), or an invalid body (`invalid_request`).
 - **401**: Not signed in.
 - **403**: A write from another site (Sec-Fetch-Site: cross-site or same-site).
 - **409**: Two-factor is off.
@@ -985,7 +985,7 @@ curl -s "$REVENUEDOT_URL/auth/account/delete"
 
 `POST /auth/account/delete` · Auth: dashboard session · RevenueDot extension
 
-Refused (409) while you own a project with other members or are the last admin of one (`ownership_transfer_required`), while Cloud Standard is active (`billing_active`), or when an enterprise organization still needs you as its owner. Deletes the account, its sessions, links, recovery codes, preferences and AI conversations, the OAuth keys you granted, and the projects where you are the only member. Audit log entries stay. Sends a confirmation email and clears the cookie.
+Refused (409) while you own a project with other members or are the last admin of one (`ownership_transfer_required`), while Cloud Standard is active (`billing_active`), or when an enterprise organization still needs you as its owner (`extension_refused`). Deletes the account, its sessions, links, recovery codes, preferences and AI conversations, the OAuth keys listed by `GET /auth/oauth_tokens`, and the projects where you are the only member. Audit log entries stay, and every project you leave gets a `collaborator_account_deleted` entry with your email. Sends a confirmation email and clears the cookie.
 
 **Request body** (`application/json`)
 
@@ -1026,7 +1026,7 @@ Example 200 response:
 
 `GET /auth/notifications` · Auth: dashboard session · RevenueDot extension
 
-Alert emails, and per project the weekly summary, experiment results and revenue anomaly alerts. Everything is off until you turn it on.
+Alert emails (on by default), and per project the weekly summary, experiment results and revenue anomaly alerts, which are off until you turn them on.
 
 **Example request**
 
@@ -1038,6 +1038,52 @@ curl -s "$REVENUEDOT_URL/auth/notifications"
 
 - **200**: Choices.
 - **401**: Not signed in.
+
+### Open an email's unsubscribe link
+
+`GET /auth/notifications/unsubscribe/{token}` · Auth: none · RevenueDot extension
+
+An HTML page with an **Unsubscribe** button. Opening the link changes nothing, because mail scanners open links too.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes | From the email's Unsubscribe link or its `List-Unsubscribe` header. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/auth/notifications/unsubscribe/$TOKEN"
+```
+
+**Responses**
+
+- **200**: The page.
+- **404**: Unknown link (an HTML page).
+
+### Unsubscribe from one email
+
+`POST /auth/notifications/unsubscribe/{token}` · Auth: none · RevenueDot extension
+
+Turns off the email this link came with (the weekly summary, experiment results or revenue anomaly alerts) for that one project, without a session. Each such email carries `List-Unsubscribe` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`, so mail apps can send this POST themselves (RFC 8058).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/auth/notifications/unsubscribe/$TOKEN"
+```
+
+**Responses**
+
+- **200**: Unsubscribed (an HTML page).
+- **404**: Unknown link (an HTML page).
 
 ### Choose a project's emails
 
@@ -1098,6 +1144,7 @@ curl -s "$REVENUEDOT_URL/auth/fx"
 - **200**: The rate.
 - **400**: Unknown currency.
 - **401**: Not signed in.
+- **502**: No exchange rate for that currency right now.
 
 Example 200 response:
 
