@@ -44,7 +44,8 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Limit sandbox testing, hand a project to another admin, keep brand colours and fonts, block abusive users, or publish verified revenue numbers | [Project settings](project-settings.md) |
 | Sign users in with Firebase or OpenID Connect and read their purchases and balances without a backend | [Auth](auth.md) |
 | Build a paywall and show it in my app | [Paywalls](paywalls.md) |
-| Show different offerings to different customers, or A/B test two | [Targeting and experiments](targeting-and-experiments.md) |
+| Show different offerings to different customers, by audience, placement or date | [Targeting and experiments](targeting-and-experiments.md) |
+| Test two to four offerings, prices, trials or paywalls against each other and see which earns more | [Experiments](experiments.md) |
 | Read MRR, revenue, churn, conversion and LTV, and know how each is calculated | [Charts](charts.md) |
 | Run RevenueDot from ChatGPT, Claude or Cursor | [Connect AI assistants](connect-ai-assistants.md) |
 | Get an email when store notifications, webhooks or store credentials fail | [Alert emails](alerts.md) |

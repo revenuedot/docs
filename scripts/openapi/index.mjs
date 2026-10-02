@@ -6,7 +6,7 @@ import { sdkPaths } from "./sdk.mjs";
 import { extensionPaths, v2Paths } from "./v2.mjs";
 import { v2MorePaths } from "./v2-more.mjs";
 import { paywallPaths } from "./paywalls.mjs";
-import { targetingPaths } from "./targeting.mjs";
+import { targetingPaths, targetingSchemas } from "./targeting.mjs";
 import { chartPaths } from "./charts.mjs";
 import { integrationPaths } from "./integrations.mjs";
 import { webhooks } from "./webhooks.mjs";
@@ -54,7 +54,7 @@ export const TAGS = [
   ["In-app currencies", "rest-v2", "Currencies your app sells or rewards, their product grants and each customer's balance."],
   ["Audit log", "rest-v2", "Who changed what in a project."],
   ["Targeting", "rest-v2", "Audiences, and rules that pick the offering and placement offerings for each customer."],
-  ["Experiments", "rest-v2", "Offering A/B tests and their results."],
+  ["Experiments", "rest-v2", "Offering experiments: a control and up to three treatments, each with an offering and placement offerings; enrollment of new or new and existing customers, a saved or custom audience, a share, and a priority order between experiments; results with 95% intervals, lift and the chance to beat the control for 18 metrics, a daily series, CSV export and a 7-day audience estimate. See [Experiments](../docs/guides/experiments.md)."],
   ["Paywalls", "rest-v2", "Paywall components the SDK renders, their publishing and versions, and the images and fonts they use."],
   ["Webhook integrations", "rest-v2", "Where events are sent."],
   ["Discounts", "rest-v2", "Web discounts for RevenueDot's web checkout, with RevenueCat's v2 discount operations and shapes. Each discount is a Stripe coupon and each code a Stripe promotion code in your own Stripe account. See [Web discounts](../docs/guides/web-discounts.md)."],
@@ -128,7 +128,7 @@ export function buildDocument() {
     tags: tags(),
     paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...adsPaths, ...lifecyclePaths, ...webPaths, ...assistantPaths, ...recoveryPaths, ...movePaths, ...settingsPathsAll, ...extensionPaths, ...enterprisePaths },
     webhooks,
-    components: { schemas: { ...schemas, ...webSchemas, ...enterpriseSchemas }, parameters, responses, securitySchemes },
+    components: { schemas: { ...schemas, ...targetingSchemas, ...webSchemas, ...enterpriseSchemas }, parameters, responses, securitySchemes },
     security: [{ secretApiKey: [] }],
     externalDocs: { description: "RevenueDot documentation", url: "https://github.com/revenuedot/docs" },
   };

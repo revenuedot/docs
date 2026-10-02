@@ -10207,7 +10207,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `active_entitlements.items` | array of ActiveEntitlement | yes |  |
 | `active_entitlements.next_page` | string or null | yes | Path of the next page, or null on the last page. |
 | `active_entitlements.url` | string | yes | Path of this list. |
-| `experiment` | null | no |  |
+| `experiment` | ExperimentEnrollment or null | no | The experiment the customer is in (running or paused), else the last one they joined, or null. |
 | `attributes` | object | no |  |
 | `attributes.object` | `"list"` | yes |  |
 | `attributes.items` | array of CustomerAttribute | yes |  |
@@ -10249,7 +10249,8 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `current_offering.rule_name` | string or null | no | With `targeting`. |
 | `current_offering.experiment_id` | string | no | With `experiment`. |
 | `current_offering.experiment_name` | string or null | no | With `experiment`. |
-| `current_offering.variant` | `a`, `b` | no | With `experiment`. |
+| `current_offering.variant` | `a`, `b`, `c`, `d` | no | With `experiment`: the variant, `a` being the control. |
+| `current_offering.variant_name` | string | no | With `experiment`: the variant's name, such as Control or Treatment B. |
 | `blocked` | boolean | no | One of the customer's app user ids is blocked: no entitlements anywhere. |
 | `active_entitlements` | array of object | no |  |
 | `granted_entitlements` | array of object | no |  |
@@ -10295,6 +10296,15 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `occurred_at` | integer | yes | When it happened. Epoch milliseconds. |
 | `created_at` | integer | no | Recorded. Epoch milliseconds. |
 | `body` | object | yes | The webhook `event` object, exactly as webhooks receive it. |
+
+### ExperimentEnrollment
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"experiment_enrollment"` | yes |  |
+| `id` | string | yes | Experiment id (prexp...). |
+| `name` | string | yes | The experiment's name. |
+| `variant` | `a`, `b`, `c`, `d` | yes | The customer's variant: `a` is the control. |
 
 ### Funnel
 

@@ -38,6 +38,7 @@ const lifecycle = {
   tax_percentage: num("Always 0 today."),
   commission_percentage: num("Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store)."),
   offer_code: nstr("The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md)."),
+  experiments: arr(obj({ experiment_id: str(), experiment_variant: en(["a", "b", "c", "d"]), enrolled_at_ms: int("Epoch milliseconds.") }, ["experiment_id", "experiment_variant", "enrolled_at_ms"]), { description: "Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks)." }),
 };
 
 const payload = (props, required) => ({
@@ -63,7 +64,7 @@ const EVENTS = [
   ["PRICE_INCREASE_CONSENT_APPROVED", "The customer accepted the price increase.", null],
   ["TRANSFER", "A purchase moved to another customer because that customer restored it (transfer behaviour `transfer` or `transfer_if_no_active`).", "transfer"],
   ["VIRTUAL_CURRENCY_TRANSACTION", "An in-app currency was credited because a purchase of a granting product was recorded (`source: in_app_purchase`), or because a rewarded ad was verified and a reward rule granted currency (`source: ad_reward`, a RevenueDot extension; `product_id` and `store` are null and `transaction_id` is the ad network's transaction id). Not sent for adjustments made through the API.", "vc"],
-  ["EXPERIMENT_ENROLLMENT", "A customer was enrolled in an offering experiment. Sent once per customer and experiment.", "experiment"],
+  ["EXPERIMENT_ENROLLMENT", "A customer joined an offering experiment: the first offerings request that enrolled them. Sent once per customer and experiment, as a production event (a webhook set to sandbox only does not get it). See [Experiments](../docs/guides/experiments.md#webhooks).", "experiment"],
   ["SUBSCRIBER_ALIAS", "A new app user id joined an existing customer: `logIn` onto an anonymous customer, `logIn` that merged an anonymous customer into an existing one, Android's alias call, or a restore that merged two customers. RevenueCat deprecated this event and sends it only to older projects, so RevenueDot delivers it only to webhooks whose `event_types` filter names `subscriber_alias`; it always appears in the customer's event history.", "alias"],
   ["PURCHASE_REDEEMED", "A web purchase was redeemed in the app through a redemption link (`POST /v1/subscribers/redeem_purchase`): the anonymous customer who paid on the web was merged into the app user. Fields follow RevenueCat's sample; `app_user_id` is added so analytics tools know who it is. See [Redemption links](../docs/guides/redemption-links.md).", "redeemed"],
   ["FUNNEL_VIEWED", "RevenueDot type. A visitor opened a published funnel. Opt-in: sent only to webhooks and integrations whose `event_types` names `funnel_viewed`. `app_user_id` is null unless the page URL had `?app_user_id=`. See [Funnels](../docs/guides/funnels.md).", "funnel"],
@@ -115,12 +116,12 @@ for (const [type, description, extra] of EVENTS) {
   } else if (extra === "experiment") {
     schema = payload({
       id: lifecycle.id, type: lifecycle.type, event_timestamp_ms: lifecycle.event_timestamp_ms, app_user_id: lifecycle.app_user_id, original_app_user_id: lifecycle.original_app_user_id, aliases: lifecycle.aliases,
-      experiment_id: str(), experiment_variant: en(["a", "b"]), offering_id: { type: ["string", "null"], description: "The variant's offering identifier." }, experiment_enrolled_at_ms: int("Epoch milliseconds."),
+      experiment_id: str(), experiment_variant: en(["a", "b", "c", "d"], "`a` is the control; `b`, `c` and `d` are treatments."), offering_id: { type: ["string", "null"], description: "The variant's offering identifier." }, experiment_enrolled_at_ms: int("Epoch milliseconds."),
     }, ["id", "type", "event_timestamp_ms", "app_user_id", "experiment_id", "experiment_variant"]);
   } else if (extra === "alias") {
     schema = payload({
       id: lifecycle.id, type: lifecycle.type, event_timestamp_ms: lifecycle.event_timestamp_ms, app_id: lifecycle.app_id, app_user_id: str("The app user id the app uses now."),
-      original_app_user_id: lifecycle.original_app_user_id, aliases: lifecycle.aliases, subscriber_attributes: lifecycle.subscriber_attributes,
+      original_app_user_id: lifecycle.original_app_user_id, aliases: lifecycle.aliases, subscriber_attributes: lifecycle.subscriber_attributes, experiments: lifecycle.experiments,
     }, ["id", "type", "event_timestamp_ms", "app_user_id", "original_app_user_id", "aliases"]);
   } else if (extra === "redeemed") {
     schema = payload({
