@@ -5054,7 +5054,7 @@ paths:
                       description: "Price in micros: 9.99 is 9990000."
                     currency:
                       type: string
-                      description: ISO 4217 code such as USD or EUR.
+                      description: ISO 4217 code such as USD or EUR. A code with no exchange rate to USD is refused (its purchases would record no revenue).
                   description: RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`.
               required:
                 - store_identifier
@@ -5224,7 +5224,7 @@ paths:
                       description: "Price in micros: 9.99 is 9990000."
                     currency:
                       type: string
-                      description: ISO 4217 code such as USD or EUR.
+                      description: ISO 4217 code such as USD or EUR. A code with no exchange rate to USD is refused (its purchases would record no revenue).
                   description: RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`.
             example:
               display_name: Pro (monthly)
@@ -43361,10 +43361,11 @@ paths:
                   description: Test Store app; default the project's first.
                 price:
                   type: number
+                  description: Without a price, the product's Test Store price.
                   minimum: 0
                 currency:
                   type: string
-                  description: Three letters; default USD.
+                  description: ISO 4217 code; default USD. A code with no exchange rate to USD is refused.
                 purchased_at:
                   type: integer
                   description: Start, epoch milliseconds. Not with offset_days.
@@ -43531,6 +43532,197 @@ paths:
       x-source: routes/v2/extensions.ts
       x-scopes:
         - customer_information:customers:read
+      x-revenuedot-extension: true
+  /v2/overview:
+    get:
+      operationId: getAccountOverview
+      tags:
+        - Dashboard data
+      summary: Overview cards summed across your projects
+      description: |-
+        The six Overview cards (active trials, active subscriptions, MRR, revenue, new customers, active customers) summed over every project the signed-in user belongs to, as on the dashboard's Overview with "All projects" selected. Each card has `value` (the per-project Overview definition) and `history` (the daily series for `days`, summed per date).
+        Each project is checked like a project route: a project counts only where the user's role (or an enterprise custom role) includes `charts_metrics:overview:read`; enforced single sign-on and an organization that deprovisioned the user leave one out. `projects` lists every project the user is a member of with `included` and, when left out, `reason`; a project the user was removed from is not listed at all. Dashboard sessions only: a secret key belongs to one project and gets 403.
+      security:
+        - dashboardSession: []
+      parameters:
+        - name: environment
+          in: query
+          schema:
+            type: string
+            enum:
+              - production
+              - sandbox
+        - name: days
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 366
+            default: 28
+        - name: project_ids
+          in: query
+          schema:
+            type: string
+          description: Only these projects (comma separated, at most 100). Ids you cannot open are ignored.
+      responses:
+        "200":
+          description: The summed cards.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    const: account_overview
+                  currency:
+                    type: string
+                    const: USD
+                  environment:
+                    type: string
+                    enum:
+                      - production
+                      - sandbox
+                  days:
+                    type: integer
+                  projects:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        included:
+                          type: boolean
+                        reason:
+                          type: string
+                          description: Why the project is left out.
+                      required:
+                        - id
+                        - name
+                        - included
+                  metrics:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          const: overview_metric
+                        id:
+                          type: string
+                          enum:
+                            - active_trials
+                            - active_subscriptions
+                            - mrr
+                            - revenue
+                            - new_customers
+                            - active_users
+                        name:
+                          type: string
+                        description:
+                          type: string
+                        unit:
+                          type: string
+                        period:
+                          type: string
+                        value:
+                          type: number
+                        history:
+                          $ref: "#/components/schemas/MetricHistory"
+                        last_updated_at:
+                          type: integer
+                          format: int64
+                          description: When the numbers were computed. Epoch milliseconds.
+                      required:
+                        - object
+                        - id
+                        - value
+                        - history
+                  last_updated_at:
+                    type: integer
+                    format: int64
+                    description: When the numbers were computed. Epoch milliseconds.
+                required:
+                  - object
+                  - currency
+                  - environment
+                  - days
+                  - projects
+                  - metrics
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+      x-source: routes/v2/account-overview.ts
+      x-scopes:
+        - charts_metrics:overview:read
+      x-revenuedot-extension: true
+  /v2/overview/transactions:
+    get:
+      operationId: listAccountTransactions
+      tags:
+        - Dashboard data
+      summary: Transactions across your projects
+      description: Every purchase, renewal, trial start, refund and refund reversal of the projects the signed-in user may read purchases in (`customer_information:purchases:read`), newest first, each with `project_id`. The list also carries `projects` with `included` and `reason`, as on `GET /v2/overview`. `starting_after` must be a transaction of an included project.
+      security:
+        - dashboardSession: []
+      parameters:
+        - name: environment
+          in: query
+          schema:
+            type: string
+            enum:
+              - production
+              - sandbox
+        - name: project_ids
+          in: query
+          schema:
+            type: string
+          description: Only these projects (comma separated, at most 100). Ids you cannot open are ignored.
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/StartingAfter"
+      responses:
+        "200":
+          description: A page of results.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Transaction"
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+      x-source: routes/v2/account-overview.ts
+      x-scopes:
+        - customer_information:purchases:read
       x-revenuedot-extension: true
   /v2/projects/{project_id}/import/customers:
     post:
@@ -54586,6 +54778,9 @@ components:
           type:
             - string
             - "null"
+        project_id:
+          type: string
+          description: The transaction's project. Only on GET /v2/overview/transactions.
       required:
         - object
         - id

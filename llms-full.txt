@@ -3401,7 +3401,7 @@ curl -s -X POST "$B/products" -H "$H" -H "Content-Type: application/json" \
 Attach the products to your entitlement and offering like any other app's products. The [seed script](https://github.com/revenuedot/examples/blob/main/selfhost/docker-compose/seed.sh) does all of this in one run; see the [Quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md).
 
 - **The product's `subscription.duration` is the period.** A `P1M` product expires one month after purchase. Without a duration, one month is used.
-- **The price is the product's Test Store price.** Set it in the dashboard (Edit product, Test Store price) or with `"test_store_price":{"amount_micros":9990000,"currency":"USD"}` in the create or update call. A product without one shows 0. The price the SDK posts with the purchase is recorded.
+- **The price is the product's Test Store price.** Set it in the dashboard (New product and the app page ask for it; Edit product changes it) or with `"test_store_price":{"amount_micros":9990000,"currency":"USD"}` in the create or update call. A product without one shows 0. The price the SDK posts with the purchase is recorded. Use an ISO 4217 code that has an exchange rate to USD (every App Store and Google Play currency does); other codes are refused, because their purchases would count as no revenue.
 
 ## Buy in the app
 Configure the SDK with the `test_` key and your server as the proxy URL, then call `purchase` as usual. The SDK shows its Test Store dialog; choose the successful purchase. The SDK posts `fetch_token = test_<purchase time in ms>_<id>` to `POST /v1/receipts`, and RevenueDot accepts any token of that form.
@@ -12253,7 +12253,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products" -H "Authorization: Be
 | `subscription.duration` | string or null | no | ISO 8601 period such as P1W, P1M, P1Y or P3D. |
 | `test_store_price` | object or null | no | RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`. |
 | `test_store_price.amount_micros` | integer | yes | Price in micros: 9.99 is 9990000. |
-| `test_store_price.currency` | string | yes | ISO 4217 code such as USD or EUR. |
+| `test_store_price.currency` | string | yes | ISO 4217 code such as USD or EUR. A code with no exchange rate to USD is refused (its purchases would record no revenue). |
 
 **Example request**
 
@@ -12370,7 +12370,7 @@ RevenueDot also lets you correct `type` and `subscription.duration` (null clears
 | `subscription.duration` | string or null | no |  |
 | `test_store_price` | object or null | no | RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`. |
 | `test_store_price.amount_micros` | integer | yes | Price in micros: 9.99 is 9990000. |
-| `test_store_price.currency` | string | yes | ISO 4217 code such as USD or EUR. |
+| `test_store_price.currency` | string | yes | ISO 4217 code such as USD or EUR. A code with no exchange rate to USD is refused (its purchases would record no revenue). |
 
 **Example request**
 
@@ -18356,7 +18356,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Customer lists**: [Customers in a list, with the summary cards](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#customers-in-a-list-with-the-summary-cards), [Export a list as CSV](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#export-a-list-as-csv)
 - **Event log**: [Event log](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#event-log), [Transaction feed](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#transaction-feed)
 - **Test Store**: [Simulate a Test Store purchase or lifecycle](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#simulate-a-test-store-purchase-or-lifecycle)
-- **Dashboard data**: [Daily history of an overview metric](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#daily-history-of-an-overview-metric), [Dashboard rows for customers](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#dashboard-rows-for-customers)
+- **Dashboard data**: [Daily history of an overview metric](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#daily-history-of-an-overview-metric), [Dashboard rows for customers](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#dashboard-rows-for-customers), [Overview cards summed across your projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#overview-cards-summed-across-your-projects), [Transactions across your projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#transactions-across-your-projects)
 - **Data moves**: [List the project's exports](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-the-projects-exports), [Export the whole project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#export-the-whole-project), [Get the latest export](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-the-latest-export), [Get an export](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-an-export), [Delete an export's files now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-an-exports-files-now), [Do the next slice of an export now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#do-the-next-slice-of-an-export-now), [Download an archive](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#download-an-archive), [Get the project's move state](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-the-projects-move-state), [Move the project to another server (run by this server)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#move-the-project-to-another-server-run-by-this-server), [Do the next step of the move now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#do-the-next-step-of-the-move-now), [Switch to the target](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#switch-to-the-target), [Pause writes for the last copy](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#pause-writes-for-the-last-copy), [Forward the paused project to its new server](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#forward-the-paused-project-to-its-new-server), [Serve the project here again](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#serve-the-project-here-again), [Create an import token (Receive a project)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-an-import-token-receive-a-project), [List your moves into this server](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-your-moves-into-this-server), [Check or start loading an archive](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-or-start-loading-an-archive), [Get an import](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-an-import), [List the project's collaborators to invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-the-projects-collaborators-to-invite), [Verify the copy](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#verify-the-copy), [Put the project live here](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#put-the-project-live-here)
 - **Cloud billing**: [The account's plan, usage and invoices](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-accounts-plan-usage-and-invoices), [Upgrade to Cloud Standard with Stripe Checkout](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#upgrade-to-cloud-standard-with-stripe-checkout), [Open the Stripe Customer Portal](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#open-the-stripe-customer-portal), [Webhook of RevenueDot's own Stripe account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#webhook-of-revenuedots-own-stripe-account)
 - **Migration import**: [Import customers with their purchases](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#import-customers-with-their-purchases), [Keep an app's existing SDK key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#keep-an-apps-existing-sdk-key), [What still needs attention after an import](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#what-still-needs-attention-after-an-import)
@@ -24367,8 +24367,8 @@ Runs a purchase through the same pipeline as an SDK receipt, so events, the tran
 | `app_user_id` | string | yes |  |
 | `product_id` | string | yes | Product id or store identifier of a Test Store product. |
 | `app_id` | string | no | Test Store app; default the project's first. |
-| `price` | number | no |  |
-| `currency` | string | no | Three letters; default USD. |
+| `price` | number | no | Without a price, the product's Test Store price. |
+| `currency` | string | no | ISO 4217 code; default USD. A code with no exchange rate to USD is refused. |
 | `purchased_at` | integer | no | Start, epoch milliseconds. Not with offset_days. |
 | `presented_offering_id` | string | no |  |
 | `scenario` | `purchase`, `trial`, `trial_conversion`, `renewal`, `cancel`, `billing_issue`, `refund`, `expire` | no |  |
@@ -24458,6 +24458,62 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_summaries" -H "Authori
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Overview cards summed across your projects
+
+`GET /v2/overview` · Auth: dashboard session · RevenueDot extension · Permissions: `charts_metrics:overview:read`
+
+The six Overview cards (active trials, active subscriptions, MRR, revenue, new customers, active customers) summed over every project the signed-in user belongs to, as on the dashboard's Overview with "All projects" selected. Each card has `value` (the per-project Overview definition) and `history` (the daily series for `days`, summed per date).
+Each project is checked like a project route: a project counts only where the user's role (or an enterprise custom role) includes `charts_metrics:overview:read`; enforced single sign-on and an organization that deprovisioned the user leave one out. `projects` lists every project the user is a member of with `included` and, when left out, `reason`; a project the user was removed from is not listed at all. Dashboard sessions only: a secret key belongs to one project and gets 403.
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `environment` | `production`, `sandbox` | no |  |
+| `days` | integer | no |  |
+| `project_ids` | string | no | Only these projects (comma separated, at most 100). Ids you cannot open are ignored. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/overview"
+```
+
+**Responses**
+
+- **200**: The summed cards.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Transactions across your projects
+
+`GET /v2/overview/transactions` · Auth: dashboard session · RevenueDot extension · Permissions: `customer_information:purchases:read`
+
+Every purchase, renewal, trial start, refund and refund reversal of the projects the signed-in user may read purchases in (`customer_information:purchases:read`), newest first, each with `project_id`. The list also carries `projects` with `included` and `reason`, as on `GET /v2/overview`. `starting_after` must be a transaction of an included project.
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `environment` | `production`, `sandbox` | no |  |
+| `project_ids` | string | no | Only these projects (comma separated, at most 100). Ids you cannot open are ignored. |
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/overview/transactions"
+```
+
+**Responses**
+
+- **200**: A page of results. Returns a list of [Transaction](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#transaction).
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
 ## Data moves
 
@@ -28986,6 +29042,7 @@ One screen of a funnel. Every step has `id` (1-40 lower-case letters, digits, `-
 | `revenue_in_usd` | number | yes | USD; negative for refunds. |
 | `price` | Price or null | no |  |
 | `country` | string or null | no |  |
+| `project_id` | string | no | The transaction's project. Only on GET /v2/overview/transactions. |
 
 ### V2Error
 

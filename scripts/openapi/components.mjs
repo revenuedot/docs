@@ -283,6 +283,7 @@ export const schemas = {
     product_identifier: str(), kind: en(["purchase", "renewal", "trial", "one_time", "refund", "refund_reversal"]), environment: en(["production", "sandbox"]),
     purchased_at: ms("When the money moved."), expires_at: nms("End of the period."), revenue_in_usd: num("USD; negative for refunds."),
     price: { oneOf: [ref("Price"), { type: "null" }] }, country: nstr(),
+    project_id: str("The transaction's project. Only on GET /v2/overview/transactions."),
   }, ["object", "id", "customer_id", "store", "product_identifier", "kind", "environment", "purchased_at", "revenue_in_usd"]),
   ApiKey: obj({
     object: { type: "string", const: "api_key" }, id: str(), name: str(), prefix: str("First 7 characters of the key."),

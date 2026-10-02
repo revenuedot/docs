@@ -34,7 +34,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Customer lists**: [Customers in a list, with the summary cards](#customers-in-a-list-with-the-summary-cards), [Export a list as CSV](#export-a-list-as-csv)
 - **Event log**: [Event log](#event-log), [Transaction feed](#transaction-feed)
 - **Test Store**: [Simulate a Test Store purchase or lifecycle](#simulate-a-test-store-purchase-or-lifecycle)
-- **Dashboard data**: [Daily history of an overview metric](#daily-history-of-an-overview-metric), [Dashboard rows for customers](#dashboard-rows-for-customers)
+- **Dashboard data**: [Daily history of an overview metric](#daily-history-of-an-overview-metric), [Dashboard rows for customers](#dashboard-rows-for-customers), [Overview cards summed across your projects](#overview-cards-summed-across-your-projects), [Transactions across your projects](#transactions-across-your-projects)
 - **Data moves**: [List the project's exports](#list-the-projects-exports), [Export the whole project](#export-the-whole-project), [Get the latest export](#get-the-latest-export), [Get an export](#get-an-export), [Delete an export's files now](#delete-an-exports-files-now), [Do the next slice of an export now](#do-the-next-slice-of-an-export-now), [Download an archive](#download-an-archive), [Get the project's move state](#get-the-projects-move-state), [Move the project to another server (run by this server)](#move-the-project-to-another-server-run-by-this-server), [Do the next step of the move now](#do-the-next-step-of-the-move-now), [Switch to the target](#switch-to-the-target), [Pause writes for the last copy](#pause-writes-for-the-last-copy), [Forward the paused project to its new server](#forward-the-paused-project-to-its-new-server), [Serve the project here again](#serve-the-project-here-again), [Create an import token (Receive a project)](#create-an-import-token-receive-a-project), [List your moves into this server](#list-your-moves-into-this-server), [Check or start loading an archive](#check-or-start-loading-an-archive), [Get an import](#get-an-import), [List the project's collaborators to invite](#list-the-projects-collaborators-to-invite), [Verify the copy](#verify-the-copy), [Put the project live here](#put-the-project-live-here)
 - **Cloud billing**: [The account's plan, usage and invoices](#the-accounts-plan-usage-and-invoices), [Upgrade to Cloud Standard with Stripe Checkout](#upgrade-to-cloud-standard-with-stripe-checkout), [Open the Stripe Customer Portal](#open-the-stripe-customer-portal), [Webhook of RevenueDot's own Stripe account](#webhook-of-revenuedots-own-stripe-account)
 - **Migration import**: [Import customers with their purchases](#import-customers-with-their-purchases), [Keep an app's existing SDK key](#keep-an-apps-existing-sdk-key), [What still needs attention after an import](#what-still-needs-attention-after-an-import)
@@ -6045,8 +6045,8 @@ Runs a purchase through the same pipeline as an SDK receipt, so events, the tran
 | `app_user_id` | string | yes |  |
 | `product_id` | string | yes | Product id or store identifier of a Test Store product. |
 | `app_id` | string | no | Test Store app; default the project's first. |
-| `price` | number | no |  |
-| `currency` | string | no | Three letters; default USD. |
+| `price` | number | no | Without a price, the product's Test Store price. |
+| `currency` | string | no | ISO 4217 code; default USD. A code with no exchange rate to USD is refused. |
 | `purchased_at` | integer | no | Start, epoch milliseconds. Not with offset_days. |
 | `presented_offering_id` | string | no |  |
 | `scenario` | `purchase`, `trial`, `trial_conversion`, `renewal`, `cancel`, `billing_issue`, `refund`, `expire` | no |  |
@@ -6136,6 +6136,62 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_summaries" -H "Authori
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Overview cards summed across your projects
+
+`GET /v2/overview` · Auth: dashboard session · RevenueDot extension · Permissions: `charts_metrics:overview:read`
+
+The six Overview cards (active trials, active subscriptions, MRR, revenue, new customers, active customers) summed over every project the signed-in user belongs to, as on the dashboard's Overview with "All projects" selected. Each card has `value` (the per-project Overview definition) and `history` (the daily series for `days`, summed per date).
+Each project is checked like a project route: a project counts only where the user's role (or an enterprise custom role) includes `charts_metrics:overview:read`; enforced single sign-on and an organization that deprovisioned the user leave one out. `projects` lists every project the user is a member of with `included` and, when left out, `reason`; a project the user was removed from is not listed at all. Dashboard sessions only: a secret key belongs to one project and gets 403.
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `environment` | `production`, `sandbox` | no |  |
+| `days` | integer | no |  |
+| `project_ids` | string | no | Only these projects (comma separated, at most 100). Ids you cannot open are ignored. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/overview"
+```
+
+**Responses**
+
+- **200**: The summed cards.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+
+### Transactions across your projects
+
+`GET /v2/overview/transactions` · Auth: dashboard session · RevenueDot extension · Permissions: `customer_information:purchases:read`
+
+Every purchase, renewal, trial start, refund and refund reversal of the projects the signed-in user may read purchases in (`customer_information:purchases:read`), newest first, each with `project_id`. The list also carries `projects` with `included` and `reason`, as on `GET /v2/overview`. `starting_after` must be a transaction of an included project.
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `environment` | `production`, `sandbox` | no |  |
+| `project_ids` | string | no | Only these projects (comma separated, at most 100). Ids you cannot open are ignored. |
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/overview/transactions"
+```
+
+**Responses**
+
+- **200**: A page of results. Returns a list of [Transaction](#transaction).
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 
 ## Data moves
 
@@ -10664,6 +10720,7 @@ One screen of a funnel. Every step has `id` (1-40 lower-case letters, digits, `-
 | `revenue_in_usd` | number | yes | USD; negative for refunds. |
 | `price` | Price or null | no |  |
 | `country` | string or null | no |  |
+| `project_id` | string | no | The transaction's project. Only on GET /v2/overview/transactions. |
 
 ### V2Error
 

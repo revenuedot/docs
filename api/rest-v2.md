@@ -609,7 +609,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products" -H "Authorization: Be
 | `subscription.duration` | string or null | no | ISO 8601 period such as P1W, P1M, P1Y or P3D. |
 | `test_store_price` | object or null | no | RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`. |
 | `test_store_price.amount_micros` | integer | yes | Price in micros: 9.99 is 9990000. |
-| `test_store_price.currency` | string | yes | ISO 4217 code such as USD or EUR. |
+| `test_store_price.currency` | string | yes | ISO 4217 code such as USD or EUR. A code with no exchange rate to USD is refused (its purchases would record no revenue). |
 
 **Example request**
 
@@ -726,7 +726,7 @@ RevenueDot also lets you correct `type` and `subscription.duration` (null clears
 | `subscription.duration` | string or null | no |  |
 | `test_store_price` | object or null | no | RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`. |
 | `test_store_price.amount_micros` | integer | yes | Price in micros: 9.99 is 9990000. |
-| `test_store_price.currency` | string | yes | ISO 4217 code such as USD or EUR. |
+| `test_store_price.currency` | string | yes | ISO 4217 code such as USD or EUR. A code with no exchange rate to USD is refused (its purchases would record no revenue). |
 
 **Example request**
 
