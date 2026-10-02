@@ -398,5 +398,6 @@ export const securitySchemes = {
   secretApiKey: { type: "http", scheme: "bearer", description: "A project secret key (`sk_...`). Server side only. Its `permissions` limit what it can do." },
   dashboardSession: { type: "apiKey", in: "cookie", name: "rd_session", description: "The dashboard session cookie from `POST /auth/login`. It authorizes `/v2` for every project the user belongs to." },
   subscriberToken: { type: "http", scheme: "bearer", description: "A subscriber access token: `rdat_...` from `POST /v2/projects/{project_id}/apps/{app_id}/authenticate`, or the JWT `access_token` of an Auth sign-in (`POST /v1/auth/login`). It speaks for one app user id of one app for one hour. An expired or revoked token, or a path or body naming another app user id, answers 401 with code 7224." },
+  importToken: { type: "http", scheme: "bearer", description: "An import token (`rdi_` and 64 hex characters) from **Receive a project** on the server a project moves to (`POST /v2/imports/tokens`). It lets one project move into the account that created it and lasts 24 hours." },
   googlePubSubOidc: { type: "http", scheme: "bearer", bearerFormat: "JWT", description: "Google-signed OIDC token of a Pub/Sub push subscription. Checked only when the app's `pubsub_audience` credential is set." },
 };

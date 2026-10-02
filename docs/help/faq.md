@@ -32,7 +32,7 @@ Every platform's version of this line is in the [SDK guides](../sdks/README.md).
 - **It is newer.** RevenueCat has a longer track record as a hosted service.
 
 ## What does it cost?
-RevenueDot Cloud is free up to $10,000 in monthly tracked revenue. Sign-up is open at [app.revenuedot.app/signup](https://app.revenuedot.app/signup), every account is on the free plan, and paid plans have not shipped. Self-hosting is free: you pay only for your server and database. RevenueCat's Pro plan is free up to $2,500 in monthly tracked revenue and then charges 1% of tracked revenue ([pricing](https://www.revenuecat.com/pricing)).
+RevenueDot Cloud is free up to $10,000 in monthly tracked revenue. Sign-up is open at [app.revenuedot.app/signup](https://app.revenuedot.app/signup), every account is on the free plan. Cloud Standard, 0.5% of tracked revenue above $10,000 a month capped at $999 a month, is built and starts when billing is switched on; see [Cloud billing](../guides/cloud-billing.md). Self-hosting is free: you pay only for your server and database. RevenueCat's Pro plan is free up to $2,500 in monthly tracked revenue and then charges 1% of tracked revenue ([pricing](https://www.revenuecat.com/pricing)).
 
 ## Which licenses apply?
 - The server and dashboard are AGPL-3.0.
@@ -60,7 +60,7 @@ RevenueCat Billing (`rcb_`), Paddle and Roku apps can be created, but their rece
 No. The App Store and Google Play code is tested against mocked Apple and Google APIs only. No real App Store or Google Play sandbox purchase has run end to end yet. Use it for evaluation and testing, and keep RevenueCat for live customers until a release says otherwise. See [Known issues](known-issues.md).
 
 ## Who owns the data?
-On RevenueDot Cloud, RevenueDot stores your customers, purchases, receipts and events for you, and you can read all of them through the dashboard and the REST API. When you self-host, they live in your own Postgres database and nothing is sent to RevenueDot. Back up a self-hosted database like any other production database: see [Backups](../guides/backups.md).
+On RevenueDot Cloud, RevenueDot stores your customers, purchases, receipts and events for you, and you can read all of them through the dashboard and the REST API. When you self-host, they live in your own Postgres database and nothing is sent to RevenueDot. Back up a self-hosted database like any other production database: see [Backups](../guides/backups.md). Either way you can download everything a project owns as one archive, or move it between Cloud and your own server with `npx revenuedot move`: see [Move projects and export everything](../guides/move-projects.md).
 
 ## Does it support StoreKit 2?
 Yes. The server verifies StoreKit 2 signed transactions (JWS) against Apple's certificate chain. It also accepts StoreKit 1 app receipts, but only when the app's App Store in-app purchase key is set, because an unsigned receipt could be forged. See [Connect the App Store](../guides/app-store.md).

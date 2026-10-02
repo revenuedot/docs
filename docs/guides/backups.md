@@ -42,7 +42,11 @@ After a restore, the database is as it was at the dump. Purchases made since the
 docker compose down -v   # deletes the volume: every customer and purchase
 ```
 
+## Export one project
+`pg_dump` copies the whole server. To keep or load a single project, download its full export (**Project settings → Export and move → Export project**, or `npx revenuedot export`): every table as JSON Lines with a manifest and checksums, loadable into any RevenueDot server. See [Move projects and export everything](move-projects.md).
+
 ## Related
+- [Move projects and export everything](move-projects.md)
 - [Upgrades](upgrades.md)
 - [Self-hosting](self-hosting.md)
 - [Going to production](going-to-production.md)
