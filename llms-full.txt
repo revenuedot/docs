@@ -1860,6 +1860,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Win back lapsed App Store subscribers with Apple's win-back offers | [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md) |
 | Know what happens to customers' access when the server is down | [Offline entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/offline-entitlements.md) |
 | Answer Apple refund requests automatically and see my refund rate | [Refund Control](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/refund-control.md) |
+| Choose what customers can do on the in-app subscription screen, its colours and its text in 33 languages | [Customer Center](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/customer-center.md) |
 | Offer a discount when customers cancel, in my app or on Apple's cancel screen | [Retention offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/retention.md) |
 | Email churned subscribers an offer to come back | [Win-back campaigns](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-campaigns.md) |
 | Get Customer Center support requests by email, or show subscriptions in the Intercom inbox or a Zendesk sidebar | [Support](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/support-integrations.md) |
@@ -5792,6 +5793,45 @@ curl https://api.revenuedot.app/v2/projects/$PROJECT_ID/auth/identities/$PROVIDE
 - Self-hosted servers sign tokens with a key derived from `REVENUEDOT_SIGNING_KEY` (or `REVENUEDOT_ENCRYPTION_KEY`). Without either, sign-in answers 503. Self-hosted servers may also use identity providers on their own network; RevenueDot Cloud only calls public https addresses.
 - Every change to providers, settings and identities is in the [audit log](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/project-settings.md).
 
+---
+
+# How do I set up the Customer Center?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/customer-center.md
+Description: Pick the actions customers see on the in-app subscription screen, ask why they cancel, attach offers, set colours for light and dark mode, and translate every text, from Lifecycle > Customer Center.
+
+The Customer Center is the subscription screen the RevenueCat SDK shows inside your app (`CustomerCenterView` on iOS, `CustomerCenter` on Android). The SDK loads its configuration from your RevenueDot server each time the screen opens, so a change you save reaches every app at once, with no release.
+
+Open **Lifecycle > Customer Center**. The page has three tabs, a **Preview** of the screen, **Save changes** and **Reset configuration**.
+
+## Configuration
+- **Support**: the email address the Contact support button writes to, and three switches: warn customers on an old app version, show the purchase history, and show the user details section (iOS only). Ticket settings live under [Support](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/support-integrations.md).
+- **Two screens.** "Customers with active subscriptions" is shown to customers with something active; "Customers without active subscriptions" to everyone else. Each has a title, an optional subtitle and an ordered list of paths.
+- **Paths.** Select **Add path** and pick one:
+
+| Path | What it does | Settings |
+|---|---|---|
+| Missing Purchase | Restores purchases from the store account | Button text |
+| Refund Request | Opens the store's refund request sheet (iOS) | Button text, promotional offer |
+| Change Plans | Switches to another plan of the same subscription group | Button text |
+| Manage | Opens the store's subscription management, where the customer cancels | Button text, feedback survey, promotional offer |
+| Custom URL | Opens a web page or a deep link | Button text, URL, open in the app or the browser |
+| Custom Action | Calls your app's custom action handler with an identifier | Button text, action identifier |
+
+Each type except Custom URL and Custom Action appears once per screen. Drag a path by its handle, or use the arrows, to change the order. Select a path to edit it; **Edit translations** sets its text per language.
+
+- **Feedback survey.** On the Manage path, turn on "Ask why with a feedback survey". It starts with three answers (Too expensive, Don't use the app, Bought by mistake); add, reorder or remove answers, up to 10. Each answer can show its own offer. Answers are reported as `customer_center_survey_option_chosen` events and counted in the Customer Center Survey Responses [chart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md).
+- **Promotional offers.** Manage and Refund Request show, by default, the active [retention offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/retention.md) for cancellations or refunds. You can instead pick one retention offer, choose **No offer**, or enter an offer of its own (title, subtitle, and each product's store offer id).
+
+## Appearance
+Five colours for light mode and five for dark mode: accent, text, background, button text and button background, as hex values such as `#1A1A1A`. An empty colour keeps the device's default.
+
+## Localization
+The screen follows the customer's device language and comes translated into 33 languages. Pick a language to see every predefined string; **Override** turns one into a custom string you can edit, and **Delete selected** removes custom strings. Texts you write yourself (titles, button text, survey answers) are translated with **Edit translations** next to each one; without a translation, the default texts use the built-in translation and your own texts stay as written.
+
+## Through the API
+`GET` and `POST /v2/projects/{project_id}/customer_center_config` read and replace the configuration; `GET /v2/projects/{project_id}/customers/{customer_id}/customer_center?locale=de_DE` shows what one customer's app receives. Invalid configurations are refused with a 400 that names each field. See the [API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-the-customer-center-configuration).
+
 
 === Migrate from RevenueCat ===
 
@@ -6510,7 +6550,7 @@ Details: [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/
 Source: [`prd/migration/PRD.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/migration/PRD.md).
 
 ## Features still planned, by tier
-Built since the first release: [paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md) with a visual editor and an AI generator, [targeting and experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/targeting-and-experiments.md), 43 [charts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md) (RevenueCat's 42 plus App Store Save Outcomes), Customer Center, virtual currencies, the [Amazon Appstore](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md) and [Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md) stores, [web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md), [Refund Control](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/refund-control.md), [retention offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/retention.md), [win-back campaigns](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-campaigns.md), the [support view](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/support-integrations.md), [ads](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/ads.md), all 37 [integrations](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md) and [RevenueDot AI](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/revenuedot-ai.md).
+Built since the first release: [paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md) with a visual editor and an AI generator, [targeting and experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/targeting-and-experiments.md), 43 [charts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md) (RevenueCat's 42 plus App Store Save Outcomes), the [Customer Center editor](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/customer-center.md), virtual currencies, the [Amazon Appstore](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md) and [Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md) stores, [web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md), [Refund Control](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/refund-control.md), [retention offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/retention.md), [win-back campaigns](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-campaigns.md), the [support view](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/support-integrations.md), [ads](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/ads.md), all 37 [integrations](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md) and [RevenueDot AI](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/revenuedot-ai.md).
 
 **Tier 1 (the current build), not finished**
 - SDK fork packages are partly published: `@revenuedot/purchases-js`, `@revenuedot/purchases-typescript-internal` and `@revenuedot/purchases-js-hybrid-mappings` on npm, `app.revenuedot.purchases` on Maven Central and `RevenueDotPurchases` and `RevenueDotPurchasesUI` on CocoaPods. The React Native, Flutter, Capacitor, Cordova, Unity and Kotlin Multiplatform packages are not published yet.
@@ -6518,7 +6558,6 @@ Built since the first release: [paywalls](https://raw.githubusercontent.com/reve
 
 **Tier 2, still planned**
 - Paywalls with several screens and navigation between them. Today a multi-page paywall is one screen with swipeable pages. Video uploads are not built (a video takes a URL), and exit offers and custom variables have no editor yet; they pass through the API.
-- A dashboard editor for the Customer Center configuration. Today you set it through the API.
 - Memory and custom instructions for RevenueDot AI.
 - Moving between self-host and cloud in one step, and a full export.
 - Cloud billing plans.
@@ -17967,13 +18006,19 @@ Example 200 response:
 
 `GET /v2/projects/{project_id}/customer_center_config` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
 
-The configuration the SDK receives, and the stored overrides it was built from (null when none).
+Three views of the configuration: `customer_center` is what the SDK receives (Retention offers resolved, editor-only fields removed); `config` is the editable document, the default with the stored overrides merged in (what the dashboard editor shows); `overrides` is what is stored (null when none).
 
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `locale` | string | no | Build `customer_center` for this device locale (for example `de_DE`), as the SDK's X-Preferred-Locales header does. English when omitted. |
 
 **Example request**
 
@@ -17992,7 +18037,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_center_config" -H "Aut
 
 `POST /v2/projects/{project_id}/customer_center_config` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
 
-Stores overrides that are merged, key by key, over the built-in default. Send `null` to go back to the default.
+Stores the configuration, merged key by key over the built-in default (lists such as `paths` replace). Send `null` to go back to the default. The SDK's shape plus editor fields: each screen's ordered `paths` (MISSING_PURCHASE, REFUND_REQUEST, CHANGE_PLANS, CANCEL, CUSTOM_URL with `url` and `open_method`, CUSTOM_ACTION with `action_identifier`); a `feedback_survey` on CANCEL; a `promotional_offer` on CANCEL, REFUND_REQUEST and survey options, either an offer of its own (`title`, `subtitle`, `product_mapping`) or `{ "retention_offer_id": "..." }` pointing at a Retention offer, or `null` for no offer; `appearance.light` and `.dark` hex colours; `title_localizations` / `subtitle_localizations` per language; `localization.custom_strings` per language. The merged result is validated as a whole; a 400 names each field that is wrong.
 
 **Path parameters**
 
@@ -18010,12 +18055,12 @@ Stores overrides that are merged, key by key, over the built-in default. Send `n
 
 ```bash
 curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_center_config" -H "Authorization: Bearer $SECRET_KEY" \
-  -H "Content-Type: application/json" -d '{"customer_center":{"support":{"email":"help@example.com"}}}'
+  -H "Content-Type: application/json" -d '{"customer_center":{"support":{"email":"help@example.com"},"screens":{"MANAGEMENT":{"type":"MANAGEMENT","title":"How can we help?","paths":[{"id":"path_help","type":"CUSTOM_URL","title":"Help center","url":"https://example.com/help","open_method":"IN_APP"},{"id":"path_cancel","type":"CANCEL","title":"Cancel subscription","promotional_offer":{"retention_offer_id":"rto_123"}}]}},"appearance":{"light":{"accent_color":"#F4A900"}},"localization":{"custom_strings":{"de":{"contact_support":"Schreib uns"}}}}}'
 ```
 
 **Responses**
 
-- **200**: The merged configuration.
+- **200**: The saved configuration.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).

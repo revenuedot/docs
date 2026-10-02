@@ -90,7 +90,7 @@ Details: [Webhooks](../guides/webhooks.md) and [Webhook events](../../api/webhoo
 Source: [`prd/migration/PRD.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/migration/PRD.md).
 
 ## Features still planned, by tier
-Built since the first release: [paywalls](../guides/paywalls.md) with a visual editor and an AI generator, [targeting and experiments](../guides/targeting-and-experiments.md), 43 [charts](../guides/charts.md) (RevenueCat's 42 plus App Store Save Outcomes), Customer Center, virtual currencies, the [Amazon Appstore](../guides/amazon-appstore.md) and [Stripe](../guides/stripe.md) stores, [web billing](../guides/web-billing.md), [Refund Control](../guides/refund-control.md), [retention offers](../guides/retention.md), [win-back campaigns](../guides/win-back-campaigns.md), the [support view](../guides/support-integrations.md), [ads](../guides/ads.md), all 37 [integrations](../guides/integrations.md) and [RevenueDot AI](../guides/revenuedot-ai.md).
+Built since the first release: [paywalls](../guides/paywalls.md) with a visual editor and an AI generator, [targeting and experiments](../guides/targeting-and-experiments.md), 43 [charts](../guides/charts.md) (RevenueCat's 42 plus App Store Save Outcomes), the [Customer Center editor](../guides/customer-center.md), virtual currencies, the [Amazon Appstore](../guides/amazon-appstore.md) and [Stripe](../guides/stripe.md) stores, [web billing](../guides/web-billing.md), [Refund Control](../guides/refund-control.md), [retention offers](../guides/retention.md), [win-back campaigns](../guides/win-back-campaigns.md), the [support view](../guides/support-integrations.md), [ads](../guides/ads.md), all 37 [integrations](../guides/integrations.md) and [RevenueDot AI](../guides/revenuedot-ai.md).
 
 **Tier 1 (the current build), not finished**
 - SDK fork packages are partly published: `@revenuedot/purchases-js`, `@revenuedot/purchases-typescript-internal` and `@revenuedot/purchases-js-hybrid-mappings` on npm, `app.revenuedot.purchases` on Maven Central and `RevenueDotPurchases` and `RevenueDotPurchasesUI` on CocoaPods. The React Native, Flutter, Capacitor, Cordova, Unity and Kotlin Multiplatform packages are not published yet.
@@ -98,7 +98,6 @@ Built since the first release: [paywalls](../guides/paywalls.md) with a visual e
 
 **Tier 2, still planned**
 - Paywalls with several screens and navigation between them. Today a multi-page paywall is one screen with swipeable pages. Video uploads are not built (a video takes a URL), and exit offers and custom variables have no editor yet; they pass through the API.
-- A dashboard editor for the Customer Center configuration. Today you set it through the API.
 - Memory and custom instructions for RevenueDot AI.
 - Moving between self-host and cloud in one step, and a full export.
 - Cloud billing plans.

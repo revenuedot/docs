@@ -861,13 +861,19 @@ Example 200 response:
 
 `GET /v2/projects/{project_id}/customer_center_config` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
 
-The configuration the SDK receives, and the stored overrides it was built from (null when none).
+Three views of the configuration: `customer_center` is what the SDK receives (Retention offers resolved, editor-only fields removed); `config` is the editable document, the default with the stored overrides merged in (what the dashboard editor shows); `overrides` is what is stored (null when none).
 
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `locale` | string | no | Build `customer_center` for this device locale (for example `de_DE`), as the SDK's X-Preferred-Locales header does. English when omitted. |
 
 **Example request**
 
@@ -886,7 +892,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_center_config" -H "Aut
 
 `POST /v2/projects/{project_id}/customer_center_config` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
 
-Stores overrides that are merged, key by key, over the built-in default. Send `null` to go back to the default.
+Stores the configuration, merged key by key over the built-in default (lists such as `paths` replace). Send `null` to go back to the default. The SDK's shape plus editor fields: each screen's ordered `paths` (MISSING_PURCHASE, REFUND_REQUEST, CHANGE_PLANS, CANCEL, CUSTOM_URL with `url` and `open_method`, CUSTOM_ACTION with `action_identifier`); a `feedback_survey` on CANCEL; a `promotional_offer` on CANCEL, REFUND_REQUEST and survey options, either an offer of its own (`title`, `subtitle`, `product_mapping`) or `{ "retention_offer_id": "..." }` pointing at a Retention offer, or `null` for no offer; `appearance.light` and `.dark` hex colours; `title_localizations` / `subtitle_localizations` per language; `localization.custom_strings` per language. The merged result is validated as a whole; a 400 names each field that is wrong.
 
 **Path parameters**
 
@@ -904,12 +910,12 @@ Stores overrides that are merged, key by key, over the built-in default. Send `n
 
 ```bash
 curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_center_config" -H "Authorization: Bearer $SECRET_KEY" \
-  -H "Content-Type: application/json" -d '{"customer_center":{"support":{"email":"help@example.com"}}}'
+  -H "Content-Type: application/json" -d '{"customer_center":{"support":{"email":"help@example.com"},"screens":{"MANAGEMENT":{"type":"MANAGEMENT","title":"How can we help?","paths":[{"id":"path_help","type":"CUSTOM_URL","title":"Help center","url":"https://example.com/help","open_method":"IN_APP"},{"id":"path_cancel","type":"CANCEL","title":"Cancel subscription","promotional_offer":{"retention_offer_id":"rto_123"}}]}},"appearance":{"light":{"accent_color":"#F4A900"}},"localization":{"custom_strings":{"de":{"contact_support":"Schreib uns"}}}}}'
 ```
 
 **Responses**
 
-- **200**: The merged configuration.
+- **200**: The saved configuration.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
