@@ -116,5 +116,4 @@ Migrations run before the new version takes traffic, while the old version still
 - [Self-hosting](self-hosting.md)
 - [Upgrades](upgrades.md)
 - [Backups](backups.md)
-- [Service level agreement](sla.md)
 - [Enterprise](enterprise.md)
