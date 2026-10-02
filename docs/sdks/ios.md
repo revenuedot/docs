@@ -36,28 +36,18 @@ if !UserDefaults.standard.bool(forKey: "revenuedotSynced") {
 ## Use the RevenueDot fork
 The fork is [github.com/revenuedot/purchases-ios](https://github.com/revenuedot/purchases-ios). It keeps the Swift modules `RevenueCat` and `RevenueCatUI`, so every `import RevenueCat` stays. It trusts RevenueDot's signing key, and its default host is `https://api.revenuedot.app`.
 
-**It is not published yet (2026-09-30).** These are the planned install lines:
+**Version 5.91.0 is published** on CocoaPods trunk and as a Swift package tag:
 ```ruby
-# Podfile (planned; the pods are not on CocoaPods trunk yet)
-pod 'RevenueDotPurchases', '<version>'
-pod 'RevenueDotPurchasesUI', '<version>'   # only if you use RevenueCatUI
+# Podfile
+pod 'RevenueDotPurchases', '5.91.0'
+pod 'RevenueDotPurchasesUI', '5.91.0'   # only if you use RevenueCatUI
 ```
 ```swift
-// Package.swift (planned release tags look like 5.92.0-revenuedot)
-.package(url: "https://github.com/revenuedot/purchases-ios", exact: "<version>-revenuedot")
+// Package.swift (or Xcode > Add Package Dependencies)
+.package(url: "https://github.com/revenuedot/purchases-ios", exact: "5.91.0-revenuedot")
 // Products: "RevenueCat" and "RevenueCatUI"
 ```
-
-**You can use it today from the patch branch.** The branch is `revenuedot/main-patches` (upstream 5.92.0 in development plus the RevenueDot patches). A second branch, `revenuedot/release-5.91.0`, is the 5.91.0 release plus the patches.
-```swift
-// Swift Package Manager, from the branch
-.package(url: "https://github.com/revenuedot/purchases-ios", branch: "revenuedot/main-patches")
-```
-```ruby
-# CocoaPods, from the branch
-pod 'RevenueDotPurchases', :git => 'https://github.com/revenuedot/purchases-ios.git', :branch => 'revenuedot/main-patches'
-```
-The fork's default host is RevenueDot Cloud, so a Cloud project needs no `Purchases.proxyURL`. When you self-host, keep setting it to your server.
+Release tags are `<upstream version>-revenuedot`, because the fork also carries RevenueCat's own tags. The fork's default host is RevenueDot Cloud, so a Cloud project needs no `Purchases.proxyURL`. When you self-host, keep setting it to your server.
 
 ## Trusted Entitlements
 - **Stock SDK:** it checks signatures with RevenueCat's key, so RevenueDot responses read as failed. The default mode, `.informational`, logs the failure and still grants access. Set `.disabled` to stop the noise. **Never use `.enforced` with the stock SDK**: every request would fail.

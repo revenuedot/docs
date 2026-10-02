@@ -464,7 +464,7 @@ On RevenueDot Cloud the admin needs a confirmed email address. A project can sen
   },
   [`${P}/apps/{app_id}/actions/verify_credentials`]: {
     post: op({ id: "verifyCredentials", tag: "Store setup", summary: "Check store credentials with Apple, Google, Amazon or Stripe", security: SECRET, source: R.setup, extension: true, scopes: ["project_configuration:apps:read"], parameters: [project, param("AppId")],
-      description: "Makes one harmless call to the App Store Server API, the Play Developer API, Amazon's Receipt Verification Service (a made-up receipt: 496 means a wrong shared key) or Stripe (lists one subscription and one Checkout Session with the key). Values in the body are checked before you save them; missing values fall back to the saved ones.",
+      description: "Makes one harmless call to the App Store Server API, the Play Developer API, Amazon's Receipt Verification Service (a made-up receipt: 496 means a wrong shared key) or Stripe (lists one subscription and one Checkout Session with the key). Values in the body are checked before you save them; missing values fall back to the saved ones. A Stripe app connected with Stripe Connect checks its connection only: Stripe values in the body answer 409.",
       requestBody: body(obj({
         app_store: obj({ bundle_id: nstr(), subscription_private_key: nstr(), subscription_key_id: nstr(), subscription_key_issuer: nstr() }),
         mac_app_store: obj({ bundle_id: nstr(), subscription_private_key: nstr(), subscription_key_id: nstr(), subscription_key_issuer: nstr() }),
@@ -472,7 +472,7 @@ On RevenueDot Cloud the admin needs a confirmed email address. A project can sen
         amazon: obj({ package_name: nstr(), shared_secret: nstr() }),
         stripe: obj({ stripe_secret_key: nstr(), stripe_account_id: nstr() }),
       }), {}, false),
-      responses: { 200: ok("The result.", ref("CredentialsCheck"), { object: "credentials_check", app_id: "appugfw01uy", store: "app_store", status: "invalid", valid: false, message: "No in-app purchase key yet. Add the .p8 file, the key ID and the issuer ID.", checked_at: 1790801342700 }), ...v2Errors(400, 401, 403, 404) } }),
+      responses: { 200: ok("The result.", ref("CredentialsCheck"), { object: "credentials_check", app_id: "appugfw01uy", store: "app_store", status: "invalid", valid: false, message: "No in-app purchase key yet. Add the .p8 file, the key ID and the issuer ID.", checked_at: 1790801342700 }), ...v2Errors(400, 401, 403, 404, 409) } }),
   },
   [`${P}/apps/{app_id}/actions/mass_extend`]: {
     post: op({ id: "massExtend", tag: "Store setup", summary: "Extend every active App Store subscriber of a product", security: SECRET, source: R.setup, extension: true, scopes: ["customer_information:subscriptions:read_write"], parameters: [project, param("AppId")],

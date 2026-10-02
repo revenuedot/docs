@@ -31,18 +31,18 @@ await Purchases.syncPurchasesForResult();
 `Purchases.syncPurchases()` does the same and returns nothing.
 
 ## Use the RevenueDot fork
-The fork is [github.com/revenuedot/react-native-purchases](https://github.com/revenuedot/react-native-purchases). It depends on RevenueDot's [hybrid common](hybrid-common.md) builds, which trust RevenueDot's signing key.
+The fork is [github.com/revenuedot/react-native-purchases](https://github.com/revenuedot/react-native-purchases). It depends on RevenueDot's [hybrid common](hybrid-common.md) 19.4.1, which is published (CocoaPods `RevenueDotPurchasesHybridCommon`, Maven `app.revenuedot.purchases:purchases-hybrid-common`, npm `@revenuedot/purchases-typescript-internal`).
 
-**It is not published yet (2026-09-30).** The planned install uses npm aliases, so every `import ... from "react-native-purchases"` stays as it is:
+**Version 10.10.2 is on npm.** The install uses npm aliases, so every `import ... from "react-native-purchases"` stays as it is:
 ```json
 {
   "dependencies": {
-    "react-native-purchases": "npm:@revenuedot/react-native-purchases@<version>",
-    "react-native-purchases-ui": "npm:@revenuedot/react-native-purchases-ui@<version>"
+    "react-native-purchases": "npm:@revenuedot/react-native-purchases@10.10.2",
+    "react-native-purchases-ui": "npm:@revenuedot/react-native-purchases-ui@10.10.2"
   }
 }
 ```
-The patch branch `revenuedot/main-patches` is at version 10.10.2. Installing it from git does not work yet: it needs `@revenuedot/purchases-typescript-internal`, the `RevenueDotPurchasesHybridCommon` pod and the `app.revenuedot.purchases:purchases-hybrid-common` Maven artifact, and none of them is published. Use proxy mode until then.
+Installed from npm into the [Expo example](https://github.com/revenuedot/examples/tree/main/mobile/react-native-expo) and run on the web against a RevenueDot server, it passes configure, customer info, offerings, a Test Store purchase and the `pro` entitlement turning active, with every request going to the server.
 
 ## Trusted Entitlements are off by default
 - **Stock SDK:** the default is `DISABLED`, which is what you want against RevenueDot. `INFORMATIONAL` logs every response as a failed signature check. **`ENFORCED` would fail every request.**

@@ -31,7 +31,7 @@ const typeOf = (schema) => {
 const json = (v) => "```json\n" + JSON.stringify(v, null, 2) + "\n```";
 const frontmatter = (title, description) => `---\ntitle: ${JSON.stringify(title)}\ndescription: ${JSON.stringify(description)}\n---\n\n${GENERATED}\n\n# ${title}\n`;
 
-const AUTH_LABEL = { publicApiKey: "public app key", secretApiKey: "secret key", dashboardSession: "dashboard session", googlePubSubOidc: "Pub/Sub push token (optional)" };
+const AUTH_LABEL = { publicApiKey: "public app key", secretApiKey: "secret key", dashboardSession: "dashboard session", googlePubSubOidc: "Pub/Sub push token (optional)", scimToken: "SCIM token" };
 function authOf(op) {
   const sec = op.security ?? spec.security;
   if (!sec.length || sec.every((s) => !Object.keys(s).length)) return "none";
@@ -71,13 +71,14 @@ function exampleOf(content) {
 function curl(method, path, op) {
   const sec = op.security ?? spec.security;
   const keys = sec.flatMap((s) => Object.keys(s));
-  const auth = keys[0] === "publicApiKey" ? ' -H "Authorization: Bearer $PUBLIC_KEY"' : keys.includes("secretApiKey") ? ' -H "Authorization: Bearer $SECRET_KEY"' : "";
+  const auth = keys[0] === "publicApiKey" ? ' -H "Authorization: Bearer $PUBLIC_KEY"' : keys.includes("secretApiKey") ? ' -H "Authorization: Bearer $SECRET_KEY"' : keys.includes("scimToken") ? ' -H "Authorization: Bearer $SCIM_TOKEN"' : "";
   const EXAMPLE_PARAMS = { project_id: "$PROJECT_ID", app_user_id: "user_1", customer_id: "user_1", entitlement_identifier: "pro", offering_identifier: "default", domain: "app" };
-  const url = `$REVENUEDOT_URL${path.replace(/\{(\w+)\}/g, (_, n) => EXAMPLE_PARAMS[n] ?? `$${n.toUpperCase()}`)}`;
-  const content = op.requestBody?.content?.["application/json"];
+  const url = `$REVENUEDOT_URL${path.replace(/\{(\w+)\}/g, (_, n) => (n === "domain" && path.includes("/sso/domains") ? "acme.com" : EXAMPLE_PARAMS[n] ?? `$${n.toUpperCase()}`))}`;
+  // JSON bodies, including SCIM's application/scim+json.
+  const [type, content] = Object.entries(op.requestBody?.content ?? {}).find(([t]) => t.includes("json")) ?? [];
   const body = content ? exampleOf(content) : undefined;
   const lines = [`curl -s${method === "get" ? "" : ` -X ${method.toUpperCase()}`} "${url}"${auth}`];
-  if (body !== undefined) lines.push(`  -H "Content-Type: application/json" -d '${JSON.stringify(body).replace(/'/g, "'\\''")}'`);
+  if (body !== undefined) lines.push(`  -H "Content-Type: ${type}" -d '${JSON.stringify(body).replace(/'/g, "'\\''")}'`);
   return "```bash\n" + lines.join(" \\\n") + "\n```";
 }
 
@@ -107,14 +108,15 @@ function renderOp(method, path, op, shared) {
   out.push("**Responses**", "");
   for (const [status, r0] of Object.entries(op.responses)) {
     const r = deref(r0);
-    const content = r.content?.["application/json"];
+    const content = r.content?.["application/json"] ?? r.content?.["application/scim+json"];
     const schemaName = content ? refName(content.schema) : null;
     const itemName = content && !schemaName ? refName(deref(content.schema)?.properties?.items?.items) : null;
     const returns = schemaName ? ` Returns [${schemaName}](#${slug(schemaName)}).` : itemName ? ` Returns a list of [${itemName}](#${slug(itemName)}).` : "";
     out.push(`- **${status}**: ${r.description}${returns}`);
   }
   const okStatus = Object.keys(op.responses).find((s) => s.startsWith("2"));
-  const okExample = okStatus && exampleOf(deref(op.responses[okStatus]).content?.["application/json"]);
+  const okContent = deref(op.responses[okStatus] ?? {})?.content;
+  const okExample = okStatus && exampleOf(okContent?.["application/json"] ?? okContent?.["application/scim+json"]);
   if (okExample !== undefined) out.push("", `Example ${okStatus} response:`, "", json(okExample));
   out.push("");
   return out.join("\n");
@@ -201,6 +203,11 @@ RevenueDot-only endpoints are on [Extensions](extensions.md).`);
 counts.extensions = operationsPage("extensions", "Which API endpoints are RevenueDot extensions?",
   "RevenueDot-only endpoints: dashboard sign-in, OAuth for MCP clients, project settings, store setup, API keys, webhook deliveries, event log, Test Store, web billing, purchase links, funnels, hosted pages, dashboard data and migration import.", `
 These endpoints exist only in RevenueDot. They use the same auth, errors and list envelope as [REST API v2](rest-v2.md). The dashboard is built on them, so everything the dashboard does, a script or an AI agent can do too.`);
+counts.enterprise = operationsPage("enterprise", "Which API endpoints does RevenueDot Enterprise add?",
+  "RevenueDot Enterprise endpoints: licence status, organizations, custom roles and group role mappings, SAML and OpenID Connect single sign-on, SCIM 2.0 provisioning and signed compliance exports.", `
+These endpoints exist only on a server that runs [RevenueDot Enterprise](../docs/guides/enterprise.md): one started with \`REVENUEDOT_LICENSE_KEY\`, or with \`REVENUEDOT_EE_DEV=true\` for development. Each group also needs its feature in the licence; without it the route answers 403. The open-source build has none of them.
+Organization endpoints take a **dashboard session** (the \`rd_session\` cookie); secret API keys belong to one project and cannot call them. Writes from a browser must come from the dashboard's own site. The SCIM 2.0 service under \`/scim/v2\` takes a **SCIM token** instead. The \`/sso\` endpoints take no credentials: browsers and identity providers call them during sign-in.
+Errors use the [REST API v2 format](errors.md#rest-api-v2-error-types), except under \`/scim/v2\`, which answers RFC 7644 errors. The examples also read \`ORG_ID\` and \`SCIM_TOKEN\` from your shell.`);
 
 // Webhook events
 {
@@ -236,7 +243,8 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
   out.push("| Public app key | `appl_...`, `goog_...`, `test_...` | [SDK endpoints](sdk-endpoints.md) for that app | In your app. It is public by design |");
   out.push("| Secret key | `sk_...` | [REST API v1](rest-v1.md), [REST API v2](rest-v2.md), [extensions](extensions.md), and SDK endpoints from your backend | On your servers only |");
   out.push("| Dashboard session | cookie `rd_session` | REST API v2 from the dashboard, for every project you belong to | In the browser |");
-  out.push("| Pub/Sub push token | Google-signed JWT | Google Play notifications, when `pubsub_audience` is set | Sent by Google |", "");
+  out.push("| Pub/Sub push token | Google-signed JWT | Google Play notifications, when `pubsub_audience` is set | Sent by Google |");
+  out.push("| SCIM token (Enterprise) | `rdscim_...` | The [SCIM 2.0 service](enterprise.md#scim-20) of one organization | In your identity provider |", "");
   out.push("## Security schemes in the OpenAPI document", "");
   for (const [name, s] of Object.entries(schemes)) out.push(`- **\`${name}\`**: ${s.description}`);
   out.push("", "## Where keys come from", "");
@@ -282,6 +290,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
   out.push(`| REST API v1 | \`/v1/subscribers/...\` | secret key | ${counts["rest-v1"]} | [REST API v1](rest-v1.md) |`);
   out.push(`| REST API v2 | \`/v2/projects/...\` | secret key or dashboard session | ${counts["rest-v2"]} | [REST API v2](rest-v2.md) |`);
   out.push(`| RevenueDot extensions | \`/v2/...\`, \`/auth/...\`, \`/oauth/...\`, \`/pay/...\` | secret key, session or none | ${counts.extensions} | [Extensions](extensions.md) |`);
+  out.push(`| RevenueDot Enterprise | \`/v2/enterprise\`, \`/v2/organizations/...\`, \`/sso/...\`, \`/scim/v2/...\` | session, SCIM token or none | ${counts.enterprise} | [Enterprise](enterprise.md) |`);
   out.push(`| Webhooks (sent by RevenueDot) | your URL | HMAC signature | ${counts["webhook-events"]} event types | [Webhook events](webhook-events.md) |`, "");
   out.push("## Quick example", "", "```bash", "export REVENUEDOT_URL=http://localhost:8787 SECRET_KEY=sk_... PROJECT_ID=proj...", "curl -s \"$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1\" -H \"Authorization: Bearer $SECRET_KEY\"", "```", "", json(deref(spec.paths["/v2/projects/{project_id}/customers/{customer_id}"].get.responses["200"]).content["application/json"].example), "");
   out.push("## Conventions", "");

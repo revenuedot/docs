@@ -1,6 +1,6 @@
 ---
 title: Which guide do I need?
-description: Step-by-step guides for stores, web billing, webhooks, integrations and data exports, ads, attribution, benchmarks, growth insights, refunds, retention, support, testing, your team, project settings, Auth, moving between self-host and Cloud, Cloud billing, and self-hosting.
+description: Step-by-step guides for stores, web billing, webhooks, integrations and data exports, ads, attribution, benchmarks, growth insights, refunds, retention, support, testing, your team, project settings, Auth, moving between self-host and Cloud, Cloud billing, Enterprise, and self-hosting.
 ---
 
 # Which guide do I need?
@@ -13,6 +13,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Accept Google Play purchases and get real-time notifications | [Connect Google Play](google-play.md) |
 | Accept Amazon Appstore purchases on Fire tablets and Fire TV | [Connect the Amazon Appstore](amazon-appstore.md) |
 | Track subscriptions sold with my own Stripe account | [Connect Stripe](stripe.md) |
+| Connect my Stripe account without copying a restricted key | [Connect with Stripe](stripe-connect.md) |
 | Bring the products I already set up in App Store Connect, Google Play or Stripe into the catalog | [Import products](import-products.md) |
 | Sell my app's subscriptions on the web with a hosted Stripe checkout | [Sell on the web with Stripe](web-billing.md) |
 | Share a checkout link for an offering | [Purchase links](purchase-links.md) |
@@ -34,6 +35,11 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Know what RevenueDot Cloud costs, upgrade, or change my card | [Cloud billing](cloud-billing.md) |
 | Check everything before real customers arrive | [Going to production](going-to-production.md) |
 | Invite teammates to a project and set their roles | [Invite your team](team.md) |
+| Group projects into an organization, turn on RevenueDot Enterprise, or build custom roles | [Enterprise](enterprise.md) |
+| Sign my team in with Okta, Microsoft Entra ID, Google Workspace or any SAML or OpenID Connect provider | [Single sign-on](single-sign-on.md) |
+| Create, update and deactivate people from my identity provider and map its groups to roles | [SCIM](scim.md) |
+| Keep data in the US or the EU | [Data location](data-location.md) |
+| Keep audit logs for a set time and give auditors signed exports | [Audit retention and exports](audit-retention-and-exports.md) |
 | Limit sandbox testing, hand a project to another admin, keep brand colours and fonts, block abusive users, or publish verified revenue numbers | [Project settings](project-settings.md) |
 | Sign users in with Firebase or OpenID Connect and read their purchases and balances without a backend | [Auth](auth.md) |
 | Build a paywall and show it in my app | [Paywalls](paywalls.md) |
@@ -49,6 +55,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Answer Apple refund requests automatically and see my refund rate | [Refund Control](refund-control.md) |
 | Choose what customers can do on the in-app subscription screen, its colours and its text in 33 languages | [Customer Center](customer-center.md) |
 | Offer a discount when customers cancel, in my app or on Apple's cancel screen | [Retention offers](retention.md) |
+| Email subscribers whose payment failed a link to fix it, and see the revenue that comes back | [Payment recovery](payment-recovery.md) |
 | Email churned subscribers an offer to come back | [Win-back campaigns](win-back-campaigns.md) |
 | Get Customer Center support requests by email, or show subscriptions in the Intercom inbox or a Zendesk sidebar | [Support](support-integrations.md) |
 | Filter, save and export lists of customers | [Customer lists](customer-lists.md) |
