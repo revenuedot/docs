@@ -1,6 +1,6 @@
 ---
 title: How do I filter, save and export customer lists?
-description: The Customers page has built-in lists (all, active subscribers, sandbox, non-subscription, expired), saved audiences, filters from the audience condition builder, four summary cards and CSV export.
+description: The Customers page has built-in lists (all, active subscribers, sandbox, non-subscription, expired), saved audiences, filters from the audience condition builder, sortable columns, a hide-IDs switch, four summary cards and CSV export.
 ---
 
 # How do I filter, save and export customer lists?
@@ -17,6 +17,11 @@ Open **Customers**. The rail on the left holds the lists:
 | Your audiences | Audiences you saved here or under Targeting |
 
 Four cards sum up the list: customers, trialing subscribers, paid subscribers and total revenue (production, in USD).
+
+## Sort and hide IDs
+Select a column header to sort by it: customer (app user ID), subscription status, auto-renewal, first seen, last seen or spent. The first click puts dates and spend newest or largest first and text A to Z; the next click flips it. The sort stays in the page address, so a shared link opens in the same order, and **Export all** uses it too. Through the API: `?sort=spent_in_usd&direction=desc`.
+
+The eye button in the Customer header hides app user IDs and emails on screen, for screen sharing and demos. Rows still open the customer. The setting is remembered in this browser.
 
 ## Filter and save
 Select **Filter** and add conditions: country, platform, app version, subscription status, entitlements, total spent, first or last seen, first purchase, last renewal, email, attribution or any custom attribute. Conditions in a group must all match; groups are alternatives. **Search** matches part of an app user ID or email.

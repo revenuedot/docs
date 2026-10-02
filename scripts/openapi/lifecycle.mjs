@@ -94,6 +94,8 @@ const listQuery = [
   { name: "list", in: "query", schema: str(), description: "`all` (default), `active`, `sandbox`, `non_subscription`, `expired`, or a saved audience id." },
   { name: "rules", in: "query", schema: str(), description: "Extra filter: audience rules as JSON." },
   { name: "search", in: "query", schema: str(), description: "Part of an app user id or email." },
+  { name: "sort", in: "query", schema: en(["id", "subscription_status", "auto_renewal_status", "first_seen_at", "last_seen_at", "spent_in_usd"]), description: "Column to sort by. Default: most recently seen first. Ties keep that default order; customers without an auto-renewal value stay last." },
+  { name: "direction", in: "query", schema: en(["asc", "desc"]), description: "Sort direction when `sort` is set. Default `asc`." },
 ];
 
 const RC = "routes/v2/refund-control.ts", RT = "routes/v2/retention.ts", SU = "routes/v2/support.ts", WB = "routes/v2/winback.ts", CL = "routes/v2/customer-lists.ts", PUB = "routes/lifecycle-public.ts";
