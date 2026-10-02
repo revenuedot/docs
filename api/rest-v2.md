@@ -13,7 +13,7 @@ RevenueDot-only endpoints are on [Extensions](extensions.md).
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (163)
+## Operations on this page (172)
 
 - **Projects**: [List projects](#list-projects), [Create a project](#create-a-project)
 - **Apps**: [List apps](#list-apps), [Create an app](#create-an-app), [Get an app](#get-an-app), [Update an app and its store credentials](#update-an-app-and-its-store-credentials), [Delete an app](#delete-an-app), [Get an app's public SDK key](#get-an-apps-public-sdk-key), [Get a StoreKit configuration file](#get-a-storekit-configuration-file), [Issue a subscriber access token](#issue-a-subscriber-access-token), [List the products in the app's store](#list-the-products-in-the-apps-store), [Import products from the app's store](#import-products-from-the-apps-store)
@@ -25,7 +25,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Subscriptions**: [Find subscriptions by store id](#find-subscriptions-by-store-id), [Get a subscription](#get-a-subscription), [List the entitlements a subscription unlocks](#list-the-entitlements-a-subscription-unlocks), [List a subscription's payments](#list-a-subscriptions-payments), [Cancel a subscription (Google Play)](#cancel-a-subscription-google-play), [Refund and revoke a subscription (Google Play)](#refund-and-revoke-a-subscription-google-play), [Extend a subscription](#extend-a-subscription), [Refund one payment of a subscription (Google Play)](#refund-one-payment-of-a-subscription-google-play), [Get where the customer manages a subscription](#get-where-the-customer-manages-a-subscription)
 - **Purchases**: [Find one-time purchases by store id](#find-one-time-purchases-by-store-id), [Get a one-time purchase](#get-a-one-time-purchase), [List the entitlements a purchase unlocks](#list-the-entitlements-a-purchase-unlocks), [Refund a one-time purchase (Google Play)](#refund-a-one-time-purchase-google-play)
 - **Metrics**: [Overview metrics](#overview-metrics), [Revenue over a date range](#revenue-over-a-date-range)
-- **Charts**: [Get chart data](#get-chart-data), [Get available options for a chart](#get-available-options-for-a-chart), [List saved charts](#list-saved-charts), [Save a chart view](#save-a-chart-view), [Get a saved chart](#get-a-saved-chart), [Rename or update a saved chart](#rename-or-update-a-saved-chart), [Delete a saved chart](#delete-a-saved-chart)
+- **Charts**: [Get chart data](#get-chart-data), [Get available options for a chart](#get-available-options-for-a-chart), [List the customers behind a chart](#list-the-customers-behind-a-chart), [List chart annotations](#list-chart-annotations), [Create a chart annotation](#create-a-chart-annotation), [Get a chart annotation](#get-a-chart-annotation), [Update a chart annotation](#update-a-chart-annotation), [Delete a chart annotation](#delete-a-chart-annotation), [List active chart share links](#list-active-chart-share-links), [Create a public chart share link](#create-a-public-chart-share-link), [Revoke a chart share link](#revoke-a-chart-share-link), [List saved charts](#list-saved-charts), [Save a chart view](#save-a-chart-view), [Get a saved chart](#get-a-saved-chart), [Rename or update a saved chart](#rename-or-update-a-saved-chart), [Delete a saved chart](#delete-a-saved-chart)
 - **In-app currencies**: [List in-app currencies](#list-in-app-currencies), [Create an in-app currency](#create-an-in-app-currency), [Get an in-app currency](#get-an-in-app-currency), [Update an in-app currency](#update-an-in-app-currency), [Delete an in-app currency](#delete-an-in-app-currency), [Archive an in-app currency](#archive-an-in-app-currency), [Unarchive an in-app currency](#unarchive-an-in-app-currency), [List a customer's balances](#list-a-customers-balances), [Credit or spend in-app currency](#credit-or-spend-in-app-currency), [Change a balance without a ledger entry](#change-a-balance-without-a-ledger-entry)
 - **Audit log**: [List audit log entries](#list-audit-log-entries)
 - **Targeting**: [List audiences](#list-audiences), [Create an audience](#create-an-audience), [Preview who matches](#preview-who-matches), [Known values for attribution and custom-attribute fields](#known-values-for-attribution-and-custom-attribute-fields), [Get an audience](#get-an-audience), [Update an audience](#update-an-audience), [Delete an unused audience](#delete-an-unused-audience), [List targeting rules in order](#list-targeting-rules-in-order), [Create a targeting rule](#create-a-targeting-rule), [Set the evaluation order](#set-the-evaluation-order), [Get a targeting rule](#get-a-targeting-rule), [Update a targeting rule](#update-a-targeting-rule), [Delete a targeting rule](#delete-a-targeting-rule)
@@ -3047,6 +3047,309 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/charts/$CHART_NAME/options" -H 
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
+### List the customers behind a chart
+
+`GET /v2/projects/{project_id}/charts/{chart_name}/customers` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`, `customer_information:customers:read`
+
+The customers whose purchases, subscriptions, trials or activity make up the chart for these parameters (the chart's own), most recent contribution first, each with their part of one of the chart's measures. The values plus `unattributed_value` add up to the chart: over the range (`sum: total`) or at the last period (`sum: last`). Which customers each chart lists: https://revenuedot.app/docs/guides/charts#customers-behind-a-chart.
+
+`format=csv` streams every contributor as CSV (at most 100,000 rows); the response has `X-RevenueDot-Total-Count`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `chart_name` | `actives`, `actives_movement`, `actives_new`, `arr`, `churn`, `cohort_explorer`, `conversion_to_paying`, `customers_new`, `initial_conversion`, `ltv_per_customer`, `ltv_per_paying_customer`, `mrr`, `mrr_movement`, `prediction_explorer`, `refund_rate`, `refund_request`, `refunds`, `revenue`, `subscription_retention`, `subscription_status`, `trials`, `trials_movement`, `trials_new`, `customers_active`, `trial_conversion`, `trial_conversion_rate`, `trial_cancellation`, `non-subscription_purchases`, `ad_revenue`, `ad_impressions`, `ad_clicks`, `ad_monetized_customers`, `ad_arpdau`, `ad_rpm`, `ad_fill_rate`, `ad_ctr`, `paywall_encounter`, `paywall_conversion`, `paywall_ltv`, `paywall_abandonment`, `app_store_save_outcomes`, `play_store_cancel_reasons`, `customer_center_survey_responses` | yes | The chart. `play_store_cancel_reasons` and `customer_center_survey_responses` are RevenueDot names for charts RevenueCat shows only in its dashboard. Definitions: https://revenuedot.app/docs/guides/charts |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `resolution` | string | no | As for chart data. |
+| `start_date` | string | no |  |
+| `end_date` | string | no |  |
+| `expand_periods` | boolean | no |  |
+| `filters` | string | no |  |
+| `selectors` | string | no |  |
+| `segment` | string | no |  |
+| `limit_num_segments` | integer | no |  |
+| `currency` | `USD`, `EUR`, `GBP`, `AUD`, `CAD`, `JPY`, `BRL`, `KRW`, `CNY`, `MXN`, `SEK`, `PLN`, `NZD`, `CHF` | no |  |
+| `environment` | `production`, `sandbox` | no | RevenueDot extension. `sandbox` shows only sandbox and Test Store purchases. Default `production`. |
+| `limit` | integer | no | Customers in `items`, 1–100. Default 100. |
+| `format` | `json`, `csv` | no | Default `json`. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/charts/$CHART_NAME/customers" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The customers, or the CSV export.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### List chart annotations
+
+`GET /v2/projects/{project_id}/chart_annotations` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`
+
+The project's annotations, oldest first, at most 1,000. With dates, only those that overlap them.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `start_date` | string | no |  |
+| `end_date` | string | no |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/chart_annotations" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The annotations.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Create a chart annotation
+
+`POST /v2/projects/{project_id}/chart_annotations` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read_write`
+
+A note on a UTC day or date range that every chart of the project shows. Viewers cannot create one. Audited as `chart_annotation_created`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `title` | string | yes |  |
+| `description` | string or null | no |  |
+| `start_date` | string | yes |  |
+| `end_date` | string or null | no | Default `start_date`; never before it. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/chart_annotations" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"title":"Launched the annual plan","description":"New paywall in 2.4","start_date":"2026-09-14"}'
+```
+
+**Responses**
+
+- **201**: The annotation.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### Get a chart annotation
+
+`GET /v2/projects/{project_id}/chart_annotations/{annotation_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `annotation_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/chart_annotations/$ANNOTATION_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The annotation.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Update a chart annotation
+
+`PATCH /v2/projects/{project_id}/chart_annotations/{annotation_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read_write`
+
+Changes any field. A single-day annotation moved with `start_date` stays a single day; `end_date: null` makes any annotation a single day. Audited as `chart_annotation_updated`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `annotation_id` | string | yes |  |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `title` | string | no |  |
+| `description` | string or null | no |  |
+| `start_date` | string | no |  |
+| `end_date` | string or null | no |  |
+
+**Example request**
+
+```bash
+curl -s -X PATCH "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/chart_annotations/$ANNOTATION_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The annotation.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Delete a chart annotation
+
+`DELETE /v2/projects/{project_id}/chart_annotations/{annotation_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `annotation_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/chart_annotations/$ANNOTATION_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deleted.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### List active chart share links
+
+`GET /v2/projects/{project_id}/chart_shares` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`
+
+The project's links that are not revoked, newest first, at most 200.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `chart_name` | `actives`, `actives_movement`, `actives_new`, `arr`, `churn`, `cohort_explorer`, `conversion_to_paying`, `customers_new`, `initial_conversion`, `ltv_per_customer`, `ltv_per_paying_customer`, `mrr`, `mrr_movement`, `prediction_explorer`, `refund_rate`, `refund_request`, `refunds`, `revenue`, `subscription_retention`, `subscription_status`, `trials`, `trials_movement`, `trials_new`, `customers_active`, `trial_conversion`, `trial_conversion_rate`, `trial_cancellation`, `non-subscription_purchases`, `ad_revenue`, `ad_impressions`, `ad_clicks`, `ad_monetized_customers`, `ad_arpdau`, `ad_rpm`, `ad_fill_rate`, `ad_ctr`, `paywall_encounter`, `paywall_conversion`, `paywall_ltv`, `paywall_abandonment`, `app_store_save_outcomes`, `play_store_cancel_reasons`, `customer_center_survey_responses` | no | Only this chart's links. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/chart_shares" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The links.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Create a public chart share link
+
+`POST /v2/projects/{project_id}/chart_shares` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read_write`
+
+Computes the chart for the view now and keeps that snapshot (series, labels, summary values; no customer data) behind an unguessable public link with a PNG preview. Owners, admins and developers can create one; at most 200 active per project. Audited as `chart_share_created`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `chart_name` | `actives`, `actives_movement`, `actives_new`, `arr`, `churn`, `cohort_explorer`, `conversion_to_paying`, `customers_new`, `initial_conversion`, `ltv_per_customer`, `ltv_per_paying_customer`, `mrr`, `mrr_movement`, `prediction_explorer`, `refund_rate`, `refund_request`, `refunds`, `revenue`, `subscription_retention`, `subscription_status`, `trials`, `trials_movement`, `trials_new`, `customers_active`, `trial_conversion`, `trial_conversion_rate`, `trial_cancellation`, `non-subscription_purchases`, `ad_revenue`, `ad_impressions`, `ad_clicks`, `ad_monetized_customers`, `ad_arpdau`, `ad_rpm`, `ad_fill_rate`, `ad_ctr`, `paywall_encounter`, `paywall_conversion`, `paywall_ltv`, `paywall_abandonment`, `app_store_save_outcomes`, `play_store_cancel_reasons`, `customer_center_survey_responses` | yes |  |
+| `view` | object | no |  |
+| `view.range` | string | no | 7d, 30d, 90d, 12m or custom. |
+| `view.start` | string | no | Custom range start, YYYY-MM-DD. |
+| `view.end` | string | no | Custom range end. |
+| `view.res` | string | no | day, week, month, quarter or year. |
+| `view.segment` | string | no |  |
+| `view.filters` | string | no | The filters parameter's JSON. |
+| `view.sel` | string | no | The selectors parameter's JSON. |
+| `view.env` | `production`, `sandbox` | no |  |
+| `view.compare` | boolean | no | Compare to the previous period. |
+| `view.type` | `line`, `stacked_area`, `column`, `stacked_column`, `percent_column` | no | The chart type. Stacked types need two or more series; with one they draw as `line` or `column`. |
+| `view.m` | string | no | The plotted measure group, `0` first. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/chart_shares" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"chart_name":"revenue","view":{"range":"90d","res":"week","segment":"product","type":"stacked_column"}}'
+```
+
+**Responses**
+
+- **201**: The link.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### Revoke a chart share link
+
+`DELETE /v2/projects/{project_id}/chart_shares/{share_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read_write`
+
+The public page and images answer 410 from now on. Audited as `chart_share_deleted`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `share_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/chart_shares/$SHARE_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Revoked.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
 ### List saved charts
 
 `GET /v2/projects/{project_id}/saved_charts` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`
@@ -3082,7 +3385,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/saved_charts" -H "Authorization
 
 `POST /v2/projects/{project_id}/saved_charts` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read_write`
 
-A named chart with the dashboard view that produced it (range, dates, resolution, segment, filters, selectors, environment, compare). Up to 200 per project.
+A named chart with the dashboard view that produced it (range, dates, resolution, segment, filters, selectors, environment, compare, chart type, measure group). Up to 200 per project.
 
 **Path parameters**
 
@@ -3106,6 +3409,8 @@ A named chart with the dashboard view that produced it (range, dates, resolution
 | `view.sel` | string | no | The selectors parameter's JSON. |
 | `view.env` | `production`, `sandbox` | no |  |
 | `view.compare` | boolean | no | Compare to the previous period. |
+| `view.type` | `line`, `stacked_area`, `column`, `stacked_column`, `percent_column` | no | The chart type. Stacked types need two or more series; with one they draw as `line` or `column`. |
+| `view.m` | string | no | The plotted measure group, `0` first. |
 
 **Example request**
 
@@ -3173,6 +3478,8 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/saved_charts/$SAVED_CHART_ID" -
 | `view.sel` | string | no | The selectors parameter's JSON. |
 | `view.env` | `production`, `sandbox` | no |  |
 | `view.compare` | boolean | no | Compare to the previous period. |
+| `view.type` | `line`, `stacked_area`, `column`, `stacked_column`, `percent_column` | no | The chart type. Stacked types need two or more series; with one they draw as `line` or `column`. |
+| `view.m` | string | no | The plotted measure group, `0` first. |
 
 **Example request**
 
