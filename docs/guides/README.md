@@ -1,6 +1,6 @@
 ---
 title: Which guide do I need?
-description: Step-by-step guides for stores, web billing, webhooks, integrations and data exports, ads, refunds, retention, support, testing, your team, project settings, Auth, moving between self-host and Cloud, Cloud billing, and self-hosting.
+description: Step-by-step guides for stores, web billing, webhooks, integrations and data exports, ads, attribution, benchmarks, growth insights, refunds, retention, support, testing, your team, project settings, Auth, moving between self-host and Cloud, Cloud billing, and self-hosting.
 ---
 
 # Which guide do I need?
@@ -39,6 +39,9 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Build a paywall and show it in my app | [Paywalls](paywalls.md) |
 | Show different offerings to different customers, or A/B test two | [Targeting and experiments](targeting-and-experiments.md) |
 | Read MRR, revenue, churn, conversion and LTV, and know how each is calculated | [Charts](charts.md) |
+| See which ad networks and campaigns bring paying customers, with revenue by campaign and ROAS | [Attribution](attribution.md) |
+| Compare my conversion, churn, refunds, LTV and prices with similar apps (RevenueDot Cloud) | [Benchmarks](benchmarks.md) |
+| Get 3 to 5 numbers-backed growth ideas every week, on the Overview and by email | [Growth insights](growth-insights.md) |
 | Run RevenueDot from ChatGPT, Claude or Cursor | [Connect AI assistants](connect-ai-assistants.md) |
 | Get an email when store notifications, webhooks or store credentials fail | [Alert emails](alerts.md) |
 | Win back lapsed App Store subscribers with Apple's win-back offers | [Win-back offers](win-back-offers.md) |

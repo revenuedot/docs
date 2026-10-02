@@ -225,6 +225,15 @@ tags:
   - name: RevenueDot AI
     description: "The in-app assistant: conversations, streaming answers, attachments (screenshots and .storekit files), @ mentions, what the assistant may do in the project, and the first-sale card. See [RevenueDot AI](../docs/guides/revenuedot-ai.md)."
     x-page: extensions
+  - name: Attribution
+    description: "Where customers came from: each customer's attribution row (media source, campaign, ad group, keyword, ad, creative, Apple Search Ads ids, partner ids) and revenue by campaign with day-0, day-7, day-30 and to-date revenue. Charts take the same dimensions as filters and segments. See [Attribution](../docs/guides/attribution.md)."
+    x-page: extensions
+  - name: Benchmarks
+    description: "RevenueDot Cloud only: the project's metrics against anonymized percentiles of apps that share, by category, platform and country, and the opt-in setting. See [Benchmarks](../docs/guides/benchmarks.md)."
+    x-page: extensions
+  - name: Growth insights
+    description: 3 to 5 weekly recommendations from RevenueDot AI with the numbers behind them, Refresh, and the weekly digest's one-click opt-out. See [Growth insights](../docs/guides/growth-insights.md).
+    x-page: extensions
   - name: Share cards
     description: Public pages and images RevenueDot makes for sharing, such as the first-sale card. No API key; the token in the URL is the only key.
     x-page: extensions
@@ -32257,6 +32266,1120 @@ paths:
           description: Unknown card.
       x-source: routes/share.ts
       x-revenuedot-extension: true
+  /v2/projects/{project_id}/customers/{customer_id}/attribution:
+    get:
+      operationId: getCustomerAttribution
+      tags:
+        - Attribution
+      summary: Get a customer's attribution
+      description: The first-class attribution row built from the customer's reserved attributes (`$mediaSource`, `$campaign`, `$adGroup`, `$ad`, `$keyword`, `$creative`, `$appleAds*`, `$claimType`, `$conversionType`) and partner ids. Null when the customer has none.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: customer_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Any of the customer's app user ids.
+      responses:
+        "200":
+          description: The row.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - customer_attribution_result
+                  attribution:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      object:
+                        type: string
+                        enum:
+                          - customer_attribution
+                      media_source:
+                        type:
+                          - string
+                          - "null"
+                        description: "`$mediaSource`, or Apple Search Ads for an AdServices attribution."
+                      campaign:
+                        type:
+                          - string
+                          - "null"
+                        description: "`$campaign`; for Apple Search Ads the campaign name once the connection has loaded names, else the id."
+                      campaign_id:
+                        type:
+                          - string
+                          - "null"
+                        description: Apple Search Ads campaign id.
+                      ad_group:
+                        type:
+                          - string
+                          - "null"
+                      ad_group_id:
+                        type:
+                          - string
+                          - "null"
+                      ad:
+                        type:
+                          - string
+                          - "null"
+                      ad_id:
+                        type:
+                          - string
+                          - "null"
+                      keyword:
+                        type:
+                          - string
+                          - "null"
+                      keyword_id:
+                        type:
+                          - string
+                          - "null"
+                      creative:
+                        type:
+                          - string
+                          - "null"
+                      claim_type:
+                        type:
+                          - string
+                          - "null"
+                        description: "Apple Search Ads: Click or Impression."
+                      conversion_type:
+                        type:
+                          - string
+                          - "null"
+                        description: "Apple Search Ads: Download, Redownload or PreOrder."
+                      attribution_country:
+                        type:
+                          - string
+                          - "null"
+                        description: Two-letter country of the ad (Apple Search Ads).
+                      partner_ids:
+                        type: object
+                        additionalProperties:
+                          type: string
+                        description: "Attribution partners' device ids: appsflyer_id, adjust_id, branch_id, kochava_device_id, singular_device_id, tenjin_id, airbridge_device_id."
+                      updated_at:
+                        type: integer
+                        format: int64
+                        description: Last rebuilt from the attributes. Epoch milliseconds.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/customers.ts
+      x-scopes:
+        - customer_information:customers:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/attribution/report:
+    get:
+      operationId: getAttributionReport
+      tags:
+        - Attribution
+      summary: Revenue by campaign
+      description: New customers of a date range grouped by one attribution dimension, with trial starts, paying customers and revenue on day 0, by day 7, by day 30 and to date (USD, net of refunds in each window, ads excluded). See [Attribution](../docs/guides/attribution.md).
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: group_by
+          in: query
+          schema:
+            type: string
+            enum:
+              - media_source
+              - campaign
+              - ad_group
+              - keyword
+            description: Default `campaign`.
+        - name: media_source
+          in: query
+          schema:
+            type: string
+            description: Only customers with this media source; `No attribution` for customers without one.
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            pattern: ^\d{4}-\d{2}-\d{2}$
+            description: "First cohort day (UTC). Default: 29 days before end_date."
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            pattern: ^\d{4}-\d{2}-\d{2}$
+            description: "Last cohort day (UTC). Default: today."
+        - name: environment
+          in: query
+          schema:
+            type: string
+            enum:
+              - production
+              - sandbox
+            description: Default production.
+      responses:
+        "200":
+          description: The report.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - attribution_report
+                  group_by:
+                    type: string
+                    enum:
+                      - media_source
+                      - campaign
+                      - ad_group
+                      - keyword
+                  media_source:
+                    type:
+                      - string
+                      - "null"
+                  environment:
+                    type: string
+                    enum:
+                      - production
+                      - sandbox
+                  currency:
+                    type: string
+                    enum:
+                      - USD
+                  start_date:
+                    type: string
+                    pattern: ^\d{4}-\d{2}-\d{2}$
+                  end_date:
+                    type: string
+                    pattern: ^\d{4}-\d{2}-\d{2}$
+                  computed_at:
+                    type: integer
+                    format: int64
+                    description: When. Epoch milliseconds.
+                  dimensions:
+                    type: array
+                    items:
+                      type: string
+                  media_sources:
+                    type: array
+                    items:
+                      type: string
+                    description: Every media source the project's customers have, for the picker.
+                  rows:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - attribution_report_row
+                        key:
+                          type: string
+                          description: The dimension's value; empty for customers without one ("No attribution"); `total` on the total row.
+                        label:
+                          type: string
+                        customers:
+                          type: integer
+                          description: New customers whose cohort date (the earlier of first seen and first purchase) is in the range.
+                        trial_starts:
+                          type: integer
+                        paying_customers:
+                          type: integer
+                          description: Customers whose first payment was not refunded.
+                        conversion_to_paying:
+                          type:
+                            - number
+                            - "null"
+                          description: Paying customers ÷ customers, in %.
+                        revenue_day_0:
+                          type: number
+                          description: USD, net of refunds in the window, ads excluded.
+                        revenue_day_7:
+                          type: number
+                        revenue_day_30:
+                          type: number
+                        revenue_to_date:
+                          type: number
+                        revenue_per_customer:
+                          type:
+                            - number
+                            - "null"
+                        revenue_per_paying_customer:
+                          type:
+                            - number
+                            - "null"
+                        day_7_incomplete:
+                          type: boolean
+                          description: Some customers' first 7 days have not ended.
+                        day_30_incomplete:
+                          type: boolean
+                    description: Largest revenue to date first.
+                  total:
+                    type: object
+                    properties:
+                      object:
+                        type: string
+                        enum:
+                          - attribution_report_row
+                      key:
+                        type: string
+                        description: The dimension's value; empty for customers without one ("No attribution"); `total` on the total row.
+                      label:
+                        type: string
+                      customers:
+                        type: integer
+                        description: New customers whose cohort date (the earlier of first seen and first purchase) is in the range.
+                      trial_starts:
+                        type: integer
+                      paying_customers:
+                        type: integer
+                        description: Customers whose first payment was not refunded.
+                      conversion_to_paying:
+                        type:
+                          - number
+                          - "null"
+                        description: Paying customers ÷ customers, in %.
+                      revenue_day_0:
+                        type: number
+                        description: USD, net of refunds in the window, ads excluded.
+                      revenue_day_7:
+                        type: number
+                      revenue_day_30:
+                        type: number
+                      revenue_to_date:
+                        type: number
+                      revenue_per_customer:
+                        type:
+                          - number
+                          - "null"
+                      revenue_per_paying_customer:
+                        type:
+                          - number
+                          - "null"
+                      day_7_incomplete:
+                        type: boolean
+                        description: Some customers' first 7 days have not ended.
+                      day_30_incomplete:
+                        type: boolean
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/attribution.ts
+      x-scopes:
+        - charts_metrics:charts:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/benchmarks:
+    get:
+      operationId: getBenchmarks
+      tags:
+        - Benchmarks
+      summary: The project's values against peers
+      description: RevenueDot Cloud only. The project's last 12 complete months against the percentiles of apps that share anonymized benchmarks, for one category, platform and country. A group is published only when 10 or more projects contribute; nothing about another project is returned. A project that does not share sees no peer numbers. See [Benchmarks](../docs/guides/benchmarks.md).
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: category
+          in: query
+          schema:
+            type: string
+            description: A category id or `all`; default the project's.
+        - name: platform
+          in: query
+          schema:
+            type: string
+            enum:
+              - all
+              - ios
+              - android
+        - name: country
+          in: query
+          schema:
+            type: string
+            description: A two-letter country code; default all.
+      responses:
+        "200":
+          description: Benchmarks.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - benchmarks
+                  available:
+                    type: boolean
+                    description: False on a self-hosted server; then only `reason` follows.
+                  reason:
+                    type: string
+                  settings:
+                    type: object
+                    properties:
+                      share:
+                        type: boolean
+                      category:
+                        type:
+                          - string
+                          - "null"
+                      shared_at:
+                        type:
+                          - integer
+                          - "null"
+                        format: int64
+                        description: When sharing was turned on. Epoch milliseconds, or null.
+                  last_computed_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When the groups were last rebuilt. Epoch milliseconds, or null.
+                  next_run_at:
+                    type: integer
+                    format: int64
+                    description: The next nightly run (02:00 UTC). Epoch milliseconds.
+                  k_anonymity:
+                    type: integer
+                    description: Projects a group needs (10).
+                  window:
+                    type: object
+                    properties:
+                      start_date:
+                        type: string
+                        pattern: ^\d{4}-\d{2}-\d{2}$
+                      end_date:
+                        type: string
+                        pattern: ^\d{4}-\d{2}-\d{2}$
+                  categories:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        display_name:
+                          type: string
+                  metrics_catalog:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          enum:
+                            - initial_conversion
+                            - trial_conversion
+                            - conversion_to_paying
+                            - churn
+                            - refund_rate
+                            - ltv_per_customer
+                            - ltv_per_paying_customer
+                            - arpu
+                            - price_monthly
+                            - price_annual
+                        display_name:
+                          type: string
+                        description:
+                          type: string
+                        unit:
+                          type: string
+                          enum:
+                            - "%"
+                            - $
+                        better:
+                          type: string
+                          enum:
+                            - higher
+                            - lower
+                            - neutral
+                        min_sample:
+                          type: integer
+                          description: A project counts for the metric only with at least this much data.
+                        sample_label:
+                          type: string
+                        chart:
+                          type:
+                            - object
+                            - "null"
+                          properties:
+                            name:
+                              type: string
+                              description: The chart with the same definition.
+                            selectors:
+                              type: object
+                              additionalProperties:
+                                type: string
+                  peer_group:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      category:
+                        type: string
+                      platform:
+                        type: string
+                        enum:
+                          - all
+                          - ios
+                          - android
+                      country:
+                        type: string
+                        description: "`all` or a two-letter code."
+                      projects:
+                        type:
+                          - integer
+                          - "null"
+                  own_computed_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When the project's own values were computed. Epoch milliseconds, or null.
+                  metrics:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        metric:
+                          type: string
+                        value:
+                          type:
+                            - number
+                            - "null"
+                          description: The project's own value; null under its minimum sample.
+                        sample:
+                          type: integer
+                        peers:
+                          type:
+                            - object
+                            - "null"
+                          properties:
+                            projects:
+                              type: integer
+                              description: Projects in the group, rounded down to a multiple of 5 (at least 10).
+                            p10:
+                              type:
+                                - number
+                                - "null"
+                              description: Only with 20 or more projects.
+                            p25:
+                              type: number
+                            p50:
+                              type: number
+                              description: The median.
+                            p75:
+                              type: number
+                            p90:
+                              type:
+                                - number
+                                - "null"
+                              description: Only with 20 or more projects.
+                          description: Null when fewer than 10 projects share a value for this metric in the group.
+                        percentile:
+                          type:
+                            - integer
+                            - "null"
+                          description: Estimated from the published percentiles, 1 to 99.
+                        standing:
+                          type:
+                            - string
+                            - "null"
+                          enum:
+                            - top_quarter
+                            - above_median
+                            - below_median
+                            - bottom_quarter
+                            - null
+                          description: "In the better direction (for prices: towards higher)."
+                        definition:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              enum:
+                                - initial_conversion
+                                - trial_conversion
+                                - conversion_to_paying
+                                - churn
+                                - refund_rate
+                                - ltv_per_customer
+                                - ltv_per_paying_customer
+                                - arpu
+                                - price_monthly
+                                - price_annual
+                            display_name:
+                              type: string
+                            description:
+                              type: string
+                            unit:
+                              type: string
+                              enum:
+                                - "%"
+                                - $
+                            better:
+                              type: string
+                              enum:
+                                - higher
+                                - lower
+                                - neutral
+                            min_sample:
+                              type: integer
+                              description: A project counts for the metric only with at least this much data.
+                            sample_label:
+                              type: string
+                            chart:
+                              type:
+                                - object
+                                - "null"
+                              properties:
+                                name:
+                                  type: string
+                                  description: The chart with the same definition.
+                                selectors:
+                                  type: object
+                                  additionalProperties:
+                                    type: string
+                    description: Empty while the project does not share.
+                  opportunity:
+                    type:
+                      - string
+                      - "null"
+                    description: The metric where the project stands furthest below the median.
+                  options:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      countries:
+                        type: array
+                        items:
+                          type: string
+                      platforms:
+                        type: array
+                        items:
+                          type: string
+                required:
+                  - object
+                  - available
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/benchmarks.ts
+      x-scopes:
+        - charts_metrics:charts:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/benchmarks/settings:
+    get:
+      operationId: getBenchmarkSettings
+      tags:
+        - Benchmarks
+      summary: Whether the project shares benchmarks
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: Settings.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - benchmark_settings
+                  available:
+                    type: boolean
+                    description: False on a self-hosted server.
+                  share:
+                    type: boolean
+                  category:
+                    type:
+                      - string
+                      - "null"
+                  shared_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When sharing was turned on. Epoch milliseconds, or null.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/benchmarks.ts
+      x-scopes:
+        - project_configuration:projects:read
+      x-revenuedot-extension: true
+    post:
+      operationId: updateBenchmarkSettings
+      tags:
+        - Benchmarks
+      summary: Share or stop sharing anonymized benchmarks
+      description: Admins only. Sharing needs the app's category. Turning sharing off deletes the project's values and rebuilds the groups without it at once. Audited as `benchmarks_settings_updated`. Answers 404 on a self-hosted server.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                share:
+                  type: boolean
+                category:
+                  type:
+                    - string
+                    - "null"
+                  enum:
+                    - business
+                    - education
+                    - gaming
+                    - health_fitness
+                    - media_entertainment
+                    - photo_video
+                    - productivity
+                    - shopping
+                    - social_lifestyle
+                    - travel
+                    - utilities
+                    - other
+                    - null
+              required:
+                - share
+            example:
+              share: true
+              category: health_fitness
+      responses:
+        "200":
+          description: Saved.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - benchmark_settings
+                  available:
+                    type: boolean
+                    description: False on a self-hosted server.
+                  share:
+                    type: boolean
+                  category:
+                    type:
+                      - string
+                      - "null"
+                  shared_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When sharing was turned on. Epoch milliseconds, or null.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/benchmarks.ts
+      x-scopes:
+        - project_configuration:projects:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ai/insights:
+    get:
+      operationId: getAiInsights
+      tags:
+        - Growth insights
+      summary: This week's growth insights
+      description: The cached recommendations RevenueDot AI wrote for this week (or the last ready week), with the numbers they rest on. Reading never calls the model. See [Growth insights](../docs/guides/growth-insights.md).
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: Insights.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - ai_insights
+                  available:
+                    type: boolean
+                  reason:
+                    type:
+                      - string
+                      - "null"
+                  week:
+                    type: string
+                    description: Monday (UTC) of the current week.
+                    pattern: ^\d{4}-\d{2}-\d{2}$
+                  status:
+                    type: string
+                    enum:
+                      - none
+                      - running
+                      - ready
+                      - error
+                    description: This week's row.
+                  error:
+                    type:
+                      - string
+                      - "null"
+                  insights_week:
+                    type:
+                      - string
+                      - "null"
+                    description: The week the shown insights are from (this week's, else the last ready one).
+                    pattern: ^\d{4}-\d{2}-\d{2}$
+                  stale:
+                    type: boolean
+                    description: The shown insights are from an earlier week.
+                  generated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When they were written. Epoch milliseconds, or null.
+                  provider:
+                    type:
+                      - string
+                      - "null"
+                  model:
+                    type:
+                      - string
+                      - "null"
+                  insights:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        title:
+                          type: string
+                        finding:
+                          type: string
+                        recommendation:
+                          type: string
+                        metric_ids:
+                          type: array
+                          items:
+                            type: string
+                        numbers:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                description: A data pack item id (mrr, revenue, trial_conversion, campaign_1, benchmark_churn …).
+                              label:
+                                type: string
+                              unit:
+                                type: string
+                                enum:
+                                  - $
+                                  - "%"
+                                  - "#"
+                              value:
+                                type:
+                                  - number
+                                  - "null"
+                              previous:
+                                type:
+                                  - number
+                                  - "null"
+                              change_pct:
+                                type:
+                                  - number
+                                  - "null"
+                              window:
+                                type: string
+                              lower_is_better:
+                                type: boolean
+                          description: The server's numbers, not the model's text.
+                        link:
+                          type: string
+                          description: A dashboard path in this project.
+                        ask:
+                          type: string
+                          description: A question for RevenueDot AI.
+                    description: 3 to 5.
+                  can_refresh:
+                    type: boolean
+                  digest:
+                    type: object
+                    properties:
+                      available:
+                        type: boolean
+                        description: This server sends the weekly digest.
+                      subscribed:
+                        type:
+                          - boolean
+                          - "null"
+                        description: Whether the caller gets it; null for API keys.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/assistant.ts
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/ai/insights/refresh:
+    post:
+      operationId: refreshAiInsights
+      tags:
+        - Growth insights
+      summary: Write this week's insights now
+      description: Admins and developers. RevenueDot AI reads the project's numbers with its read tools and writes 3 to 5 recommendations; the server keeps only those that cite the data pack. At most once an hour per project (429), and it counts against the person's RevenueDot AI allowance.
+      security:
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: The new insights.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - ai_insights
+                  available:
+                    type: boolean
+                  reason:
+                    type:
+                      - string
+                      - "null"
+                  week:
+                    type: string
+                    description: Monday (UTC) of the current week.
+                    pattern: ^\d{4}-\d{2}-\d{2}$
+                  status:
+                    type: string
+                    enum:
+                      - none
+                      - running
+                      - ready
+                      - error
+                    description: This week's row.
+                  error:
+                    type:
+                      - string
+                      - "null"
+                  insights_week:
+                    type:
+                      - string
+                      - "null"
+                    description: The week the shown insights are from (this week's, else the last ready one).
+                    pattern: ^\d{4}-\d{2}-\d{2}$
+                  stale:
+                    type: boolean
+                    description: The shown insights are from an earlier week.
+                  generated_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: When they were written. Epoch milliseconds, or null.
+                  provider:
+                    type:
+                      - string
+                      - "null"
+                  model:
+                    type:
+                      - string
+                      - "null"
+                  insights:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        title:
+                          type: string
+                        finding:
+                          type: string
+                        recommendation:
+                          type: string
+                        metric_ids:
+                          type: array
+                          items:
+                            type: string
+                        numbers:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                description: A data pack item id (mrr, revenue, trial_conversion, campaign_1, benchmark_churn …).
+                              label:
+                                type: string
+                              unit:
+                                type: string
+                                enum:
+                                  - $
+                                  - "%"
+                                  - "#"
+                              value:
+                                type:
+                                  - number
+                                  - "null"
+                              previous:
+                                type:
+                                  - number
+                                  - "null"
+                              change_pct:
+                                type:
+                                  - number
+                                  - "null"
+                              window:
+                                type: string
+                              lower_is_better:
+                                type: boolean
+                          description: The server's numbers, not the model's text.
+                        link:
+                          type: string
+                          description: A dashboard path in this project.
+                        ask:
+                          type: string
+                          description: A question for RevenueDot AI.
+                    description: 3 to 5.
+                  can_refresh:
+                    type: boolean
+                  digest:
+                    type: object
+                    properties:
+                      available:
+                        type: boolean
+                        description: This server sends the weekly digest.
+                      subscribed:
+                        type:
+                          - boolean
+                          - "null"
+                        description: Whether the caller gets it; null for API keys.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "409":
+          $ref: "#/components/responses/V2Error409"
+        "429":
+          $ref: "#/components/responses/V2Error429"
+        "503":
+          $ref: "#/components/responses/V2Error503"
+      x-source: routes/v2/assistant.ts
+      x-revenuedot-extension: true
+  /auth/insights/unsubscribe:
+    get:
+      operationId: insightsUnsubscribePage
+      tags:
+        - Growth insights
+      summary: The digest's opt-out page
+      description: Shows a button; a GET changes nothing (mail scanners follow links).
+      security: []
+      parameters:
+        - name: token
+          in: query
+          schema:
+            type: string
+            description: The signed token from the digest email.
+      responses:
+        "200":
+          description: The page.
+          content:
+            text/html:
+              schema:
+                type: string
+        "404":
+          description: The link is not valid.
+          content:
+            text/html:
+              schema:
+                type: string
+      x-source: routes/insights-public.ts
+      x-revenuedot-extension: true
+    post:
+      operationId: insightsUnsubscribe
+      tags:
+        - Growth insights
+      summary: Turn the weekly digest off (one click)
+      description: Turns the digest off for the person the token was issued to, also as RFC 8058 one-click unsubscribe from the `List-Unsubscribe` header.
+      security: []
+      parameters:
+        - name: token
+          in: query
+          schema:
+            type: string
+            description: The signed token from the digest email.
+      responses:
+        "200":
+          description: Done.
+          content:
+            text/html:
+              schema:
+                type: string
+        "404":
+          description: The link is not valid.
+          content:
+            text/html:
+              schema:
+                type: string
+      x-source: routes/insights-public.ts
+      x-revenuedot-extension: true
   /v2/projects/{project_id}/exports:
     post:
       operationId: createProjectExport
@@ -39702,6 +40825,9 @@ paths:
                       alert_emails:
                         type: boolean
                         description: Whether the user gets alert emails for projects they administer.
+                      insights_emails:
+                        type: boolean
+                        description: Whether the user gets the weekly growth insights digest for projects they administer.
                   account:
                     type: object
                     properties:
@@ -39724,6 +40850,15 @@ paths:
                       email_verification_required:
                         type: boolean
                         description: True on RevenueDot Cloud until the user confirms their email. Until then they cannot invite people or create secret API keys. Always false on a self-hosted server.
+                      features:
+                        type: object
+                        properties:
+                          benchmarks:
+                            type: boolean
+                            description: Benchmarks exist on this server (RevenueDot Cloud).
+                          insights_digest:
+                            type: boolean
+                            description: This server emails the weekly growth insights digest.
                   projects:
                     type: array
                     items:
@@ -39763,7 +40898,7 @@ paths:
       tags:
         - Dashboard auth
       summary: Update account settings
-      description: The display name and whether the user gets [alert emails](../docs/guides/alerts.md) for projects they administer. Send only the fields to change. A null or empty `name` clears it.
+      description: The display name, whether the user gets [alert emails](../docs/guides/alerts.md) and the weekly [growth insights digest](../docs/guides/growth-insights.md) for projects they administer. Send only the fields to change. A null or empty `name` clears it.
       security:
         - dashboardSession: []
       requestBody:
@@ -39781,6 +40916,9 @@ paths:
                 alert_emails:
                   type: boolean
                   description: False stops alert emails for every project.
+                insights_emails:
+                  type: boolean
+                  description: False stops the weekly growth insights digest for every project.
             example:
               alert_emails: false
       responses:
@@ -39808,6 +40946,9 @@ paths:
                       alert_emails:
                         type: boolean
                         description: Whether the user gets alert emails for projects they administer.
+                      insights_emails:
+                        type: boolean
+                        description: Whether the user gets the weekly growth insights digest for projects they administer.
               example:
                 user:
                   id: usr_8k2m4q
