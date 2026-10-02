@@ -67,6 +67,11 @@ A person's role limits it further: a **Viewer** can only read, whatever the sett
 - One answer runs at most 8 model steps, and stops early once a token cap is used up.
 - You can attach 60 files an hour.
 
+## Weekly growth insights
+Under the Ask bar, the Overview shows 3 to 5 recommendations RevenueDot AI writes each week from your charts, campaigns and benchmarks, with the numbers behind each one, and admins get them by email. They only read. See [Growth insights](growth-insights.md).
+
+Two read tools help with growth questions: **get-attribution-report** (new customers and revenue by media source, campaign, ad group or keyword; see [Attribution](attribution.md)) and **get-benchmarks** (your metrics against similar apps on RevenueDot Cloud; see [Benchmarks](benchmarks.md)). **get-chart** also segments by the attribution dimensions.
+
 ## The first-sale card
 When your project's first paid production purchase arrives, the Overview shows **First sale** with the price and product. **Share** copies a public link to a card made for social posts (`/share/first-sale/<token>`, with a 1200×630 image). The card shows your project name, the product, price, store, country and date, and nothing about the customer. Admins and developers can dismiss it for the project when you are done.
 

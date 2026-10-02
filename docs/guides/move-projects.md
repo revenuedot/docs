@@ -11,7 +11,7 @@ It works in both directions: from your own server to RevenueDot Cloud (`https://
 
 ## What moves
 
-Everything the project owns, 69 tables in all: the project and its settings, apps and their store credentials, the catalog (products, entitlements, offerings, packages), customers with their aliases and attributes, subscriptions, one-time purchases, transactions, events, webhooks and their delivery log, integrations, scheduled data exports, paywalls with their versions and images, saved charts, chart annotations and share links, audiences, targeting rules, experiments, in-app currencies with balances and the ledger, Refund Control, retention offers, win-back campaigns, support tickets, web billing (web products, purchase links, funnels, discounts, domains), Auth providers, blocked customers, Verified Metrics, Stripe Connect connections, payment recovery cases and emails, and the audit log.
+Everything the project owns, 70 tables in all: the project and its settings, apps and their store credentials, the catalog (products, entitlements, offerings, packages), customers with their aliases, attributes and attribution, subscriptions, one-time purchases, transactions, events, webhooks and their delivery log, integrations, scheduled data exports, paywalls with their versions and images, audiences, targeting rules, experiments, in-app currencies with balances and the ledger, Refund Control, retention offers, win-back campaigns, support tickets, web billing (web products, purchase links, funnels, discounts, domains), Auth providers, blocked customers, Verified Metrics, Stripe Connect connections, payment recovery cases and emails, and the audit log.
 
 What does not move:
 
@@ -36,7 +36,7 @@ What does not move:
    npx revenuedot move --from https://revenuedot.example.com --to https://api.revenuedot.app
    ```
 
-   The CLI exports the project, copies each file, then has the new server recompute the row count and a checksum of every table and compares them with the archive. It ends with `All 69 tables match`. If the copy stops (network, laptop sleep), run the same command again: a state file in the current folder (`revenuedot-move-<old host>-to-<new host>.json`, or `--state <file>`) remembers which files are done.
+   The CLI exports the project, copies each file, then has the new server recompute the row count and a checksum of every table and compares them with the archive. It ends with `All 70 tables match`. If the copy stops (network, laptop sleep), run the same command again: a state file in the current folder (`revenuedot-move-<old host>-to-<new host>.json`, or `--state <file>`) remembers which files are done.
 
    Your apps keep using the old server during the copy, and it is read table by table. A row that belongs to something created after its table was read, such as the alias of a user who installed the app a minute ago, is left out and counted, and the verification says how many. `--finish` copies everything again, so nothing is lost.
 5. **Switch.** When you are ready:

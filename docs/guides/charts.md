@@ -116,7 +116,7 @@ RevenueDot has 42 charts in the dashboard under **Analytics > Charts**, with the
 
 ## Filters and segments
 
-Filter and segment by app, store, product, product duration, offering, country (the purchase's storefront, else the customer's last country), platform and app version; paywall charts also by paywall, and the Customer Center chart by survey option. A filter on a purchase dimension (store, product …) does not change the new-customer counts that conversion charts divide by. A segmented chart shows the five largest values, then "Other" and the total.
+Filter and segment by app, store, product, product duration, offering, country (the purchase's storefront, else the customer's last country), platform, app version and the customer's attribution (media source, campaign, ad group, keyword, ad and creative; see [Attribution](attribution.md)); paywall charts also by paywall, and the Customer Center chart by survey option. Customers without attribution show as "No attribution" (an empty value in the API). A filter on a purchase dimension (store, product …) does not change the new-customer counts that conversion charts divide by. A segmented chart shows the five largest values, then "Other" and the total.
 
 ## Chart types
 
@@ -637,7 +637,7 @@ GROUP BY s.customer_id HAVING sum(s.mrr) > 0 ORDER BY s.customer_id;
 - **Taxes:** the stores do not report tax per purchase, so "revenue net of taxes" equals revenue and proceeds subtract only the store commission. RevenueCat estimates tax per country ([Taxes and commissions](https://www.revenuecat.com/docs/dashboard-and-metrics/taxes-and-commissions)).
 - **Exchange rates:** RevenueDot uses the ECB's daily rates, so converted amounts can differ by a few cents.
 - **Paid introductory offers** are counted as direct purchases in Paid Subscriptions.
-- **Dimensions** RevenueCat also offers (renewal cycle, offer type, first purchase month, attribution, custom attributes) are not available yet; platform and app version are the customer's latest, not their first.
+- **Dimensions** RevenueCat also offers (renewal cycle, offer type, first purchase month, Apple Search Ads claim type, custom attributes) are not available yet; platform and app version are the customer's latest, not their first. Attribution dimensions cover every media source, not only Apple Search Ads.
 - **Prediction Explorer** projects from your own cohorts, not from a model trained on many apps.
 - **App Store Save Outcomes** is always zero, and refund requests cover the App Store only.
 - **Ad revenue in segments:** ad revenue has no product, store or offering, so a Revenue chart segmented by one of them shows it in every segment.

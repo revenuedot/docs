@@ -1811,7 +1811,7 @@ Releases run in that order: iOS and Android first, then hybrid-common, then purc
 # Which guide do I need?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/README.md
-Description: Step-by-step guides for stores, web billing, webhooks, integrations and data exports, ads, refunds, retention, support, testing, your team, project settings, Auth, moving between self-host and Cloud, Cloud billing, Enterprise, self-hosting and high availability.
+Description: Step-by-step guides for stores, web billing, webhooks, integrations, ads, attribution, benchmarks, growth insights, refunds, retention, support, testing, your team, Auth, moving, billing, Enterprise, self-hosting and high availability.
 
 Each guide is one task, start to finish. Connect a store first, then receive webhooks; run the server yourself with the self-hosting guides.
 
@@ -1854,6 +1854,9 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Build a paywall and show it in my app | [Paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md) |
 | Show different offerings to different customers, or A/B test two | [Targeting and experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/targeting-and-experiments.md) |
 | Read MRR, revenue, churn, conversion and LTV, and know how each is calculated | [Charts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md) |
+| See which ad networks and campaigns bring paying customers, with revenue by campaign and ROAS | [Attribution](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/attribution.md) |
+| Compare my conversion, churn, refunds, LTV and prices with similar apps (RevenueDot Cloud) | [Benchmarks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/benchmarks.md) |
+| Get 3 to 5 numbers-backed growth ideas every week, on the Overview and by email | [Growth insights](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/growth-insights.md) |
 | Run RevenueDot from ChatGPT, Claude or Cursor | [Connect AI assistants](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/connect-ai-assistants.md) |
 | Get an email when store notifications, webhooks or store credentials fail | [Alert emails](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md) |
 | Win back lapsed App Store subscribers with Apple's win-back offers | [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md) |
@@ -3547,6 +3550,7 @@ Inside the container the server reads:
 | `REVENUEDOT_CUSTOM_DOMAIN_TARGET` | the pay host | The host customers' custom domains must CNAME to |
 | `REVENUEDOT_LICENSE_KEY` | unset | Turns on [RevenueDot Enterprise](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/enterprise.md) features the key covers. Not passed through by the default `docker-compose.yml`; add it to `docker-compose.override.yml` like the signing key |
 | `REVENUEDOT_EE_DEV` | unset | `true` turns on every Enterprise feature for development and testing only ([development mode](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/enterprise.md#development-mode)) |
+| `REVENUEDOT_INSIGHTS_DIGEST` | unset | `on` writes and emails the weekly [growth insights](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/growth-insights.md) digest with your model key. It needs [email](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#email). The one-click opt-out link needs `REVENUEDOT_ENCRYPTION_KEY` or `REVENUEDOT_SIGNING_KEY` |
 
 ### Set the signing key
 Generate a key once (`pnpm tsx scripts/signing-keygen.ts` in a checkout with `pnpm install` done), add it to `.env`, and pass it to the container with a `docker-compose.override.yml`, which Compose reads automatically:
@@ -3870,7 +3874,7 @@ It works in both directions: from your own server to RevenueDot Cloud (`https://
 
 ## What moves
 
-Everything the project owns, 69 tables in all: the project and its settings, apps and their store credentials, the catalog (products, entitlements, offerings, packages), customers with their aliases and attributes, subscriptions, one-time purchases, transactions, events, webhooks and their delivery log, integrations, scheduled data exports, paywalls with their versions and images, saved charts, chart annotations and share links, audiences, targeting rules, experiments, in-app currencies with balances and the ledger, Refund Control, retention offers, win-back campaigns, support tickets, web billing (web products, purchase links, funnels, discounts, domains), Auth providers, blocked customers, Verified Metrics, Stripe Connect connections, payment recovery cases and emails, and the audit log.
+Everything the project owns, 70 tables in all: the project and its settings, apps and their store credentials, the catalog (products, entitlements, offerings, packages), customers with their aliases, attributes and attribution, subscriptions, one-time purchases, transactions, events, webhooks and their delivery log, integrations, scheduled data exports, paywalls with their versions and images, audiences, targeting rules, experiments, in-app currencies with balances and the ledger, Refund Control, retention offers, win-back campaigns, support tickets, web billing (web products, purchase links, funnels, discounts, domains), Auth providers, blocked customers, Verified Metrics, Stripe Connect connections, payment recovery cases and emails, and the audit log.
 
 What does not move:
 
@@ -3895,7 +3899,7 @@ What does not move:
    npx revenuedot move --from https://revenuedot.example.com --to https://api.revenuedot.app
    ```
 
-   The CLI exports the project, copies each file, then has the new server recompute the row count and a checksum of every table and compares them with the archive. It ends with `All 69 tables match`. If the copy stops (network, laptop sleep), run the same command again: a state file in the current folder (`revenuedot-move-<old host>-to-<new host>.json`, or `--state <file>`) remembers which files are done.
+   The CLI exports the project, copies each file, then has the new server recompute the row count and a checksum of every table and compares them with the archive. It ends with `All 70 tables match`. If the copy stops (network, laptop sleep), run the same command again: a state file in the current folder (`revenuedot-move-<old host>-to-<new host>.json`, or `--state <file>`) remembers which files are done.
 
    Your apps keep using the old server during the copy, and it is read table by table. A row that belongs to something created after its table was read, such as the alias of a user who installed the app a minute ago, is left out and counted, and the verification says how many. `--finish` copies everything again, so nothing is lost.
 5. **Switch.** When you are ready:
@@ -4338,6 +4342,11 @@ A person's role limits it further: a **Viewer** can only read, whatever the sett
 - One answer runs at most 8 model steps, and stops early once a token cap is used up.
 - You can attach 60 files an hour.
 
+## Weekly growth insights
+Under the Ask bar, the Overview shows 3 to 5 recommendations RevenueDot AI writes each week from your charts, campaigns and benchmarks, with the numbers behind each one, and admins get them by email. They only read. See [Growth insights](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/growth-insights.md).
+
+Two read tools help with growth questions: **get-attribution-report** (new customers and revenue by media source, campaign, ad group or keyword; see [Attribution](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/attribution.md)) and **get-benchmarks** (your metrics against similar apps on RevenueDot Cloud; see [Benchmarks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/benchmarks.md)). **get-chart** also segments by the attribution dimensions.
+
 ## The first-sale card
 When your project's first paid production purchase arrives, the Overview shows **First sale** with the price and product. **Share** copies a public link to a card made for social posts (`/share/first-sale/<token>`, with a 1200×630 image). The card shows your project name, the product, price, store, country and date, and nothing about the customer. Admins and developers can dismiss it for the project when you are done.
 
@@ -4665,7 +4674,7 @@ RevenueDot has 42 charts in the dashboard under **Analytics > Charts**, with the
 
 ## Filters and segments
 
-Filter and segment by app, store, product, product duration, offering, country (the purchase's storefront, else the customer's last country), platform and app version; paywall charts also by paywall, and the Customer Center chart by survey option. A filter on a purchase dimension (store, product …) does not change the new-customer counts that conversion charts divide by. A segmented chart shows the five largest values, then "Other" and the total.
+Filter and segment by app, store, product, product duration, offering, country (the purchase's storefront, else the customer's last country), platform, app version and the customer's attribution (media source, campaign, ad group, keyword, ad and creative; see [Attribution](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/attribution.md)); paywall charts also by paywall, and the Customer Center chart by survey option. Customers without attribution show as "No attribution" (an empty value in the API). A filter on a purchase dimension (store, product …) does not change the new-customer counts that conversion charts divide by. A segmented chart shows the five largest values, then "Other" and the total.
 
 ## Chart types
 
@@ -5186,7 +5195,7 @@ GROUP BY s.customer_id HAVING sum(s.mrr) > 0 ORDER BY s.customer_id;
 - **Taxes:** the stores do not report tax per purchase, so "revenue net of taxes" equals revenue and proceeds subtract only the store commission. RevenueCat estimates tax per country ([Taxes and commissions](https://www.revenuecat.com/docs/dashboard-and-metrics/taxes-and-commissions)).
 - **Exchange rates:** RevenueDot uses the ECB's daily rates, so converted amounts can differ by a few cents.
 - **Paid introductory offers** are counted as direct purchases in Paid Subscriptions.
-- **Dimensions** RevenueCat also offers (renewal cycle, offer type, first purchase month, attribution, custom attributes) are not available yet; platform and app version are the customer's latest, not their first.
+- **Dimensions** RevenueCat also offers (renewal cycle, offer type, first purchase month, Apple Search Ads claim type, custom attributes) are not available yet; platform and app version are the customer's latest, not their first. Attribution dimensions cover every media source, not only Apple Search Ads.
 - **Prediction Explorer** projects from your own cohorts, not from a model trained on many apps.
 - **App Store Save Outcomes** is always zero, and refund requests cover the App Store only.
 - **Ad revenue in segments:** ad revenue has no product, store or offering, so a Revenue chart segmented by one of them shows it in every segment.
@@ -5431,6 +5440,8 @@ Attribution needs no setup. When your app calls `enableAdServicesAttributionToke
 1. In Apple Search Ads, invite an API user (a read-only role is enough). Generate a P-256 key pair (`openssl ecparam -genkey -name prime256v1 -noout -out private-key.pem`, then `openssl ec -in private-key.pem -pubout -out public-key.pem`) and upload the public key on the user's **API** tab ([Apple's guide](https://developer.apple.com/documentation/apple_search_ads/implementing_oauth_for_the_apple_search_ads_api)).
 2. In RevenueDot, enter the **Organization ID** (Apple Search Ads › Account settings), **Client ID**, **Team ID** and **Key ID** from the API tab, and paste `private-key.pem` as **Private key (PEM)**. Click **Connect Apple Search Ads**.
 3. Click **Load campaign names**. RevenueDot signs in to Apple's Campaign Management API v5 and loads the names of up to 200 campaigns and their ad groups.
+
+Loaded names also appear on **Analytics > Attribution**, in chart segments and filters, and in Customers filters (see [Attribution](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/attribution.md)).
 
 ## Appstack
 Appstack publishes no event API: RevenueDot sends RevenueCat's webhook body to Appstack's URL ([how Appstack connects to RevenueCat](https://www.revenuecat.com/docs/integrations/attribution/appstack)).
@@ -6181,7 +6192,7 @@ The list starts with the most recently seen customers, and the **Last seen** hea
 The eye button in the Customer header hides app user IDs and emails on screen, for screen sharing and demos. Rows still open the customer. The setting is remembered in this browser.
 
 ## Filter and save
-Select **Filter** and add conditions: country, platform, app version, subscription status, entitlements, total spent, first or last seen, first purchase, last renewal, email, attribution or any custom attribute. Conditions in a group must all match; groups are alternatives. **Search** matches part of an app user ID or email.
+Select **Filter** and add conditions: country, platform, app version, subscription status, entitlements, total spent, first or last seen, first purchase, last renewal, email, attribution (media source, campaign, ad group, keyword, ad, creative; the value box suggests your project's values, and Apple Search Ads campaigns match by name once [names are loaded](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/attribution.md#name-your-apple-search-ads-campaigns)) or any custom attribute. Conditions in a group must all match; groups are alternatives. **Search** matches part of an app user ID or email.
 
 **Save audience** keeps the filter as an audience. It appears in the rail, and you can use it in targeting rules, experiments, refund policies and win-back campaigns.
 
@@ -6197,7 +6208,7 @@ Lists look at the 10,000 most recently seen customers. On a larger project the c
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/project-settings.md
 Description: Rename the project, limit who can test with sandbox purchases, hand ownership to another admin, keep brand colours and fonts for paywalls, block abusive app user IDs, and publish a public page of verified revenue numbers.
 
-Open **Project settings** in the sidebar. The tabs are **General**, **AI features**, **Brand**, **Audit logs**, **Blocked customers**, **Collaborators**, **Verified Metrics** and **Domains**. Everything on them also has an API v2 endpoint, so you can script it with a secret key. This guide covers General, Brand, Blocked customers and Verified Metrics; see [Invite your team](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/team.md) for Collaborators and [Custom domains](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/custom-domains.md) for Domains.
+Open **Project settings** in the sidebar. The tabs are **General**, **AI features**, **Benchmarks** (RevenueDot Cloud; see [Benchmarks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/benchmarks.md)), **Brand**, **Audit logs**, **Blocked customers**, **Collaborators**, **Verified Metrics** and **Domains**. Everything on them also has an API v2 endpoint, so you can script it with a secret key. This guide covers General, Brand, Blocked customers and Verified Metrics; see [Invite your team](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/team.md) for Collaborators and [Custom domains](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/custom-domains.md) for Domains.
 
 ## General
 
@@ -6953,6 +6964,132 @@ Times are epoch milliseconds: `start_time` is inclusive, `end_time` exclusive.
 
 ---
 
+# Attribution
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/attribution.md
+Description: See which ad networks, campaigns, ad groups and keywords bring paying customers. RevenueDot stores the attribution the SDK already sends, names Apple Search Ads campaigns, segments every chart by it, and shows revenue by campaign with day-7, day-30 and to-date revenue and ROAS.
+
+**RevenueDot keeps where each customer came from and shows how much each campaign earns.** The attribution your app already sends through the RevenueCat SDK (media source, campaign, ad group, keyword, ad, creative, Apple Search Ads and partner ids) becomes one attribution record per customer. Every chart can filter and segment by it, and **Analytics > Attribution** shows revenue by campaign.
+
+## Where attribution comes from
+You do not need anything on the server. RevenueDot reads the reserved attributes the SDK and your attribution partner already set:
+
+| Source | What arrives |
+|---|---|
+| Your app or your attribution partner's callback | `setMediaSource`, `setCampaign`, `setAdGroup`, `setAd`, `setKeyword`, `setCreative` in the SDK (or the same `$mediaSource` … attributes through `POST /v1/subscribers/{app_user_id}/attributes`) |
+| Apple Search Ads | With `Purchases.shared.attribution.enableAdServicesAttributionTokenCollection()`, the iOS SDK posts an AdServices token. RevenueDot asks Apple's attribution API for the campaign, ad group, keyword and ad ids, the claim type and the country |
+| AppsFlyer, Adjust, Branch, Kochava, Singular, Tenjin, Airbridge | The partner's device id (`$appsflyerId`, `$adjustId` …) the SDK helpers set, kept with the record so you can match it in the partner's dashboard |
+| Your backend | `POST /v2/projects/{project_id}/customers/{customer_id}/attributes` with a secret key |
+| Import from RevenueCat | Attribution attributes imported with `revenuedot import` (`POST /v2/projects/{project_id}/import/customers`) fill the record |
+
+Attribution attributes (`$mediaSource`, `$campaign`, `$adGroup`, `$ad`, `$keyword`, `$creative`, `$appleAds*`, `$claimType`, `$conversionType`) are write-once from the SDK, as in RevenueCat. Once a value is stored, a different value or a clear sent through `POST /v1/subscribers/{app_user_id}/attributes` or a receipt's `attributes` is ignored, so a reinstall or a partner resending its conversion data never replaces the original install's attribution. Apple's AdServices attribution is written once too. Partner device ids follow the newest value. To correct or clear attribution, use `POST /v2/projects/{project_id}/customers/{customer_id}/attributes` with a secret key; the record follows.
+
+### Name your Apple Search Ads campaigns
+Apple's attribution API returns ids, not names. To see campaign and ad group names, connect an Apple Search Ads API user under **Integrations > Apple Search Ads** and load the names (see [Apple Search Ads](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#apple-search-ads)). Every customer attributed to those campaigns then shows the name, in charts, the report and filters, and keeps the id next to it. Keywords show Apple's keyword id unless `$keyword` was set before the AdServices lookup stored the id, or your backend sets it through the REST API v2.
+
+## Segment any chart by campaign
+On **Analytics > Charts**, open **Segment** and pick one of the **Attribution** options: media source, campaign, ad group, keyword, ad or creative. **Filter** has the same six. They are customer dimensions, like country: a filter keeps the matching customers and everything they bought. Customers without attribution appear as **No attribution**. The API takes the same names, for example:
+
+```bash
+curl "https://api.revenuedot.app/v2/projects/$PROJECT/charts/revenue?resolution=month&segment=campaign" \
+  -H "Authorization: Bearer $SECRET_KEY"
+```
+
+## Revenue by campaign
+**Analytics > Attribution** groups the new customers of a date range by media source, campaign, ad group or keyword. Pick a media source first to see only its campaigns.
+
+| Column | What it counts |
+|---|---|
+| New customers | Customers whose cohort date (the earlier of first seen and first purchase) is in the range |
+| Trials, Paying, Conv. | Customers who started a trial; customers whose first payment was not refunded; paying ÷ new customers |
+| Day 0, Day 7, Day 30, To date | Revenue of those customers on their first day, through day 7, through day 30, and so far: purchases and renewals minus refunds, in US dollars at the purchase date, production only, ads excluded |
+| Per customer | Revenue to date ÷ new customers |
+| Spend, ROAS | Type what you spent on a row; ROAS is revenue ÷ spend, to date and at day 7 and day 30 |
+
+A value marked `*` can still grow: some customers in the row have not reached day 7 or day 30 yet. Spend stays in your browser; **CSV** downloads the table with spend and ROAS. The icons on each row open the Revenue chart and the Customers list filtered to that row.
+
+The API returns the same table:
+
+```bash
+curl "https://api.revenuedot.app/v2/projects/$PROJECT/attribution/report?group_by=campaign&media_source=Apple%20Search%20Ads&start_date=2026-09-01&end_date=2026-09-30" \
+  -H "Authorization: Bearer $SECRET_KEY"
+```
+
+## Filter customers and build audiences
+In **Customers > Filter** and in Targeting audiences, the conditions **Media source**, **Campaign**, **Ad group**, **Keyword**, **Ad** and **Creative** read the same record, and the value box suggests the values your project has. Save the filter as an audience to target an offering or an experiment at customers from one campaign. A customer's page shows their attribution, and `GET /v2/projects/{project_id}/customers/{customer_id}/attribution` returns it.
+
+## Differences from RevenueCat
+- RevenueCat's charts segment by Apple Search Ads attribution source, campaign, ad group, keyword and claim type ([Charts](https://www.revenuecat.com/docs/dashboard-and-metrics/charts)). RevenueDot offers media source, campaign, ad group, keyword, ad and creative for every source, not only Apple Search Ads.
+- Attribution attributes are write-once from the SDK, as RevenueCat documents ([Customer attributes](https://www.revenuecat.com/docs/customers/customer-attributes)). In RevenueDot your backend can still correct or clear them with the REST API v2.
+- Ad spend is typed in on the page; RevenueDot does not import spend from ad networks yet.
+
+---
+
+# Benchmarks
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/benchmarks.md
+Description: Compare your trial conversion, churn, refund rate, LTV, ARPU and prices with similar apps on RevenueDot Cloud. Sharing is opt-in, groups need at least 10 apps, and no app, customer or exact count is ever shown.
+
+**Benchmarks show where your app stands against similar apps, on RevenueDot Cloud.** Open **Analytics > Benchmarks** to see your last 12 months next to the 25th, 50th and 75th percentile of apps in the same category, and your biggest opportunity.
+
+Benchmarks exist only on RevenueDot Cloud. A self-hosted server computes nothing and shares nothing; its sidebar has no Benchmarks page.
+
+## Turn on sharing
+Sharing is off for every project until an admin turns it on. Only projects that share see peer numbers.
+
+1. Open **Analytics > Benchmarks** (or **Project settings > Benchmarks**).
+2. Pick your app's **category**: Business, Education, Gaming, Health & Fitness, Media & Entertainment, Photo & Video, Productivity, Shopping, Social & Lifestyle, Travel, Utilities or Other.
+3. Select **Share and compare**.
+
+Your own numbers appear within a minute. Your project joins the peer groups at the next nightly run, at 02:00 UTC. The change is in the project's audit log as `benchmarks_settings_updated`.
+
+## What is shared, and what is never shown
+- **Only percentiles of groups of 10 or more apps from 10 or more different accounts.** A group is one category, platform and country. If fewer than 10 sharing apps of 10 different accounts have enough data for a metric in a group, that group shows nothing, so one account cannot fill a group with apps of its own around someone else's. The 10th and 90th percentiles appear only from 20 apps and 20 accounts.
+- **No app, customer or exact count.** RevenueDot never shows which apps are in a group, any app's value, a mean, a minimum or a maximum. The number of apps is rounded down to a multiple of 5 ("25+ apps").
+- **Your values stay yours.** Your own values are shown only to your project. Turning sharing off removes them from every group at once.
+- **Small apps do not count.** An app contributes to a metric only with enough data of its own (100 new customers for initial conversion, conversion to paying and LTV per customer; 20 finished trials for trial conversion; 20 paying customers for LTV per paying customer; 50 subscription-months for churn; 50 transactions for refund rate; 20 purchases for each price), so one tiny app cannot move a percentile.
+- **Production only.** Sandbox and Test Store purchases are never included. The nightly job runs inside RevenueDot Cloud; nobody reads production data from a laptop to build it.
+
+## The metrics
+Each metric uses the same definition as its chart, over the last 12 complete months in US dollars, so your value matches the chart it links to.
+
+| Metric | Definition | Better |
+|---|---|---|
+| Initial conversion (7 days) | New customers who started a trial or bought anything within 7 days of first being seen | Higher |
+| Trial conversion | Finished free trials that converted to paid | Higher |
+| Conversion to paying (7 days) | New customers who paid within 7 days and were not refunded in that time | Higher |
+| Monthly churn | Paid subscriptions that ended in a month ÷ those active when it started | Lower |
+| Refund rate | Paid transactions refunded | Lower |
+| Realized LTV per customer (30 days) | Revenue of new customers in their first 30 days ÷ new customers | Higher |
+| Realized LTV per paying customer (30 days) | The same revenue ÷ customers who paid in those 30 days | Higher |
+| ARPU (monthly) | Revenue ÷ active customers, per month | Higher |
+| Monthly price, Annual price | Median price paid for 1-month and 1-year subscriptions | Neither |
+
+## Read the page
+- **Category, platform, country:** compare with your category or all categories, all platforms, iOS or Android, and all countries or one country where enough apps share.
+- **Each row:** your value with how much data it rests on, a bar with the middle half of apps (25th to 75th percentile), the median line and your value as the gold square, the percentiles, and where you stand (top quarter, above median, below median, bottom quarter).
+- **Your biggest opportunity:** the metric where you are furthest below the median. **Open the chart** to see it over time, or **Ask RevenueDot AI** how to improve it.
+
+If a group shows "Fewer than 10 apps share data", choose **Compare with all apps**.
+
+## Use the API
+```bash
+# Your values against Health & Fitness apps on iOS
+curl "https://api.revenuedot.app/v2/projects/$PROJECT/benchmarks?category=health_fitness&platform=ios" \
+  -H "Authorization: Bearer $SECRET_KEY"
+
+# Share (admins, or a key with project_configuration:projects:read_write)
+curl -X POST "https://api.revenuedot.app/v2/projects/$PROJECT/benchmarks/settings" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "content-type: application/json" \
+  -d '{"share": true, "category": "health_fitness"}'
+```
+See the [API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#benchmarks). RevenueDot AI's `get-benchmarks` tool reads the same numbers.
+
+## Differences from RevenueCat
+RevenueCat's Benchmarks compare 7 metrics with apps in the same store and primary category over 12 months, and show a group when it has enough apps to stay anonymous, without publishing the minimum ([Benchmarks](https://www.revenuecat.com/docs/dashboard-and-metrics/benchmarks)). RevenueDot adds ARPU and prices, splits by platform and country, publishes the 10-app threshold, and counts only projects that opt in.
+
+---
+
 # How do I set up the Customer Center?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/customer-center.md
@@ -6989,6 +7126,58 @@ The screen follows the customer's device language and comes translated into 33 l
 
 ## Through the API
 `GET` and `POST /v2/projects/{project_id}/customer_center_config` read and replace the configuration; `GET /v2/projects/{project_id}/customers/{customer_id}/customer_center?locale=de_DE` shows what one customer's app receives. Invalid configurations are refused with a 400 that names each field: a Custom URL needs a web address or your app's own scheme (`javascript:`, `data:` and `file:` URLs are refused), and the whole configuration can be at most 1 MB. See the [API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-the-customer-center-configuration).
+
+---
+
+# Growth insights
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/growth-insights.md
+Description: Every week RevenueDot AI reads your charts, campaigns and benchmarks and suggests 3 to 5 things to act on, with the numbers behind each one, on the Overview and in an email digest to admins.
+
+**Growth insights are 3 to 5 weekly recommendations from RevenueDot AI, each backed by your own numbers.** They appear on the **Overview** under the "Ask about insights or growth opportunities" bar, and admins get them by email every Monday.
+
+## What you see
+Each insight has:
+- a title and what changed or how you compare ("Trial conversion fell to 31.2%, against 38.0% the 28 days before");
+- the numbers it rests on, as chips with the change: these come from RevenueDot's own calculation, not from the model's text;
+- one thing to do this week, such as an experiment on trial length, moving ad budget to a campaign with higher revenue per customer, a win-back campaign or Refund Control;
+- **Open** to go to the chart, the attribution report or the benchmarks it comes from, and **Ask about this** to continue in a [RevenueDot AI](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/revenuedot-ai.md) conversation.
+
+## How they are written
+1. RevenueDot computes a data pack from your production data with the chart definitions: MRR and active subscriptions now against 28 days ago; revenue, new customers and new trials in the last 28 days against the 28 before; trial conversion, initial conversion and conversion to paying for cohorts old enough to have finished; churn; refund rate; the top campaigns by revenue (see [Attribution](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/attribution.md)); and, if your project shares them, your [Benchmarks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/benchmarks.md).
+2. RevenueDot AI reads the pack and may look closer with its read tools (charts, the attribution report, benchmarks).
+3. The server keeps only recommendations that cite items of the pack, attaches the real numbers and links, and needs 3 to 5 of them; otherwise it asks the model once more. Web addresses are removed from the insight text and from the number labels in the email, because campaign names can come from your app's users.
+
+Growth insights only read. The assistant gets no tool that changes anything, and RevenueDot refuses any change from it, whatever the project's AI setting.
+
+## When they are written
+- **Weekly:** from Monday 06:00 UTC, for every project with production revenue in the last 90 days and RevenueDot AI not turned off. The week's insights stay until the next Monday. If the server's daily RevenueDot AI token allowance runs out, the remaining projects get their insights the next day instead of skipping the week. A project over its own daily allowance is skipped that week.
+- **On demand:** admins and developers can select **Write insights** or **Refresh** on the Overview, at most once an hour. It counts as one question against your daily RevenueDot AI allowance.
+
+Opening the Overview never calls the model: it shows the week's saved insights.
+
+## The weekly email
+Admins of a project get the week's insights by email, with links to each chart. The email has no customer IDs or emails. To stop it:
+- turn off **Email me weekly** on the Overview, or **Email me the weekly growth insights digest** in **Account settings**; or
+- use **Stop the weekly digest** in any digest email (one click, also from your mail app's unsubscribe button).
+
+Turn it back on in Account settings.
+
+## Self-hosting
+On a self-hosted server the Overview panel works with any model key ([RevenueDot AI](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/revenuedot-ai.md#self-hosting)). The weekly run and email spend your model key, so they are off unless you set:
+
+```bash
+REVENUEDOT_INSIGHTS_DIGEST=on
+```
+
+Benchmarks are a RevenueDot Cloud feature, so self-hosted insights do not mention peers.
+
+## Use the API
+- `GET /v2/projects/{project_id}/ai/insights`: this week's insights (or the last ready week's) with their numbers (permission `charts_metrics:charts:read`).
+- `POST /v2/projects/{project_id}/ai/insights/refresh`: write them now (dashboard session; admins and developers; permission `charts_metrics:charts:read`).
+- `POST /auth/me` with `{"insights_emails": false}`: stop the digest for the signed-in user.
+
+See the [API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#growth-insights).
 
 ---
 
@@ -7874,7 +8063,7 @@ One RevenueDot server answers every API below on one port. The reference is gene
 | SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 71 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
 | REST API v1 | `/v1/subscribers/...` | secret key | 10 | [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md) |
 | REST API v2 | `/v2/projects/...` | secret key or dashboard session | 172 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
-| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 243 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
+| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 252 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
 | RevenueDot Enterprise | `/v2/enterprise`, `/v2/organizations/...`, `/sso/...`, `/scim/v2/...` | session, SCIM token or none | 65 | [Enterprise](https://raw.githubusercontent.com/revenuedot/docs/main/api/enterprise.md) |
 | Webhooks (sent by RevenueDot) | your URL | HMAC signature | 22 event types | [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md) |
 
@@ -8766,7 +8955,7 @@ Example 200 response:
 
 `POST /v1/subscribers/{app_user_id}/attributes` · Auth: public app key or secret key
 
-Saves attributes such as `$email`, `$displayName` or your own keys. A null value deletes the attribute. An invalid `$email` is refused with 7263; the other attributes are saved. `collectDeviceIdentifiers()` sends `$ip` and `$deviceVersion` as `"true"`: RevenueDot stores the request's IP address and the device and OS from the SDK's headers instead.
+Saves attributes such as `$email`, `$displayName` or your own keys. A null value deletes the attribute, except attribution attributes (`$mediaSource`, `$campaign`, `$adGroup`, `$ad`, `$keyword`, `$creative`, `$appleAds*`, `$claimType`, `$conversionType`): they are write-once, so a stored value is kept and a different value or a null is ignored. Correct them with the REST API v2. An invalid `$email` is refused with 7263; the other attributes are saved. `collectDeviceIdentifiers()` sends `$ip` and `$deviceVersion` as `"true"`: RevenueDot stores the request's IP address and the device and OS from the SDK's headers instead.
 
 **Path parameters**
 
@@ -18943,7 +19132,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (243)
+## Operations on this page (252)
 
 - **Dashboard auth**: [Whether sign-up is open](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-sign-up-is-open), [Create a dashboard account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-dashboard-account), [Sign in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-in), [Sign out](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out), [The signed-in user and their projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-signed-in-user-and-their-projects), [Update account settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-account-settings), [Email a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#email-a-password-reset-link), [Check a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-a-password-reset-link), [Set a new password from a reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-a-new-password-from-a-reset-link), [Confirm an email address](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#confirm-an-email-address), [Send a new confirmation email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-new-confirmation-email), [Look up an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#look-up-an-invite), [Accept an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#accept-an-invite)
 - **Members and invites**: [List open invites](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-open-invites), [Invite someone by email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#invite-someone-by-email), [Resend an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#resend-an-invite), [Revoke an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#revoke-an-invite), [Change a member's role](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-a-members-role), [Remove a member, or leave the project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#remove-a-member-or-leave-the-project)
@@ -18976,6 +19165,9 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Funnels**: [List funnels](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-funnels), [Create a funnel](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-funnel), [Is Build with AI available?](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#is-build-with-ai-available), [Build a funnel with AI](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#build-a-funnel-with-ai), [Get a funnel](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-funnel), [Update a funnel's draft](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-a-funnels-draft), [Delete a funnel](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-funnel), [Publish a funnel](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#publish-a-funnel), [Unpublish a funnel](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unpublish-a-funnel), [Get a funnel's analytics](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-funnels-analytics), [Get what the builder's preview needs](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-what-the-builders-preview-needs)
 - **Hosted pages**: [A purchase link or a published funnel](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#a-purchase-link-or-a-published-funnel), [The success page after Stripe Checkout](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-success-page-after-stripe-checkout), [The success page of the iOS SDK's hosted checkout](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-success-page-of-the-ios-sdks-hosted-checkout), [The cancel page of the iOS SDK's hosted checkout](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-cancel-page-of-the-ios-sdks-hosted-checkout), [A redemption link page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#a-redemption-link-page), [Start a checkout from a page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#start-a-checkout-from-a-page), [Check a discount code from a page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-a-discount-code-from-a-page), [Record a funnel event from a page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#record-a-funnel-event-from-a-page)
 - **RevenueDot AI**: [What RevenueDot AI can do here](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#what-revenuedot-ai-can-do-here), [Set what RevenueDot AI may do in the project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-what-revenuedot-ai-may-do-in-the-project), [List your conversations, newest first](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-your-conversations-newest-first), [Start a conversation](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#start-a-conversation), [Get a conversation with its messages](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-conversation-with-its-messages), [Rename a conversation](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#rename-a-conversation), [Delete a conversation](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-conversation), [Send a message and stream the answer (self-host)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-message-and-stream-the-answer-self-host), [Resume the answer being written](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#resume-the-answer-being-written), [Stop the answer being written](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#stop-the-answer-being-written), [Attach an image or a .storekit file](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#attach-an-image-or-a-storekit-file), [Read an attachment back](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#read-an-attachment-back), [Read a .storekit file](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#read-a-storekit-file), [Suggestions for @ mentions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#suggestions-for--mentions), [The project's first-sale card](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-projects-first-sale-card), [Hide the first-sale card on the Overview](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#hide-the-first-sale-card-on-the-overview)
+- **Attribution**: [Get a customer's attribution](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-customers-attribution), [Revenue by campaign](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#revenue-by-campaign)
+- **Benchmarks**: [The project's values against peers](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-projects-values-against-peers), [Whether the project shares benchmarks](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-the-project-shares-benchmarks), [Share or stop sharing anonymized benchmarks](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#share-or-stop-sharing-anonymized-benchmarks)
+- **Growth insights**: [This week's growth insights](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#this-weeks-growth-insights), [Write this week's insights now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#write-this-weeks-insights-now), [The digest's opt-out page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-digests-opt-out-page), [Turn the weekly digest off (one click)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#turn-the-weekly-digest-off-one-click)
 - **Share cards**: [Public chart page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#public-chart-page), [Public chart preview image](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#public-chart-preview-image), [Public chart as SVG](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#public-chart-as-svg), [Public first-sale page or image](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#public-first-sale-page-or-image)
 - **OAuth for MCP clients**: [OAuth authorization server metadata](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#oauth-authorization-server-metadata), [Register an OAuth client](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#register-an-oauth-client), [Consent screen](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#consent-screen), [Submit the consent decision](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#submit-the-consent-decision), [Exchange a code for an access token](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#exchange-a-code-for-an-access-token)
 
@@ -19144,7 +19336,7 @@ Example 200 response:
 
 `POST /auth/me` · Auth: dashboard session · RevenueDot extension
 
-The display name and whether the user gets [alert emails](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md) for projects they administer. Send only the fields to change. A null or empty `name` clears it.
+The display name, whether the user gets [alert emails](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md) and the weekly [growth insights digest](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/growth-insights.md) for projects they administer. Send only the fields to change. A null or empty `name` clears it.
 
 **Request body** (`application/json`)
 
@@ -19152,6 +19344,7 @@ The display name and whether the user gets [alert emails](https://raw.githubuser
 |---|---|---|---|
 | `name` | string or null | no |  |
 | `alert_emails` | boolean | no | False stops alert emails for every project. |
+| `insights_emails` | boolean | no | False stops the weekly growth insights digest for every project. |
 
 **Example request**
 
@@ -28840,6 +29033,269 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/first_sale/dismiss"
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+## Attribution
+
+Where customers came from: each customer's attribution row (media source, campaign, ad group, keyword, ad, creative, Apple Search Ads ids, partner ids) and revenue by campaign with day-0, day-7, day-30 and to-date revenue. Charts take the same dimensions as filters and segments. See [Attribution](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/attribution.md).
+
+### Get a customer's attribution
+
+`GET /v2/projects/{project_id}/customers/{customer_id}/attribution` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read`
+
+The first-class attribution row built from the customer's reserved attributes (`$mediaSource`, `$campaign`, `$adGroup`, `$ad`, `$keyword`, `$creative`, `$appleAds*`, `$claimType`, `$conversionType`) and partner ids. Null when the customer has none.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `customer_id` | string | yes | Any of the customer's app user ids. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/attribution" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The row.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Revenue by campaign
+
+`GET /v2/projects/{project_id}/attribution/report` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`
+
+New customers of a date range grouped by one attribution dimension, with trial starts, paying customers and revenue on day 0, by day 7, by day 30 and to date (USD, net of refunds in each window, ads excluded). See [Attribution](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/attribution.md).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `group_by` | `media_source`, `campaign`, `ad_group`, `keyword` | no | Default `campaign`. |
+| `media_source` | string | no | Only customers with this media source; `No attribution` for customers without one. |
+| `start_date` | string | no | First cohort day (UTC). Default: 29 days before end_date. |
+| `end_date` | string | no | Last cohort day (UTC). Default: today. |
+| `environment` | `production`, `sandbox` | no | Default production. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/attribution/report" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The report.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+## Benchmarks
+
+RevenueDot Cloud only: the project's metrics against anonymized percentiles of apps that share, by category, platform and country, and the opt-in setting. See [Benchmarks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/benchmarks.md).
+
+### The project's values against peers
+
+`GET /v2/projects/{project_id}/benchmarks` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`
+
+RevenueDot Cloud only. The project's last 12 complete months against the percentiles of apps that share anonymized benchmarks, for one category, platform and country. A group is published only when 10 or more projects of 10 or more different owner accounts contribute; nothing about another project is returned. A project that does not share sees no peer numbers. See [Benchmarks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/benchmarks.md).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `category` | string | no | A category id or `all`; default the project's. |
+| `platform` | `all`, `ios`, `android` | no |  |
+| `country` | string | no | A two-letter country code; default all. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/benchmarks" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Benchmarks.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Whether the project shares benchmarks
+
+`GET /v2/projects/{project_id}/benchmarks/settings` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/benchmarks/settings" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Settings.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Share or stop sharing anonymized benchmarks
+
+`POST /v2/projects/{project_id}/benchmarks/settings` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Admins only. Sharing needs the app's category. Turning sharing off deletes the project's values and rebuilds the groups without it at once. Audited as `benchmarks_settings_updated`. Answers 404 on a self-hosted server.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `share` | boolean | yes |  |
+| `category` | `business`, `education`, `gaming`, `health_fitness`, `media_entertainment`, `photo_video`, `productivity`, `shopping`, `social_lifestyle`, `travel`, `utilities`, `other`, null | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/benchmarks/settings" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"share":true,"category":"health_fitness"}'
+```
+
+**Responses**
+
+- **200**: Saved.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+## Growth insights
+
+3 to 5 weekly recommendations from RevenueDot AI with the numbers behind them, Refresh, and the weekly digest's one-click opt-out. See [Growth insights](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/growth-insights.md).
+
+### This week's growth insights
+
+`GET /v2/projects/{project_id}/ai/insights` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`
+
+The cached recommendations RevenueDot AI wrote for this week (or the last ready week), with the numbers they rest on. Reading never calls the model. See [Growth insights](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/growth-insights.md).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/insights" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Insights.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Write this week's insights now
+
+`POST /v2/projects/{project_id}/ai/insights/refresh` · Auth: dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`
+
+Admins and developers. RevenueDot AI reads the project's numbers with its read tools and writes 3 to 5 recommendations; the server keeps only those that cite the data pack. At most once an hour per project (429), and it counts against the person's RevenueDot AI allowance.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/insights/refresh"
+```
+
+**Responses**
+
+- **200**: The new insights.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **429**: Too many requests. Retry later. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### The digest's opt-out page
+
+`GET /auth/insights/unsubscribe` · Auth: none · RevenueDot extension
+
+Shows a button; a GET changes nothing (mail scanners follow links).
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes | The signed token from the digest email. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/auth/insights/unsubscribe"
+```
+
+**Responses**
+
+- **200**: The page.
+- **404**: The link is not valid.
+
+### Turn the weekly digest off (one click)
+
+`POST /auth/insights/unsubscribe` · Auth: none · RevenueDot extension
+
+Turns the digest off for the person the token was issued to, also as RFC 8058 one-click unsubscribe from the `List-Unsubscribe` header.
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes | The signed token from the digest email. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/auth/insights/unsubscribe"
+```
+
+**Responses**
+
+- **200**: Done.
+- **404**: The link is not valid.
 
 ## Share cards
 
