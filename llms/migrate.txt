@@ -111,13 +111,16 @@ You need:
 | `--restart` | Ignore the state file and start from the first customer | off |
 | `--concurrency <n>` | Customers fetched in parallel | 4 |
 | `--limit <n>` | Import only the first n customers, for a trial run | all |
+| `--page-size <n>` | Customers per page and per import call, at most 100 | 50 |
 | `--google-tokens <csv>` | Google Play purchase tokens you already have | none |
 | `--no-public-keys` | Keep RevenueDot's own SDK keys instead of copying RevenueCat's | off (keys are copied) |
 | `--emit-events` | Record lifecycle events and send webhooks for imported purchases | off |
 | `--json` | Print the report as JSON | off |
 | `-h`, `--help` | Show help | |
 
-Two more flags exist for testing and are not in `--help`: `--rc-url <url>` (RevenueCat's API base, default `https://api.revenuecat.com`) and `--page-size <n>` (customers per RevenueCat page, default 100). `--from-revenuecat` names the source; it is accepted but not required.
+One more flag exists for testing and is not in `--help`: `--rc-url <url>` (RevenueCat's API base, default `https://api.revenuecat.com`). `--from-revenuecat` names the source; it is accepted but not required.
+
+**A page that times out.** The CLI waits 60 seconds for each import call and tries a page that timed out once more. If it times out again, the import stops with a message such as `Run the same command again with --page-size 25: it resumes at this page.` Run that command: the state file keeps every page already imported, and pages are idempotent. Versions before 0.3.0 read pages of 100 and retried a timed-out page five times.
 
 **Keys.** In a terminal, the CLI asks for each missing key with hidden input. It accepts a RevenueCat secret key (`sk_...`) or OAuth token (`atk_...`) and asks again when you paste a public SDK key. Without a terminal (CI, piped input), nothing can be typed, so set the keys from your secret store:
 
