@@ -5054,7 +5054,7 @@ paths:
                       description: "Price in micros: 9.99 is 9990000."
                     currency:
                       type: string
-                      description: ISO 4217 code such as USD or EUR.
+                      description: ISO 4217 code such as USD or EUR. A code with no exchange rate to USD is refused (its purchases would record no revenue).
                   description: RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`.
               required:
                 - store_identifier
@@ -5224,7 +5224,7 @@ paths:
                       description: "Price in micros: 9.99 is 9990000."
                     currency:
                       type: string
-                      description: ISO 4217 code such as USD or EUR.
+                      description: ISO 4217 code such as USD or EUR. A code with no exchange rate to USD is refused (its purchases would record no revenue).
                   description: RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`.
             example:
               display_name: Pro (monthly)
@@ -42999,10 +42999,11 @@ paths:
                   description: Test Store app; default the project's first.
                 price:
                   type: number
+                  description: Without a price, the product's Test Store price.
                   minimum: 0
                 currency:
                   type: string
-                  description: Three letters; default USD.
+                  description: ISO 4217 code; default USD. A code with no exchange rate to USD is refused.
                 purchased_at:
                   type: integer
                   description: Start, epoch milliseconds. Not with offset_days.
@@ -43178,7 +43179,7 @@ paths:
       summary: Overview cards summed across your projects
       description: |-
         The six Overview cards (active trials, active subscriptions, MRR, revenue, new customers, active customers) summed over every project the signed-in user belongs to, as on the dashboard's Overview with "All projects" selected. Each card has `value` (the per-project Overview definition) and `history` (the daily series for `days`, summed per date).
-        Each project is checked like a project route: a project counts only where the user's role (or an enterprise custom role) includes `charts_metrics:overview:read`, and enforced single sign-on can leave one out. `projects` lists every project of the user with `included` and, when left out, `reason`. Dashboard sessions only: a secret key belongs to one project and gets 403.
+        Each project is checked like a project route: a project counts only where the user's role (or an enterprise custom role) includes `charts_metrics:overview:read`; enforced single sign-on and an organization that deprovisioned the user leave one out. `projects` lists every project the user is a member of with `included` and, when left out, `reason`; a project the user was removed from is not listed at all. Dashboard sessions only: a secret key belongs to one project and gets 403.
       security:
         - dashboardSession: []
       parameters:
@@ -43305,7 +43306,7 @@ paths:
       tags:
         - Dashboard data
       summary: Transactions across your projects
-      description: Every purchase, renewal, trial start, refund and refund reversal of the projects the signed-in user may read purchases in, newest first, each with `project_id`. The list also carries `projects` with `included` and `reason`, as on `GET /v2/overview`.
+      description: Every purchase, renewal, trial start, refund and refund reversal of the projects the signed-in user may read purchases in (`customer_information:purchases:read`), newest first, each with `project_id`. The list also carries `projects` with `included` and `reason`, as on `GET /v2/overview`. `starting_after` must be a transaction of an included project.
       security:
         - dashboardSession: []
       parameters:
@@ -43320,7 +43321,7 @@ paths:
           in: query
           schema:
             type: string
-          description: Only these projects (comma separated).
+          description: Only these projects (comma separated, at most 100). Ids you cannot open are ignored.
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/StartingAfter"
       responses:

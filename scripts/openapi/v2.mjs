@@ -8,7 +8,7 @@ const project = param("ProjectId");
 const page = [param("Limit"), param("StartingAfter")];
 const pathParam = (name, description) => ({ name, in: "path", required: true, schema: str(), description });
 const expand = (values, description) => ({ name: "expand", in: "query", schema: arr(en(values)), style: "form", explode: true, description });
-const testStorePrice = { type: ["object", "null"], required: ["amount_micros", "currency"], properties: { amount_micros: int("Price in micros: 9.99 is 9990000."), currency: str("ISO 4217 code such as USD or EUR.") },
+const testStorePrice = { type: ["object", "null"], required: ["amount_micros", "currency"], properties: { amount_micros: int("Price in micros: 9.99 is 9990000."), currency: str("ISO 4217 code such as USD or EUR. A code with no exchange rate to USD is refused (its purchases would record no revenue).") },
   description: "RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`." };
 const priceExpand = "`indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price)."
 const E = (...c) => v2Errors(401, 403, ...c);
@@ -538,7 +538,7 @@ Runs a purchase through the same pipeline as an SDK receipt, so events, the tran
 \`purchase\`, \`trial\`, \`trial_conversion\`, \`renewal\`, \`cancel\`, \`billing_issue\`, \`refund\`, \`expire\`. See [the Test Store guide](../docs/guides/test-store.md).`,
       requestBody: body(obj({
         app_user_id: str(undefined, { maxLength: 100 }), product_id: str("Product id or store identifier of a Test Store product."), app_id: str("Test Store app; default the project's first."),
-        price: num(undefined, { minimum: 0 }), currency: str("Three letters; default USD."), purchased_at: int("Start, epoch milliseconds. Not with offset_days."),
+        price: num("Without a price, the product's Test Store price.", { minimum: 0 }), currency: str("ISO 4217 code; default USD. A code with no exchange rate to USD is refused."), purchased_at: int("Start, epoch milliseconds. Not with offset_days."),
         presented_offering_id: str(), scenario: en(["purchase", "trial", "trial_conversion", "renewal", "cancel", "billing_issue", "refund", "expire"]),
         offset_days: num("Days ago the scenario starts (0 to 730).", { minimum: 0, maximum: 730 }), country_code: str("ISO 3166-1 alpha-2, upper case."),
       }, ["app_user_id", "product_id"]), { app_user_id: "user_renewal", product_id: "pro_monthly", scenario: "renewal", price: 9.99 }),
@@ -558,7 +558,7 @@ Runs a purchase through the same pipeline as an SDK receipt, so events, the tran
     get: op({ id: "getAccountOverview", tag: "Dashboard data", summary: "Overview cards summed across your projects", security: SESSION, source: R.account, extension: true, scopes: ["charts_metrics:overview:read"],
       description: `
 The six Overview cards (active trials, active subscriptions, MRR, revenue, new customers, active customers) summed over every project the signed-in user belongs to, as on the dashboard's Overview with "All projects" selected. Each card has \`value\` (the per-project Overview definition) and \`history\` (the daily series for \`days\`, summed per date).
-Each project is checked like a project route: a project counts only where the user's role (or an enterprise custom role) includes \`charts_metrics:overview:read\`, and enforced single sign-on can leave one out. \`projects\` lists every project of the user with \`included\` and, when left out, \`reason\`. Dashboard sessions only: a secret key belongs to one project and gets 403.`,
+Each project is checked like a project route: a project counts only where the user's role (or an enterprise custom role) includes \`charts_metrics:overview:read\`; enforced single sign-on and an organization that deprovisioned the user leave one out. \`projects\` lists every project the user is a member of with \`included\` and, when left out, \`reason\`; a project the user was removed from is not listed at all. Dashboard sessions only: a secret key belongs to one project and gets 403.`,
       parameters: [{ name: "environment", in: "query", schema: en(["production", "sandbox"]) }, { name: "days", in: "query", schema: int(undefined, { minimum: 1, maximum: 366, default: 28 }) },
         { name: "project_ids", in: "query", schema: str(), description: "Only these projects (comma separated, at most 100). Ids you cannot open are ignored." }],
       responses: { 200: ok("The summed cards.", obj({
@@ -573,8 +573,8 @@ Each project is checked like a project route: a project counts only where the us
   },
   "/v2/overview/transactions": {
     get: op({ id: "listAccountTransactions", tag: "Dashboard data", summary: "Transactions across your projects", security: SESSION, source: R.account, extension: true, scopes: ["customer_information:purchases:read"],
-      description: "Every purchase, renewal, trial start, refund and refund reversal of the projects the signed-in user may read purchases in, newest first, each with `project_id`. The list also carries `projects` with `included` and `reason`, as on `GET /v2/overview`.",
-      parameters: [{ name: "environment", in: "query", schema: en(["production", "sandbox"]) }, { name: "project_ids", in: "query", schema: str(), description: "Only these projects (comma separated)." }, ...page],
+      description: "Every purchase, renewal, trial start, refund and refund reversal of the projects the signed-in user may read purchases in (`customer_information:purchases:read`), newest first, each with `project_id`. The list also carries `projects` with `included` and `reason`, as on `GET /v2/overview`. `starting_after` must be a transaction of an included project.",
+      parameters: [{ name: "environment", in: "query", schema: en(["production", "sandbox"]) }, { name: "project_ids", in: "query", schema: str(), description: "Only these projects (comma separated, at most 100). Ids you cannot open are ignored." }, ...page],
       responses: { 200: list(ref("Transaction")), ...v2Errors(400, 401, 403) } }),
   },
   [`${P}/import/customers`]: {

@@ -5986,8 +5986,8 @@ Runs a purchase through the same pipeline as an SDK receipt, so events, the tran
 | `app_user_id` | string | yes |  |
 | `product_id` | string | yes | Product id or store identifier of a Test Store product. |
 | `app_id` | string | no | Test Store app; default the project's first. |
-| `price` | number | no |  |
-| `currency` | string | no | Three letters; default USD. |
+| `price` | number | no | Without a price, the product's Test Store price. |
+| `currency` | string | no | ISO 4217 code; default USD. A code with no exchange rate to USD is refused. |
 | `purchased_at` | integer | no | Start, epoch milliseconds. Not with offset_days. |
 | `presented_offering_id` | string | no |  |
 | `scenario` | `purchase`, `trial`, `trial_conversion`, `renewal`, `cancel`, `billing_issue`, `refund`, `expire` | no |  |
@@ -6083,7 +6083,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_summaries" -H "Authori
 `GET /v2/overview` · Auth: dashboard session · RevenueDot extension · Permissions: `charts_metrics:overview:read`
 
 The six Overview cards (active trials, active subscriptions, MRR, revenue, new customers, active customers) summed over every project the signed-in user belongs to, as on the dashboard's Overview with "All projects" selected. Each card has `value` (the per-project Overview definition) and `history` (the daily series for `days`, summed per date).
-Each project is checked like a project route: a project counts only where the user's role (or an enterprise custom role) includes `charts_metrics:overview:read`, and enforced single sign-on can leave one out. `projects` lists every project of the user with `included` and, when left out, `reason`. Dashboard sessions only: a secret key belongs to one project and gets 403.
+Each project is checked like a project route: a project counts only where the user's role (or an enterprise custom role) includes `charts_metrics:overview:read`; enforced single sign-on and an organization that deprovisioned the user leave one out. `projects` lists every project the user is a member of with `included` and, when left out, `reason`; a project the user was removed from is not listed at all. Dashboard sessions only: a secret key belongs to one project and gets 403.
 
 **Query parameters**
 
@@ -6110,14 +6110,14 @@ curl -s "$REVENUEDOT_URL/v2/overview"
 
 `GET /v2/overview/transactions` · Auth: dashboard session · RevenueDot extension · Permissions: `customer_information:purchases:read`
 
-Every purchase, renewal, trial start, refund and refund reversal of the projects the signed-in user may read purchases in, newest first, each with `project_id`. The list also carries `projects` with `included` and `reason`, as on `GET /v2/overview`.
+Every purchase, renewal, trial start, refund and refund reversal of the projects the signed-in user may read purchases in (`customer_information:purchases:read`), newest first, each with `project_id`. The list also carries `projects` with `included` and `reason`, as on `GET /v2/overview`. `starting_after` must be a transaction of an included project.
 
 **Query parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `environment` | `production`, `sandbox` | no |  |
-| `project_ids` | string | no | Only these projects (comma separated). |
+| `project_ids` | string | no | Only these projects (comma separated, at most 100). Ids you cannot open are ignored. |
 | `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
 | `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
 
