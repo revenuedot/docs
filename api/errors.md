@@ -111,7 +111,7 @@ RevenueDot failed (500, `retryable: true`). Retry with backoff.
 
 ### resource_locked_error
 
-Reserved for RevenueCat compatibility. RevenueDot does not send it today.
+The delivery is being sent right now, so it cannot be retried yet (409, `retryable: true`). Try again in a minute.
 
 <a id="unprocessable-entity-error"></a>
 

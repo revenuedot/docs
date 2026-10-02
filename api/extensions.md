@@ -2735,6 +2735,8 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID/deliveries
 
 `POST /v2/projects/{project_id}/webhooks/{webhook_id}/deliveries/{delivery_id}/retry` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
 
+Queues the delivery now, also one waiting for its scheduled retry. 409 (`resource_locked_error`) while a job run is sending it.
+
 **Path parameters**
 
 | Name | Type | Required | Description |
@@ -2755,6 +2757,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID/de
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
 
 ## Integrations
 
@@ -3164,7 +3167,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRAT
 
 `POST /v2/projects/{project_id}/integrations/partners/{integration_id}/deliveries/{delivery_id}/retry` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
 
-The request is built again, so keys and attributes saved since count.
+The request is built again, so keys and attributes saved since count. 409 (`resource_locked_error`) while a job run is sending it.
 
 **Path parameters**
 
@@ -3186,6 +3189,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
 
 ### Queue failed or skipped deliveries again
 

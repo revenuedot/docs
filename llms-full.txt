@@ -3667,7 +3667,7 @@ There is no published image yet. Build it from the repository's `Dockerfile` and
 |---|---|
 | Database migrations | A replica that starts takes a Postgres advisory lock before it migrates. The first one migrates; the others wait, then find nothing to do. Or run them once before the rollout (the Helm hook Job, `node --import tsx src/migrate.node.ts`) and start replicas with `REVENUEDOT_MIGRATE=skip` |
 | The background job (expirations, Google Play voided purchases, webhooks, integrations, alert emails, win-back emails, credential checks, exports) | Every replica tries every 30 seconds; only the one that gets a Postgres advisory lock runs it, and the others skip that turn. If that replica dies, Postgres drops its lock with its connection and another replica runs the next turn |
-| Each webhook delivery | Claimed with a conditional update before it is sent, so two runs never send the same delivery. A run sends batches for up to 20 seconds, to several webhooks in parallel and to each webhook in order |
+| Each webhook delivery | Claimed before it is sent, with a 2-minute lease, and only while no other delivery to the same webhook is being sent. Two runs never send the same delivery, and each webhook gets its deliveries one at a time, oldest first. A run claims deliveries for up to 20 seconds and sends to up to 8 webhooks in parallel |
 | Each expiration | Recorded in one transaction that marks the subscription, so it is recorded once |
 | Each alert email | Sent only by the run that changed the alert's state |
 | Sessions, rate limits, RevenueDot AI answers, OAuth codes | Kept in Postgres already |
@@ -3678,7 +3678,7 @@ Webhooks are delivered **at least once**, as with RevenueCat: a replica killed a
 | Variable | Default | What it does |
 |---|---|---|
 | `REVENUEDOT_PUBLIC_URL` | unset | **Required.** The address behind the load balancer, used in emails and dashboard links. Without it, a replica guesses from the last request it saw |
-| `REVENUEDOT_MIGRATE` | `auto` | `auto` migrates on start under the lock; `skip` never migrates (a separate job does) |
+| `REVENUEDOT_MIGRATE` | `auto` | `auto` migrates on start under the lock. `skip` never migrates (a separate job does) and refuses to start while the database is missing a migration, naming the command to run |
 | `REVENUEDOT_BACKGROUND_JOBS` | `on` | `off` keeps a replica to requests only |
 | `REVENUEDOT_TICK_INTERVAL_MS` | `30000` | How often each replica tries to run the background job |
 | `REVENUEDOT_SHUTDOWN_DELAY_MS` | `5000` | After SIGTERM, how long a replica keeps answering while `/readyz` says 503, so the load balancer stops sending it requests |
@@ -3691,7 +3691,7 @@ Everything else is the same as a single server ([Self-hosting](https://raw.githu
 
 ## Health checks and shutdown
 - `GET /healthz` is **liveness**: 200 while the process runs. It never asks the database, so a database failover does not restart every replica.
-- `GET /readyz` is **readiness**: 200 when the database answers within 2 seconds and the replica is not shutting down, 503 otherwise. Point the load balancer's health check here.
+- `GET /readyz` is **readiness**: 200 when the database answers within 2 seconds and the replica is not shutting down, 503 otherwise. Point Kubernetes' readiness probe here. On ECS, where a failed load balancer check also replaces the task, the AWS setup checks `/healthz` instead, so a slow database does not restart every task; ECS takes a task out of the load balancer before it sends SIGTERM.
 - On **SIGTERM** (Kubernetes, ECS, `docker stop`), a replica turns `/readyz` to 503, stops its background job, waits `REVENUEDOT_SHUTDOWN_DELAY_MS`, closes its port, finishes requests in flight and any running background job, then exits 0. A background job that is running stops after the webhooks in flight; the rest waits for the next run on another replica. Keep the delay plus the timeout under your platform's grace period (30 seconds on Kubernetes and in the AWS setup; Cloud Run allows 10, so the Google Cloud setup uses 0 and 8).
 
 ## Kubernetes with Helm
@@ -3715,8 +3715,8 @@ kubectl -n revenuedot rollout status deploy/revenuedot && helm test revenuedot -
 ```
 
 What the chart does by default:
-- **Two to ten replicas**, scaled on CPU and memory, spread over zones and nodes, with a PodDisruptionBudget that keeps one up during node drains and `maxUnavailable: 0` on rollouts.
-- **Migrations** in a `pre-install,pre-upgrade` hook Job when `database.existingSecret` is set (replicas then start with `REVENUEDOT_MIGRATE=skip`); otherwise each replica migrates on start under the lock. Set `migrations.mode` to `job` or `startup` to choose.
+- **Two to ten replicas**, scaled on CPU, spread over zones and nodes, with a PodDisruptionBudget that keeps one up during node drains and `maxUnavailable: 0` on rollouts.
+- **Migrations** in a `pre-install,pre-upgrade` hook Job when `database.existingSecret` is set (replicas then start with `REVENUEDOT_MIGRATE=skip`); otherwise each replica migrates on start under the lock. Set `migrations.mode` to `job` or `startup` to choose. Helm waits 5 minutes for the Job by default; pass `--timeout 15m` when a migration may take longer.
 - **Probes:** startup and liveness on `/healthz`, readiness on `/readyz`.
 - **Security:** uid 1000, no privilege escalation, every capability dropped, read-only root filesystem with a small `/tmp`, no service account token. `networkPolicy.enabled=true` admits traffic only on the HTTP port.
 - **Archives** in Postgres unless you set `archives.s3.bucket` (with an access key in your Secret; role credentials such as IRSA are not read yet).
@@ -3730,9 +3730,9 @@ cp terraform.tfvars.example terraform.tfvars   # domain_name, route53_zone_id, i
 terraform init && terraform plan && terraform apply
 ```
 
-It creates a VPC across 3 zones (public, private and database subnets, one NAT gateway per zone), RDS PostgreSQL 16 Multi-AZ (KMS-encrypted, TLS required, 14 days of point-in-time recovery, Performance Insights, deletion protection), the ECS service (2 to 10 tasks at 1 vCPU and 2 GiB, CPU target tracking, a deployment circuit breaker that rolls back), an Application Load Balancer with HTTPS only (TLS 1.3 policy, HTTP redirected) and its ACM certificate validated in Route 53, Secrets Manager entries for the database URL and the encryption key, VPC flow logs, and CloudWatch alarms for 5xx answers, p95 latency, healthy targets, running tasks, database CPU, storage, memory and connections, and failed background job runs, all sent to one SNS topic.
+It creates a VPC across 3 zones (public, private and database subnets, one NAT gateway per zone), RDS PostgreSQL 16 Multi-AZ (KMS-encrypted, TLS required, 14 days of point-in-time recovery, Performance Insights, deletion protection), the ECS service (2 to 10 tasks at 1 vCPU and 2 GiB, CPU target tracking, a deployment circuit breaker that rolls back), an Application Load Balancer with HTTPS only (TLS 1.2 and 1.3, HTTP redirected) and its ACM certificate validated in Route 53, Secrets Manager entries for the database URL and the encryption key, VPC flow logs, and CloudWatch alarms for 5xx answers, p95 latency, healthy targets, running tasks, database CPU, storage, memory and connections, and failed background job runs, all sent to one SNS topic.
 
-Each task migrates on start by default. To migrate as a separate step, set `migrate_on_start = false` and run the `migrate_command` output before each deploy. Extra settings go in `environment`; extra secrets (SMTP URL, signing key, licence key, AI keys) go in `secret_arns` as Secrets Manager ARNs. Keep the Terraform state in an encrypted backend: it holds the database password and the encryption key.
+Each task migrates on start by default. To migrate as a separate step, set `migrate_on_start = false`: tasks then refuse to start on a database missing a migration, so apply a new image in two steps: `terraform apply -target=aws_ecs_task_definition.migrate`, run the `migrate_command` output (it waits and fails if the migration failed), then `terraform apply`. Extra settings go in `environment`; extra secrets (SMTP URL, signing key, licence key, AI keys) go in `secret_arns` as Secrets Manager ARNs. Keep the Terraform state in an encrypted backend: it holds the database password and the encryption key.
 
 ## Google Cloud with Terraform (Cloud Run)
 ```bash
@@ -7929,7 +7929,7 @@ RevenueDot failed (500, `retryable: true`). Retry with backoff.
 
 ### resource_locked_error
 
-Reserved for RevenueCat compatibility. RevenueDot does not send it today.
+The delivery is being sent right now, so it cannot be retried yet (409, `retryable: true`). Try again in a minute.
 
 ### unprocessable_entity_error
 
@@ -21180,6 +21180,8 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID/deliveries
 
 `POST /v2/projects/{project_id}/webhooks/{webhook_id}/deliveries/{delivery_id}/retry` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
 
+Queues the delivery now, also one waiting for its scheduled retry. 409 (`resource_locked_error`) while a job run is sending it.
+
 **Path parameters**
 
 | Name | Type | Required | Description |
@@ -21200,6 +21202,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID/de
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
 ## Integrations
 
@@ -21609,7 +21612,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRAT
 
 `POST /v2/projects/{project_id}/integrations/partners/{integration_id}/deliveries/{delivery_id}/retry` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
 
-The request is built again, so keys and attributes saved since count.
+The request is built again, so keys and attributes saved since count. 409 (`resource_locked_error`) while a job run is sending it.
 
 **Path parameters**
 
@@ -21631,6 +21634,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
 ### Queue failed or skipped deliveries again
 
