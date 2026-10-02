@@ -11,7 +11,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (240)
+## Operations on this page (243)
 
 - **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects), [Update account settings](#update-account-settings), [Email a password reset link](#email-a-password-reset-link), [Check a password reset link](#check-a-password-reset-link), [Set a new password from a reset link](#set-a-new-password-from-a-reset-link), [Confirm an email address](#confirm-an-email-address), [Send a new confirmation email](#send-a-new-confirmation-email), [Look up an invite](#look-up-an-invite), [Accept an invite](#accept-an-invite)
 - **Members and invites**: [List open invites](#list-open-invites), [Invite someone by email](#invite-someone-by-email), [Resend an invite](#resend-an-invite), [Revoke an invite](#revoke-an-invite), [Change a member's role](#change-a-members-role), [Remove a member, or leave the project](#remove-a-member-or-leave-the-project)
@@ -44,7 +44,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Funnels**: [List funnels](#list-funnels), [Create a funnel](#create-a-funnel), [Is Build with AI available?](#is-build-with-ai-available), [Build a funnel with AI](#build-a-funnel-with-ai), [Get a funnel](#get-a-funnel), [Update a funnel's draft](#update-a-funnels-draft), [Delete a funnel](#delete-a-funnel), [Publish a funnel](#publish-a-funnel), [Unpublish a funnel](#unpublish-a-funnel), [Get a funnel's analytics](#get-a-funnels-analytics), [Get what the builder's preview needs](#get-what-the-builders-preview-needs)
 - **Hosted pages**: [A purchase link or a published funnel](#a-purchase-link-or-a-published-funnel), [The success page after Stripe Checkout](#the-success-page-after-stripe-checkout), [The success page of the iOS SDK's hosted checkout](#the-success-page-of-the-ios-sdks-hosted-checkout), [The cancel page of the iOS SDK's hosted checkout](#the-cancel-page-of-the-ios-sdks-hosted-checkout), [A redemption link page](#a-redemption-link-page), [Start a checkout from a page](#start-a-checkout-from-a-page), [Check a discount code from a page](#check-a-discount-code-from-a-page), [Record a funnel event from a page](#record-a-funnel-event-from-a-page)
 - **RevenueDot AI**: [What RevenueDot AI can do here](#what-revenuedot-ai-can-do-here), [Set what RevenueDot AI may do in the project](#set-what-revenuedot-ai-may-do-in-the-project), [List your conversations, newest first](#list-your-conversations-newest-first), [Start a conversation](#start-a-conversation), [Get a conversation with its messages](#get-a-conversation-with-its-messages), [Rename a conversation](#rename-a-conversation), [Delete a conversation](#delete-a-conversation), [Send a message and stream the answer (self-host)](#send-a-message-and-stream-the-answer-self-host), [Resume the answer being written](#resume-the-answer-being-written), [Stop the answer being written](#stop-the-answer-being-written), [Attach an image or a .storekit file](#attach-an-image-or-a-storekit-file), [Read an attachment back](#read-an-attachment-back), [Read a .storekit file](#read-a-storekit-file), [Suggestions for @ mentions](#suggestions-for--mentions), [The project's first-sale card](#the-projects-first-sale-card), [Hide the first-sale card on the Overview](#hide-the-first-sale-card-on-the-overview)
-- **Share cards**: [Public first-sale page or image](#public-first-sale-page-or-image)
+- **Share cards**: [Public chart page](#public-chart-page), [Public chart preview image](#public-chart-preview-image), [Public chart as SVG](#public-chart-as-svg), [Public first-sale page or image](#public-first-sale-page-or-image)
 - **OAuth for MCP clients**: [OAuth authorization server metadata](#oauth-authorization-server-metadata), [Register an OAuth client](#register-an-oauth-client), [Consent screen](#consent-screen), [Submit the consent decision](#submit-the-consent-decision), [Exchange a code for an access token](#exchange-a-code-for-an-access-token)
 
 ## Dashboard auth
@@ -9912,6 +9912,75 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/first_sale/dismiss"
 ## Share cards
 
 Public pages and images RevenueDot makes for sharing, such as the first-sale card. No API key; the token in the URL is the only key.
+
+### Public chart page
+
+`GET /share/charts/{token}` · Auth: none · RevenueDot extension
+
+The chart snapshot as a page: the plot, summary values, the values table, Open Graph and Twitter tags. No scripts, `noindex`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/share/charts/$TOKEN"
+```
+
+**Responses**
+
+- **200**: The page.
+- **304**: Not modified (ETag).
+- **404**: Unknown link.
+- **410**: The link was revoked.
+
+### Public chart preview image
+
+`GET /share/charts/{token}/og.png` · Auth: none · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/share/charts/$TOKEN/og.png"
+```
+
+**Responses**
+
+- **200**: A 1200×630 PNG.
+- **404**: Unknown link.
+- **410**: The link was revoked.
+
+### Public chart as SVG
+
+`GET /share/charts/{token}/chart.svg` · Auth: none · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/share/charts/$TOKEN/chart.svg"
+```
+
+**Responses**
+
+- **200**: The 1200×630 card as SVG.
+- **404**: Unknown link.
+- **410**: The link was revoked.
 
 ### Public first-sale page or image
 

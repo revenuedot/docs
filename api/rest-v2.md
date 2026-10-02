@@ -3335,7 +3335,7 @@ The public page and images answer 410 from now on. Audited as `chart_share_delet
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
-| `share_id` | string | yes |  |
+| `share_id` | string | yes | The link's `id` (`chartshare…`), not its token. |
 
 **Example request**
 

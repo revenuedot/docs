@@ -94,7 +94,8 @@ const annotation = obj({
 const annotationId = { name: "annotation_id", in: "path", required: true, schema: str() };
 const AR = { tag: "Charts", security: SECRET, source: XR, extension: true };
 const share = obj({
-  object: en(["chart_share"]), id: str("The share token (`cs_…`)."), chart_name: str(), title: str(), url: str("The public page."), image_url: str("The 1200×630 PNG preview."),
+  object: en(["chart_share"]), id: str("The link's id (`chartshare…`): revoke it by this id, and the audit log names it. It is not the token."), chart_name: str(), title: str(),
+  url: str("The public page, `/share/charts/cs_…`. Its token (192 random bits) is the only key to the page; anyone who can read the project's links can copy it."), image_url: str("The 1200×630 PNG preview, drawn when the link was made."),
   view, start_date: str(undefined, { format: "date" }), end_date: str(undefined, { format: "date" }), created_by: author, created_at: int(), revoked_at: { type: ["integer", "null"] },
 }, ["object", "id", "chart_name", "url", "image_url", "created_at"]);
 const savedChart = obj({ object: en(["saved_chart"]), id: str(), name: str(), chart_name: str(), view, created_at: int(), updated_at: int() }, ["object", "id", "name", "chart_name", "view", "created_at", "updated_at"]);
@@ -170,7 +171,7 @@ The customers whose purchases, subscriptions, trials or activity make up the cha
   "/v2/projects/{project_id}/chart_shares/{share_id}": {
     delete: op({ ...AR, id: "revokeChartShare", summary: "Revoke a chart share link", scopes: WRITE_SCOPES,
       description: "The public page and images answer 410 from now on. Audited as `chart_share_deleted`.",
-      parameters: [param("ProjectId"), { name: "share_id", in: "path", required: true, schema: str() }],
+      parameters: [param("ProjectId"), { name: "share_id", in: "path", required: true, description: "The link's `id` (`chartshare…`), not its token.", schema: str() }],
       responses: { 200: ok("Revoked.", obj({ object: en(["chart_share"]), id: str(), deleted_at: int() }, ["object", "id", "deleted_at"])), ...v2Errors(401, 403, 404) } }),
   },
   "/share/charts/{token}": {
