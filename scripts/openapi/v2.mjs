@@ -10,17 +10,17 @@ const pathParam = (name, description) => ({ name, in: "path", required: true, sc
 const expand = (values, description) => ({ name: "expand", in: "query", schema: arr(en(values)), style: "form", explode: true, description });
 const testStorePrice = { type: ["object", "null"], required: ["amount_micros", "currency"], properties: { amount_micros: int("Price in micros: 9.99 is 9990000."), currency: str("ISO 4217 code such as USD or EUR. A code with no exchange rate to USD is refused (its purchases would record no revenue).") },
   description: "RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`." };
-const priceExpand = "`indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price)."
+const priceExpand = "`indicative_price` adds RevenueCat's IndicativePrice: the Test Store price; else the App Store or Google Play price in the United States from the last store price read (or the in-app purchase's base territory, or the first territory with a price); else the Stripe web product's price; null when none is known. `store_details` (RevenueDot extension) adds the store's status, base price, number of priced territories and when they were read."
 const E = (...c) => v2Errors(401, 403, ...c);
 const list = (schema, description = "A page of results.", example) => ok(description, listOf(schema), example);
 const del = (object) => ok("Deleted.", ref("Deleted"), { object, id: "…", deleted_at: 1790801342625 });
 const archive = (tag, id, what, source, scopes) => ({
-  [`${P}/${what}s/{${what}_id}/actions/archive`]: { post: op({ id: `archive${id}`, tag, summary: `Archive ${/^[aeiou]/.test(what) ? "an" : "a"} ${what}`, security: SECRET, source, scopes, parameters: [project, pathParam(`${what}_id`, `${id} id.`)], responses: { 200: ok(`The archived ${what}.`, ref(id)), ...E(404, ...(what === "offering" ? [422] : [])) } }) },
+  [`${P}/${what}s/{${what}_id}/actions/archive`]: { post: op({ id: `archive${id}`, tag, summary: `Archive ${/^[aeiou]/.test(what) ? "an" : "a"} ${what}`, security: SECRET, source, scopes, parameters: [project, pathParam(`${what}_id`, `${id} id.`)], description: what === "offering" ? "An offering that a draft, running or paused experiment uses cannot be archived (409); the current offering cannot be archived (422)." : undefined, responses: { 200: ok(`The archived ${what}.`, ref(id)), ...E(404, ...(what === "offering" ? [409, 422] : [])) } }) },
 });
 const errBody = obj({ type: str(), message: str() });
 const authErr = ok("Not signed in.", errBody, { type: "authentication_error", message: "Not signed in." });
 const preferences = obj({ theme: en(["system", "light", "dark"]), tint: nstr("Accent colour #RRGGBB, or null for the gold."), week_start: int("First day of the week, 0 (Sunday) to 6 (Saturday).", { minimum: 0, maximum: 6 }), display_currency: str("The currency the dashboard shows money in.") });
-const accountUser = obj({ id: str(), email: str(), name: nstr(), email_verified: bool("Whether the user confirmed their email address. Always true for accounts created from an invite or after a password reset."), alert_emails: bool("Whether the user gets alert emails for projects they administer."),
+const accountUser = obj({ id: str(), email: str(), name: nstr(), email_verified: bool("Whether the user confirmed their email address. Always true for accounts created from an invite or after a password reset."), alert_emails: bool("Whether the user gets alert emails for projects they administer."), insights_emails: bool("Whether the user gets the weekly growth insights digest for projects they administer."),
   preferences, has_password: bool("False for accounts made by single sign-on."), two_factor: obj({ enabled: bool(), enabled_at: { type: ["integer", "null"], format: "int64" }, recovery_codes_left: int() }),
   pending_email: { type: ["object", "null"], properties: { email: str(), expires_at: { type: "integer", format: "int64" } }, description: "A waiting email change." }, password_changed_at: { type: ["integer", "null"], format: "int64" }, created_at: { type: "integer", format: "int64" } });
 const tokenReason = en(["invalid", "expired", "used"]);
@@ -74,12 +74,17 @@ export const v2Paths = {
       responses: { 200: list(ref("App")), ...E(404) } }),
     post: op({ id: "createApp", tag: "Apps", summary: "Create an app", security: SECRET, source: R.apps, scopes: ["project_configuration:apps:read_write"], parameters: [project],
       description: `
-One app per store. \`app_store\` and \`mac_app_store\` need \`bundle_id\`; \`play_store\` and \`amazon\` need \`package_name\`. The app gets a public SDK key with the store's prefix.
-Other fields in the store object are saved as store credentials (for example \`subscription_private_key\`, \`subscription_key_id\`, \`subscription_key_issuer\`, \`play_service_account_credentials_json\`, Amazon's \`shared_secret\`, Stripe's \`stripe_secret_key\` and \`stripe_webhook_secret\`). They are never returned. A Stripe publishable key (\`pk_…\`) or a malformed signing secret is refused with 400.`,
+One app per store. \`app_store\` and \`mac_app_store\` need \`bundle_id\`; \`play_store\`, \`amazon\` and \`galaxy\` need \`package_name\`. The app gets a public SDK key with the store's prefix (\`pdl_\` for Paddle, \`roku_\` for Roku, \`galx_\` for the Galaxy Store).
+Other fields in the store object are saved as store credentials (for example \`subscription_private_key\`, \`subscription_key_id\`, \`subscription_key_issuer\`, \`play_service_account_credentials_json\`, Amazon's \`shared_secret\`, Stripe's \`stripe_secret_key\` and \`stripe_webhook_secret\`, Paddle's \`paddle_api_key\` and \`paddle_webhook_secret\`, Roku's \`roku_api_key\`, the Galaxy Store's \`galaxy_service_account_id\`, \`galaxy_service_account_private_key\` and \`galaxy_iap_public_key\`). Secrets are sealed and never returned. A Stripe publishable key (\`pk_…\`), a Paddle client-side token or a malformed signing secret is refused with 400.
+Store commission programs (RevenueDot extension, as RevenueCat's app settings): \`app_store.small_business_program\` and \`mac_app_store.small_business_program\` (Apple's Small Business Program, 15% instead of 30%) and \`amazon.small_business_accelerator\` (Amazon's Small Business Accelerator Program, 20% instead of 30%) take \`{ "enrolled": true, "periods": [{ "entry_date": "2024-01-01", "exit_date": null }] }\`: up to 10 periods, \`YYYY-MM-DD\`, an exit date after its entry date, no overlaps; \`null\` removes the program. Proceeds in charts, metrics, exports and the REST API are recomputed for the dates; webhooks and integration events already sent keep their values.
+\`galaxy\` is a RevenueDot extension: RevenueCat's v2 API has no Galaxy app object.`,
       requestBody: body(obj({
-        name: str(undefined, { maxLength: 255 }), type: en(["amazon", "app_store", "mac_app_store", "play_store", "stripe", "rc_billing", "roku", "paddle", "test_store"]),
+        name: str(undefined, { maxLength: 255 }), type: en(["amazon", "app_store", "mac_app_store", "play_store", "stripe", "rc_billing", "roku", "paddle", "test_store", "galaxy"]),
         app_store: { type: "object", description: "`bundle_id` plus optional credentials." }, mac_app_store: { type: "object" }, play_store: { type: "object", description: "`package_name` plus optional credentials." },
-        amazon: { type: "object" }, stripe: { type: "object" }, rc_billing: { type: ["object", "null"] }, roku: { type: ["object", "null"] }, paddle: { type: ["object", "null"] },
+        amazon: { type: "object" }, stripe: { type: "object" }, rc_billing: { type: ["object", "null"] },
+        roku: { type: ["object", "null"], description: "`roku_api_key` (sealed), `roku_channel_id`, `roku_channel_name`." },
+        paddle: { type: ["object", "null"], description: "`paddle_api_key` (sealed; `pdl_live_apikey_…` or `pdl_sdbx_apikey_…`), `paddle_is_sandbox` (only for keys made before May 2025), `paddle_webhook_secret` (sealed)." },
+        galaxy: { type: "object", description: "`package_name` plus `galaxy_service_account_id`, `galaxy_service_account_private_key` (sealed) and the optional `galaxy_iap_public_key`." },
       }, ["name", "type"]), { name: "Scanner (iOS)", type: "app_store", app_store: { bundle_id: "com.example.scanner" } }),
       responses: { 201: ok("The app.", ref("App"), { object: "app", id: "appugfw01uy", name: "Scanner (iOS)", created_at: 1790801342594, type: "app_store", project_id: "proj18pzzkao", custom_url_scheme: "rc-4d13549313", app_store: { bundle_id: "com.example.scanner", app_store_connect_api_key_configured: false, subscription_key_configured: false, app_store_connect_vendor_number: null } }), ...v2Errors(400, 401, 403, 404) } }),
   },
@@ -88,8 +93,8 @@ Other fields in the store object are saved as store credentials (for example \`s
     post: op({ id: "updateApp", tag: "Apps", summary: "Update an app and its store credentials", security: SECRET, source: R.apps, scopes: ["project_configuration:apps:read_write"], parameters: [project, param("AppId")],
       description: `
 Send only the store object of the app's own type. A field set to null removes that credential; other values replace it.
-RevenueDot extensions in the store object: \`notification_forward_url\` (copy store notifications to another URL, for example RevenueCat during a dual run; null or "" turns it off), \`track_new_purchases\`, \`allow_unsigned_receipts\`, \`xcode_certificate\`, \`app_apple_id\`, \`pubsub_audience\`, \`pubsub_service_account\`; Amazon \`shared_secret\`, \`sns_topic_arn\`; Stripe \`stripe_secret_key\`, \`stripe_webhook_secret\`, \`stripe_account_id\`, \`app_user_id_source\` (metadata, customer_id, anonymous), \`app_user_id_metadata_key\`, \`register_on\` (invoice_paid, invoice_created). See [App Store setup](../docs/guides/app-store.md), [Google Play setup](../docs/guides/google-play.md), [Amazon Appstore setup](../docs/guides/amazon-appstore.md) and [Stripe setup](../docs/guides/stripe.md).`,
-      requestBody: body(obj({ name: str(), app_store: { type: "object" }, mac_app_store: { type: "object" }, play_store: { type: "object" }, amazon: { type: "object" }, stripe: { type: "object" }, rc_billing: { type: "object" }, roku: { type: "object" }, paddle: { type: "object" } }),
+RevenueDot extensions in the store object: \`notification_forward_url\` (copy store notifications to another URL, for example RevenueCat during a dual run; null or "" turns it off), \`track_new_purchases\`, \`allow_unsigned_receipts\`, \`xcode_certificate\`, \`app_apple_id\`, \`pubsub_audience\`, \`pubsub_service_account\`; Amazon \`shared_secret\`, \`sns_topic_arn\`; Stripe \`stripe_secret_key\`, \`stripe_webhook_secret\`, \`stripe_account_id\`, \`app_user_id_source\` (metadata, customer_id, anonymous), \`app_user_id_metadata_key\`, \`register_on\` (invoice_paid, invoice_created); Paddle \`paddle_webhook_secret\`, \`app_user_id_source\` (custom_data, anonymous), \`app_user_id_custom_data_key\`; Galaxy Store \`galaxy_iap_public_key\`. See [App Store setup](../docs/guides/app-store.md), [Google Play setup](../docs/guides/google-play.md), [Amazon Appstore setup](../docs/guides/amazon-appstore.md), [Stripe setup](../docs/guides/stripe.md), [Paddle setup](../docs/guides/paddle.md), [Roku setup](../docs/guides/roku.md) and [Galaxy Store setup](../docs/guides/galaxy-store.md).`,
+      requestBody: body(obj({ name: str(), app_store: { type: "object" }, mac_app_store: { type: "object" }, play_store: { type: "object" }, amazon: { type: "object" }, stripe: { type: "object" }, rc_billing: { type: "object" }, roku: { type: "object" }, paddle: { type: "object" }, galaxy: { type: "object" } }),
         { app_store: { subscription_private_key: "-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----", subscription_key_id: "ABC123DEFG", subscription_key_issuer: "57246542-96fe-1a63-e053-0824d011072a" } }),
       responses: { 200: ok("The app.", ref("App")), ...v2Errors(400, 401, 403, 404) } }),
     delete: op({ id: "deleteApp", tag: "Apps", summary: "Delete an app", security: SECRET, source: R.apps, scopes: ["project_configuration:apps:read_write"], parameters: [project, param("AppId")],
@@ -103,10 +108,10 @@ RevenueDot extensions in the store object: \`notification_forward_url\` (copy st
   // ---- Products ----------------------------------------------------------------------------------------------------
   [`${P}/products`]: {
     get: op({ id: "listProducts", tag: "Products", summary: "List products", security: SECRET, source: R.products, scopes: ["project_configuration:products:read"],
-      parameters: [project, { name: "app_id", in: "query", schema: str(), description: "Only this app's products." }, expand(["items.app", "items.indicative_price"], "`items.app` embeds each product's app. `items.indicative_price` adds each product's Test Store price."), ...page],
+      parameters: [project, { name: "app_id", in: "query", schema: str(), description: "Only this app's products." }, expand(["items.app", "items.indicative_price", "items.store_details"], "`items.app` embeds each product's app. `items.indicative_price` adds each product's indicative price: the Test Store price, else the store price from the last price read (United States first), else the Stripe web product's price. `items.store_details` (RevenueDot extension) adds each product's store status and price; see [store prices](../docs/guides/product-editor.md#store-prices-and-status-on-the-products-page)."), ...page],
       responses: { 200: list(ref("Product")), ...E(404) } }),
     post: op({ id: "createProduct", tag: "Products", summary: "Create a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read_write"],
-      parameters: [project, expand(["indicative_price"], priceExpand)],
+      parameters: [project, expand(["indicative_price", "store_details"], priceExpand)],
       description: "`store_identifier` is the store's product id. For Google Play subscriptions use `subscriptionId:basePlanId`. Set `subscription.duration` (ISO 8601, for example P1M): the Test Store uses it as the period, and MRR uses it for every store. `test_store_price` sets what the SDK shows for a Test Store product.",
       requestBody: body(obj({
         store_identifier: str(undefined, { maxLength: 255 }), app_id: str(), type: en(["subscription", "one_time", "consumable", "non_consumable", "non_renewing_subscription"]),
@@ -117,8 +122,8 @@ RevenueDot extensions in the store object: \`notification_forward_url\` (copy st
       responses: { 201: ok("The product.", ref("Product"), productExample), ...v2Errors(400, 401, 403, 404, 409) } }),
   },
   [`${P}/products/{product_id}`]: {
-    get: op({ id: "getProduct", tag: "Products", summary: "Get a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read"], parameters: [project, pathParam("product_id", "Product id (prod...)."), expand(["app", "indicative_price"], `\`app\` embeds the app. ${priceExpand}`)], responses: { 200: ok("The product.", ref("Product"), productExample), ...E(404) } }),
-    post: op({ id: "updateProduct", tag: "Products", summary: "Update a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read_write"], parameters: [project, pathParam("product_id", "Product id."), expand(["app", "indicative_price"], priceExpand)],
+    get: op({ id: "getProduct", tag: "Products", summary: "Get a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read"], parameters: [project, pathParam("product_id", "Product id (prod...)."), expand(["app", "indicative_price", "store_details"], `\`app\` embeds the app. ${priceExpand}`)], responses: { 200: ok("The product.", ref("Product"), productExample), ...E(404) } }),
+    post: op({ id: "updateProduct", tag: "Products", summary: "Update a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read_write"], parameters: [project, pathParam("product_id", "Product id."), expand(["app", "indicative_price", "store_details"], priceExpand)],
       description: "RevenueDot also lets you correct `type` and `subscription.duration` (null clears it), and set or clear `test_store_price`.",
       requestBody: body(obj({ display_name: str(), type: en(["subscription", "one_time", "consumable", "non_consumable", "non_renewing_subscription"]), subscription: obj({ duration: nstr() }), test_store_price: testStorePrice }), { display_name: "Pro (monthly)", test_store_price: { amount_micros: 9990000, currency: "USD" } }),
       responses: { 200: ok("The product.", ref("Product")), ...v2Errors(400, 401, 403, 404) } }),
@@ -172,7 +177,23 @@ RevenueDot extensions in the store object: \`notification_forward_url\` (copy st
       requestBody: body(obj({ display_name: str(), is_current: bool(), metadata: { type: ["object", "null"] } }), { is_current: true }),
       responses: { 200: ok("The offering.", ref("Offering")), ...v2Errors(400, 401, 403, 404, 422) } }),
     delete: op({ id: "deleteOffering", tag: "Offerings", summary: "Delete an offering", security: SECRET, source: R.offerings, scopes: ["project_configuration:offerings:read_write"], parameters: [project, pathParam("offering_id", "Offering id.")],
-      description: "Deletes its packages and clears customer overrides that point to it.", responses: { 200: del("offering"), ...E(404) } }),
+      description: "Deletes its packages and clears customer overrides that point to it. An offering that a draft, running or paused experiment uses (as a variant's offering or a placement offering) answers 409 and names the experiment: stop the experiment or pick another offering in it first. A stopped experiment keeps its results and shows the deleted offering's id.",
+      responses: { 200: del("offering"), ...E(404, 409) } }),
+  },
+  [`${P}/offerings/{offering_id}/actions/duplicate`]: {
+    post: op({ id: "duplicateOffering", tag: "Offerings", summary: "Duplicate an offering", security: SECRET, source: R.offerings, extension: true, scopes: ["project_configuration:offerings:read_write"], parameters: [project, pathParam("offering_id", "The offering to copy.")],
+      description: `Copies an offering with its packages, for an experiment's treatment. The copy is never current. Without \`packages\` the copy is exact: every package in order, with the same products. With \`packages\`, the list sets which packages are copied and in what order, and a package's \`products\` replaces its products (to test another price, period, trial or introductory offer). \`copy_paywall\` copies the offering's paywall, draft and published content, onto the copy.
+
+Answers 400 when a \`source_package_id\` is not a package of this offering or repeats, a product is not in the project or repeats in a package, or \`copy_paywall\` is true and the offering has no paywall. Answers 409 when the \`lookup_key\` is taken, or two products of the same app in a package have overlapping \`eligibility_criteria\`.`,
+      requestBody: body(obj({
+        lookup_key: str(undefined, { maxLength: 200 }), display_name: str(undefined, { maxLength: 1500 }), metadata: { type: ["object", "null"], description: "Default: the source offering's metadata." },
+        packages: arr(obj({
+          source_package_id: str("A package of the source offering (pkge...)."),
+          products: arr(obj({ product_id: str(), eligibility_criteria: en(["all", "google_sdk_lt_6", "google_sdk_ge_6"]) }, ["product_id", "eligibility_criteria"]), { maxItems: 50, description: "Replaces the package's products. Omitted: the source package's products." }),
+        }, ["source_package_id"]), { maxItems: 50, description: "Packages to copy, in the new order. Omitted: every package, as it is." }),
+        copy_paywall: bool("Also copy the offering's paywall onto the copy."),
+      }, ["lookup_key", "display_name"]), { lookup_key: "default_price", display_name: "Standard plans (price point)", packages: [{ source_package_id: "pkge1a2b3c4d5e", products: [{ product_id: "prod9k8j7h6g5f", eligibility_criteria: "all" }] }, { source_package_id: "pkge6f7g8h9i0j" }] }),
+      responses: { 201: ok("The copy, with its packages and their products expanded.", ref("Offering")), ...v2Errors(400, 401, 403, 404, 409) } }),
   },
   ...archive("Offerings", "Offering", "offering", R.offerings, ["project_configuration:offerings:read_write"]),
   [`${P}/offerings/{offering_id}/actions/unarchive`]: {
@@ -376,11 +397,11 @@ With \`invite_token\` (from an invite link), the account joins the inviting proj
   "/auth/logout": { post: op({ id: "logout", tag: "Dashboard auth", summary: "Sign out", security: SESSION, source: R.auth, extension: true, responses: { 200: ok("Signed out.", obj({ ok: bool() }), { ok: true }) } }) },
   "/auth/me": {
     get: op({ id: "me", tag: "Dashboard auth", summary: "The signed-in user and their projects", security: SESSION, source: R.auth, extension: true,
-      responses: { 200: ok("The user.", obj({ user: accountUser, account: obj({ edition: en(["cloud", "self-hosted"]), plan: str("The account plan (`free` on RevenueDot Cloud)."), billing_ready: bool("RevenueDot Cloud: billing is switched on, so the dashboard links the Billing page. Always false on a self-hosted server."), billing_status: nstr("RevenueDot Cloud: `none`, `active`, `past_due`, `unpaid` or `canceled`. Null on a self-hosted server."), email_verification_required: bool("True on RevenueDot Cloud until the user confirms their email. Until then they cannot invite people or create secret API keys. Always false on a self-hosted server.") }), projects: arr({ type: "object" }) }),
+      responses: { 200: ok("The user.", obj({ user: accountUser, account: obj({ edition: en(["cloud", "self-hosted"]), plan: str("The account plan (`free` on RevenueDot Cloud)."), billing_ready: bool("RevenueDot Cloud: billing is switched on, so the dashboard links the Billing page. Always false on a self-hosted server."), billing_status: nstr("RevenueDot Cloud: `none`, `active`, `past_due`, `unpaid` or `canceled`. Null on a self-hosted server."), email_verification_required: bool("True on RevenueDot Cloud until the user confirms their email. Until then they cannot invite people or create secret API keys. Always false on a self-hosted server."), features: obj({ benchmarks: bool("Benchmarks exist on this server (RevenueDot Cloud)."), insights_digest: bool("This server emails the weekly growth insights digest.") }) }), projects: arr({ type: "object" }) }),
         { user: { id: "usr_8k2m4q", email: "dev@example.com", name: "Dana", email_verified: true, alert_emails: true }, account: { edition: "cloud", plan: "free", billing_ready: false, billing_status: "none", email_verification_required: false }, projects: [] }), 401: authErr } }),
     post: op({ id: "updateMe", tag: "Dashboard auth", summary: "Update account settings", security: SESSION, source: R.auth, extension: true,
-      description: "The display name, whether the user gets [alert emails](../docs/guides/alerts.md) for projects they administer, and the [Interface and Date and region preferences](../docs/guides/account-settings.md). Send only the fields to change. A null or empty `name` clears it.",
-      requestBody: body(obj({ name: nstr(undefined, { maxLength: 100 }), alert_emails: bool("False stops alert emails for every project."), theme: en(["system", "light", "dark"]), tint: nstr("#RRGGBB, or null for the default gold."), week_start: int(undefined, { minimum: 0, maximum: 6 }), display_currency: en(["USD", "EUR", "GBP", "AUD", "CAD", "JPY", "BRL", "KRW", "CNY", "MXN", "SEK", "PLN", "NZD", "CHF"]) }), { alert_emails: false, week_start: 0, display_currency: "EUR" }),
+      description: "The display name, whether the user gets [alert emails](../docs/guides/alerts.md) and the weekly [growth insights digest](../docs/guides/growth-insights.md) for projects they administer, and the [Interface and Date and region preferences](../docs/guides/account-settings.md). Send only the fields to change. A null or empty `name` clears it.",
+      requestBody: body(obj({ name: nstr(undefined, { maxLength: 100 }), alert_emails: bool("False stops alert emails for every project."), insights_emails: bool("False stops the weekly growth insights digest for every project."), theme: en(["system", "light", "dark"]), tint: nstr("#RRGGBB, or null for the default gold."), week_start: int(undefined, { minimum: 0, maximum: 6 }), display_currency: en(["USD", "EUR", "GBP", "AUD", "CAD", "JPY", "BRL", "KRW", "CNY", "MXN", "SEK", "PLN", "NZD", "CHF"]) }), { alert_emails: false, week_start: 0, display_currency: "EUR" }),
       responses: { 200: ok("The updated user.", obj({ user: accountUser }), { user: { id: "usr_8k2m4q", email: "dev@example.com", name: "Dana", email_verified: true, alert_emails: false } }), 400: ok("Invalid field.", errBody), 401: authErr } }),
   },
   "/auth/password/forgot": {
@@ -462,20 +483,36 @@ On RevenueDot Cloud the admin needs a confirmed email address. A project can sen
   },
   [`${P}/apps/{app_id}/store_settings`]: {
     get: op({ id: "getStoreSettings", tag: "Store setup", summary: "Store setup state of an app", security: SECRET, source: R.setup, extension: true, scopes: ["project_configuration:apps:read"], parameters: [project, param("AppId")],
-      description: "The notification URL to paste into App Store Connect, Pub/Sub, the Amazon Appstore Console or Stripe, the notification status, the forwarding URL and which credentials are set. Never a secret.",
+      description: "The notification URL to paste into App Store Connect, Pub/Sub, the Amazon Appstore Console, Stripe, Paddle, the Roku developer dashboard or Samsung Seller Portal, the notification status, the forwarding URL and which credentials are set. Never a secret.",
       responses: { 200: ok("The settings.", ref("StoreSettings")), ...E(404) } }),
   },
+  [`${P}/apps/{app_id}/sample_app`]: {
+    get: op({ id: "downloadSampleApp", tag: "Store setup", summary: "Download the sample app for this app", security: SECRET, source: R.setup, extension: true, scopes: ["project_configuration:apps:read"],
+      parameters: [project, param("AppId"), { name: "platform", in: "query", required: false, description: "`ios`, `android`, `flutter`, `react_native` or `web`; the app's \`sample_apps\` in store settings lists the ones offered (Test Store: all five; App Store: iOS, Flutter, React Native; Google Play: Android, Flutter, React Native; Web Billing: web). Defaults to the first.", schema: en(["ios", "android", "flutter", "react_native", "web"]) }],
+      description: "\"Test your setup with the sample app\": a zip of the matching example from [revenuedot/examples](https://github.com/revenuedot/examples) with this app's public key, this server's URL (\`api_origin\`; \`localhost\` becomes \`10.0.2.2\` for the Android emulator) and the project's first entitlement filled in. Flutter, React Native and web samples get a \`.env\`. Only public values go in. The \`X-RevenueDot-Examples-Commit\` header names the examples commit.",
+      responses: { 200: { description: "The zip.", content: { "application/zip": { schema: { type: "string", format: "binary" } } } }, ...E(400, 404) } }),
+  },
   [`${P}/apps/{app_id}/actions/verify_credentials`]: {
-    post: op({ id: "verifyCredentials", tag: "Store setup", summary: "Check store credentials with Apple, Google, Amazon or Stripe", security: SECRET, source: R.setup, extension: true, scopes: ["project_configuration:apps:read"], parameters: [project, param("AppId")],
-      description: "Makes one harmless call to the App Store Server API, the Play Developer API, Amazon's Receipt Verification Service (a made-up receipt: 496 means a wrong shared key) or Stripe (lists one subscription and one Checkout Session with the key). Values in the body are checked before you save them; missing values fall back to the saved ones. A Stripe app connected with Stripe Connect checks its connection only: Stripe values in the body answer 409.",
+    post: op({ id: "verifyCredentials", tag: "Store setup", summary: "Check store credentials with the store", security: SECRET, source: R.setup, extension: true, scopes: ["project_configuration:apps:read"], parameters: [project, param("AppId")],
+      description: "Makes one harmless call to the App Store Server API, the Play Developer API, Amazon's Receipt Verification Service (a made-up receipt: 496 means a wrong shared key), Stripe (lists one subscription and one Checkout Session with the key), Paddle (event types, then one product and one subscription; Paddle answers 403 for a wrong, revoked or other-environment key), Roku Pay (a made-up transaction: UNAUTHORIZED means a wrong key) or Samsung (an access token from the service account, then a made-up subscription). Values in the body are checked before you save them; missing values fall back to the saved ones. A Stripe app connected with Stripe Connect checks its connection only: Stripe values in the body answer 409.",
       requestBody: body(obj({
         app_store: obj({ bundle_id: nstr(), subscription_private_key: nstr(), subscription_key_id: nstr(), subscription_key_issuer: nstr() }),
         mac_app_store: obj({ bundle_id: nstr(), subscription_private_key: nstr(), subscription_key_id: nstr(), subscription_key_issuer: nstr() }),
         play_store: obj({ package_name: nstr(), play_service_account_credentials_json: { oneOf: [str(), { type: "object" }, { type: "null" }] } }),
         amazon: obj({ package_name: nstr(), shared_secret: nstr() }),
         stripe: obj({ stripe_secret_key: nstr(), stripe_account_id: nstr() }),
+        paddle: obj({ paddle_api_key: nstr(), paddle_is_sandbox: { type: ["boolean", "null"] } }),
+        roku: obj({ roku_api_key: nstr() }),
+        galaxy: obj({ package_name: nstr(), galaxy_service_account_id: nstr(), galaxy_service_account_private_key: nstr() }),
       }), {}, false),
       responses: { 200: ok("The result.", ref("CredentialsCheck"), { object: "credentials_check", app_id: "appugfw01uy", store: "app_store", status: "invalid", valid: false, message: "No in-app purchase key yet. Add the .p8 file, the key ID and the issuer ID.", checked_at: 1790801342700 }), ...v2Errors(400, 401, 403, 404, 409) } }),
+  },
+  [`${P}/apps/{app_id}/actions/apply_notification_settings`]: {
+    post: op({ id: "applyNotificationSettings", tag: "Store setup", summary: "Paddle: create the notification destination (Apply in Paddle)", security: SECRET, source: R.setup, extension: true, scopes: ["project_configuration:apps:read_write"], parameters: [project, param("AppId")],
+      description: "Creates a notification destination in the app's Paddle account (or updates the one it created before) that sends the subscription, transaction and adjustment events RevenueDot reads to this app's notification URL, and saves the destination's secret key, sealed. The API key needs write access to Notification settings. Only for Paddle apps (422 otherwise). See [Paddle setup](../docs/guides/paddle.md).",
+      responses: { 200: ok("The destination.", obj({ object: { type: "string", const: "notification_settings" }, app_id: str(), store: { type: "string", const: "paddle" }, notification_setting_id: str("ntfset_…"), destination: str("The notification URL Paddle now calls."), subscribed_events: arr(str()), secret_saved: bool() }),
+        { object: "notification_settings", app_id: "app4f1x9k2m", store: "paddle", notification_setting_id: "ntfset_01h8d3a0kq7m2x9c4v6b1n5p3r", destination: "https://api.revenuedot.app/v1/notifications/paddle/app4f1x9k2m", subscribed_events: ["subscription.created", "subscription.updated", "transaction.completed", "adjustment.created"], secret_saved: true }),
+        ...v2Errors(400, 401, 403, 404, 422) } }),
   },
   [`${P}/apps/{app_id}/actions/mass_extend`]: {
     post: op({ id: "massExtend", tag: "Store setup", summary: "Extend every active App Store subscriber of a product", security: SECRET, source: R.setup, extension: true, scopes: ["customer_information:subscriptions:read_write"], parameters: [project, param("AppId")],
@@ -521,7 +558,9 @@ Bodies can hold customer data, so this needs \`read_write\` (Admins and Develope
   },
   [`${P}/webhooks/{webhook_id}/deliveries/{delivery_id}/retry`]: {
     post: op({ id: "retryWebhookDelivery", tag: "Webhook deliveries", summary: "Retry a delivery now", security: SECRET, source: R.ext, extension: true, scopes: ["project_configuration:integrations:read_write"],
-      parameters: [project, pathParam("webhook_id", "Webhook id."), pathParam("delivery_id", "Delivery id.")], responses: { 200: ok("The delivery, queued.", ref("WebhookDelivery")), ...E(404) } }),
+      parameters: [project, pathParam("webhook_id", "Webhook id."), pathParam("delivery_id", "Delivery id.")],
+      description: "Queues the delivery now, also one waiting for its scheduled retry. 409 (`resource_locked_error`) while a job run is sending it.",
+      responses: { 200: ok("The delivery, queued.", ref("WebhookDelivery")), ...E(404, 409) } }),
   },
   [`${P}/events`]: {
     get: op({ id: "listEvents", tag: "Event log", summary: "Event log", security: SECRET, source: R.ext, extension: true, scopes: ["customer_information:customers:read"],

@@ -74,6 +74,19 @@ Set these in the app's `app_store` object with `POST /v2/projects/{project_id}/a
 | `allow_unsigned_receipts` | Development only: accept StoreKit 1 receipts without the In-App Purchase key |
 | `app_store_connect_api_key`, `_id`, `_issuer`, `app_store_connect_vendor_number` | A separate App Store Connect API key with the App Manager role. Used to [import your products](import-products.md) and to create products in App Store Connect (below) |
 | `shared_secret` | The legacy app-specific shared secret. Stored but not used: RevenueDot does not call Apple's deprecated verifyReceipt endpoint |
+| `small_business_program` | Your dates in Apple's Small Business Program (below). `null` removes them |
+
+## Apple Small Business Program
+Apple keeps 15% instead of 30% while your app is in the [App Store Small Business Program](https://developer.apple.com/app-store/small-business-program/). Tell RevenueDot the dates, and proceeds use 15% for every purchase and renewal made inside them.
+
+- **In the dashboard:** open the app, then **More settings → Apple Small Business Program**. Turn on **Enrolled**, set the entry date and, if you left, the exit date. **Add period** covers a second membership. **Use existing dates from …** copies the dates saved on another App Store app in the project.
+- **With the API:**
+  ```bash
+  curl -s -X POST "$B/apps/$APP_ID" -H "$H" -H "Content-Type: application/json" \
+    -d '{"app_store":{"small_business_program":{"enrolled":true,"periods":[{"entry_date":"2024-01-01","exit_date":null}]}}}'
+  ```
+  Dates are `YYYY-MM-DD` (UTC). The exit date is the first day back at 30%. Up to 10 periods; they must not overlap.
+- **What changes:** charts with revenue type **Proceeds**, metrics, exports and the REST API recompute past proceeds for the dates you enter. New webhook and integration events carry `commission_percentage` 0.15 (`takehome_percentage` 0.85). Events already sent keep their values, as in RevenueCat.
 
 ## What you can do from the server afterwards
 - **Extend a subscription** by 1 to 90 days: `POST /v2/projects/{project_id}/subscriptions/{subscription_id}/actions/extend` with `extend_by_days` and `extend_reason_code`.

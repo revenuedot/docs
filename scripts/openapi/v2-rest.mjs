@@ -109,7 +109,7 @@ What the app's store has, read with the credentials the app already has, every p
 422 \`unprocessable_entity_error\` when the credential is missing or the store refuses it (the message names the role or permission), for Amazon (it has no API that lists in-app items; add products by SKU) and the Test Store. 422 \`store_error\` with \`retryable: true\` while the store cannot be reached.`,
       responses: {
         200: ok("The store's products. `next_page` is always null: every store page has been read.", {
-          allOf: [listOf(storeListing), obj({ app_id: str(), store: en(["app_store", "mac_app_store", "play_store", "stripe"]), warnings: arr(str(), { description: "Set when a store had more products than RevenueDot reads at once (5,000)." }) }, ["app_id", "store", "warnings"])],
+          allOf: [listOf(storeListing), obj({ app_id: str(), store: en(["app_store", "mac_app_store", "play_store", "stripe", "paddle", "galaxy"]), warnings: arr(str(), { description: "Set when a store had more products than RevenueDot reads at once (5,000)." }) }, ["app_id", "store", "warnings"])],
         }, {
           object: "list", next_page: null, url: "/v2/projects/proj18pzzkao/apps/app1a2b3c4d/store_products", app_id: "app1a2b3c4d", store: "app_store", warnings: [],
           items: [

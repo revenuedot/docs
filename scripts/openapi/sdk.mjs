@@ -75,6 +75,9 @@ Every purchase, restore and \`syncPurchases()\` ends here. RevenueDot verifies t
 - **Google Play:** \`fetch_token\` is the purchase token. RevenueDot checks it with the Play Developer API and acknowledges it.
 - **Amazon Appstore:** \`fetch_token\` is the receipt id and \`store_user_id\` the Amazon user id (\`X-Platform: amazon\`). RevenueDot checks both with Amazon's Receipt Verification Service.
 - **Stripe:** from your backend, with \`X-Platform: stripe\` and the Stripe app's public key (\`strp_\`): \`fetch_token\` is a subscription id (\`sub_…\`) or a Checkout Session id (\`cs_…\`). RevenueDot reads it from Stripe with the app's restricted key. An unpaid first invoice or an open session answers 503, so post it again later.
+- **Paddle:** from your backend, with \`X-Platform: paddle\` and the Paddle app's public key (\`pdl_\`): \`fetch_token\` is a subscription id (\`sub_…\`) or a transaction id (\`txn_…\`). RevenueDot reads it from Paddle with the app's API key; a checkout that is not finished answers 503. Products are Paddle price ids (\`pri_…\`).
+- **Roku:** the Roku SDK posts \`fetch_token\` = the Roku transaction id (\`X-Platform: roku\`). RevenueDot validates it with Roku Pay's web services, which also supply the price and currency; \`X-Is-Sandbox: true\` (a sideloaded channel) records sandbox.
+- **Galaxy Store:** the Android SDK built with \`purchases-store-galaxy\` posts \`fetch_token\` = Samsung's purchase id with \`X-Platform: android\` and the Galaxy app's \`galx_\` key. RevenueDot reads the receipt from Samsung, and a subscription's state with the app's service account; \`purchased_products\` tells the SDK which items to consume.
 - **Test Store:** \`fetch_token\` is \`test_<purchase time in ms>_<id>\`. Any such token is accepted.
 
 **4xx or 5xx matters.** A 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. RevenueDot answers 5xx for its own and the store's temporary failures so the SDK keeps the purchase and retries.
@@ -97,7 +100,7 @@ With a secret key, send \`X-Platform\` so RevenueDot knows which app the receipt
   },
   "/v1/subscribers/{app_user_id}/offerings": {
     get: op({ id: "getOfferings", tag: "Offerings (SDK)", summary: "Get offerings", security: PUBLIC_OR_SECRET, source: SDK, parameters: [user],
-      description: "What `Purchases.getOfferings()` calls. Lists active offerings with the packages whose product belongs to the calling app. `current_offering_id` is the customer's override when one is set.",
+      description: "What `Purchases.getOfferings()` calls. Lists active offerings with the packages whose product belongs to the calling app. A new app user id makes the customer here, as `GET /v1/subscribers/{app_user_id}` does (the SDK sends both at once on a first launch), so the first answer already includes an experiment variant. `current_offering_id` is the customer's override when one is set. Otherwise RevenueDot resolves, in order: the experiment the customer is in (running or paused), a running experiment that enrolls them now (by priority), the first live targeting rule that matches, the project's current offering. A variant's placements overlay the rule's in `placements.offering_ids_by_placement`. See [Experiments](../docs/guides/experiments.md#what-the-sdk-receives).",
       responses: { 200: ok("Offerings.", ref("Offerings"), { current_offering_id: "default", offerings: [{ description: "Standard plans", identifier: "default", metadata: null, packages: [{ identifier: "$rc_monthly", platform_product_identifier: "pro_monthly" }, { identifier: "$rc_annual", platform_product_identifier: "pro_annual" }, { identifier: "$rc_lifetime", platform_product_identifier: "pro_lifetime" }] }] }), ...v1Errors(401) } }),
   },
   "/v1/offerings": {
@@ -124,7 +127,7 @@ When \`new_app_user_id\` exists, an anonymous-only current customer is merged in
       description: "The attributes the SDK or your server set, with when each was set. Needs a subscriber access token for this app user id (the app reads its own attributes after an [Auth](../docs/guides/auth.md) sign-in) or a secret key. An app's public key alone answers 401 with code 7224: attributes can hold an email address or a phone number. An unknown app user id answers an empty object.",
       responses: { 200: ok("The attributes.", obj({ subscriber_attributes: { type: "object", additionalProperties: obj({ value: nstr(), updated_at_ms: int() }) } }, ["subscriber_attributes"]), { subscriber_attributes: { $displayName: { value: "Ana", updated_at_ms: 1790800914000 }, plan_goal: { value: "sleep", updated_at_ms: 1790800914000 } } }), ...v1Errors(401) } }),
     post: op({ id: "postAttributes", tag: "Attributes", summary: "Set customer attributes", security: PUBLIC_OR_SECRET, source: SDK, parameters: [user],
-      description: "Saves attributes such as `$email`, `$displayName` or your own keys. A null value deletes the attribute. An invalid `$email` is refused with 7263; the other attributes are saved. `collectDeviceIdentifiers()` sends `$ip` and `$deviceVersion` as `\"true\"`: RevenueDot stores the request's IP address and the device and OS from the SDK's headers instead.",
+      description: "Saves attributes such as `$email`, `$displayName` or your own keys. A null value deletes the attribute, except attribution attributes (`$mediaSource`, `$campaign`, `$adGroup`, `$ad`, `$keyword`, `$creative`, `$appleAds*`, `$claimType`, `$conversionType`): they are write-once, so a stored value is kept and a different value or a null is ignored. Correct them with the REST API v2. An invalid `$email` is refused with 7263; the other attributes are saved. `collectDeviceIdentifiers()` sends `$ip` and `$deviceVersion` as `\"true\"`: RevenueDot stores the request's IP address and the device and OS from the SDK's headers instead.",
       requestBody: body(obj({ attributes: { type: "object", additionalProperties: obj({ value: nstr(), updated_at_ms: int() }) } }, ["attributes"]), { attributes: { $email: { value: "ana@example.com", updated_at_ms: 1790800914000 } } }),
       responses: { 200: empty("Saved."), 400: ok("Some attributes were not saved.", ref("V1Error"), { code: 7263, message: "Some subscriber attributes keys were unable to be saved.", attribute_errors: [{ key_name: "$email", message: "Email address is not a valid email." }] }), ...v1Errors(401) } }),
   },
@@ -435,6 +438,54 @@ Each event is stored once (by event id), forwarded when \`notification_forward_u
         200: ok("Handled.", obj({ status: en(["processed", "unknown_purchase", "ignored", "duplicate", "invalid"]) }), { status: "processed" }),
         400: ok("Not accepted.", ref("V1Error"), { code: 7000, message: "No signature in Stripe-Signature matches the payload. Check the webhook signing secret." }), 404: ok("Unknown app.", ref("V1Error")),
         500: ok("Temporary failure; Stripe retries.", ref("V1Error")),
+      } }),
+  },
+
+  "/v1/notifications/paddle/{app_id}": {
+    post: op({ id: "paddleNotification", tag: "Store notifications", summary: "Paddle notifications", security: NONE, source: "stores/paddle/notifications.ts", parameters: [param("AppId"), { name: "Paddle-Signature", in: "header", required: true, schema: str(), description: "`ts=<unix seconds>;h1=<hex HMAC-SHA256 of \"<ts>:<body>\">`, checked with the destination's secret key (`paddle_webhook_secret`) within 5 minutes. Several `h1` values are accepted while a key rotates." }],
+      description: `
+A notification destination in your Paddle account (Apply in Paddle creates it: \`POST /v2/projects/{project_id}/apps/{app_id}/actions/apply_notification_settings\`) with the subscription, transaction and adjustment events.
+Each event is stored once (by \`event_id\`), forwarded when \`notification_forward_url\` is set, and applied by reading the subscription or transaction from Paddle, so delivery order does not matter. Approved full refunds and chargebacks (\`adjustment.created\`, \`adjustment.updated\`) mark the paid period refunded. Simulated events (\`ntfsimevt_…\`) count as received and change nothing. Paddle counts only 200 as delivered.
+
+- **200:** handled, a duplicate, simulated, ignored, an unknown purchase (applied only with \`track_new_purchases\`) or an object Paddle no longer has.
+- **400:** no secret key saved, a missing or wrong \`Paddle-Signature\`, or not a Paddle event. **404:** no Paddle app with this id.
+- **500:** a temporary failure; Paddle retries. See [Paddle setup](../docs/guides/paddle.md).`,
+      requestBody: body(obj({ event_id: str("evt_…"), event_type: str(), occurred_at: str(), notification_id: str("ntf_…"), data: { type: "object" } }, ["event_id", "event_type", "data"])),
+      responses: {
+        200: ok("Handled.", obj({ status: en(["processed", "unknown_purchase", "ignored", "duplicate", "invalid", "simulated"]) }), { status: "processed" }),
+        400: ok("Not accepted.", ref("V1Error"), { code: 7000, message: "No signature in Paddle-Signature matches the payload. Check the notification destination's secret key." }), 404: ok("Unknown app.", ref("V1Error")),
+        500: ok("Temporary failure; Paddle retries.", ref("V1Error")),
+      } }),
+  },
+  "/v1/notifications/roku/{app_id}": {
+    post: op({ id: "rokuNotification", tag: "Store notifications", summary: "Roku Pay push notifications", security: NONE, source: "stores/roku/notifications.ts", parameters: [param("AppId")],
+      description: `
+Set this URL as the push notification URL under Roku Pay web services in the Roku developer dashboard. Roku has one URL per developer account: a push for another channel goes to the project's Roku app with that \`roku_channel_id\`.
+The body is a JWS (RS256) signed with a key from Roku's published key set (the test key set for Roku's test endpoint), with issuer \`Roku, Inc. urn:roku:apps:partner-service.roku.com\` and \`x-Roku-message-type: roku.rpay.push\`; the message is base64 JSON in \`x-Roku-message\`. Each push is stored once (by \`x-Roku-message-key\`), forwarded when \`notification_forward_url\` is set, and applied by validating its transaction with Roku again.
+
+- **200:** handled; the body is the push's \`responseKey\`.
+- **400:** not a signed Roku push (bad signature, unknown key, another issuer or message type). **404:** no Roku app with this id.
+- **500:** a temporary failure; Roku retries for 36 hours. See [Roku setup](../docs/guides/roku.md).`,
+      requestBody: { required: true, content: { "text/plain": { schema: str("A compact JWS.") } } },
+      responses: {
+        200: { description: "Handled: the push's responseKey.", content: { "text/plain": { schema: str() } } },
+        400: ok("Not accepted.", ref("V1Error"), { code: 7000, message: "The notification is not signed with a Roku key." }), 404: ok("Unknown app.", ref("V1Error")),
+        500: ok("Temporary failure; Roku retries.", ref("V1Error")),
+      } }),
+  },
+  "/v1/notifications/galaxy/{app_id}": {
+    post: op({ id: "galaxyNotification", tag: "Store notifications", summary: "Galaxy Store server notifications", security: NONE, source: "stores/galaxy/notifications.ts", parameters: [param("AppId")],
+      description: `
+Set this URL as the Instant Server Notification URL in Samsung Seller Portal. The body is a JWT (RS256) from \`iap.samsungapps.com\` whose \`aud\` names the app's package. With the app's \`galaxy_iap_public_key\` saved its signature must match; without it nothing in the body is trusted. Either way the purchase it names is read again from Samsung (receipt and subscription APIs) and applied. \`TEST\` counts as received.
+
+- **200:** handled, a duplicate, ignored or an unknown purchase (applied only with \`track_new_purchases\`). \`verified\` says whether the signature was checked.
+- **400:** not a Samsung notification, a signature that does not match, or another package. **404:** no Galaxy Store app with this id.
+- **500:** a temporary failure. See [Galaxy Store setup](../docs/guides/galaxy-store.md).`,
+      requestBody: { required: true, content: { "text/plain": { schema: str("A compact JWT.") } } },
+      responses: {
+        200: ok("Handled.", obj({ status: en(["processed", "unknown_purchase", "ignored", "duplicate", "invalid"]), verified: bool() }), { status: "processed", verified: true }),
+        400: ok("Not accepted.", ref("V1Error"), { code: 7000, message: "The notification's signature does not match the IAP public key." }), 404: ok("Unknown app.", ref("V1Error")),
+        500: ok("Temporary failure.", ref("V1Error")),
       } }),
   },
 

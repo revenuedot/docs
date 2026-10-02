@@ -48,7 +48,7 @@ curl -s -X POST "$B/packages/$PACKAGE_ID/actions/attach_products" -H "$H" -H "Co
 **Paywalls, targeting and experiments** also change what customers see without an app update:
 - **Paywalls:** build a paywall in the dashboard from a template, in the visual editor or with AI, and publish it to an offering. RevenueDot sends it in the offerings response and in remote config, and RevenueCatUI's `PaywallView` renders it. An offering has at most one paywall. See [Paywalls](../guides/paywalls.md).
 - **Targeting:** an audience is a set of conditions such as country, platform, app version or active entitlements. A targeting rule gives that audience its own current offering and its own offerings for placements, which the app reads with `offerings.current` and `currentOffering(forPlacement:)`. See [Targeting and experiments](../guides/targeting-and-experiments.md).
-- **Experiments:** an experiment splits customers between two offerings, keeps each customer in the same variant, and reports conversions, revenue and the chance that the treatment converts better. See [Targeting and experiments](../guides/targeting-and-experiments.md#experiments).
+- **Experiments:** an experiment splits customers between two to four offerings (each with its own placement offerings), keeps each customer in the same variant, and reports conversion, revenue and retention per variant with the chance that each treatment beats the control. See [Experiments](../guides/experiments.md).
 
 An offering assigned to one customer through the API wins over targeting rules and experiments.
 
@@ -56,5 +56,6 @@ An offering assigned to one customer through the API wins over targeting rules a
 - [Products and entitlements](products-and-entitlements.md)
 - [Paywalls](../guides/paywalls.md)
 - [Targeting and experiments](../guides/targeting-and-experiments.md)
+- [Experiments](../guides/experiments.md)
 - [REST API v2: offerings and packages](../../api/rest-v2.md)
 - [SDK endpoints: offerings](../../api/sdk-endpoints.md)

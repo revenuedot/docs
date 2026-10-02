@@ -32,7 +32,7 @@ RevenueDot answers errors in the format each API's clients already parse: SDK en
 | 7234 | INVALID_APPLE_SUBSCRIPTION_KEY | 400 or 500 | A StoreKit 1 receipt arrived for an App Store app without an in-app purchase key, or the key is incomplete (500, so the SDK retries once you add the key). A promotional offer cannot be signed without the key (400; the SDK reports `invalidAppleSubscriptionKeyError` for that offer). |
 | 7259 | NOT_FOUND | 404 | The customer, entitlement, offering or subscription does not exist. |
 | 7263 | INVALID_SUBSCRIBER_ATTRIBUTES | 400 | Some attributes were not saved; `attribute_errors` lists them. |
-| 7662 | UNSUPPORTED_RECEIPT | 400 | Receipts for this app's store are not supported yet (Web Billing, Paddle, Roku), and the Android SDK's Amazon receipt lookup with a key that is not an Amazon app's. |
+| 7662 | UNSUPPORTED_RECEIPT | 400 | Receipts for this app's store are not supported yet (Web Billing), and the Android SDK's Amazon receipt lookup with a key that is not an Amazon app's. |
 | 7849 | INVALID_WEB_REDEMPTION_TOKEN | 400 | A web purchase redemption token is unknown, malformed or from another project. The SDKs return the `invalidToken` result. |
 | 7852 | PURCHASE_BELONGS_TO_OTHER_USER | 400 | Another customer already redeemed this web purchase. The SDKs return `purchaseBelongsToOtherUser`. |
 | 7853 | EXPIRED_WEB_REDEMPTION_TOKEN | 400 | The redemption link expired. `purchase_redemption_error_info.obfuscated_email` names where a new link was emailed. The SDKs return `expired`. |
@@ -111,7 +111,7 @@ RevenueDot failed (500, `retryable: true`). Retry with backoff.
 
 ### resource_locked_error
 
-Reserved for RevenueCat compatibility. RevenueDot does not send it today.
+The object is busy, or changed while the request ran (409): a commit of the same product file or of another file of the same app, a run of the same data export, or a webhook delivery being sent (`retryable: true`; wait for it to finish, then try again), or an experiment whose status another request changed (reload it first).
 
 <a id="unprocessable-entity-error"></a>
 
@@ -123,7 +123,7 @@ The request is valid but not possible in this state or for this store (422), for
 
 ### invalid_request
 
-The body is not valid JSON (400), or a package would get two products of one app with overlapping eligibility (409).
+The body is not valid JSON (400); a package would get two products of one app with overlapping eligibility (409); or a product file is not in a state that allows the action, such as committing a file with errors (409).
 
 <a id="entity-references-archived-entities"></a>
 

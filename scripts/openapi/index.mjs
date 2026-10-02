@@ -6,7 +6,7 @@ import { sdkPaths } from "./sdk.mjs";
 import { extensionPaths, v2Paths } from "./v2.mjs";
 import { v2MorePaths } from "./v2-more.mjs";
 import { paywallPaths } from "./paywalls.mjs";
-import { targetingPaths } from "./targeting.mjs";
+import { targetingPaths, targetingSchemas } from "./targeting.mjs";
 import { chartPaths } from "./charts.mjs";
 import { integrationPaths } from "./integrations.mjs";
 import { webhooks } from "./webhooks.mjs";
@@ -20,6 +20,8 @@ import { recoveryPaths } from "./recovery.mjs";
 import { enterprisePaths, enterpriseSchemas } from "./enterprise.mjs";
 import { movePaths } from "./moves.mjs";
 import { accountPaths } from "./account.mjs";
+import { productEditorPaths, productEditorSchemas } from "./product-editor.mjs";
+import { insightsPaths } from "./insights.mjs";
 
 /**
  * Tags in reading order. `x-page` is the generated Markdown page (api/<page>.md) the tag's operations go to.
@@ -55,7 +57,7 @@ export const TAGS = [
   ["In-app currencies", "rest-v2", "Currencies your app sells or rewards, their product grants and each customer's balance."],
   ["Audit log", "rest-v2", "Who changed what in a project."],
   ["Targeting", "rest-v2", "Audiences, and rules that pick the offering and placement offerings for each customer."],
-  ["Experiments", "rest-v2", "Offering A/B tests and their results."],
+  ["Experiments", "rest-v2", "Offering experiments: a control and up to three treatments, each with an offering and placement offerings; enrollment of new or new and existing customers, a saved or custom audience, a share, and a priority order between experiments; results with 95% intervals, lift and the chance to beat the control for 18 metrics, a daily series, CSV export and a 7-day audience estimate. See [Experiments](../docs/guides/experiments.md)."],
   ["Paywalls", "rest-v2", "Paywall components the SDK renders, their publishing and versions, and the images and fonts they use."],
   ["Webhook integrations", "rest-v2", "Where events are sent."],
   ["Discounts", "rest-v2", "Web discounts for RevenueDot's web checkout, with RevenueCat's v2 discount operations and shapes. Each discount is a Stripe coupon and each code a Stripe promotion code in your own Stripe account. See [Web discounts](../docs/guides/web-discounts.md)."],
@@ -70,6 +72,7 @@ export const TAGS = [
   ["Verified Metrics", "extensions", "A public page with a project's aggregate production numbers, its settings, image and JSON."],
   ["Auth", "extensions", "Identity providers for Auth (Firebase, OpenID Connect), the project switch, a token tester, and signed-in identities with their balances for your backend. See [Auth](../docs/guides/auth.md)."],
   ["Store setup", "extensions", "Notification URLs, credential checks, setup health and App Store mass extensions."],
+  ["Store prices and product editor", "extensions", "Prices in every territory, periods and store states read from App Store Connect and Google Play, and the product editor: download a CSV of prices per territory, upload it after changing prices or adding products, review the check, and commit it to the store. See [Product editor](../docs/guides/product-editor.md)."],
   ["API keys", "extensions", "Secret keys for the REST API."],
   ["Webhook deliveries", "extensions", "Delivery log, manual retry and test events."],
   ["Integrations", "extensions", "Every tool of RevenueCat's integration catalogue plus BigQuery: 32 that receive events, and the AdMob, Apple Search Ads, Intercom inbox and Zendesk connections: the catalogue, connect, test, the delivery log, retry and replay. See [Integrations](../docs/guides/integrations.md)."],
@@ -93,6 +96,9 @@ export const TAGS = [
   ["Funnels", "extensions", "Multi-step web-to-app funnels: quiz, info, email, paywall and success steps, publishing, analytics and Build with AI. See [Funnels](../docs/guides/funnels.md)."],
   ["Hosted pages", "extensions", "The public pages RevenueDot serves for purchase links, funnels and redemption links, and the three calls those pages make. No API key. They live under `/pay` on the API host, at the root of `REVENUEDOT_PAY_URL` when it is a host of its own, and at the root of a verified custom domain."],
   ["RevenueDot AI", "extensions", "The in-app assistant: conversations, streaming answers, attachments (screenshots and .storekit files), @ mentions, what the assistant may do in the project, and the first-sale card. See [RevenueDot AI](../docs/guides/revenuedot-ai.md)."],
+  ["Attribution", "extensions", "Where customers came from: each customer's attribution row (media source, campaign, ad group, keyword, ad, creative, Apple Search Ads ids, partner ids) and revenue by campaign with day-0, day-7, day-30 and to-date revenue. Charts take the same dimensions as filters and segments. See [Attribution](../docs/guides/attribution.md)."],
+  ["Benchmarks", "extensions", "RevenueDot Cloud only: the project's metrics against anonymized percentiles of apps that share, by category, platform and country, and the opt-in setting. See [Benchmarks](../docs/guides/benchmarks.md)."],
+  ["Growth insights", "extensions", "3 to 5 weekly recommendations from RevenueDot AI with the numbers behind them, Refresh, and the weekly digest's one-click opt-out. See [Growth insights](../docs/guides/growth-insights.md)."],
   ["Share cards", "extensions", "Public pages and images RevenueDot makes for sharing, such as the first-sale card. No API key; the token in the URL is the only key."],
   ["OAuth for MCP clients", "extensions", "OAuth 2.1 with PKCE so MCP clients can connect to one project without copying a key."],
   ["Enterprise", "enterprise", "Whether this server runs RevenueDot Enterprise, with which licence and features. See [Enterprise](../docs/guides/enterprise.md)."],
@@ -128,9 +134,9 @@ export function buildDocument() {
       { url: "https://{host}", description: "Your self-hosted RevenueDot", variables: { host: { default: "revenuedot.example.com" } } },
     ],
     tags: tags(),
-    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...adsPaths, ...lifecyclePaths, ...webPaths, ...assistantPaths, ...recoveryPaths, ...movePaths, ...settingsPathsAll, ...extensionPaths, ...accountPaths, ...enterprisePaths },
+    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...adsPaths, ...lifecyclePaths, ...webPaths, ...assistantPaths, ...insightsPaths, ...recoveryPaths, ...movePaths, ...productEditorPaths, ...settingsPathsAll, ...extensionPaths, ...accountPaths, ...enterprisePaths },
     webhooks,
-    components: { schemas: { ...schemas, ...webSchemas, ...enterpriseSchemas }, parameters, responses, securitySchemes },
+    components: { schemas: { ...schemas, ...targetingSchemas, ...webSchemas, ...productEditorSchemas, ...enterpriseSchemas }, parameters, responses, securitySchemes },
     security: [{ secretApiKey: [] }],
     externalDocs: { description: "RevenueDot documentation", url: "https://github.com/revenuedot/docs" },
   };
