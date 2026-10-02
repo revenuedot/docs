@@ -17,7 +17,7 @@ Select **Connect with Stripe** on your Stripe app and allow RevenueDot in Stripe
 2. Pick **Live** or **Test** mode. A test-mode connection records sandbox purchases, so you can try purchase links and funnels with Stripe's test cards.
 3. Select **Connect with Stripe**, sign in to Stripe and select **Connect**. Stripe sends you back to RevenueDot.
 
-No Stripe account yet? Select **Create one through RevenueDot**: Stripe walks you through creating one, and you come back connected. Until Stripe's onboarding is finished, the app page says the account cannot take payments yet, with a button to continue in Stripe.
+No Stripe account yet? Select **Create one through RevenueDot**: Stripe walks you through creating one, and you come back connected. Until Stripe's onboarding is finished, the app page says the account cannot take payments yet, with a button to continue in Stripe. An existing account you connected that cannot take payments yet is finished in your Stripe Dashboard; the app page links to it.
 
 The page then shows **Connected with Stripe Connect** with the account (`acct_…abcd`) and the mode. **Check connection** reads your account to confirm access.
 

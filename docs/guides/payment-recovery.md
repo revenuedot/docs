@@ -18,7 +18,7 @@ RevenueDot opens a **case** the moment a subscription gets a billing issue, the 
 | Amazon | The subscription enters its grace period |
 | Test Store | The `billing_issue` scenario (sandbox) |
 
-A case is **recovered** when the same subscription renews within the recovery window (30 days by default), and **lost** when the window passes or the purchase is refunded.
+A case is **recovered** when the same subscription renews within the recovery window (30 days by default), and **lost** when the window passes or the purchase is refunded. A billing issue that is already older than the window when RevenueDot first sees it (for example in imported history) opens no case.
 
 ## Turn it on
 1. Open **Lifecycle > Payment recovery** and select **Turn on**.
@@ -45,6 +45,8 @@ RevenueDot sends at most 100 recovery emails a minute and 2,000 per project a da
 | Google Play | The Play Store page of their subscription, where Google shows **Fix payment** |
 | Amazon | Amazon's Memberships and Subscriptions page |
 | Stripe | A Stripe customer portal page to update the card, made when they click. If the portal is not set up in your Stripe account, the open invoice's payment page |
+
+A Stripe link opens the portal only while the case is open. After the case is lost, the link says it has expired.
 
 For Stripe, set up the customer portal in your Stripe Dashboard (**Settings > Billing > Customer portal**). With a restricted key, give it **Customer portal: write**; with [Connect with Stripe](stripe-connect.md) nothing else is needed.
 

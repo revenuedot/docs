@@ -2328,7 +2328,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/store_settings" -H
 
 `POST /v2/projects/{project_id}/apps/{app_id}/actions/verify_credentials` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read`
 
-Makes one harmless call to the App Store Server API, the Play Developer API, Amazon's Receipt Verification Service (a made-up receipt: 496 means a wrong shared key) or Stripe (lists one subscription and one Checkout Session with the key). Values in the body are checked before you save them; missing values fall back to the saved ones.
+Makes one harmless call to the App Store Server API, the Play Developer API, Amazon's Receipt Verification Service (a made-up receipt: 496 means a wrong shared key) or Stripe (lists one subscription and one Checkout Session with the key). Values in the body are checked before you save them; missing values fall back to the saved ones. A Stripe app connected with Stripe Connect checks its connection only: Stripe values in the body answer 409.
 
 **Path parameters**
 
@@ -2375,6 +2375,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/actions/ve
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
 
 Example 200 response:
 
