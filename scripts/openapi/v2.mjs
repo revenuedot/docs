@@ -518,7 +518,9 @@ Bodies can hold customer data, so this needs \`read_write\` (Admins and Develope
   },
   [`${P}/webhooks/{webhook_id}/deliveries/{delivery_id}/retry`]: {
     post: op({ id: "retryWebhookDelivery", tag: "Webhook deliveries", summary: "Retry a delivery now", security: SECRET, source: R.ext, extension: true, scopes: ["project_configuration:integrations:read_write"],
-      parameters: [project, pathParam("webhook_id", "Webhook id."), pathParam("delivery_id", "Delivery id.")], responses: { 200: ok("The delivery, queued.", ref("WebhookDelivery")), ...E(404) } }),
+      parameters: [project, pathParam("webhook_id", "Webhook id."), pathParam("delivery_id", "Delivery id.")],
+      description: "Queues the delivery now, also one waiting for its scheduled retry. 409 (`resource_locked_error`) while a job run is sending it.",
+      responses: { 200: ok("The delivery, queued.", ref("WebhookDelivery")), ...E(404, 409) } }),
   },
   [`${P}/events`]: {
     get: op({ id: "listEvents", tag: "Event log", summary: "Event log", security: SECRET, source: R.ext, extension: true, scopes: ["customer_information:customers:read"],

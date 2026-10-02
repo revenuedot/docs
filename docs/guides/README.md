@@ -1,6 +1,6 @@
 ---
 title: Which guide do I need?
-description: Step-by-step guides for stores, web billing, webhooks, integrations and data exports, ads, attribution, benchmarks, growth insights, refunds, retention, support, testing, your team, project settings, Auth, moving between self-host and Cloud, Cloud billing, Enterprise, and self-hosting.
+description: Step-by-step guides for stores, web billing, webhooks, integrations, ads, attribution, benchmarks, growth insights, refunds, retention, support, testing, your team, Auth, moving, billing, Enterprise, self-hosting and high availability.
 ---
 
 # Which guide do I need?
@@ -29,6 +29,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Test purchases without any store account | [Test Store](test-store.md) |
 | Test with App Store sandbox, Xcode or Google Play testers | [Sandbox testing](sandbox-testing.md) |
 | Run RevenueDot on my own servers | [Self-hosting](self-hosting.md) |
+| Run several replicas behind a load balancer, on Kubernetes with Helm, or on AWS or Google Cloud with Terraform | [High availability](high-availability.md) |
 | Upgrade my server | [Upgrades](upgrades.md) |
 | Back up and restore | [Backups](backups.md) |
 | Move a project between my own server and RevenueDot Cloud, or download everything a project owns | [Move projects and export everything](move-projects.md) |

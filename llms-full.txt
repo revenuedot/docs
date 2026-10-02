@@ -1811,7 +1811,7 @@ Releases run in that order: iOS and Android first, then hybrid-common, then purc
 # Which guide do I need?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/README.md
-Description: Step-by-step guides for stores, web billing, webhooks, integrations and data exports, ads, attribution, benchmarks, growth insights, refunds, retention, support, testing, your team, project settings, Auth, moving between self-host and Cloud, Cloud billing, Enterprise, and self-hosting.
+Description: Step-by-step guides for stores, web billing, webhooks, integrations, ads, attribution, benchmarks, growth insights, refunds, retention, support, testing, your team, Auth, moving, billing, Enterprise, self-hosting and high availability.
 
 Each guide is one task, start to finish. Connect a store first, then receive webhooks; run the server yourself with the self-hosting guides.
 
@@ -1837,6 +1837,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Test purchases without any store account | [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md) |
 | Test with App Store sandbox, Xcode or Google Play testers | [Sandbox testing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/sandbox-testing.md) |
 | Run RevenueDot on my own servers | [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md) |
+| Run several replicas behind a load balancer, on Kubernetes with Helm, or on AWS or Google Cloud with Terraform | [High availability](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/high-availability.md) |
 | Upgrade my server | [Upgrades](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/upgrades.md) |
 | Back up and restore | [Backups](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/backups.md) |
 | Move a project between my own server and RevenueDot Cloud, or download everything a project owns | [Move projects and export everything](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/move-projects.md) |
@@ -3522,7 +3523,7 @@ Open `http://localhost:8787/login` and sign up. **The first account is the owner
 | `revenuedot` container (Node.js 22) | One process: SDK API (`/v1`), REST API (`/v2`), dashboard sign-in (`/auth`), OAuth for MCP clients (`/oauth`), store notifications (`/v1/notifications/...`) and the dashboard's web app. A background job runs every 30 seconds: it records expirations, runs the daily Google Play voided-purchase check, re-checks store credentials, sends webhooks and sends [alert emails](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md) |
 | `db` container (Postgres 16) | Every customer, purchase, event and setting, in the `revenuedot-data` volume |
 
-Run **one** `revenuedot` container per database for now. The background job has no lock across processes, so two containers could send a webhook twice.
+One container is enough for most apps. To run two or more against the same database, behind a load balancer, see [High availability](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/high-availability.md): migrations and the background job take Postgres locks, so each webhook and email still goes out once. The server answers `GET /healthz` (process alive) and `GET /readyz` (database reachable, not shutting down) for health checks, and finishes requests in flight when it gets SIGTERM.
 
 ## Settings
 Edit `.env` next to `docker-compose.yml`. Store credentials (Apple keys, Google service accounts) are not environment variables: each app holds its own, set in the dashboard or with the REST API.
@@ -3648,6 +3649,126 @@ pnpm dev                                    # http://localhost:8787, restarts on
 
 ---
 
+# How do I run RevenueDot with high availability?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/high-availability.md
+Description: Run two or more replicas of the RevenueDot image behind a load balancer on one Postgres with a standby. Migrations and background work run once under Postgres locks. Helm chart, Terraform for AWS and Google Cloud.
+
+Run **two or more replicas** of the same RevenueDot image behind a load balancer, on **one managed Postgres with a standby** (Amazon RDS Multi-AZ, Cloud SQL with high availability, or Aurora). Every replica serves the SDK API, the REST API, store notifications and the dashboard, and they share all state through Postgres, so any replica can answer any request. Losing a replica, a node or a whole availability zone does not stop purchases, and upgrades replace one replica at a time.
+
+The server repository has three reference setups, all checked in CI and none applied for you:
+
+| Where | Setup | What it creates |
+|---|---|---|
+| Any Kubernetes (EKS, GKE, AKS, on-premises) | [Helm chart](https://github.com/revenuedot/revenuedot/tree/main/deploy/helm/revenuedot) | Deployment with autoscaling, PodDisruptionBudget, Service, Ingress, probes, a migration Job, non-root pods on a read-only filesystem |
+| AWS | [Terraform: `deploy/terraform/aws`](https://github.com/revenuedot/revenuedot/tree/main/deploy/terraform/aws) | VPC over 3 zones, RDS PostgreSQL Multi-AZ, ECS on Fargate (2 to 10 tasks), Application Load Balancer, ACM certificate, Secrets Manager, KMS, 9 CloudWatch alarms |
+| Google Cloud | [Terraform: `deploy/terraform/gcp`](https://github.com/revenuedot/revenuedot/tree/main/deploy/terraform/gcp) | Cloud Run (2 to 10 instances), Cloud SQL for PostgreSQL with regional availability and point-in-time recovery, Secret Manager, an uptime check and alert policies |
+
+There is no published image yet. Build it from the repository's `Dockerfile` and push it to your registry (`docker build -t <registry>/revenuedot:<tag> .`), then point the chart's `image.repository` or Terraform's `image` at it.
+
+## What keeps replicas from stepping on each other
+| Work | How it runs once |
+|---|---|
+| Database migrations | A replica that starts takes a Postgres advisory lock before it migrates. The first one migrates; the others wait, then find nothing to do. Or run them once before the rollout (the Helm hook Job, `node --import tsx src/migrate.node.ts`) and start replicas with `REVENUEDOT_MIGRATE=skip` |
+| The background job (expirations, Google Play voided purchases, webhooks, integrations, alert emails, win-back emails, credential checks, exports) | Every replica tries every 30 seconds; only the one that gets a Postgres advisory lock runs it, and the others skip that turn. If that replica dies, Postgres drops its lock with its connection and another replica runs the next turn |
+| Each webhook delivery | Claimed before it is sent, with a 2-minute lease, and only while no other delivery to the same webhook is being sent. Two runs never send the same delivery, and each webhook gets its deliveries one at a time, oldest first. A run claims deliveries for up to 20 seconds and sends to up to 8 webhooks in parallel |
+| Each expiration | Recorded in one transaction that marks the subscription, so it is recorded once |
+| Each alert email | Sent only by the run that changed the alert's state |
+| Sessions, rate limits, RevenueDot AI answers, OAuth codes | Kept in Postgres already |
+
+Webhooks are delivered **at least once**, as with RevenueCat: a replica killed after your endpoint answered but before the result was saved sends that delivery again 2 minutes later. Deduplicate on `event.id` ([Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md)).
+
+## Settings for several replicas
+| Variable | Default | What it does |
+|---|---|---|
+| `REVENUEDOT_PUBLIC_URL` | unset | **Required.** The address behind the load balancer, used in emails and dashboard links. Without it, a replica guesses from the last request it saw |
+| `REVENUEDOT_MIGRATE` | `auto` | `auto` migrates on start under the lock. `skip` never migrates (a separate job does) and refuses to start while the database is missing a migration, naming the command to run |
+| `REVENUEDOT_BACKGROUND_JOBS` | `on` | `off` keeps a replica to requests only |
+| `REVENUEDOT_TICK_INTERVAL_MS` | `30000` | How often each replica tries to run the background job |
+| `REVENUEDOT_SHUTDOWN_DELAY_MS` | `5000` | After SIGTERM, how long a replica keeps answering while `/readyz` says 503, so the load balancer stops sending it requests |
+| `REVENUEDOT_SHUTDOWN_TIMEOUT_MS` | `20000` | Longest wait for requests in flight and a running background job before the replica exits |
+| `DATABASE_POOL_MAX` | `10` | Postgres connections per replica (at least 2). Replicas times this must stay under the database's `max_connections` |
+| `REVENUEDOT_ARCHIVE_DIR` | `.data/archives` | Set `db` (or an S3 bucket with `REVENUEDOT_ARCHIVE_S3_*`): a folder on one replica's disk is gone when that replica is replaced. The chart and both Terraform setups set `db` |
+| `REVENUEDOT_ENCRYPTION_KEY` | unset | The same value on every replica, from your secret store. It seals integration and export credentials |
+
+Everything else is the same as a single server ([Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#settings)).
+
+## Health checks and shutdown
+- `GET /healthz` is **liveness**: 200 while the process runs. It never asks the database, so a database failover does not restart every replica.
+- `GET /readyz` is **readiness**: 200 when the database answers within 2 seconds and the replica is not shutting down, 503 otherwise. Point Kubernetes' readiness probe here. On ECS, where a failed load balancer check also replaces the task, the AWS setup checks `/healthz` instead, so a slow database does not restart every task; ECS takes a task out of the load balancer before it sends SIGTERM.
+- On **SIGTERM** (Kubernetes, ECS, `docker stop`), a replica turns `/readyz` to 503, stops its background job, waits `REVENUEDOT_SHUTDOWN_DELAY_MS`, closes its port, finishes requests in flight and any running background job, then exits 0. A background job that is running stops after the webhooks in flight; the rest waits for the next run on another replica. Keep the delay plus the timeout under your platform's grace period (30 seconds on Kubernetes and in the AWS setup; Cloud Run allows 10, so the Google Cloud setup uses 0 and 8).
+
+## Kubernetes with Helm
+Create a Secret with the database URL and one with the server's secrets, then install the chart from a checkout of the server repository:
+
+```bash
+kubectl create namespace revenuedot
+kubectl -n revenuedot create secret generic revenuedot-db \
+  --from-literal=DATABASE_URL='postgres://revenuedot:<password>@<host>:5432/revenuedot?sslmode=require'
+kubectl -n revenuedot create secret generic revenuedot-secrets \
+  --from-literal=REVENUEDOT_ENCRYPTION_KEY="$(openssl rand -base64 32)" \
+  --from-literal=REVENUEDOT_SMTP_URL='smtps://<user>:<password>@smtp.example.com:465'
+helm install revenuedot deploy/helm/revenuedot -n revenuedot \
+  --set image.repository=<registry>/revenuedot --set image.tag=<tag> \
+  --set publicUrl=https://revenuedot.example.com \
+  --set database.existingSecret=revenuedot-db --set secrets.existingSecret=revenuedot-secrets \
+  --set ingress.enabled=true --set ingress.className=nginx \
+  --set ingress.hosts[0].host=revenuedot.example.com \
+  --set ingress.hosts[0].paths[0].path=/ --set ingress.hosts[0].paths[0].pathType=Prefix
+kubectl -n revenuedot rollout status deploy/revenuedot && helm test revenuedot -n revenuedot
+```
+
+What the chart does by default:
+- **Two to ten replicas**, scaled on CPU, spread over zones and nodes, with a PodDisruptionBudget that keeps one up during node drains and `maxUnavailable: 0` on rollouts.
+- **Migrations** in a `pre-install,pre-upgrade` hook Job when `database.existingSecret` is set (replicas then start with `REVENUEDOT_MIGRATE=skip`); otherwise each replica migrates on start under the lock. Set `migrations.mode` to `job` or `startup` to choose. Helm waits 5 minutes for the Job by default; pass `--timeout 15m` when a migration may take longer.
+- **Probes:** startup and liveness on `/healthz`, readiness on `/readyz`.
+- **Security:** uid 1000, no privilege escalation, every capability dropped, read-only root filesystem with a small `/tmp`, no service account token. `networkPolicy.enabled=true` admits traffic only on the HTTP port.
+- **Archives** in Postgres unless you set `archives.s3.bucket` (with an access key in your Secret; role credentials such as IRSA are not read yet).
+
+For ingress-nginx, add `nginx.ingress.kubernetes.io/proxy-buffering: "off"` so [RevenueDot AI](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/revenuedot-ai.md) answers stream. For a quick evaluation without a database, `--set postgresql.enabled=true` adds one Postgres pod with a volume: no failover and no backups, so never for real purchases. All values are documented in the chart's [`values.yaml`](https://github.com/revenuedot/revenuedot/blob/main/deploy/helm/revenuedot/values.yaml).
+
+## AWS with Terraform (ECS on Fargate)
+```bash
+cd deploy/terraform/aws
+cp terraform.tfvars.example terraform.tfvars   # domain_name, route53_zone_id, image, alarm_email
+terraform init && terraform plan && terraform apply
+```
+
+It creates a VPC across 3 zones (public, private and database subnets, one NAT gateway per zone), RDS PostgreSQL 16 Multi-AZ (KMS-encrypted, TLS required, 14 days of point-in-time recovery, Performance Insights, deletion protection), the ECS service (2 to 10 tasks at 1 vCPU and 2 GiB, CPU target tracking, a deployment circuit breaker that rolls back), an Application Load Balancer with HTTPS only (TLS 1.2 and 1.3, HTTP redirected) and its ACM certificate validated in Route 53, Secrets Manager entries for the database URL and the encryption key, VPC flow logs, and CloudWatch alarms for 5xx answers, p95 latency, healthy targets, running tasks, database CPU, storage, memory and connections, and failed background job runs, all sent to one SNS topic.
+
+Each task migrates on start by default. To migrate as a separate step, set `migrate_on_start = false`: tasks then refuse to start on a database missing a migration, so apply a new image in two steps: `terraform apply -target=aws_ecs_task_definition.migrate`, run the `migrate_command` output (it waits and fails if the migration failed), then `terraform apply`. Extra settings go in `environment`; extra secrets (SMTP URL, signing key, licence key, AI keys) go in `secret_arns` as Secrets Manager ARNs. Keep the Terraform state in an encrypted backend: it holds the database password and the encryption key.
+
+## Google Cloud with Terraform (Cloud Run)
+```bash
+cd deploy/terraform/gcp
+cp terraform.tfvars.example terraform.tfvars   # project_id, region, image, alert_email
+terraform init && terraform plan && terraform apply
+```
+
+It creates a VPC and private services access, Cloud SQL for PostgreSQL 16 with regional availability (a standby in a second zone, automatic failover), private IP only, TLS required, backups with point-in-time recovery, Secret Manager entries, the Cloud Run service (2 to 10 instances, CPU always allocated so the background job runs between requests, direct VPC egress), a Cloud Run job for migrations, an uptime check of `/readyz` from several regions and alert policies for failed checks, 5xx answers, latency, database CPU and disk, and failed background job runs. Set `public_url` when you map a custom domain; without it the service's `run.app` address is used.
+
+## Postgres
+- **Version 16 or later**, with a standby in another zone. Every write is in Postgres, so it is the part to make highly available; the replicas are stateless.
+- **Connections:** replicas times `DATABASE_POOL_MAX`, plus a few for migrations. Ten replicas at 10 is 100.
+- **Poolers:** connect directly, through RDS Proxy, or through PgBouncer in **session** mode. PgBouncer in transaction mode breaks the advisory locks.
+- **Failover:** RDS and Cloud SQL keep the same address. During the minute or so of a failover, requests that need the database fail with 5xx and `/readyz` turns 503; the SDKs retry receipts that got a 5xx, and replicas reconnect by themselves.
+
+## Upgrades without downtime
+Migrations run before the new version takes traffic, while the old version still serves requests. Releases keep each migration compatible with the version before it (add a column, ship, then remove the old one in a later release); the release notes say when an upgrade needs more. Then the platform replaces replicas one at a time, and each old replica drains before it exits. See [Upgrades](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/upgrades.md) for backups and rolling back.
+
+## How it is tested
+- Unit tests run two background job runs at once and check that each webhook, expiration and alert email happens once.
+- A run on a real Postgres starts **three replicas at once** on an empty database, sends 300 Test Store purchases through a load balancer that health-checks `/readyz`, stops one replica with SIGTERM in the middle (it exits in about 1.5 seconds) and starts it again, forces 40 expirations and points a second webhook at a failing endpoint. It checks each migration ran once, all 300 purchases succeeded, every one of the 340 events reached the working webhook exactly once, the failing webhook's alert email went out once, and no two background job runs overlapped ([`scripts/e2e/cluster/run.ts`](https://github.com/revenuedot/revenuedot/blob/main/scripts/e2e/cluster/run.ts)).
+- CI lints and renders the chart, validates it against Kubernetes 1.29 to 1.33, validates and lints both Terraform setups, and runs the image the way the chart does: a migration job first, then two non-root replicas on a read-only filesystem, one stopped with SIGTERM.
+
+## Related
+- [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md)
+- [Upgrades](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/upgrades.md)
+- [Backups](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/backups.md)
+- [Enterprise](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/enterprise.md)
+
+---
+
 # How do I upgrade a self-hosted RevenueDot?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/upgrades.md
@@ -3669,7 +3790,7 @@ curl -s http://localhost:8787/v1/health                                         
 - **Stores retry.** Apple and Google resend notifications that got no 2xx answer.
 - **Webhooks wait.** Pending deliveries stay in the database and go out after the restart.
 
-For no downtime at all, run the new version next to the old one against the same database only after reading the release notes, which list any breaking change and the steps it needs.
+For no downtime at all, run two or more replicas behind a load balancer and replace them one at a time: see [High availability](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/high-availability.md#upgrades-without-downtime). Read the release notes first; they list any breaking change and the steps it needs.
 
 ## If the new version does not start
 1. Read the log: `docker compose logs revenuedot --tail 100`. A failed migration names the statement.
@@ -3683,6 +3804,7 @@ For no downtime at all, run the new version next to the old one against the same
 
 ## Related
 - [Backups](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/backups.md)
+- [High availability](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/high-availability.md)
 - [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md)
 - [Going to production](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/going-to-production.md)
 
@@ -6233,6 +6355,7 @@ Organization endpoints take a dashboard session (the `rd_session` cookie from `P
 | The organization audit log | `GET /v2/organizations/{org_id}/audit_logs` |
 
 ## Related
+- [High availability](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/high-availability.md)
 - [Single sign-on](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/single-sign-on.md)
 - [SCIM](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/scim.md)
 - [Data location](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/data-location.md)
@@ -7995,7 +8118,7 @@ RevenueDot failed (500, `retryable: true`). Retry with backoff.
 
 ### resource_locked_error
 
-Reserved for RevenueCat compatibility. RevenueDot does not send it today.
+The delivery is being sent right now, so it cannot be retried yet (409, `retryable: true`). Try again in a minute.
 
 ### unprocessable_entity_error
 
@@ -21250,6 +21373,8 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID/deliveries
 
 `POST /v2/projects/{project_id}/webhooks/{webhook_id}/deliveries/{delivery_id}/retry` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
 
+Queues the delivery now, also one waiting for its scheduled retry. 409 (`resource_locked_error`) while a job run is sending it.
+
 **Path parameters**
 
 | Name | Type | Required | Description |
@@ -21270,6 +21395,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID/de
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
 ## Integrations
 
@@ -21679,7 +21805,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRAT
 
 `POST /v2/projects/{project_id}/integrations/partners/{integration_id}/deliveries/{delivery_id}/retry` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
 
-The request is built again, so keys and attributes saved since count.
+The request is built again, so keys and attributes saved since count. 409 (`resource_locked_error`) while a job run is sending it.
 
 **Path parameters**
 
@@ -21701,6 +21827,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
 ### Queue failed or skipped deliveries again
 

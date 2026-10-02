@@ -17,7 +17,7 @@ export const V2_ERROR_MEANINGS = {
   authorization_error: "The key lacks a permission, a public app key was used, or the action needs a dashboard admin (403).",
   store_error: "The App Store or Google Play refused the action, or could not be reached (`retryable: true`). Always 422.",
   server_error: "RevenueDot failed (500, `retryable: true`). Retry with backoff.",
-  resource_locked_error: "Reserved for RevenueCat compatibility. RevenueDot does not send it today.",
+  resource_locked_error: "The delivery is being sent right now, so it cannot be retried yet (409, `retryable: true`). Try again in a minute.",
   unprocessable_entity_error: "The request is valid but not possible in this state or for this store (422), for example archiving the current offering or refunding an App Store purchase.",
   invalid_request: "The body is not valid JSON (400), or a package would get two products of one app with overlapping eligibility (409).",
   entity_references_archived_entities: "The action would make an archived object current (422). Unarchive it first.",
