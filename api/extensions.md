@@ -11,7 +11,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (241)
+## Operations on this page (242)
 
 - **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects), [Update account settings](#update-account-settings), [Email a password reset link](#email-a-password-reset-link), [Check a password reset link](#check-a-password-reset-link), [Set a new password from a reset link](#set-a-new-password-from-a-reset-link), [Confirm an email address](#confirm-an-email-address), [Send a new confirmation email](#send-a-new-confirmation-email), [Look up an invite](#look-up-an-invite), [Accept an invite](#accept-an-invite)
 - **Members and invites**: [List open invites](#list-open-invites), [Invite someone by email](#invite-someone-by-email), [Resend an invite](#resend-an-invite), [Revoke an invite](#revoke-an-invite), [Change a member's role](#change-a-members-role), [Remove a member, or leave the project](#remove-a-member-or-leave-the-project)
@@ -20,7 +20,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Blocked customers**: [List blocked app user ids](#list-blocked-app-user-ids), [Block an app user id](#block-an-app-user-id), [Is this app user id blocked?](#is-this-app-user-id-blocked), [Unblock an app user id](#unblock-an-app-user-id)
 - **Verified Metrics**: [Verified Metrics page settings](#verified-metrics-page-settings), [Save Verified Metrics page settings](#save-verified-metrics-page-settings), [Whether a slug is free](#whether-a-slug-is-free), [Publish the page](#publish-the-page), [Unpublish the page](#unpublish-the-page), [The public Verified Metrics page](#the-public-verified-metrics-page), [The page's numbers as JSON](#the-pages-numbers-as-json), [The page's project icon](#the-pages-project-icon), [The page's 1200×630 link preview](#the-pages-1200630-link-preview)
 - **Auth**: [Auth on or off](#auth-on-or-off), [Turn Auth or anonymous sign-in on or off](#turn-auth-or-anonymous-sign-in-on-or-off), [List identity providers](#list-identity-providers), [Add a Firebase or OpenID Connect provider](#add-a-firebase-or-openid-connect-provider), [Get an identity provider](#get-an-identity-provider), [Update or turn off an identity provider](#update-or-turn-off-an-identity-provider), [Delete an identity provider](#delete-an-identity-provider), [Check an ID token without signing in](#check-an-id-token-without-signing-in), [List signed-in identities](#list-signed-in-identities), [Read a signed-in user's balances and entitlements by identity](#read-a-signed-in-users-balances-and-entitlements-by-identity), [Unlink an identity and sign it out](#unlink-an-identity-and-sign-it-out)
-- **Store setup**: [Store setup state of an app](#store-setup-state-of-an-app), [Check store credentials with the store](#check-store-credentials-with-the-store), [Paddle: create the notification destination (Apply in Paddle)](#paddle-create-the-notification-destination-apply-in-paddle), [Extend every active App Store subscriber of a product](#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](#status-of-a-mass-extension), [Setup health](#setup-health)
+- **Store setup**: [Store setup state of an app](#store-setup-state-of-an-app), [Download the sample app for this app](#download-the-sample-app-for-this-app), [Check store credentials with the store](#check-store-credentials-with-the-store), [Paddle: create the notification destination (Apply in Paddle)](#paddle-create-the-notification-destination-apply-in-paddle), [Extend every active App Store subscriber of a product](#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](#status-of-a-mass-extension), [Setup health](#setup-health)
 - **API keys**: [List secret keys](#list-secret-keys), [Create a secret key](#create-a-secret-key), [Delete a secret key](#delete-a-secret-key)
 - **Webhook deliveries**: [Send a TEST event to one webhook](#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](#whether-each-webhook-is-enabled), [Delivery log of a webhook](#delivery-log-of-a-webhook), [One delivery: what was sent and every attempt](#one-delivery-what-was-sent-and-every-attempt), [Retry a delivery now](#retry-a-delivery-now)
 - **Integrations**: [What each integration needs](#what-each-integration-needs), [List integrations](#list-integrations), [Connect an integration](#connect-an-integration), [Get an integration](#get-an-integration), [Update, enable or disable an integration](#update-enable-or-disable-an-integration), [Disconnect an integration](#disconnect-an-integration), [Send a TEST event to one integration](#send-a-test-event-to-one-integration), [Delivery log of an integration](#delivery-log-of-an-integration), [One delivery with every attempt](#one-delivery-with-every-attempt), [Retry a delivery now](#retry-a-delivery-now), [Queue failed or skipped deliveries again](#queue-failed-or-skipped-deliveries-again)
@@ -2320,6 +2320,39 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/store_settings" -H
 **Responses**
 
 - **200**: The settings. Returns [StoreSettings](#storesettings).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Download the sample app for this app
+
+`GET /v2/projects/{project_id}/apps/{app_id}/sample_app` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read`
+
+"Test your setup with the sample app": a zip of the matching example from [revenuedot/examples](https://github.com/revenuedot/examples) with this app's public key, this server's URL (`api_origin`; `localhost` becomes `10.0.2.2` for the Android emulator) and the project's first entitlement filled in. Flutter, React Native and web samples get a `.env`. Only public values go in. The `X-RevenueDot-Examples-Commit` header names the examples commit.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes | App id (app...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `platform` | `ios`, `android`, `flutter`, `react_native`, `web` | no | `ios`, `android`, `flutter`, `react_native` or `web`; the app's `sample_apps` in store settings lists the ones offered (Test Store: all five; App Store: iOS, Flutter, React Native; Google Play: Android, Flutter, React Native; Web Billing: web). Defaults to the first. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/sample_app" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The zip.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
@@ -10748,6 +10781,23 @@ One screen of a funnel. Every step has `id` (1-40 lower-case letters, digits, `-
 | `galaxy.service_account_id` | string or null | no |  |
 | `galaxy.configured` | boolean | no |  |
 | `galaxy.iap_public_key_configured` | boolean | no |  |
+| `small_business_program` | object or null | no | App Store, Mac App Store and Amazon apps: Apple's Small Business Program or Amazon's Small Business Accelerator Program, and the dates saved on the project's other apps of the store ("Use existing dates"). |
+| `small_business_program.program` | `app_store_small_business_program`, `amazon_small_business_accelerator` | no |  |
+| `small_business_program.rate` | number | no | Commission inside the periods: 0.15 (Apple) or 0.2 (Amazon). |
+| `small_business_program.standard_rate` | number | no | Commission outside them: 0.3. |
+| `small_business_program.enrolled` | boolean | no |  |
+| `small_business_program.periods` | array of object | no |  |
+| `small_business_program.periods[].entry_date` | string | no | YYYY-MM-DD |
+| `small_business_program.periods[].exit_date` | string or null | no | YYYY-MM-DD, exclusive; null while still enrolled. |
+| `small_business_program.other_apps` | array of object | no |  |
+| `small_business_program.other_apps[].app_id` | string | no |  |
+| `small_business_program.other_apps[].name` | string | no |  |
+| `small_business_program.other_apps[].enrolled` | boolean | no |  |
+| `small_business_program.other_apps[].periods` | array of object | no |  |
+| `sample_apps` | array of object | no | Samples GET …/sample_app can build for this app. |
+| `sample_apps[].platform` | `ios`, `android`, `flutter`, `react_native`, `web` | no |  |
+| `sample_apps[].name` | string | no |  |
+| `sample_apps[].example` | string | no | The folder in revenuedot/examples. |
 
 ### Subscription
 

@@ -338,6 +338,12 @@ export const schemas = {
     } },
     roku: { type: ["object", "null"], description: "Roku apps only.", properties: { roku_channel_id: nstr(), roku_channel_name: nstr(), configured: bool() } },
     galaxy: { type: ["object", "null"], description: "Galaxy Store apps only.", properties: { package_name: nstr(), service_account_id: nstr(), configured: bool(), iap_public_key_configured: bool() } },
+    small_business_program: { type: ["object", "null"], description: "App Store, Mac App Store and Amazon apps: Apple's Small Business Program or Amazon's Small Business Accelerator Program, and the dates saved on the project's other apps of the store (\"Use existing dates\").", properties: {
+      program: en(["app_store_small_business_program", "amazon_small_business_accelerator"]), rate: { type: "number", description: "Commission inside the periods: 0.15 (Apple) or 0.2 (Amazon)." }, standard_rate: { type: "number", description: "Commission outside them: 0.3." },
+      enrolled: bool(), periods: arr(obj({ entry_date: str("YYYY-MM-DD"), exit_date: nstr("YYYY-MM-DD, exclusive; null while still enrolled.") })),
+      other_apps: arr(obj({ app_id: str(), name: str(), enrolled: bool(), periods: arr(obj({ entry_date: str(), exit_date: nstr() })) })),
+    } },
+    sample_apps: arr(obj({ platform: en(["ios", "android", "flutter", "react_native", "web"]), name: str(), example: str("The folder in revenuedot/examples.") }), { description: "Samples GET …/sample_app can build for this app." }),
   }, ["object", "app_id", "type", "api_origin", "notification_status", "credentials"]),
   CredentialsCheck: obj({
     object: { type: "string", const: "credentials_check" }, app_id: str(), store: str(), status: en(["valid", "invalid", "unreachable"]), valid: bool(),

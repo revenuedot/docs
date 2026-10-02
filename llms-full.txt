@@ -1949,6 +1949,19 @@ Set these in the app's `app_store` object with `POST /v2/projects/{project_id}/a
 | `allow_unsigned_receipts` | Development only: accept StoreKit 1 receipts without the In-App Purchase key |
 | `app_store_connect_api_key`, `_id`, `_issuer`, `app_store_connect_vendor_number` | A separate App Store Connect API key with the App Manager role. Used to [import your products](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/import-products.md) and to create products in App Store Connect (below) |
 | `shared_secret` | The legacy app-specific shared secret. Stored but not used: RevenueDot does not call Apple's deprecated verifyReceipt endpoint |
+| `small_business_program` | Your dates in Apple's Small Business Program (below). `null` removes them |
+
+## Apple Small Business Program
+Apple keeps 15% instead of 30% while your app is in the [App Store Small Business Program](https://developer.apple.com/app-store/small-business-program/). Tell RevenueDot the dates, and proceeds use 15% for every purchase and renewal made inside them.
+
+- **In the dashboard:** open the app, then **More settings → Apple Small Business Program**. Turn on **Enrolled**, set the entry date and, if you left, the exit date. **Add period** covers a second membership. **Use existing dates from …** copies the dates saved on another App Store app in the project.
+- **With the API:**
+  ```bash
+  curl -s -X POST "$B/apps/$APP_ID" -H "$H" -H "Content-Type: application/json" \
+    -d '{"app_store":{"small_business_program":{"enrolled":true,"periods":[{"entry_date":"2024-01-01","exit_date":null}]}}}'
+  ```
+  Dates are `YYYY-MM-DD` (UTC). The exit date is the first day back at 30%. Up to 10 periods; they must not overlap.
+- **What changes:** charts with revenue type **Proceeds**, metrics, exports and the REST API recompute past proceeds for the dates you enter. New webhook and integration events carry `commission_percentage` 0.15 (`takehome_percentage` 0.85). Events already sent keep their values, as in RevenueCat.
 
 ## What you can do from the server afterwards
 - **Extend a subscription** by 1 to 90 days: `POST /v2/projects/{project_id}/subscriptions/{subscription_id}/actions/extend` with `extend_by_days` and `extend_reason_code`.
@@ -2027,6 +2040,14 @@ By default anyone who knows the URL can post to it, but RevenueDot only trusts w
      -d '{"play_store":{"pubsub_audience":"https://revenuedot.example.com/v1/notifications/google/'$APP_ID'","pubsub_service_account":"pubsub-push@your-project.iam.gserviceaccount.com"}}'
    ```
 From then on, a push without a valid Google-signed token for that audience (and that service account) gets 401.
+
+## Google Play service fee
+Proceeds use Google's [service fees](https://support.google.com/googleplay/android-developer/answer/112622) with nothing to set up:
+
+- **Subscriptions:** 15%.
+- **One-time purchases:** 15% on the app's first $1M of Google Play sales in a calendar year, then 30% for the rest of that year. Under Google's 2026 fees, a purchase above $1M by a customer who first opened the app after the fees started in their country is 25%.
+
+RevenueDot counts the $1M from the purchases it has recorded for the app, so purchases made before you moved to RevenueDot count only if you [imported](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md) them.
 
 ## What you can do from the server afterwards
 - **Refund and revoke** a subscription: `POST /v2/projects/{project_id}/subscriptions/{subscription_id}/actions/refund`.
@@ -2127,6 +2148,9 @@ Webhooks report `store: AMAZON`. Amazon has no subscription pause, and like Reve
 
 ## Prices
 RVS has no price. The price and currency the SDK posts (the marketplace's local price) are saved with the purchase and converted to USD at the purchase date's rate. Renewals that arrive by notification keep the last known price.
+
+## Small Business Accelerator Program
+Amazon keeps 20% instead of 30% while your app is in its [Small Business Accelerator Program](https://developer.amazon.com/apps-and-games/blogs/2021/06/small-business-accelerator-program). In the dashboard, open the app and use **More settings → Amazon Small Business Accelerator Program**: turn on **Enrolled** and set the entry and exit dates. With the API, send `{"amazon":{"small_business_accelerator":{"enrolled":true,"periods":[{"entry_date":"2024-01-01","exit_date":null}]}}}` to `POST /v2/projects/{project_id}/apps/{app_id}`. Proceeds for purchases inside the dates use 20%, in charts, metrics, exports and new webhook events.
 
 ## Related
 - [Android SDK guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/android.md)
@@ -3594,6 +3618,9 @@ Attach the products to your entitlement and offering like any other app's produc
 Configure the SDK with the `test_` key and your server as the proxy URL, then call `purchase` as usual. The SDK shows its Test Store dialog; choose the successful purchase. The SDK posts `fetch_token = test_<purchase time in ms>_<id>` to `POST /v1/receipts`, and RevenueDot accepts any token of that form.
 
 The Test Store works with purchases-js, React Native (including Expo Go and the web) and the native SDKs. Use `test_` keys only in development builds; ship your store keys (`appl_`, `goog_`) in releases. Servers built before 2026-09-30 sent product details the native iOS SDK could not read ("No base price found for product"); update the server if you see that.
+
+## Test your setup with the sample app
+The app page has **Test your setup with the sample app**: pick iOS (SwiftUI), Android (Jetpack Compose), Flutter, React Native (Expo) or web, and you get a zip of that app from [revenuedot/examples](https://github.com/revenuedot/examples) with this app's key, your server's URL and your first entitlement already filled in. Unzip it, follow its README, buy in a debug build, and the purchase shows up under **Customers**. App Store, Google Play and Web Billing apps offer the samples that can buy with their key. The same zip comes from `GET /v2/projects/{project_id}/apps/{app_id}/sample_app?platform=ios`. Only public values go in the zip.
 
 ## Buy with curl
 ```bash
@@ -5066,6 +5093,21 @@ SELECT pe.period, round(coalesce(sum(s.mrr) FILTER (WHERE s.kind <> 'trial'), 0)
 FROM periods pe LEFT JOIN snapshot s ON s.period = pe.period
 GROUP BY pe.period ORDER BY pe.period;
 ```
+
+## How proceeds are computed
+Proceeds are revenue minus the store's commission, worked out per transaction when the chart is read:
+
+| Store | Commission |
+|---|---|
+| App Store, Mac App Store | 30%; 15% inside the app's [Small Business Program](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md#apple-small-business-program) dates |
+| Google Play | Subscriptions 15%; one-time purchases 15% on the first $1M a year, then 30% ([details](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md#google-play-service-fee)) |
+| Amazon Appstore | 30%; 20% inside the app's [Small Business Accelerator](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md#small-business-accelerator-program) dates |
+| Galaxy Store | 30% |
+| Roku | 20% |
+| Paddle | 5% (Paddle's fee) |
+| Stripe, Web Billing, Test Store, ads | 0% |
+
+Changing program dates recomputes past proceeds here, in metrics, exports and the REST API. Webhooks and integration events already sent keep the rate they were sent with.
 
 ## Differences from RevenueCat
 
@@ -7758,7 +7800,7 @@ One RevenueDot server answers every API below on one port. The reference is gene
 | SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 74 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
 | REST API v1 | `/v1/subscribers/...` | secret key | 10 | [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md) |
 | REST API v2 | `/v2/projects/...` | secret key or dashboard session | 163 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
-| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 241 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
+| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 242 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
 | RevenueDot Enterprise | `/v2/enterprise`, `/v2/organizations/...`, `/sso/...`, `/scim/v2/...` | session, SCIM token or none | 65 | [Enterprise](https://raw.githubusercontent.com/revenuedot/docs/main/api/enterprise.md) |
 | Webhooks (sent by RevenueDot) | your URL | HMAC signature | 22 event types | [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md) |
 
@@ -12091,6 +12133,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" -H "Authorization: Bearer
 
 One app per store. `app_store` and `mac_app_store` need `bundle_id`; `play_store`, `amazon` and `galaxy` need `package_name`. The app gets a public SDK key with the store's prefix (`pdl_` for Paddle, `roku_` for Roku, `galx_` for the Galaxy Store).
 Other fields in the store object are saved as store credentials (for example `subscription_private_key`, `subscription_key_id`, `subscription_key_issuer`, `play_service_account_credentials_json`, Amazon's `shared_secret`, Stripe's `stripe_secret_key` and `stripe_webhook_secret`, Paddle's `paddle_api_key` and `paddle_webhook_secret`, Roku's `roku_api_key`, the Galaxy Store's `galaxy_service_account_id`, `galaxy_service_account_private_key` and `galaxy_iap_public_key`). Secrets are sealed and never returned. A Stripe publishable key (`pk_…`), a Paddle client-side token or a malformed signing secret is refused with 400.
+Store commission programs (RevenueDot extension, as RevenueCat's app settings): `app_store.small_business_program` and `mac_app_store.small_business_program` (Apple's Small Business Program, 15% instead of 30%) and `amazon.small_business_accelerator` (Amazon's Small Business Accelerator Program, 20% instead of 30%) take `{ "enrolled": true, "periods": [{ "entry_date": "2024-01-01", "exit_date": null }] }`: up to 10 periods, `YYYY-MM-DD`, an exit date after its entry date, no overlaps; `null` removes the program. Proceeds in charts, metrics, exports and the REST API are recomputed for the dates; webhooks and integration events already sent keep their values.
 `galaxy` is a RevenueDot extension: RevenueCat's v2 API has no Galaxy app object.
 
 **Path parameters**
@@ -18654,7 +18697,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (241)
+## Operations on this page (242)
 
 - **Dashboard auth**: [Whether sign-up is open](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-sign-up-is-open), [Create a dashboard account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-dashboard-account), [Sign in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-in), [Sign out](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out), [The signed-in user and their projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-signed-in-user-and-their-projects), [Update account settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-account-settings), [Email a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#email-a-password-reset-link), [Check a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-a-password-reset-link), [Set a new password from a reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-a-new-password-from-a-reset-link), [Confirm an email address](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#confirm-an-email-address), [Send a new confirmation email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-new-confirmation-email), [Look up an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#look-up-an-invite), [Accept an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#accept-an-invite)
 - **Members and invites**: [List open invites](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-open-invites), [Invite someone by email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#invite-someone-by-email), [Resend an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#resend-an-invite), [Revoke an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#revoke-an-invite), [Change a member's role](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-a-members-role), [Remove a member, or leave the project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#remove-a-member-or-leave-the-project)
@@ -18663,7 +18706,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Blocked customers**: [List blocked app user ids](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-blocked-app-user-ids), [Block an app user id](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#block-an-app-user-id), [Is this app user id blocked?](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#is-this-app-user-id-blocked), [Unblock an app user id](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unblock-an-app-user-id)
 - **Verified Metrics**: [Verified Metrics page settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#verified-metrics-page-settings), [Save Verified Metrics page settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#save-verified-metrics-page-settings), [Whether a slug is free](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-a-slug-is-free), [Publish the page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#publish-the-page), [Unpublish the page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unpublish-the-page), [The public Verified Metrics page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-public-verified-metrics-page), [The page's numbers as JSON](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-pages-numbers-as-json), [The page's project icon](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-pages-project-icon), [The page's 1200×630 link preview](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-pages-1200630-link-preview)
 - **Auth**: [Auth on or off](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#auth-on-or-off), [Turn Auth or anonymous sign-in on or off](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#turn-auth-or-anonymous-sign-in-on-or-off), [List identity providers](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-identity-providers), [Add a Firebase or OpenID Connect provider](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#add-a-firebase-or-openid-connect-provider), [Get an identity provider](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-an-identity-provider), [Update or turn off an identity provider](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-or-turn-off-an-identity-provider), [Delete an identity provider](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-an-identity-provider), [Check an ID token without signing in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-an-id-token-without-signing-in), [List signed-in identities](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-signed-in-identities), [Read a signed-in user's balances and entitlements by identity](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#read-a-signed-in-users-balances-and-entitlements-by-identity), [Unlink an identity and sign it out](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unlink-an-identity-and-sign-it-out)
-- **Store setup**: [Store setup state of an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#store-setup-state-of-an-app), [Check store credentials with the store](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-store-credentials-with-the-store), [Paddle: create the notification destination (Apply in Paddle)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#paddle-create-the-notification-destination-apply-in-paddle), [Extend every active App Store subscriber of a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#status-of-a-mass-extension), [Setup health](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#setup-health)
+- **Store setup**: [Store setup state of an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#store-setup-state-of-an-app), [Download the sample app for this app](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#download-the-sample-app-for-this-app), [Check store credentials with the store](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-store-credentials-with-the-store), [Paddle: create the notification destination (Apply in Paddle)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#paddle-create-the-notification-destination-apply-in-paddle), [Extend every active App Store subscriber of a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#status-of-a-mass-extension), [Setup health](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#setup-health)
 - **API keys**: [List secret keys](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-secret-keys), [Create a secret key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-secret-key), [Delete a secret key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-secret-key)
 - **Webhook deliveries**: [Send a TEST event to one webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-each-webhook-is-enabled), [Delivery log of a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delivery-log-of-a-webhook), [One delivery: what was sent and every attempt](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#one-delivery-what-was-sent-and-every-attempt), [Retry a delivery now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#retry-a-delivery-now)
 - **Integrations**: [What each integration needs](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#what-each-integration-needs), [List integrations](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-integrations), [Connect an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#connect-an-integration), [Get an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-an-integration), [Update, enable or disable an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-enable-or-disable-an-integration), [Disconnect an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#disconnect-an-integration), [Send a TEST event to one integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-test-event-to-one-integration), [Delivery log of an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delivery-log-of-an-integration), [One delivery with every attempt](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#one-delivery-with-every-attempt), [Retry a delivery now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#retry-a-delivery-now), [Queue failed or skipped deliveries again](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#queue-failed-or-skipped-deliveries-again)
@@ -20963,6 +21006,39 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/store_settings" -H
 **Responses**
 
 - **200**: The settings. Returns [StoreSettings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#storesettings).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Download the sample app for this app
+
+`GET /v2/projects/{project_id}/apps/{app_id}/sample_app` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read`
+
+"Test your setup with the sample app": a zip of the matching example from [revenuedot/examples](https://github.com/revenuedot/examples) with this app's public key, this server's URL (`api_origin`; `localhost` becomes `10.0.2.2` for the Android emulator) and the project's first entitlement filled in. Flutter, React Native and web samples get a `.env`. Only public values go in. The `X-RevenueDot-Examples-Commit` header names the examples commit.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes | App id (app...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `platform` | `ios`, `android`, `flutter`, `react_native`, `web` | no | `ios`, `android`, `flutter`, `react_native` or `web`; the app's `sample_apps` in store settings lists the ones offered (Test Store: all five; App Store: iOS, Flutter, React Native; Google Play: Android, Flutter, React Native; Web Billing: web). Defaults to the first. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/sample_app" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The zip.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
@@ -29391,6 +29467,23 @@ One screen of a funnel. Every step has `id` (1-40 lower-case letters, digits, `-
 | `galaxy.service_account_id` | string or null | no |  |
 | `galaxy.configured` | boolean | no |  |
 | `galaxy.iap_public_key_configured` | boolean | no |  |
+| `small_business_program` | object or null | no | App Store, Mac App Store and Amazon apps: Apple's Small Business Program or Amazon's Small Business Accelerator Program, and the dates saved on the project's other apps of the store ("Use existing dates"). |
+| `small_business_program.program` | `app_store_small_business_program`, `amazon_small_business_accelerator` | no |  |
+| `small_business_program.rate` | number | no | Commission inside the periods: 0.15 (Apple) or 0.2 (Amazon). |
+| `small_business_program.standard_rate` | number | no | Commission outside them: 0.3. |
+| `small_business_program.enrolled` | boolean | no |  |
+| `small_business_program.periods` | array of object | no |  |
+| `small_business_program.periods[].entry_date` | string | no | YYYY-MM-DD |
+| `small_business_program.periods[].exit_date` | string or null | no | YYYY-MM-DD, exclusive; null while still enrolled. |
+| `small_business_program.other_apps` | array of object | no |  |
+| `small_business_program.other_apps[].app_id` | string | no |  |
+| `small_business_program.other_apps[].name` | string | no |  |
+| `small_business_program.other_apps[].enrolled` | boolean | no |  |
+| `small_business_program.other_apps[].periods` | array of object | no |  |
+| `sample_apps` | array of object | no | Samples GET …/sample_app can build for this app. |
+| `sample_apps[].platform` | `ios`, `android`, `flutter`, `react_native`, `web` | no |  |
+| `sample_apps[].name` | string | no |  |
+| `sample_apps[].example` | string | no | The folder in revenuedot/examples. |
 
 ### Subscription
 

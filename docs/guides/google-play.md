@@ -62,6 +62,14 @@ By default anyone who knows the URL can post to it, but RevenueDot only trusts w
    ```
 From then on, a push without a valid Google-signed token for that audience (and that service account) gets 401.
 
+## Google Play service fee
+Proceeds use Google's [service fees](https://support.google.com/googleplay/android-developer/answer/112622) with nothing to set up:
+
+- **Subscriptions:** 15%.
+- **One-time purchases:** 15% on the app's first $1M of Google Play sales in a calendar year, then 30% for the rest of that year. Under Google's 2026 fees, a purchase above $1M by a customer who first opened the app after the fees started in their country is 25%.
+
+RevenueDot counts the $1M from the purchases it has recorded for the app, so purchases made before you moved to RevenueDot count only if you [imported](../migrate/README.md) them.
+
 ## What you can do from the server afterwards
 - **Refund and revoke** a subscription: `POST /v2/projects/{project_id}/subscriptions/{subscription_id}/actions/refund`.
 - **Cancel** (turn auto-renew off): `.../actions/cancel`.

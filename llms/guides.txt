@@ -145,6 +145,19 @@ Set these in the app's `app_store` object with `POST /v2/projects/{project_id}/a
 | `allow_unsigned_receipts` | Development only: accept StoreKit 1 receipts without the In-App Purchase key |
 | `app_store_connect_api_key`, `_id`, `_issuer`, `app_store_connect_vendor_number` | A separate App Store Connect API key with the App Manager role. Used to [import your products](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/import-products.md) and to create products in App Store Connect (below) |
 | `shared_secret` | The legacy app-specific shared secret. Stored but not used: RevenueDot does not call Apple's deprecated verifyReceipt endpoint |
+| `small_business_program` | Your dates in Apple's Small Business Program (below). `null` removes them |
+
+## Apple Small Business Program
+Apple keeps 15% instead of 30% while your app is in the [App Store Small Business Program](https://developer.apple.com/app-store/small-business-program/). Tell RevenueDot the dates, and proceeds use 15% for every purchase and renewal made inside them.
+
+- **In the dashboard:** open the app, then **More settings → Apple Small Business Program**. Turn on **Enrolled**, set the entry date and, if you left, the exit date. **Add period** covers a second membership. **Use existing dates from …** copies the dates saved on another App Store app in the project.
+- **With the API:**
+  ```bash
+  curl -s -X POST "$B/apps/$APP_ID" -H "$H" -H "Content-Type: application/json" \
+    -d '{"app_store":{"small_business_program":{"enrolled":true,"periods":[{"entry_date":"2024-01-01","exit_date":null}]}}}'
+  ```
+  Dates are `YYYY-MM-DD` (UTC). The exit date is the first day back at 30%. Up to 10 periods; they must not overlap.
+- **What changes:** charts with revenue type **Proceeds**, metrics, exports and the REST API recompute past proceeds for the dates you enter. New webhook and integration events carry `commission_percentage` 0.15 (`takehome_percentage` 0.85). Events already sent keep their values, as in RevenueCat.
 
 ## What you can do from the server afterwards
 - **Extend a subscription** by 1 to 90 days: `POST /v2/projects/{project_id}/subscriptions/{subscription_id}/actions/extend` with `extend_by_days` and `extend_reason_code`.
@@ -223,6 +236,14 @@ By default anyone who knows the URL can post to it, but RevenueDot only trusts w
      -d '{"play_store":{"pubsub_audience":"https://revenuedot.example.com/v1/notifications/google/'$APP_ID'","pubsub_service_account":"pubsub-push@your-project.iam.gserviceaccount.com"}}'
    ```
 From then on, a push without a valid Google-signed token for that audience (and that service account) gets 401.
+
+## Google Play service fee
+Proceeds use Google's [service fees](https://support.google.com/googleplay/android-developer/answer/112622) with nothing to set up:
+
+- **Subscriptions:** 15%.
+- **One-time purchases:** 15% on the app's first $1M of Google Play sales in a calendar year, then 30% for the rest of that year. Under Google's 2026 fees, a purchase above $1M by a customer who first opened the app after the fees started in their country is 25%.
+
+RevenueDot counts the $1M from the purchases it has recorded for the app, so purchases made before you moved to RevenueDot count only if you [imported](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md) them.
 
 ## What you can do from the server afterwards
 - **Refund and revoke** a subscription: `POST /v2/projects/{project_id}/subscriptions/{subscription_id}/actions/refund`.
@@ -323,6 +344,9 @@ Webhooks report `store: AMAZON`. Amazon has no subscription pause, and like Reve
 
 ## Prices
 RVS has no price. The price and currency the SDK posts (the marketplace's local price) are saved with the purchase and converted to USD at the purchase date's rate. Renewals that arrive by notification keep the last known price.
+
+## Small Business Accelerator Program
+Amazon keeps 20% instead of 30% while your app is in its [Small Business Accelerator Program](https://developer.amazon.com/apps-and-games/blogs/2021/06/small-business-accelerator-program). In the dashboard, open the app and use **More settings → Amazon Small Business Accelerator Program**: turn on **Enrolled** and set the entry and exit dates. With the API, send `{"amazon":{"small_business_accelerator":{"enrolled":true,"periods":[{"entry_date":"2024-01-01","exit_date":null}]}}}` to `POST /v2/projects/{project_id}/apps/{app_id}`. Proceeds for purchases inside the dates use 20%, in charts, metrics, exports and new webhook events.
 
 ## Related
 - [Android SDK guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/android.md)
@@ -1790,6 +1814,9 @@ Attach the products to your entitlement and offering like any other app's produc
 Configure the SDK with the `test_` key and your server as the proxy URL, then call `purchase` as usual. The SDK shows its Test Store dialog; choose the successful purchase. The SDK posts `fetch_token = test_<purchase time in ms>_<id>` to `POST /v1/receipts`, and RevenueDot accepts any token of that form.
 
 The Test Store works with purchases-js, React Native (including Expo Go and the web) and the native SDKs. Use `test_` keys only in development builds; ship your store keys (`appl_`, `goog_`) in releases. Servers built before 2026-09-30 sent product details the native iOS SDK could not read ("No base price found for product"); update the server if you see that.
+
+## Test your setup with the sample app
+The app page has **Test your setup with the sample app**: pick iOS (SwiftUI), Android (Jetpack Compose), Flutter, React Native (Expo) or web, and you get a zip of that app from [revenuedot/examples](https://github.com/revenuedot/examples) with this app's key, your server's URL and your first entitlement already filled in. Unzip it, follow its README, buy in a debug build, and the purchase shows up under **Customers**. App Store, Google Play and Web Billing apps offer the samples that can buy with their key. The same zip comes from `GET /v2/projects/{project_id}/apps/{app_id}/sample_app?platform=ios`. Only public values go in the zip.
 
 ## Buy with curl
 ```bash
@@ -3262,6 +3289,21 @@ SELECT pe.period, round(coalesce(sum(s.mrr) FILTER (WHERE s.kind <> 'trial'), 0)
 FROM periods pe LEFT JOIN snapshot s ON s.period = pe.period
 GROUP BY pe.period ORDER BY pe.period;
 ```
+
+## How proceeds are computed
+Proceeds are revenue minus the store's commission, worked out per transaction when the chart is read:
+
+| Store | Commission |
+|---|---|
+| App Store, Mac App Store | 30%; 15% inside the app's [Small Business Program](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md#apple-small-business-program) dates |
+| Google Play | Subscriptions 15%; one-time purchases 15% on the first $1M a year, then 30% ([details](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md#google-play-service-fee)) |
+| Amazon Appstore | 30%; 20% inside the app's [Small Business Accelerator](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md#small-business-accelerator-program) dates |
+| Galaxy Store | 30% |
+| Roku | 20% |
+| Paddle | 5% (Paddle's fee) |
+| Stripe, Web Billing, Test Store, ads | 0% |
+
+Changing program dates recomputes past proceeds here, in metrics, exports and the REST API. Webhooks and integration events already sent keep the rate they were sent with.
 
 ## Differences from RevenueCat
 
