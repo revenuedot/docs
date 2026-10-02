@@ -1,14 +1,14 @@
 // RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
 // This file: REST API v2 (RevenueCat-compatible paths) and RevenueDot's v2 extensions in the OpenAPI document.
 // Docs: https://revenuedot.app/docs/api/rest-v2   Migrate from RevenueCat: https://revenuedot.app/docs/migrate
-import { NONE, SECRET, SESSION, arr, body, bool, en, int, listOf, ms, nstr, num, obj, ok, op, param, ref, str, v2Errors } from "./common.mjs";
+import { NONE, SECRET, SESSION, arr, body, bool, en, int, listOf, ms, nint, nms, nstr, num, obj, ok, op, param, ref, str, v2Errors } from "./common.mjs";
 
 const P = "/v2/projects/{project_id}";
 const project = param("ProjectId");
 const page = [param("Limit"), param("StartingAfter")];
 const pathParam = (name, description) => ({ name, in: "path", required: true, schema: str(), description });
 const expand = (values, description) => ({ name: "expand", in: "query", schema: arr(en(values)), style: "form", explode: true, description });
-const testStorePrice = { type: ["object", "null"], required: ["amount_micros", "currency"], properties: { amount_micros: int("Price in micros: 9.99 is 9990000."), currency: str("ISO 4217 code such as USD or EUR.") },
+const testStorePrice = { type: ["object", "null"], required: ["amount_micros", "currency"], properties: { amount_micros: int("Price in micros: 9.99 is 9990000."), currency: str("ISO 4217 code such as USD or EUR. A code with no exchange rate to USD is refused (its purchases would record no revenue).") },
   description: "RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`." };
 const priceExpand = "`indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price)."
 const E = (...c) => v2Errors(401, 403, ...c);
@@ -29,7 +29,7 @@ const ReasonCode = en(["undeclared", "customer_satisfaction", "other", "service_
 const R = {
   projects: "routes/v2/projects.ts", setup: "routes/v2/setup.ts", apps: "routes/v2/apps.ts", products: "routes/v2/products.ts",
   entitlements: "routes/v2/entitlements.ts", offerings: "routes/v2/offerings.ts", customers: "routes/v2/customers.ts",
-  metrics: "routes/v2/metrics.ts", integrations: "routes/v2/integrations.ts", ext: "routes/v2/extensions.ts", import: "routes/v2/import.ts", auth: "routes/auth.ts", oauth: "routes/oauth.ts", members: "routes/v2/members.ts",
+  account: "routes/v2/account-overview.ts", metrics: "routes/v2/metrics.ts", integrations: "routes/v2/integrations.ts", ext: "routes/v2/extensions.ts", import: "routes/v2/import.ts", auth: "routes/auth.ts", oauth: "routes/oauth.ts", members: "routes/v2/members.ts",
 };
 
 const productExample = { object: "product", id: "prode0zhpfisko", store_identifier: "pro_monthly", type: "subscription", state: "active", subscription: { duration: "P1M", grace_period_duration: null, trial_duration: null }, created_at: 1790800900948, app_id: "appvnrm0a5h", display_name: "Pro monthly" };
@@ -501,6 +501,21 @@ On RevenueDot Cloud the admin needs a confirmed email address. A project can sen
       parameters: [project, pathParam("webhook_id", "Webhook id (wh_...)."), { name: "status", in: "query", schema: en(["pending", "delivered", "failed"]) }, ...page],
       description: "Newest first.", responses: { 200: list(ref("WebhookDelivery")), ...v2Errors(400, 401, 403, 404) } }),
   },
+  [`${P}/webhooks/{webhook_id}/deliveries/{delivery_id}`]: {
+    get: op({ id: "getWebhookDelivery", tag: "Webhook deliveries", summary: "One delivery: what was sent and every attempt", security: SECRET, source: R.ext, extension: true, scopes: ["project_configuration:integrations:read_write"],
+      parameters: [project, pathParam("webhook_id", "Webhook id."), pathParam("delivery_id", "Delivery id.")],
+      description: `
+The request as sent (method, URL, headers and the exact body; the Authorization value is masked) and every attempt, newest last (at most 10): when it was sent, the HTTP status, the latency, the error, the first 4,096 characters of the answer, and the signature header of that attempt. Answers and errors have the webhook's Authorization value (also the credential alone) and signing secret replaced, and anything that looks like a credential: bearer and basic credentials, passwords in URLs, token-like JSON fields and query parameters. \`curl\` repeats the request with a placeholder for Authorization.
+Bodies can hold customer data, so this needs \`read_write\` (Admins and Developers). Attempt details are kept for \`attempt_log_kept_days\` (30) days after each attempt; the delivery itself stays.`,
+      responses: { 200: ok("The delivery.", obj({
+        object: { type: "string", const: "webhook_delivery" }, id: str(), webhook_integration_id: str(), event_id: str(), event_type: str(), status: en(["pending", "delivered", "failed"]), attempts: int(),
+        next_attempt_at: nms("Next try while pending."), response_status: nint(), response_ms: nint(), last_error: nstr(), created_at: ms("Queued."),
+        request: obj({ method: str(), url: str(), headers: arr(obj({ name: str(), value: str() }, ["name", "value"])), body: str("The exact JSON body sent.") }, ["method", "url", "headers", "body"]),
+        curl: str("A cURL command that repeats the request, credentials left as placeholders."),
+        attempt_log: arr(obj({ attempted_at: ms("When it was sent."), response_status: nint(), response_ms: nint(), error: nstr(), response_body: nstr("First 4,096 characters, secrets replaced."), signature: nstr("X-RevenueCat-Webhook-Signature of this attempt.") }, ["attempted_at", "response_status", "response_ms", "error", "response_body"])),
+        attempt_log_kept_days: int("How long attempt details are kept."),
+      }, ["object", "id", "status", "attempts", "request", "curl", "attempt_log", "attempt_log_kept_days"])), ...v2Errors(401, 403, 404) } }),
+  },
   [`${P}/webhooks/{webhook_id}/deliveries/{delivery_id}/retry`]: {
     post: op({ id: "retryWebhookDelivery", tag: "Webhook deliveries", summary: "Retry a delivery now", security: SECRET, source: R.ext, extension: true, scopes: ["project_configuration:integrations:read_write"],
       parameters: [project, pathParam("webhook_id", "Webhook id."), pathParam("delivery_id", "Delivery id.")], responses: { 200: ok("The delivery, queued.", ref("WebhookDelivery")), ...E(404) } }),
@@ -538,7 +553,7 @@ Runs a purchase through the same pipeline as an SDK receipt, so events, the tran
 \`purchase\`, \`trial\`, \`trial_conversion\`, \`renewal\`, \`cancel\`, \`billing_issue\`, \`refund\`, \`expire\`. See [the Test Store guide](../docs/guides/test-store.md).`,
       requestBody: body(obj({
         app_user_id: str(undefined, { maxLength: 100 }), product_id: str("Product id or store identifier of a Test Store product."), app_id: str("Test Store app; default the project's first."),
-        price: num(undefined, { minimum: 0 }), currency: str("Three letters; default USD."), purchased_at: int("Start, epoch milliseconds. Not with offset_days."),
+        price: num("Without a price, the product's Test Store price.", { minimum: 0 }), currency: str("ISO 4217 code; default USD. A code with no exchange rate to USD is refused."), purchased_at: int("Start, epoch milliseconds. Not with offset_days."),
         presented_offering_id: str(), scenario: en(["purchase", "trial", "trial_conversion", "renewal", "cancel", "billing_issue", "refund", "expire"]),
         offset_days: num("Days ago the scenario starts (0 to 730).", { minimum: 0, maximum: 730 }), country_code: str("ISO 3166-1 alpha-2, upper case."),
       }, ["app_user_id", "product_id"]), { app_user_id: "user_renewal", product_id: "pro_monthly", scenario: "renewal", price: 9.99 }),
@@ -553,6 +568,29 @@ Runs a purchase through the same pipeline as an SDK receipt, so events, the tran
     get: op({ id: "listCustomerSummaries", tag: "Dashboard data", summary: "Dashboard rows for customers", security: SECRET, source: R.ext, extension: true, scopes: ["customer_information:customers:read"],
       parameters: [project, { name: "ids", in: "query", required: true, schema: str(), description: "Up to 100 app user ids, comma separated or repeated." }],
       description: "Revenue, entitlement names and prices per customer. Unknown ids are left out.", responses: { 200: list(ref("CustomerSummary")), ...v2Errors(400, 401, 403, 404) } }),
+  },
+  "/v2/overview": {
+    get: op({ id: "getAccountOverview", tag: "Dashboard data", summary: "Overview cards summed across your projects", security: SESSION, source: R.account, extension: true, scopes: ["charts_metrics:overview:read"],
+      description: `
+The six Overview cards (active trials, active subscriptions, MRR, revenue, new customers, active customers) summed over every project the signed-in user belongs to, as on the dashboard's Overview with "All projects" selected. Each card has \`value\` (the per-project Overview definition) and \`history\` (the daily series for \`days\`, summed per date).
+Each project is checked like a project route: a project counts only where the user's role (or an enterprise custom role) includes \`charts_metrics:overview:read\`; enforced single sign-on and an organization that deprovisioned the user leave one out. \`projects\` lists every project the user is a member of with \`included\` and, when left out, \`reason\`; a project the user was removed from is not listed at all. Dashboard sessions only: a secret key belongs to one project and gets 403.`,
+      parameters: [{ name: "environment", in: "query", schema: en(["production", "sandbox"]) }, { name: "days", in: "query", schema: int(undefined, { minimum: 1, maximum: 366, default: 28 }) },
+        { name: "project_ids", in: "query", schema: str(), description: "Only these projects (comma separated, at most 100). Ids you cannot open are ignored." }],
+      responses: { 200: ok("The summed cards.", obj({
+        object: { type: "string", const: "account_overview" }, currency: { type: "string", const: "USD" }, environment: en(["production", "sandbox"]), days: int(),
+        projects: arr(obj({ id: str(), name: str(), included: bool(), reason: str("Why the project is left out.") }, ["id", "name", "included"])),
+        metrics: arr(obj({
+          object: { type: "string", const: "overview_metric" }, id: en(["active_trials", "active_subscriptions", "mrr", "revenue", "new_customers", "active_users"]), name: str(), description: str(), unit: str(), period: str(), value: num(),
+          history: ref("MetricHistory"), last_updated_at: ms("When the numbers were computed."),
+        }, ["object", "id", "value", "history"])),
+        last_updated_at: ms("When the numbers were computed."),
+      }, ["object", "currency", "environment", "days", "projects", "metrics"])), ...v2Errors(400, 401, 403) } }),
+  },
+  "/v2/overview/transactions": {
+    get: op({ id: "listAccountTransactions", tag: "Dashboard data", summary: "Transactions across your projects", security: SESSION, source: R.account, extension: true, scopes: ["customer_information:purchases:read"],
+      description: "Every purchase, renewal, trial start, refund and refund reversal of the projects the signed-in user may read purchases in (`customer_information:purchases:read`), newest first, each with `project_id`. The list also carries `projects` with `included` and `reason`, as on `GET /v2/overview`. `starting_after` must be a transaction of an included project.",
+      parameters: [{ name: "environment", in: "query", schema: en(["production", "sandbox"]) }, { name: "project_ids", in: "query", schema: str(), description: "Only these projects (comma separated, at most 100). Ids you cannot open are ignored." }, ...page],
+      responses: { 200: list(ref("Transaction")), ...v2Errors(400, 401, 403) } }),
   },
   [`${P}/import/customers`]: {
     post: op({ id: "importCustomers", tag: "Migration import", summary: "Import customers with their purchases", security: SECRET, source: R.import, extension: true, scopes: ["customer_information:customers:read_write"], parameters: [project],

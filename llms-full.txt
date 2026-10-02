@@ -3174,6 +3174,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/webhooks" 
 - `environment`: `production`, `sandbox`, or `null` for both.
 - `event_types`: lower-case types such as `["initial_purchase","renewal"]`; empty means all except the opt-in types below.
 - `app_id`: only one app's events; `null` for all apps.
+- **See what was sent:** click a delivery on the webhook's dashboard page. The details show the request (URL, headers with Authorization masked, the exact body), every attempt with its time, HTTP status, latency and the first 4 KB of your server's answer (credentials it echoes are masked), the next retry, Retry and Copy as cURL. The API is `GET /v2/projects/{project_id}/webhooks/{webhook_id}/deliveries/{delivery_id}` (Admins and Developers). Attempt details are kept for 30 days after each attempt.
 - **Pause without deleting:** send `{"enabled":false}` to `POST /v2/projects/{project_id}/integrations/webhooks/{id}`, or use the Deliveries switch on the webhook's dashboard page. Events recorded while it is paused are not sent; queued retries resume when you turn it back on. `enabled` is a RevenueDot addition; read it with `GET /v2/projects/{project_id}/webhooks`.
 
 ## 2. What a delivery looks like
@@ -3403,7 +3404,7 @@ curl -s -X POST "$B/products" -H "$H" -H "Content-Type: application/json" \
 Attach the products to your entitlement and offering like any other app's products. The [seed script](https://github.com/revenuedot/examples/blob/main/selfhost/docker-compose/seed.sh) does all of this in one run; see the [Quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md).
 
 - **The product's `subscription.duration` is the period.** A `P1M` product expires one month after purchase. Without a duration, one month is used.
-- **The price is the product's Test Store price.** Set it in the dashboard (Edit product, Test Store price) or with `"test_store_price":{"amount_micros":9990000,"currency":"USD"}` in the create or update call. A product without one shows 0. The price the SDK posts with the purchase is recorded.
+- **The price is the product's Test Store price.** Set it in the dashboard (New product and the app page ask for it; Edit product changes it) or with `"test_store_price":{"amount_micros":9990000,"currency":"USD"}` in the create or update call. A product without one shows 0. The price the SDK posts with the purchase is recorded. Use an ISO 4217 code that has an exchange rate to USD (every App Store and Google Play currency does); other codes are refused, because their purchases would count as no revenue.
 
 ## Buy in the app
 Configure the SDK with the `test_` key and your server as the proxy URL, then call `purchase` as usual. The SDK shows its Test Store dialog; choose the successful purchase. The SDK posts `fetch_token = test_<purchase time in ms>_<id>` to `POST /v1/receipts`, and RevenueDot accepts any token of that form.
@@ -5867,7 +5868,7 @@ or, when you know the app user ID, `GET /v2/projects/{project_id}/customers/{app
 # How do I filter, save and export customer lists?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/customer-lists.md
-Description: The Customers page has built-in lists (all, active subscribers, sandbox, non-subscription, expired), saved audiences, filters from the audience condition builder, four summary cards and CSV export.
+Description: The Customers page has built-in lists (all, active subscribers, sandbox, non-subscription, expired), saved audiences, filters from the audience condition builder, sortable columns, a hide-IDs switch, four summary cards and CSV export.
 
 Open **Customers**. The rail on the left holds the lists:
 
@@ -5881,6 +5882,11 @@ Open **Customers**. The rail on the left holds the lists:
 | Your audiences | Audiences you saved here or under Targeting |
 
 Four cards sum up the list: customers, trialing subscribers, paid subscribers and total revenue (production, in USD).
+
+## Sort and hide IDs
+The list starts with the most recently seen customers, and the **Last seen** header shows that order. Select another column header to sort by it: customer (app user ID), subscription status, auto-renewal, first seen or spent. The first click puts the newest dates, the biggest spend, app user IDs from A to Z, active subscriptions and auto-renewal on first; the next click flips it. Customers with the same value keep the last-seen order. In both directions, anonymous IDs (`$RCAnonymousID:…`) come after named app user IDs, and customers without an auto-renewal value come last. The sort stays in the page address, so a shared link opens in the same order, and **Export all** uses it too. Through the API: `?sort=spent_in_usd&direction=desc`.
+
+The eye button in the Customer header hides app user IDs and emails on screen, for screen sharing and demos. Rows still open the customer. The setting is remembered in this browser.
 
 ## Filter and save
 Select **Filter** and add conditions: country, platform, app version, subscription status, entitlements, total spent, first or last seen, first purchase, last renewal, email, attribution (media source, campaign, ad group, keyword, ad, creative; the value box suggests your project's values, and Apple Search Ads campaigns match by name once [names are loaded](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/attribution.md#name-your-apple-search-ads-campaigns)) or any custom attribute. Conditions in a group must all match; groups are alternatives. **Search** matches part of an app user ID or email.
@@ -7752,7 +7758,7 @@ One RevenueDot server answers every API below on one port. The reference is gene
 | SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 71 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
 | REST API v1 | `/v1/subscribers/...` | secret key | 10 | [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md) |
 | REST API v2 | `/v2/projects/...` | secret key or dashboard session | 163 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
-| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 245 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
+| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 249 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
 | RevenueDot Enterprise | `/v2/enterprise`, `/v2/organizations/...`, `/sso/...`, `/scim/v2/...` | session, SCIM token or none | 65 | [Enterprise](https://raw.githubusercontent.com/revenuedot/docs/main/api/enterprise.md) |
 | Webhooks (sent by RevenueDot) | your URL | HMAC signature | 22 event types | [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md) |
 
@@ -12434,7 +12440,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products" -H "Authorization: Be
 | `subscription.duration` | string or null | no | ISO 8601 period such as P1W, P1M, P1Y or P3D. |
 | `test_store_price` | object or null | no | RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`. |
 | `test_store_price.amount_micros` | integer | yes | Price in micros: 9.99 is 9990000. |
-| `test_store_price.currency` | string | yes | ISO 4217 code such as USD or EUR. |
+| `test_store_price.currency` | string | yes | ISO 4217 code such as USD or EUR. A code with no exchange rate to USD is refused (its purchases would record no revenue). |
 
 **Example request**
 
@@ -12551,7 +12557,7 @@ RevenueDot also lets you correct `type` and `subscription.duration` (null clears
 | `subscription.duration` | string or null | no |  |
 | `test_store_price` | object or null | no | RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`. |
 | `test_store_price.amount_micros` | integer | yes | Price in micros: 9.99 is 9990000. |
-| `test_store_price.currency` | string | yes | ISO 4217 code such as USD or EUR. |
+| `test_store_price.currency` | string | yes | ISO 4217 code such as USD or EUR. A code with no exchange rate to USD is refused (its purchases would record no revenue). |
 
 **Example request**
 
@@ -18514,7 +18520,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (245)
+## Operations on this page (249)
 
 - **Dashboard auth**: [Whether sign-up is open](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-sign-up-is-open), [Create a dashboard account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-dashboard-account), [Sign in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-in), [Sign out](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out), [The signed-in user and their projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-signed-in-user-and-their-projects), [Update account settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-account-settings), [Email a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#email-a-password-reset-link), [Check a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-a-password-reset-link), [Set a new password from a reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-a-new-password-from-a-reset-link), [Confirm an email address](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#confirm-an-email-address), [Send a new confirmation email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-new-confirmation-email), [Look up an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#look-up-an-invite), [Accept an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#accept-an-invite)
 - **Members and invites**: [List open invites](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-open-invites), [Invite someone by email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#invite-someone-by-email), [Resend an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#resend-an-invite), [Revoke an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#revoke-an-invite), [Change a member's role](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-a-members-role), [Remove a member, or leave the project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#remove-a-member-or-leave-the-project)
@@ -18525,8 +18531,8 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Auth**: [Auth on or off](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#auth-on-or-off), [Turn Auth or anonymous sign-in on or off](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#turn-auth-or-anonymous-sign-in-on-or-off), [List identity providers](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-identity-providers), [Add a Firebase or OpenID Connect provider](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#add-a-firebase-or-openid-connect-provider), [Get an identity provider](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-an-identity-provider), [Update or turn off an identity provider](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-or-turn-off-an-identity-provider), [Delete an identity provider](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-an-identity-provider), [Check an ID token without signing in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-an-id-token-without-signing-in), [List signed-in identities](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-signed-in-identities), [Read a signed-in user's balances and entitlements by identity](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#read-a-signed-in-users-balances-and-entitlements-by-identity), [Unlink an identity and sign it out](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unlink-an-identity-and-sign-it-out)
 - **Store setup**: [Store setup state of an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#store-setup-state-of-an-app), [Check store credentials with Apple, Google, Amazon or Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-store-credentials-with-apple-google-amazon-or-stripe), [Extend every active App Store subscriber of a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#status-of-a-mass-extension), [Setup health](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#setup-health)
 - **API keys**: [List secret keys](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-secret-keys), [Create a secret key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-secret-key), [Delete a secret key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-secret-key)
-- **Webhook deliveries**: [Send a TEST event to one webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-each-webhook-is-enabled), [Delivery log of a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delivery-log-of-a-webhook), [Retry a delivery now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#retry-a-delivery-now)
-- **Integrations**: [What each integration needs](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#what-each-integration-needs), [List integrations](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-integrations), [Connect an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#connect-an-integration), [Get an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-an-integration), [Update, enable or disable an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-enable-or-disable-an-integration), [Disconnect an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#disconnect-an-integration), [Send a TEST event to one integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-test-event-to-one-integration), [Delivery log of an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delivery-log-of-an-integration), [Retry a delivery now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#retry-a-delivery-now), [Queue failed or skipped deliveries again](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#queue-failed-or-skipped-deliveries-again)
+- **Webhook deliveries**: [Send a TEST event to one webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-each-webhook-is-enabled), [Delivery log of a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delivery-log-of-a-webhook), [One delivery: what was sent and every attempt](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#one-delivery-what-was-sent-and-every-attempt), [Retry a delivery now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#retry-a-delivery-now)
+- **Integrations**: [What each integration needs](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#what-each-integration-needs), [List integrations](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-integrations), [Connect an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#connect-an-integration), [Get an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-an-integration), [Update, enable or disable an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-enable-or-disable-an-integration), [Disconnect an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#disconnect-an-integration), [Send a TEST event to one integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-test-event-to-one-integration), [Delivery log of an integration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delivery-log-of-an-integration), [One delivery with every attempt](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#one-delivery-with-every-attempt), [Retry a delivery now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#retry-a-delivery-now), [Queue failed or skipped deliveries again](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#queue-failed-or-skipped-deliveries-again)
 - **Ads**: [Ads Overview: ad revenue, impressions, eCPM and breakdowns](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#ads-overview-ad-revenue-impressions-ecpm-and-breakdowns), [List reward rules in the order they are checked](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-reward-rules-in-the-order-they-are-checked), [Create a reward rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-reward-rule), [Reorder reward rules](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#reorder-reward-rules), [Update, turn on or turn off a reward rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-turn-on-or-turn-off-a-reward-rule), [Delete a reward rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-reward-rule), [The rewards ledger](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-rewards-ledger), [Send a test reward](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-test-reward), [AdMob connection, loaded ad units and the URLs to paste](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#admob-connection-loaded-ad-units-and-the-urls-to-paste), [Disconnect AdMob](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#disconnect-admob), [Start Google sign-in for AdMob](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#start-google-sign-in-for-admob), [Finish Google sign-in for AdMob](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#finish-google-sign-in-for-admob), [Load AdMob ad units now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#load-admob-ad-units-now), [Customers and revenue by Apple Search Ads campaign](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#customers-and-revenue-by-apple-search-ads-campaign), [Load campaign names from Apple Search Ads](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#load-campaign-names-from-apple-search-ads), [AdMob server-side verification callback](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#admob-server-side-verification-callback), [Google's redirect after AdMob sign-in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#googles-redirect-after-admob-sign-in)
 - **Data exports**: [List scheduled data exports](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-scheduled-data-exports), [Create a scheduled data export](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-scheduled-data-export), [Get a data export](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-data-export), [Update a data export](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-a-data-export), [Delete a data export](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-data-export), [Run an export now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#run-an-export-now), [Check the bucket and credentials](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-the-bucket-and-credentials), [Run history](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#run-history)
 - **Refund Control**: [Get policies and settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-policies-and-settings), [Save settings and the ordered policies](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#save-settings-and-the-ordered-policies), [Refund rate, amounts and counts](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#refund-rate-amounts-and-counts), [List refund requests, newest first](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-refund-requests-newest-first)
@@ -18537,7 +18543,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Customer lists**: [Customers in a list, with the summary cards](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#customers-in-a-list-with-the-summary-cards), [Export a list as CSV](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#export-a-list-as-csv)
 - **Event log**: [Event log](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#event-log), [Transaction feed](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#transaction-feed)
 - **Test Store**: [Simulate a Test Store purchase or lifecycle](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#simulate-a-test-store-purchase-or-lifecycle)
-- **Dashboard data**: [Daily history of an overview metric](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#daily-history-of-an-overview-metric), [Dashboard rows for customers](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#dashboard-rows-for-customers)
+- **Dashboard data**: [Daily history of an overview metric](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#daily-history-of-an-overview-metric), [Dashboard rows for customers](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#dashboard-rows-for-customers), [Overview cards summed across your projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#overview-cards-summed-across-your-projects), [Transactions across your projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#transactions-across-your-projects)
 - **Data moves**: [List the project's exports](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-the-projects-exports), [Export the whole project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#export-the-whole-project), [Get the latest export](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-the-latest-export), [Get an export](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-an-export), [Delete an export's files now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-an-exports-files-now), [Do the next slice of an export now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#do-the-next-slice-of-an-export-now), [Download an archive](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#download-an-archive), [Get the project's move state](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-the-projects-move-state), [Move the project to another server (run by this server)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#move-the-project-to-another-server-run-by-this-server), [Do the next step of the move now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#do-the-next-step-of-the-move-now), [Switch to the target](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#switch-to-the-target), [Pause writes for the last copy](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#pause-writes-for-the-last-copy), [Forward the paused project to its new server](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#forward-the-paused-project-to-its-new-server), [Serve the project here again](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#serve-the-project-here-again), [Create an import token (Receive a project)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-an-import-token-receive-a-project), [List your moves into this server](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-your-moves-into-this-server), [Check or start loading an archive](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-or-start-loading-an-archive), [Get an import](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-an-import), [List the project's collaborators to invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-the-projects-collaborators-to-invite), [Verify the copy](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#verify-the-copy), [Put the project live here](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#put-the-project-live-here)
 - **Cloud billing**: [The account's plan, usage and invoices](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-accounts-plan-usage-and-invoices), [Upgrade to Cloud Standard with Stripe Checkout](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#upgrade-to-cloud-standard-with-stripe-checkout), [Open the Stripe Customer Portal](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#open-the-stripe-customer-portal), [Webhook of RevenueDot's own Stripe account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#webhook-of-revenuedots-own-stripe-account)
 - **Migration import**: [Import customers with their purchases](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#import-customers-with-their-purchases), [Keep an app's existing SDK key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#keep-an-apps-existing-sdk-key), [What still needs attention after an import](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#what-still-needs-attention-after-an-import)
@@ -21210,6 +21216,34 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID/deliveries
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
+### One delivery: what was sent and every attempt
+
+`GET /v2/projects/{project_id}/webhooks/{webhook_id}/deliveries/{delivery_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+The request as sent (method, URL, headers and the exact body; the Authorization value is masked) and every attempt, newest last (at most 10): when it was sent, the HTTP status, the latency, the error, the first 4,096 characters of the answer, and the signature header of that attempt. Answers and errors have the webhook's Authorization value (also the credential alone) and signing secret replaced, and anything that looks like a credential: bearer and basic credentials, passwords in URLs, token-like JSON fields and query parameters. `curl` repeats the request with a placeholder for Authorization.
+Bodies can hold customer data, so this needs `read_write` (Admins and Developers). Attempt details are kept for `attempt_log_kept_days` (30) days after each attempt; the delivery itself stays.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `webhook_id` | string | yes | Webhook id. |
+| `delivery_id` | string | yes | Delivery id. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID/deliveries/$DELIVERY_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The delivery.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
 ### Retry a delivery now
 
 `POST /v2/projects/{project_id}/webhooks/{webhook_id}/deliveries/{delivery_id}/retry` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
@@ -21608,6 +21642,33 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRAT
 
 - **200**: Deliveries.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### One delivery with every attempt
+
+`GET /v2/projects/{project_id}/integrations/partners/{integration_id}/deliveries/{delivery_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+The delivery with every attempt, newest last (at most 10): when, HTTP status, latency, error, the requests' methods and URLs and the first 4,096 characters of the answer. Credentials are removed: the integration's own secrets, and anything that looks like one (bearer and basic credentials, passwords in URLs, token-like JSON fields and query parameters). `curl` repeats a single-request delivery with the right `Content-Type` and a placeholder for the partner's credentials; it is null when the delivery made several requests, when the URL is itself the secret (Slack, Discord) or when the body was longer than the log keeps. Needs `read_write` (Admins and Developers): bodies can hold customer data, and the log answers Viewers without `request_body` and `response_body`. Attempt details are kept for 30 days after each attempt.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `integration_id` | string | yes | Integration id (intg_...). |
+| `delivery_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRATION_ID/deliveries/$DELIVERY_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The delivery.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
@@ -24345,6 +24406,8 @@ Built-in lists or a saved audience, optionally filtered by audience rules and a 
 | `list` | string | no | `all` (default), `active`, `sandbox`, `non_subscription`, `expired`, or a saved audience id. |
 | `rules` | string | no | Extra filter: audience rules as JSON. |
 | `search` | string | no | Part of an app user id or email. |
+| `sort` | `id`, `subscription_status`, `auto_renewal_status`, `first_seen_at`, `last_seen_at`, `spent_in_usd` | no | Column to sort by. Default: most recently seen first, and ties keep that order. `subscription_status` ascending runs active, trialing, grace_period, billing_issue, expired, none; `auto_renewal_status` ascending runs on, off. In both directions, customers without an auto-renewal value stay last, and with `sort=id` anonymous IDs (`$RCAnonymousID:...`) come after named app user IDs. |
+| `direction` | `asc`, `desc` | no | Sort direction when `sort` is set. Default `asc`. |
 | `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
 | `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
 
@@ -24379,6 +24442,8 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_lists" -H "Authorizati
 | `list` | string | no | `all` (default), `active`, `sandbox`, `non_subscription`, `expired`, or a saved audience id. |
 | `rules` | string | no | Extra filter: audience rules as JSON. |
 | `search` | string | no | Part of an app user id or email. |
+| `sort` | `id`, `subscription_status`, `auto_renewal_status`, `first_seen_at`, `last_seen_at`, `spent_in_usd` | no | Column to sort by. Default: most recently seen first, and ties keep that order. `subscription_status` ascending runs active, trialing, grace_period, billing_issue, expired, none; `auto_renewal_status` ascending runs on, off. In both directions, customers without an auto-renewal value stay last, and with `sort=id` anonymous IDs (`$RCAnonymousID:...`) come after named app user IDs. |
+| `direction` | `asc`, `desc` | no | Sort direction when `sort` is set. Default `asc`. |
 
 **Example request**
 
@@ -24493,8 +24558,8 @@ Runs a purchase through the same pipeline as an SDK receipt, so events, the tran
 | `app_user_id` | string | yes |  |
 | `product_id` | string | yes | Product id or store identifier of a Test Store product. |
 | `app_id` | string | no | Test Store app; default the project's first. |
-| `price` | number | no |  |
-| `currency` | string | no | Three letters; default USD. |
+| `price` | number | no | Without a price, the product's Test Store price. |
+| `currency` | string | no | ISO 4217 code; default USD. A code with no exchange rate to USD is refused. |
 | `purchased_at` | integer | no | Start, epoch milliseconds. Not with offset_days. |
 | `presented_offering_id` | string | no |  |
 | `scenario` | `purchase`, `trial`, `trial_conversion`, `renewal`, `cancel`, `billing_issue`, `refund`, `expire` | no |  |
@@ -24584,6 +24649,62 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_summaries" -H "Authori
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Overview cards summed across your projects
+
+`GET /v2/overview` · Auth: dashboard session · RevenueDot extension · Permissions: `charts_metrics:overview:read`
+
+The six Overview cards (active trials, active subscriptions, MRR, revenue, new customers, active customers) summed over every project the signed-in user belongs to, as on the dashboard's Overview with "All projects" selected. Each card has `value` (the per-project Overview definition) and `history` (the daily series for `days`, summed per date).
+Each project is checked like a project route: a project counts only where the user's role (or an enterprise custom role) includes `charts_metrics:overview:read`; enforced single sign-on and an organization that deprovisioned the user leave one out. `projects` lists every project the user is a member of with `included` and, when left out, `reason`; a project the user was removed from is not listed at all. Dashboard sessions only: a secret key belongs to one project and gets 403.
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `environment` | `production`, `sandbox` | no |  |
+| `days` | integer | no |  |
+| `project_ids` | string | no | Only these projects (comma separated, at most 100). Ids you cannot open are ignored. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/overview"
+```
+
+**Responses**
+
+- **200**: The summed cards.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+### Transactions across your projects
+
+`GET /v2/overview/transactions` · Auth: dashboard session · RevenueDot extension · Permissions: `customer_information:purchases:read`
+
+Every purchase, renewal, trial start, refund and refund reversal of the projects the signed-in user may read purchases in (`customer_information:purchases:read`), newest first, each with `project_id`. The list also carries `projects` with `included` and `reason`, as on `GET /v2/overview`. `starting_after` must be a transaction of an included project.
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `environment` | `production`, `sandbox` | no |  |
+| `project_ids` | string | no | Only these projects (comma separated, at most 100). Ids you cannot open are ignored. |
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/overview/transactions"
+```
+
+**Responses**
+
+- **200**: A page of results. Returns a list of [Transaction](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#transaction).
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
 ## Data moves
 
@@ -29375,6 +29496,7 @@ One screen of a funnel. Every step has `id` (1-40 lower-case letters, digits, `-
 | `revenue_in_usd` | number | yes | USD; negative for refunds. |
 | `price` | Price or null | no |  |
 | `country` | string or null | no |  |
+| `project_id` | string | no | The transaction's project. Only on GET /v2/overview/transactions. |
 
 ### V2Error
 
@@ -35106,6 +35228,12 @@ Description: Posts from the RevenueDot team about building an open-source, self-
 Posts from the team building RevenueDot, an open-source (AGPL-3.0), self-hostable backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Newest first.
 
 ## 2026-10-02
+- [react-native-iap vs expo-iap vs react-native-purchases: which to use](https://raw.githubusercontent.com/revenuedot/docs/main/blog/react-native-iap-vs-expo-iap-vs-react-native-purchases.md): what each React Native package does, which ones run in Expo Go, the server each one needs, code side by side, cost, and when each one fits.
+- [How to check free trial eligibility on iOS and Android](https://raw.githubusercontent.com/revenuedot/docs/main/blog/free-trial-eligibility-ios-android.md): Apple's one-trial-per-group rule, how Google Play filters offers, StoreKit 2 and RevenueCat SDK code, and what the paywall button should say.
+- [How to sell a lifetime purchase next to a subscription](https://raw.githubusercontent.com/revenuedot/docs/main/blog/lifetime-purchase-and-subscriptions.md): a non-consumable and a one-time product on one entitlement, what to do when a subscriber buys lifetime, refunds, Family Sharing and restore.
+- [How to share one subscription across iOS, Android and the web](https://raw.githubusercontent.com/revenuedot/docs/main/blog/share-subscription-across-ios-android-web.md): one account ID, one entitlement, what Apple guideline 3.1.3(b) and Google Play's payments policy allow, how to avoid double billing, and where the manage button goes.
+- [Restore purchases on iOS and Android: what App Review wants](https://raw.githubusercontent.com/revenuedot/docs/main/blog/restore-purchases-ios-android.md): Apple's restore rule, when to call AppStore.sync, queryPurchasesAsync and the three-day rule, restorePurchases vs syncPurchases, and who owns a restored purchase.
+- [Flutter in_app_purchase vs purchases_flutter: which to use](https://raw.githubusercontent.com/revenuedot/docs/main/blog/flutter-in-app-purchase-vs-purchases-flutter.md): what each package does, the server in_app_purchase needs, code side by side, cost, and when each one fits.
 - [Do you still need RevenueCat with StoreKit 2?](https://raw.githubusercontent.com/revenuedot/docs/main/blog/storekit-2-vs-revenuecat.md): StoreKit 2 handles purchases on the device. See what it covers, what still needs a server, and how to choose between building, RevenueCat and open source.
 - [Subscription app metrics that matter: MRR, churn, LTV and more](https://raw.githubusercontent.com/revenuedot/docs/main/blog/subscription-app-metrics.md): the subscription app metrics to track: MRR, churn, trial conversion, LTV and refunds. Plain definitions, worked examples, benchmarks and a link to every chart.
 - [How to price a subscription app in 2026: plans, trials, regions](https://raw.githubusercontent.com/revenuedot/docs/main/blog/subscription-app-pricing-guide.md): price a subscription app with data: median prices, plans, trial length, regional pricing, price increase consent on both stores, and how to test prices.
@@ -36145,6 +36273,212 @@ Yes. Use the billing-issue event from your server, since both stores also show t
 
 ---
 
+# Flutter in_app_purchase vs purchases_flutter: which to use
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/flutter-in-app-purchase-vs-purchases-flutter.md
+Description: in_app_purchase talks to the stores and leaves verification to your own server. purchases_flutter works with a backend such as RevenueCat or RevenueDot. Code side by side, cost, and when each one fits.
+
+Use `in_app_purchase` when you want to own everything and are ready to build a server; use `purchases_flutter` when you want a backend to verify purchases and track subscriptions for you. `in_app_purchase` is the flutter.dev plugin. It loads products, runs the purchase and hands you the store's receipt, and the rest is your job: Google's own codelab builds a Dart server with Cloud Firestore to verify purchases and follow renewals. `purchases_flutter` is RevenueCat's MIT-licensed SDK. It sends each purchase to a backend, which can be RevenueCat or an open-source server such as RevenueDot, and gives your app one answer to "is this user Pro?" on iOS and Android.
+
+This post compares the two packages with code side by side, shows what each costs, and says when each one fits. Every Flutter, Google and RevenueCat fact links its source and was checked in October 2026.
+
+![Two columns: in_app_purchase leaves verification, renewals and cross-platform access to your own server, while purchases_flutter sends purchases to a backend that handles them](https://github.com/revenuedot/docs/blob/main/blog/assets/flutter-in-app-purchase-vs-purchases-flutter/cover.svg)
+
+## The short answer
+
+- **`in_app_purchase`** is published by flutter.dev under BSD-3-Clause, version 3.3.1, for Android, iOS and macOS ([pub.dev](https://pub.dev/packages/in_app_purchase)). It does not verify purchases for you.
+- **`purchases_flutter`** is published by revenuecat.com under MIT, version 10.14.0, for iOS, Android, macOS and web ([pub.dev](https://pub.dev/packages/purchases_flutter)). It needs a backend that speaks RevenueCat's API.
+- **Pick `in_app_purchase`** if you sell on one store, already run a backend, or must not depend on any vendor.
+- **Pick `purchases_flutter`** if you sell subscriptions on both stores and want entitlements, webhooks and charts without writing store server code.
+- **Cost:** `in_app_purchase` costs your engineering time. `purchases_flutter` with RevenueCat is free up to $2,500 in monthly tracked revenue, then 1% ([RevenueCat](https://www.revenuecat.com/pricing/)). With RevenueDot Cloud it is free up to $10,000, and self-hosting is free.
+
+## What does each package do?
+
+The two packages sit at different layers. `in_app_purchase` is a thin layer over StoreKit and Google Play Billing. `purchases_flutter` wraps the same store libraries and adds a client for a subscription server.
+
+| | `in_app_purchase` | `purchases_flutter` |
+|---|---|---|
+| Publisher and license | flutter.dev, BSD-3-Clause | revenuecat.com, MIT |
+| Platforms | Android, iOS, macOS | iOS, Android, macOS, web |
+| Load products and buy | Yes | Yes, through offerings and packages |
+| Verify a purchase | Your server, against each store's API | The backend |
+| Acknowledge Google purchases within 3 days | Your code calls `completePurchase` | The backend |
+| Renewals, refunds and billing failures | Your server, from store notifications | The backend |
+| One entitlement across iOS and Android | Your server and your database | Built in (`entitlements.active`) |
+| Webhooks, charts, paywalls, experiments | Build them | From the backend |
+
+The `in_app_purchase` README is clear about the split. It tells you to call `completePurchase` "after verifying the purchase receipt and the delivering the content to the user", and points to Apple's and Google's own verification guides for that step ([pub.dev](https://pub.dev/packages/in_app_purchase)). It also warns that failing to complete a purchase within 3 days "will result in a refund on Android".
+
+## What does the server behind in_app_purchase look like?
+
+Google's Flutter codelab, "Adding in-app purchases to your Flutter app", builds the full setup ([Google codelab](https://codelabs.developers.google.com/codelabs/flutter-in-app-purchases)). Its parts:
+
+1. **Sign-in** with Firebase Authentication, so each purchase belongs to a user.
+2. **A Dart backend** that receives purchase tokens from the app.
+3. **Verification** against the Google Play Developer API and the App Store server, with service account credentials for each store.
+4. **Storage** of purchases in Cloud Firestore.
+5. **Tracking** of renewals and cancellations through Google Cloud Pub/Sub and App Store notifications.
+
+The codelab explains why: with a server, "you can securely verify transactions", and users cannot unlock premium features by changing the device clock. That is the right design. It is also a lot of work for a small team, and the work never ends: both stores change their APIs, and every new edge case, such as grace periods, refunds, upgrades or account transfers, lands on your server. Our [server-side validation guide](https://raw.githubusercontent.com/revenuedot/docs/main/blog/server-side-receipt-validation.md) shows how much code the verification step alone takes.
+
+## The same purchase, side by side
+
+### With in_app_purchase
+
+```dart
+import 'dart:async';
+import 'package:in_app_purchase/in_app_purchase.dart';
+
+final iap = InAppPurchase.instance;
+late final StreamSubscription<List<PurchaseDetails>> purchaseSub;
+
+void startStore() {
+  // Every purchase, restore and update arrives on this stream.
+  purchaseSub = iap.purchaseStream.listen(onPurchases);
+}
+
+Future<void> buyPro() async {
+  // On Android, the ID is the Play subscription ID.
+  final response = await iap.queryProductDetails({'pro_monthly'});
+  final product = response.productDetails.first;
+  // Subscriptions are bought as non-consumables.
+  await iap.buyNonConsumable(purchaseParam: PurchaseParam(productDetails: product));
+}
+
+Future<void> onPurchases(List<PurchaseDetails> purchases) async {
+  for (final p in purchases) {
+    if (p.status == PurchaseStatus.purchased || p.status == PurchaseStatus.restored) {
+      // Your server checks this token with Apple or Google and records access.
+      final ok = await myServer.verify(p.productID, p.verificationData.serverVerificationData);
+      if (ok) setPro(true);
+    }
+    if (p.pendingCompletePurchase) {
+      await iap.completePurchase(p); // Within 3 days on Android, or Google refunds it.
+    }
+  }
+}
+
+// The Restore purchases button: restored purchases arrive on purchaseStream.
+Future<void> restore() => iap.restorePurchases();
+```
+
+`myServer.verify` is the part you write. It holds your App Store key and your Google service account, calls each store, stores the result, and must later learn about renewals and refunds from store notifications.
+
+### With purchases_flutter and RevenueDot
+
+```dart
+import 'dart:io' show Platform;
+import 'package:purchases_flutter/purchases_flutter.dart';
+
+Future<void> startStore() async {
+  // One line of setup sends the SDK to RevenueDot instead of RevenueCat.
+  await Purchases.setProxyURL('https://api.revenuedot.app');
+  await Purchases.configure(
+    PurchasesConfiguration(Platform.isIOS ? 'appl_YourKey' : 'goog_YourKey'),
+  );
+}
+
+Future<bool> buyPro() async {
+  final offerings = await Purchases.getOfferings();
+  final package = offerings.current?.monthly;
+  if (package == null) return false;
+  final result = await Purchases.purchase(PurchaseParams.package(package));
+  return result.customerInfo.entitlements.active.containsKey('pro');
+}
+
+// The Restore purchases button
+Future<bool> restore() async {
+  final info = await Purchases.restorePurchases();
+  return info.entitlements.active.containsKey('pro');
+}
+```
+
+There is no `verify` function to write. The backend verifies the purchase with Apple or Google, acknowledges Google purchases, receives store notifications, and answers with the customer's entitlements. Drop the `setProxyURL` line and the same code talks to RevenueCat. Our [Flutter tutorial](https://raw.githubusercontent.com/revenuedot/docs/main/blog/flutter-in-app-purchases-tutorial.md) builds a full paywall with this package.
+
+## What goes wrong most often?
+
+Each package has its own traps. Knowing them up front saves a rejected build or a week of support email.
+
+**With `in_app_purchase`, from its README** ([pub.dev](https://pub.dev/packages/in_app_purchase)):
+
+1. **Forgetting `completePurchase`.** On Android the purchase is refunded after 3 days. On iOS and macOS the purchase stays in Apple's queue, is delivered to the app again and again, and blocks the next purchase of the same product.
+2. **Expecting consumables to restore.** Google Play treats a consumed product as no longer owned, so `restorePurchases` cannot bring it back. Credit balances must live on your server.
+3. **Changing plans on Android.** To upgrade or downgrade a Google Play subscription, you pass a `GooglePlayPurchaseParam` with a `ChangeSubscriptionParam` to `buyNonConsumable`. Your server must then follow the old and new purchase tokens.
+
+**With `purchases_flutter` against RevenueDot, from our [Flutter docs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/flutter.md):**
+
+1. **Calling `configure` before `setProxyURL` finishes.** Await `setProxyURL` first, or the first requests go to RevenueCat.
+2. **Turning on enforced entitlement verification.** The stock package checks signatures against RevenueCat's key, so `EntitlementVerificationMode.enforced` fails every request. The default, disabled, is correct.
+3. **Shipping a Test Store key.** `test_` keys work only in debug builds. Release builds need the `appl_` and `goog_` keys.
+
+The first list is code you maintain forever. The second list is setup you get right once.
+
+## What does each choice cost?
+
+| | Package | Backend | What you pay |
+|---|---|---|---|
+| `in_app_purchase` + your server | Free (BSD-3-Clause) | You build and run it | Engineering time, hosting and upkeep |
+| `purchases_flutter` + RevenueCat | Free (MIT) | Hosted by RevenueCat | Free to $2,500 in monthly tracked revenue, then 1% ([RevenueCat](https://www.revenuecat.com/pricing/)) |
+| `purchases_flutter` + RevenueDot Cloud | Free (MIT) | Hosted by RevenueDot | Free to $10,000 in monthly tracked revenue; a paid plan is planned ([pricing](https://revenuedot.app/pricing)) |
+| `purchases_flutter` + RevenueDot self-hosted | Free (MIT) | You run the open-source server (AGPL-3.0) | Your hosting, no revenue share |
+
+At $50,000 in monthly tracked revenue, RevenueCat's fee is $500 a month. The [fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator) works it out for your numbers, and our [RevenueCat pricing explainer](https://raw.githubusercontent.com/revenuedot/docs/main/blog/revenuecat-pricing-explained.md) shows worked bills.
+
+## When does each one fit?
+
+**`in_app_purchase` fits when:**
+
+- You sell on one store, or only consumables whose balance you already keep on your server.
+- You already run a backend and have someone who will own the App Store Server API, Google's Play Developer API and both stores' notifications.
+- Your rules forbid any purchase vendor, and you do not want to self-host one.
+
+**`purchases_flutter` fits when:**
+
+- You sell subscriptions on both iOS and Android and want one entitlement across them.
+- You want webhooks, charts, paywalls or experiments without building them.
+- You want to switch backends later without rewriting purchase code. The SDK talks to RevenueCat by default and to RevenueDot with `setProxyURL`.
+
+If you already ship `in_app_purchase` and want a backend's records without rewriting your purchase flow, the RevenueCat SDK documents `syncPurchases` for that case: "Call this when using your own implementation of in-app purchases" ([pub.dev](https://pub.dev/documentation/purchases_flutter/latest/purchases_flutter/Purchases/syncPurchases.html)). Most apps do better with one purchase package, not two.
+
+## Do it with RevenueDot
+
+RevenueDot is an open-source server that speaks the RevenueCat SDK's API. You install the stock `purchases_flutter` package, add one `setProxyURL` line, and get:
+
+- Purchase verification and Google acknowledgement for the [App Store](https://revenuedot.app/stores/app-store) and [Google Play](https://revenuedot.app/stores/google-play).
+- One customer and one entitlement across platforms, with your own user IDs through `logIn`.
+- [Webhooks](https://revenuedot.app/features/webhooks), [charts](https://revenuedot.app/charts/mrr), [paywalls](https://revenuedot.app/features/paywalls) and [experiments](https://revenuedot.app/features/experiments).
+- The [Flutter SDK page](https://revenuedot.app/sdks/flutter) and the [Flutter docs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/flutter.md) with every setup detail.
+
+The limits matter. Flutter web does not work against RevenueDot with the stock package, because its web plugin ignores `setProxyURL`. RevenueDot's fork of `purchases_flutter` fixes this; it installs as a git dependency at tag `10.13.2-revenuedot`, because the pub.dev name belongs to RevenueCat ([Flutter docs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/flutter.md)). No real store purchase has run end to end against RevenueDot yet, so test each store in its sandbox before launch. The [RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) lists the other differences.
+
+[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue).
+
+## FAQ
+
+### Is in_app_purchase enough for Flutter subscriptions?
+
+It is enough to sell them. It is not enough to trust them: the README leaves receipt verification to you ([pub.dev](https://pub.dev/packages/in_app_purchase)), and renewals and refunds reach a server, not the app. Google's codelab adds a Dart and Firestore backend for exactly that ([Google codelab](https://codelabs.developers.google.com/codelabs/flutter-in-app-purchases)).
+
+### Do I need a RevenueCat account to use purchases_flutter?
+
+No. The package is MIT-licensed and works with any backend that speaks RevenueCat's API. With RevenueDot you create a RevenueDot project, use its `appl_` and `goog_` keys, and call `setProxyURL` before `configure`.
+
+### Can I use in_app_purchase and purchases_flutter together?
+
+You can, but most apps should not. Both listen to the same store transactions. If you keep your own purchase code, the RevenueCat SDK's `syncPurchases` exists for that case ([pub.dev](https://pub.dev/documentation/purchases_flutter/latest/purchases_flutter/Purchases/syncPurchases.html)).
+
+### Which package works on Flutter web?
+
+`purchases_flutter` lists web support ([pub.dev](https://pub.dev/packages/purchases_flutter)), and `in_app_purchase` lists Android, iOS and macOS ([pub.dev](https://pub.dev/packages/in_app_purchase)). With RevenueDot, the stock web plugin still calls RevenueCat, so use RevenueDot's fork from its git tag for Flutter web ([Flutter docs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/flutter.md)).
+
+### Can I move from in_app_purchase to purchases_flutter later?
+
+Yes. Replace the purchase code with `purchases_flutter`, configure the backend, and call `syncPurchases` once on the first launch of the update so existing subscribers are recorded. See [restore purchases on iOS and Android](https://raw.githubusercontent.com/revenuedot/docs/main/blog/restore-purchases-ios-android.md) for when to use `syncPurchases` and when to use `restorePurchases`.
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
 # Flutter in-app purchases and subscriptions with purchases_flutter
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/flutter-in-app-purchases-tutorial.md
@@ -36396,6 +36730,183 @@ Yes. Attach the App Store product and the Google Play product to the same entitl
 ### Does it work on Flutter web?
 
 Not in proxy mode with the stock package, because its web plugin ignores the proxy URL. RevenueDot's fork fixes it, but the fork is not published yet.
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
+# How to check free trial eligibility on iOS and Android
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/free-trial-eligibility-ios-android.md
+Description: Show "Start free trial" only to users who can get it: Apple's one-trial-per-group rule, Google Play offers, StoreKit 2 and RevenueCat SDK code, and button text.
+
+On iOS, ask StoreKit 2: `product.subscription?.isEligibleForIntroOffer` is `true` only when the user can still get an introductory offer in that subscription group. On Android, Google Play does the check for you, because `subscriptionOfferDetails` lists only the offers the user is eligible for. With the RevenueCat SDK, call `checkTrialOrIntroductoryPriceEligibility` on iOS and read `subscriptionOptions` on Android. Show "Start free trial" only on a clear yes.
+
+This post covers each store's rule, the code, the button text and sandbox tests. Every Apple, Google and RevenueCat fact links its source and was checked in October 2026.
+
+![A decision path: check eligibility, then show "Start free trial" with the trial terms to eligible users and the plain price to everyone else](https://github.com/revenuedot/docs/blob/main/blog/assets/free-trial-eligibility-ios-android/cover.svg)
+
+## The short answer
+
+- **Apple** gives each customer one introductory offer per [subscription group](https://revenuedot.app/glossary/subscription-group). Existing subscribers never qualify, even when they switch plans ([Apple](https://developer.apple.com/documentation/storekit/implementing-introductory-offers-in-your-app)).
+- **StoreKit 2** answers with `Product.SubscriptionInfo.isEligibleForIntroOffer`, available since iOS 15 ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/iseligibleforintrooffer)).
+- **Google Play** returns only the offers a user is eligible for, and offers a base plan to anyone who picks a stale offer ([Android Developers](https://developer.android.com/google/play/billing/integrate)).
+- **The RevenueCat SDK** returns one of four statuses on iOS. On Android it always returns unknown, so you read the product's subscription options instead ([pub.dev](https://pub.dev/documentation/purchases_flutter/latest/purchases_flutter/Purchases/checkTrialOrIntroductoryPriceEligibility.html)).
+- **When in doubt, show the regular price.** A paywall that promises a trial the user will not get misleads them, and Apple removes apps that trick users into a subscription ([App Review Guidelines 3.1.2](https://developer.apple.com/app-store/review/guidelines/)).
+
+## Who gets a free trial on the App Store?
+
+Apple ties the trial to the subscription group. A customer who has used an introductory offer on any product in a group cannot get another one in that group ([Apple](https://developer.apple.com/documentation/storekit/implementing-introductory-offers-in-your-app)). A free trial is one of three kinds of [introductory offer](https://revenuedot.app/glossary/introductory-offer), next to "pay as you go" and "pay up front", so the same rule covers all three.
+
+| Customer | Eligible for the intro offer? |
+|---|---|
+| Never subscribed to the group | Yes, always |
+| Subscribed before, has lapsed, never used an intro offer in the group | Yes |
+| Subscribed before and used an intro offer in the group | No |
+| Subscribes now and upgrades, downgrades or crossgrades | No, even if they never used an intro offer |
+
+So a monthly subscriber should not see "7 days free" on a yearly plan in the same group. To reach lapsed users who already had their trial, use a [promotional offer](https://raw.githubusercontent.com/revenuedot/docs/main/blog/ios-promotional-offers-signature.md) or a [win-back offer](https://revenuedot.app/glossary/win-back-offer) instead.
+
+## How do you check eligibility with StoreKit 2?
+
+Read the `isEligibleForIntroOffer` property. Apple describes it as `true` when the customer can get an intro offer on this subscription or any other in the same group. Apple also warns that it can be `true` when you never set up an intro offer, so check that an offer exists as well ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/iseligibleforintrooffer)).
+
+```swift
+import StoreKit
+
+/// Returns the free trial to show, or nil when the paywall should show the plain price.
+func freeTrialToShow(for product: Product) async -> Product.SubscriptionOffer? {
+    guard let subscription = product.subscription,
+          let intro = subscription.introductoryOffer,  // nil when no intro offer is set up
+          intro.paymentMode == .freeTrial else { return nil }
+    // true only if the user has not used an intro offer in this group.
+    return await subscription.isEligibleForIntroOffer ? intro : nil
+}
+```
+
+If you only know the group ID, the static `Product.SubscriptionInfo.isEligibleForIntroOffer(for:)` answers for the whole group ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/iseligibleforintrooffer(for:))). Both APIs are async, so check once when the paywall loads.
+
+## Who gets a free trial on Google Play?
+
+On Google Play you set the rule per offer. A trial usually uses "new customer acquisition", which means the user never had this subscription, or never had any subscription in the app, depending on the option you pick. "Developer determined" means your app decides, and such an offer cannot be bought outside your app ([Google Play Console Help](https://support.google.com/googleplay/android-developer/answer/12154973)). Our [base plans and offers guide](https://raw.githubusercontent.com/revenuedot/docs/main/blog/google-play-base-plans-and-offers.md) covers the third type, upgrade, and how offers map to iOS.
+
+You do not compute eligibility yourself. `queryProductDetailsAsync` returns up to 50 offers per subscription that the user is eligible for ([Android Developers](https://developer.android.com/google/play/billing/integrate)). So if a free trial offer is in the list, the user can get it.
+
+```kotlin
+// productDetails comes from queryProductDetailsAsync. Play lists only eligible offers.
+val offers = productDetails.subscriptionOfferDetails.orEmpty()
+
+val trial = offers.firstOrNull { offer ->
+    offer.offerId != null && // null means the plain base plan
+        offer.pricingPhases.pricingPhaseList.firstOrNull()?.priceAmountMicros == 0L
+}
+val basePlan = offers.first { it.offerId == null }
+val chosen = trial ?: basePlan // buy with chosen.offerToken
+```
+
+`getOfferId` returns null for a regular base plan ([reference](https://developer.android.com/reference/com/android/billingclient/api/ProductDetails.SubscriptionOfferDetails)). A free phase has a price of 0 micros, and each phase also gives you its formatted price, billing period and cycle count ([reference](https://developer.android.com/reference/com/android/billingclient/api/ProductDetails.PricingPhase)).
+
+A developer-determined offer is in the list too, because Play cannot judge your rule. Filter it out by tag unless your logic says the user qualifies.
+
+## How does the RevenueCat SDK report eligibility?
+
+`checkTrialOrIntroductoryPriceEligibility` takes product IDs and returns a status for each one ([pub.dev](https://pub.dev/documentation/purchases_flutter/latest/purchases_flutter/Purchases/checkTrialOrIntroductoryPriceEligibility.html)). The iOS SDK names the same method `checkTrialOrIntroDiscountEligibility`.
+
+| Status | Meaning | What the paywall shows |
+|---|---|---|
+| Eligible | The user can get the trial or intro price | The trial or intro terms |
+| Ineligible | The user cannot get it | The regular price |
+| No intro offer exists | The product has no trial or intro price | The regular price |
+| Unknown | The SDK could not decide | The regular price |
+
+The statuses come from the [Flutter enum](https://pub.dev/documentation/purchases_flutter/latest/purchases_flutter/IntroEligibilityStatus.html). The SDK's own note says to show the regular price on unknown ([purchases-ios source](https://github.com/RevenueCat/purchases-ios/blob/main/Sources/Purchasing/Purchases/PurchasesType.swift)).
+
+Where the answer comes from depends on the platform:
+
+- **iOS with StoreKit 2**, the SDK default, checks on the device with `isEligibleForIntroOffer` ([TrialOrIntroPriceEligibilityChecker.swift](https://github.com/RevenueCat/purchases-ios/blob/main/Sources/Purchasing/TrialOrIntroPriceEligibilityChecker.swift), [StoreKitVersion.swift](https://github.com/RevenueCat/purchases-ios/blob/main/Sources/Misc/StoreKitVersion.swift)).
+- **iOS with StoreKit 1** reads the receipt on the device, then asks the backend about any product it could not decide ([TrialOrIntroPriceEligibilityChecker.swift](https://github.com/RevenueCat/purchases-ios/blob/main/Sources/Purchasing/TrialOrIntroPriceEligibilityChecker.swift)).
+- **Android** always returns unknown. RevenueCat's docs say to use `subscriptionOptions` there, because it holds only the offers the customer is eligible for ([RevenueCat](https://www.revenuecat.com/docs/subscription-guidance/subscription-offers)).
+
+In Flutter, one function covers both stores:
+
+```dart
+import 'dart:io' show Platform;
+import 'package:purchases_flutter/purchases_flutter.dart';
+
+Future<bool> canStartFreeTrial(StoreProduct product) async {
+  if (Platform.isAndroid) {
+    // Google Play only lists offers this user is eligible for.
+    final options = product.subscriptionOptions ?? [];
+    return options.any((o) => o.freePhase != null);
+  }
+  if (product.introductoryPrice == null) return false;
+  final result = await Purchases.checkTrialOrIntroductoryPriceEligibility([product.identifier]);
+  return result[product.identifier]?.status ==
+      IntroEligibilityStatus.introEligibilityStatusEligible;
+}
+```
+
+`subscriptionOptions` and `freePhase` are Google Play only fields on `StoreProduct` and `SubscriptionOption` ([StoreProduct](https://pub.dev/documentation/purchases_flutter/latest/models_store_product_wrapper/StoreProduct-class.html), [SubscriptionOption](https://pub.dev/documentation/purchases_flutter/latest/models_subscription_option_wrapper/SubscriptionOption-class.html)). On Android, buying the package lets the SDK pick the longest free trial the user is eligible for. Tag a developer-determined offer `rc-ignore-offer` if it must never be picked that way ([RevenueCat](https://www.revenuecat.com/docs/subscription-guidance/subscription-offers)).
+
+## What should the button and price say?
+
+The button and the line under the price must match what the store will charge. Apple asks you to describe clearly what the user gets for the price before they subscribe ([guideline 3.1.2(c)](https://developer.apple.com/app-store/review/guidelines/)).
+
+| Case | Button | Price line |
+|---|---|---|
+| Eligible for a free trial | Start free trial | 7 days free, then $59.99 a year |
+| Eligible for an intro price | Subscribe | $1.99 for the first month, then $9.99 a month |
+| Ineligible, unknown or no offer | Subscribe | $59.99 a year |
+
+A few rules keep the text honest:
+
+1. **Build the text from the store's data.** Take the trial length and price from the offer, not from a typed string.
+2. **Put the price after the trial in the same line.** Users should see what they pay when the trial ends.
+3. **Check each plan on its own.** On a two-plan paywall, the yearly plan may have a trial while the monthly plan does not.
+4. **Do not add a trial switch.** Show the trial as part of a plan. Our post on the [free trial toggle rejection](https://raw.githubusercontent.com/revenuedot/docs/main/blog/apple-free-trial-toggle-rejection.md) explains why.
+
+For eligible users, a [trial timeline paywall](https://raw.githubusercontent.com/revenuedot/docs/main/blog/free-trial-timeline-paywall.md) shows what happens on each day of the trial.
+
+## How do you test eligibility in the sandbox?
+
+Each store lets you reset a test user, so you can test the eligible case again.
+
+- **Apple sandbox.** Clear the Sandbox Apple Account's purchase history in App Store Connect, or on the device under Settings, Developer. Then sign out and back in to clear the cache. After that, the account is eligible for introductory offers again ([Apple](https://developer.apple.com/documentation/storekit/testing-in-app-purchases-with-sandbox)).
+- **Google Play.** A license tester can use the Play Billing Lab option "Test free trial or introductory offer" to take a trial again and again. Google also asks you to test with a normal account now and then ([Android Developers](https://developer.android.com/google/play/billing/test)).
+
+Test the ineligible case too: after a trial, the paywall should show the regular price. Our [sandbox testing guide](https://raw.githubusercontent.com/revenuedot/docs/main/blog/sandbox-testing-in-app-purchases.md) walks through each test setup.
+
+## Do it with RevenueDot
+
+RevenueDot is an open-source server that speaks the RevenueCat SDK's API. You keep the stock SDK and change its proxy URL, so the code above does not change. Here is how eligibility works with it:
+
+- **StoreKit 2 on iOS.** The SDK checks eligibility on the device and does not ask the server. This is the SDK's default, so most apps need nothing more.
+- **StoreKit 1 on iOS.** RevenueDot implements the SDK's `intro_eligibility` endpoint, but it answers `null` for every product. The SDK reads that as unknown, and the paywall should show the regular price ([what differs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/what-differs.md)). If you still run StoreKit 1 and want trial text, switch the SDK to StoreKit 2.
+- **Google Play.** The SDK reads eligible offers from Play on the device, as shown above.
+
+[RevenueDot paywalls](https://revenuedot.app/features/paywalls) handle the text for you. In the editor, a text component holds a second, intro-offer text, and the preview has a switch to show the paywall as an eligible or an ineligible customer would see it. Texts can use device-filled variables such as `{{ product.offer_period_with_unit }}` and `{{ product.price_per_period }}` ([paywalls guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md)). The **Trial timeline** template starts you with a trial explainer.
+
+No real store purchase has run end to end against RevenueDot yet, so test each store in its sandbox before launch. RevenueCat is free up to $2,500 in monthly tracked revenue, then 1% ([RevenueCat](https://www.revenuecat.com/pricing)), and the [fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator) works out your bill. See the [RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) and [pricing](https://revenuedot.app/pricing).
+
+[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue).
+
+## FAQ
+
+### Can a user get a second free trial on iOS?
+
+Not in the same subscription group. Apple allows one introductory offer per group per customer ([Apple](https://developer.apple.com/documentation/storekit/implementing-introductory-offers-in-your-app)). To give returning users a deal, use a promotional offer, which needs a [server signature](https://raw.githubusercontent.com/revenuedot/docs/main/blog/ios-promotional-offers-signature.md).
+
+### Why does checkTrialOrIntroductoryPriceEligibility always return unknown on Android?
+
+The RevenueCat SDK documents it as iOS only, and Android always returns unknown ([pub.dev](https://pub.dev/documentation/purchases_flutter/latest/purchases_flutter/Purchases/checkTrialOrIntroductoryPriceEligibility.html)). On Android, Play already filters the offers, so check `subscriptionOptions` for a free phase.
+
+### Is isEligibleForIntroOffer only available on iOS 17?
+
+No. Both the property and the `isEligibleForIntroOffer(for:)` method list iOS 15.0 as their first version ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/iseligibleforintrooffer)).
+
+### What happens if a user taps an offer they cannot get on Google Play?
+
+Play tells them they are not eligible and lets them buy the base plan instead ([Android Developers](https://developer.android.com/google/play/billing/integrate)). Load product details when the paywall opens, so it shows current offers.
 
 **About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
 
@@ -37316,6 +37827,180 @@ Yes by default. At the end of the offer the subscription renews at the standard 
 ### How is an offer code different from a promotional offer?
 
 An offer code is redeemed by a code the customer holds, and Apple handles the redemption screen. A promotional offer is chosen by your app and needs a signature from your server. See [iOS promotional offers and the signature](https://raw.githubusercontent.com/revenuedot/docs/main/blog/ios-promotional-offers-signature.md).
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
+# How to sell a lifetime purchase next to a subscription
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/lifetime-purchase-and-subscriptions.md
+Description: A lifetime plan is a non-consumable on iOS and a one-time product on Google Play, never part of a subscription group. Attach it and your subscriptions to one entitlement, then handle subscribers who buy it, refunds, Family Sharing and restore.
+
+To sell a lifetime plan next to a subscription, create the lifetime plan as a non-consumable in App Store Connect and as a one-time product in Google Play Console, then attach it and every subscription to one entitlement such as `pro`. Your app checks that entitlement, not the product. A lifetime product cannot join a subscription group, so the store will not end an active subscription when someone buys lifetime. Your app must tell that customer to cancel the subscription.
+
+This post covers product setup, the entitlement check in code, subscribers who buy lifetime, refunds, Family Sharing and restore. Every Apple, Google and RevenueCat fact links its source and was checked in October 2026.
+
+![A lifetime non-consumable and monthly and annual subscriptions all point to one pro entitlement, with notes on refunds, Family Sharing and subscribers who buy lifetime](https://github.com/revenuedot/docs/blob/main/blog/assets/lifetime-purchase-and-subscriptions/cover.svg)
+
+## The short answer
+
+- **Product type.** On iOS, lifetime is a [non-consumable](https://revenuedot.app/glossary/consumable-and-non-consumable-in-app-purchase): Apple says it "is purchased once and does not expire" ([Apple](https://developer.apple.com/help/app-store-connect/reference/in-app-purchase-types)). On Google Play it is a non-consumable one-time product, which "cannot be purchased again" ([Google](https://developer.android.com/google/play/billing/one-time-products)).
+- **No subscription group.** Apple's [subscription groups](https://revenuedot.app/glossary/subscription-group) hold auto-renewable subscriptions only ([Apple](https://developer.apple.com/help/app-store-connect/manage-subscriptions/offer-auto-renewable-subscriptions)). Lifetime sits outside the group.
+- **One entitlement.** Attach the monthly, annual and lifetime products to the same [entitlement](https://revenuedot.app/glossary/entitlement). Your app asks one question: is `pro` active?
+- **Subscribers who buy lifetime** keep paying until they cancel. Show them Apple's manage sheet or Google's subscription page right after the purchase.
+- **Refunds and Family Sharing** can take lifetime access away. Your server must hear about both.
+
+## Why can't lifetime go in a subscription group?
+
+A subscription group is a set of auto-renewable subscriptions, and "users can subscribe to one subscription product per group at a time" ([Apple](https://developer.apple.com/help/app-store-connect/manage-subscriptions/offer-auto-renewable-subscriptions)). That rule is what makes an upgrade from monthly to annual replace the old plan. A non-consumable is a different product type, so it never enters a group.
+
+Google Play works the same way. Subscriptions have base plans and offers. A lifetime plan is a one-time product, "a single transaction that grants access to the purchased content permanently" ([Google](https://developer.android.com/google/play/billing/one-time-products)). It is not a base plan.
+
+| | App Store | Google Play |
+|---|---|---|
+| Lifetime product type | Non-consumable | One-time product, non-consumable |
+| Can join a subscription group or base plan | No | No |
+| Found again on a new device | Yes, in `Transaction.currentEntitlements` | Yes, from `queryPurchasesAsync` |
+
+The Google row matters most. Google says your app or server must acknowledge a purchase "within three days so that the purchase isn't automatically refunded and entitlement revoked". For a non-consumable, you acknowledge it and never consume it ([Google](https://developer.android.com/google/play/billing/integrate)). If you consume it by mistake, the customer can buy lifetime again and loses what they paid for.
+
+## How do I check one entitlement for both?
+
+Write one check that passes for an active subscription or an owned lifetime product, and use it on every screen.
+
+### With StoreKit 2 alone
+
+`Transaction.currentEntitlements` returns each non-consumable and the latest transaction of each auto-renewable subscription that is subscribed or in its grace period. Refunded and revoked products do not appear ([Apple](https://developer.apple.com/documentation/storekit/transaction/currententitlements)). That makes the check short:
+
+```swift
+import StoreKit
+
+// Every product that gives Pro access, lifetime included.
+let proProducts: Set<String> = ["pro_monthly", "pro_annual", "pro_lifetime"]
+
+func hasPro() async -> Bool {
+    for await result in Transaction.currentEntitlements {
+        // Skip anything StoreKit could not verify.
+        guard case .verified(let transaction) = result else { continue }
+        if proProducts.contains(transaction.productID) {
+            return true
+        }
+    }
+    return false
+}
+```
+
+This covers one Apple account on one platform. It does not know about a Google Play or web purchase. Our post on [sharing one subscription across iOS, Android and the web](https://raw.githubusercontent.com/revenuedot/docs/main/blog/share-subscription-across-ios-android-web.md) explains why that needs a server and one account ID.
+
+### With the RevenueCat SDK
+
+With the RevenueCat SDK, you attach all three products to the `pro` entitlement on the server. RevenueCat's docs say that several products may grant the same entitlement, and that a non-consumable grants it forever ([RevenueCat](https://www.revenuecat.com/docs/getting-started/entitlements)). The app then reads `entitlements.active` ([RevenueCat](https://www.revenuecat.com/docs/customers/customer-info)):
+
+```swift
+import RevenueCat
+
+func proStatus() async throws -> (isPro: Bool, ownsLifetime: Bool, hasSubscription: Bool) {
+    let info = try await Purchases.shared.customerInfo()
+    let isPro = info.entitlements.active["pro"] != nil
+    let ownsLifetime = info.nonSubscriptionTransactions.contains { $0.productIdentifier == "pro_lifetime" }
+    let hasSubscription = !info.activeSubscriptions.isEmpty
+    return (isPro, ownsLifetime, hasSubscription)
+}
+```
+
+```kotlin
+Purchases.sharedInstance.getCustomerInfoWith { info ->
+    val isPro = info.entitlements.active.containsKey("pro")
+    showPro(isPro)
+}
+```
+
+The same code runs against RevenueCat or RevenueDot. Only the SDK's proxy URL changes.
+
+## What if a subscriber buys lifetime?
+
+The subscription keeps renewing. The stores treat the two purchases as separate products, and neither store ends one when the other is bought. Your app should catch this case and ask the customer to cancel.
+
+1. **Detect it.** After a lifetime purchase, check whether the customer still has an active subscription. The `ownsLifetime && hasSubscription` result above does this.
+2. **Tell them in plain words.** For example: "You now own Pro for life. Your monthly plan will still renew until you cancel it. Cancel it now so you are not charged again."
+3. **Open the store's own screen.** On iOS, call `AppStore.showManageSubscriptions(in:)`, or `manageSubscriptionsSheet(isPresented:)` in SwiftUI. It shows the same sheet as the Settings app, with the option to cancel ([Apple](https://developer.apple.com/documentation/storekit/appstore/showmanagesubscriptions(in:))). Apple asks you to "always make it easy" to reach that screen ([Apple](https://developer.apple.com/app-store/subscriptions/)).
+4. **On Android, open the subscription's own page** in Google Play with a deep link ([Google](https://developer.android.com/google/play/billing/subscriptions)).
+
+```kotlin
+// Opens Google Play on this subscription, where the customer can cancel.
+val uri = Uri.parse(
+    "https://play.google.com/store/account/subscriptions?sku=pro&package=com.example.app"
+)
+startActivity(Intent(Intent.ACTION_VIEW, uri))
+```
+
+On Google Play you can also stop the renewal from your server. Google's cancel method turns renewal off, and "the subscription remains valid until its expiration time" ([Google](https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.subscriptions/cancel)). Ask the customer first.
+
+The best fix is to avoid the case. You can hide the lifetime option from paying subscribers, or show it with a note that they must cancel their plan. A [manage button](https://raw.githubusercontent.com/revenuedot/docs/main/blog/share-subscription-across-ios-android-web.md) on your settings screen also helps.
+
+## What happens when a lifetime purchase is refunded?
+
+Access should end. On the App Store, Apple sends a `REFUND` notification for non-consumables as well as subscriptions, and a refunded product leaves `Transaction.currentEntitlements` ([Apple](https://developer.apple.com/documentation/appstoreservernotifications/notificationtype), [Apple](https://developer.apple.com/documentation/storekit/transaction/currententitlements)). If Apple later sends `REFUND_REVERSED`, Apple says your app "needs to reinstate" the content.
+
+On Google Play, the Voided Purchases API lists refunds, chargebacks and cancellations for one-time orders and subscriptions. It only reaches back 30 days ([Google](https://developers.google.com/android-publisher/voided-purchases)), so check it at least that often.
+
+Apple may also ask you for consumption information before it decides on a refund. Our post on [Apple refund requests](https://raw.githubusercontent.com/revenuedot/docs/main/blog/apple-refund-requests-consumption-info.md) covers that flow.
+
+## Does Family Sharing apply to lifetime purchases?
+
+On the App Store, yes, if you turn it on. Family Sharing works for auto-renewable subscriptions and non-consumables, and "once you turn on Family Sharing for an In-App Purchases in App Store Connect, you can't turn it off" ([Apple](https://developer.apple.com/help/app-store-connect/configure-in-app-purchase-settings/turn-on-family-sharing-for-in-app-purchases)). Decide before launch.
+
+Shared access can end. Apple sends `REVOKE` when the buyer turns off sharing, leaves the family, or gets a refund ([Apple](https://developer.apple.com/documentation/appstoreservernotifications/notificationtype)). Each transaction also carries an ownership type, so you can tell the buyer from a family member ([Apple](https://developer.apple.com/app-store/subscriptions/)). See the [Family Sharing](https://revenuedot.app/glossary/family-sharing) glossary entry for the subscription side.
+
+## How does restore work for lifetime?
+
+A lifetime purchase must come back on a new phone. On iOS, StoreKit 2 has the transactions on first launch, and `Transaction.currentEntitlements` already lists the non-consumable. Apple says to call `AppStore.sync()` only from a button, such as Restore purchases ([Apple](https://developer.apple.com/documentation/storekit/appstore/sync())). On Android, call `queryPurchasesAsync` when the app connects to Google Play, which covers purchases made on another device ([Google](https://developer.android.com/google/play/billing/integrate)).
+
+Our [restore purchases guide](https://raw.githubusercontent.com/revenuedot/docs/main/blog/restore-purchases-ios-android.md) covers App Review's rules and who owns a restored purchase. The RevenueDot help page on [restore](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/restore-purchases.md) covers the server side.
+
+## How should I price lifetime?
+
+We found no lifetime price data published this month that we could check, so this section has no benchmark numbers. Start from your annual price. A lifetime plan is paid once, so it must earn what several years of a subscription would earn from the same customer. Then test it: put lifetime in one paywall variant and keep it out of another, and compare revenue per visitor.
+
+For subscription prices, trials and regional pricing, read our [pricing guide](https://raw.githubusercontent.com/revenuedot/docs/main/blog/subscription-app-pricing-guide.md) and [weekly vs annual](https://raw.githubusercontent.com/revenuedot/docs/main/blog/weekly-vs-annual-subscriptions.md). The [subscription revenue calculator](https://revenuedot.app/tools/subscription-revenue-calculator) helps you model plans side by side.
+
+## Do it with RevenueDot
+
+RevenueDot's entitlement engine handles lifetime purchases, and its tests cover lifetime, refunds, grace periods, promotional grants and transfers. Here is what the docs describe:
+
+- **A product type for lifetime.** Create the product with `type: non_consumable` and attach it to `pro` next to your subscriptions ([Products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md)).
+- **Clear rules.** A lifetime purchase never ends unless it is refunded, and when a customer owns both, the lifetime purchase wins. Consumables never grant an entitlement.
+- **A lifetime package.** Put the product in the `$rc_lifetime` package, so `offering.lifetime` works in the SDK ([Offerings and packages](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/offerings-and-packages.md)).
+- **Google acknowledgement and refunds.** RevenueDot acknowledges Google Play purchases within the 3-day limit, and checks Google's voided purchases once a day ([Google Play setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md)). Apple's `REFUND` notification ends access ([App Store setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md)).
+- **An event for each lifetime sale.** A one-time purchase sends `NON_RENEWING_PURCHASE` to your [webhooks](https://revenuedot.app/features/webhooks), so you can email a buyer who still has a subscription ([Subscriptions and events](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/subscriptions-and-events.md)).
+- **A Manage button in the app.** The [Customer Center](https://revenuedot.app/features/customer-center) has a Manage path that opens the store's subscription screen ([Customer Center guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/customer-center.md)). [Refund Control](https://revenuedot.app/features/refund-control) answers Apple's refund requests for lifetime purchases too ([Refund Control guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/refund-control.md)).
+
+RevenueDot works with the RevenueCat SDK when you change one line, the proxy URL. The server is open source (AGPL-3.0), the SDK forks are MIT, and you can self-host it with Docker and Postgres or export all your data at any time. RevenueCat is free up to $2,500 in monthly tracked revenue, then 1% of all of it ([RevenueCat](https://www.revenuecat.com/pricing)). RevenueDot Cloud is free up to $10,000, and a paid plan is planned ([pricing](https://revenuedot.app/pricing)). RevenueCat has more years in production. No real store purchase has run end to end against RevenueDot yet, so test each store in its sandbox before launch. The [RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) lists the other differences.
+
+[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup).
+
+## FAQ
+
+### Can I put a lifetime purchase in a subscription group?
+
+No. Apple's subscription groups hold auto-renewable subscriptions ([Apple](https://developer.apple.com/help/app-store-connect/manage-subscriptions/offer-auto-renewable-subscriptions)). Create lifetime as a non-consumable and link it to the subscriptions through one entitlement.
+
+### Does buying lifetime cancel my customer's subscription?
+
+No. The subscription renews until the customer cancels it. Show Apple's manage sheet ([Apple](https://developer.apple.com/documentation/storekit/appstore/showmanagesubscriptions(in:))) or Google's subscription page ([Google](https://developer.android.com/google/play/billing/subscriptions)) right after the purchase.
+
+### Should a Google Play lifetime product be consumed?
+
+No. Acknowledge it within three days and never consume it ([Google](https://developer.android.com/google/play/billing/integrate)). A consumed product can be bought again and no longer shows as owned.
+
+### Can family members use a lifetime purchase?
+
+On the App Store, yes, when you turn on Family Sharing for the product. You cannot turn it off later ([Apple](https://developer.apple.com/help/app-store-connect/configure-in-app-purchase-settings/turn-on-family-sharing-for-in-app-purchases)).
+
+### Does a refund remove lifetime access?
+
+It should. Apple sends `REFUND` for non-consumables ([Apple](https://developer.apple.com/documentation/appstoreservernotifications/notificationtype)), and Google lists refunded one-time orders in the Voided Purchases API for 30 days ([Google](https://developers.google.com/android-publisher/voided-purchases)).
 
 **About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
 
@@ -38520,7 +39205,7 @@ RevenueCat's guide says the SDK detects Expo Go by itself and swaps native calls
 
 With RevenueDot, Expo Go and the web run in a browser mode that accepts only a Test Store key (`test_...`). That is useful for building a paywall before you have any store account. Real purchases need a development build.
 
-The RevenueDot [fork](https://revenuedot.app/docs/sdks/react-native) installs through an npm alias, `"react-native-purchases": "npm:@revenuedot/react-native-purchases@<version>"`. It is not published yet, and it needs native packages that are also unpublished, so use the stock SDK in proxy mode today.
+The RevenueDot [fork](https://revenuedot.app/docs/sdks/react-native) installs through an npm alias, `"react-native-purchases": "npm:@revenuedot/react-native-purchases@10.10.2"`. Version 10.10.2 is on npm, and the stock SDK in proxy mode works too.
 
 ## Step 4: Configure the SDK with the proxy URL
 
@@ -38708,6 +39393,220 @@ Add the proxy URL line, remove any verification mode setting, and call `syncPurc
 
 ---
 
+# react-native-iap vs expo-iap vs react-native-purchases: which to use
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/react-native-iap-vs-expo-iap-vs-react-native-purchases.md
+Description: react-native-iap and expo-iap talk to the stores and leave verification to a server you pick. react-native-purchases works with a backend such as RevenueCat or RevenueDot. Expo Go, code, cost and fit.
+
+Use `expo-iap` in an Expo app, or `react-native-iap` in a bare React Native app, when you will run your own server to verify purchases. Use `react-native-purchases` when you want a backend to verify purchases and track subscriptions for you. The first two come from the same OpenIAP project. `react-native-purchases` is RevenueCat's MIT-licensed SDK. It sends every purchase to a backend, which can be RevenueCat or an open-source server such as RevenueDot, and tells your app if the user is Pro on iOS and Android.
+
+This post compares the three packages with code, cost and fit. Every fact about the packages, Expo, Google and RevenueCat links its source and was checked in October 2026.
+
+![Three columns: react-native-iap and expo-iap leave verification and renewals to your own server, while react-native-purchases sends purchases to a backend that handles them](https://github.com/revenuedot/docs/blob/main/blog/assets/react-native-iap-vs-expo-iap-vs-react-native-purchases/cover.svg)
+
+## The short answer
+
+- **`react-native-iap`** is version 16.7.2, MIT, built on Nitro Modules ([npm](https://www.npmjs.com/package/react-native-iap)). It targets bare React Native 0.79 or later, and its docs say Expo support ended in v15.0.0 ([OpenIAP](https://openiap.dev/docs/setup/react-native)).
+- **`expo-iap`** is version 5.8.2, MIT, an Expo Module from the same team ([npm](https://www.npmjs.com/package/expo-iap)). It is the one the OpenIAP docs tell Expo users to install.
+- **`react-native-purchases`** is version 10.11.0, MIT, published by RevenueCat ([npm](https://www.npmjs.com/package/react-native-purchases)). It needs a backend that speaks RevenueCat's API.
+- **Pick an OpenIAP package** if you already run a backend or must not depend on any vendor.
+- **Pick `react-native-purchases`** if you want entitlements, webhooks and charts without writing store server code.
+- **Cost:** the OpenIAP packages cost your engineering time. `react-native-purchases` with RevenueCat is free up to $2,500 in monthly tracked revenue, then 1% ([RevenueCat](https://www.revenuecat.com/pricing/)). With RevenueDot Cloud it is free up to $10,000, and self-hosting is free.
+
+## Is react-native-iap still maintained?
+
+Yes, but it moved. The old `hyochan/react-native-iap` repository is archived, and its notice says the package "is now developed in the monorepo" at `hyodotdev/openiap` ([GitHub](https://github.com/hyochan/react-native-iap)). `expo-iap` lives in the same monorepo, and its README says it "has been migrated from react-native-iap" as an Expo Module ([GitHub](https://github.com/hyodotdev/openiap/tree/main/libraries/expo-iap)).
+
+The `react-native-iap` README says "Use `expo-iap` for Expo projects" ([GitHub](https://github.com/hyodotdev/openiap/tree/main/libraries/react-native-iap)). It also needs `react-native-nitro-modules` installed next to it.
+
+## What does each package do?
+
+The two OpenIAP packages are thin layers over StoreKit 2 and Google Play Billing. `react-native-purchases` wraps the same store libraries and adds a client for a backend.
+
+| | `react-native-iap` | `expo-iap` | `react-native-purchases` |
+|---|---|---|---|
+| Publisher and license | OpenIAP, MIT | OpenIAP, MIT | RevenueCat, MIT |
+| Project type | Bare React Native 0.79+ | Expo | Bare React Native or Expo |
+| Verify a purchase | Your server or IAPKit | Your server or IAPKit | The backend |
+| Acknowledge Google purchases within 3 days | Your code calls `finishTransaction` | Your code calls `finishTransaction` | The backend |
+| Renewals, refunds and billing failures | Your server | Your server | The backend |
+| One entitlement across iOS and Android | Your server and database | Your server and database | Built in (`entitlements.active`) |
+
+IAPKit is the OpenIAP team's own verifier, described as "open-source (MIT) purchase validation and entitlement infrastructure" ([OpenIAP](https://openiap.dev/docs/features/validation)). So the OpenIAP path still expects a server.
+
+## Which ones work in Expo Go?
+
+None of them makes a real purchase in Expo Go. Expo describes a development build as "your own version of Expo Go where you are free to use any native libraries" ([Expo](https://docs.expo.dev/develop/development-builds/introduction/)), and every package here has native code.
+
+| | Expo Go | Development build | Bare React Native |
+|---|---|---|---|
+| `react-native-iap` | No | Use `expo-iap` instead | Yes |
+| `expo-iap` | No | Yes | Yes, with the `expo` package |
+| `react-native-purchases` | Mock calls only | Yes | Yes |
+
+The `expo-iap` guide says its native modules "are not available in Expo Go" ([OpenIAP](https://openiap.dev/docs/setup/expo)). In Expo Go, `react-native-purchases` "replaces native calls with JavaScript-level mock APIs", so you can build a paywall, but real purchases need a development build ([RevenueCat](https://www.revenuecat.com/docs/getting-started/installation/expo)). Against RevenueDot, Expo Go and the web also accept a Test Store (`test_`) key ([React Native docs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/react-native.md)).
+
+Our [Expo tutorial](https://raw.githubusercontent.com/revenuedot/docs/main/blog/react-native-expo-subscriptions-tutorial.md) walks through the development build.
+
+## The same purchase, side by side
+
+### With expo-iap
+
+`react-native-iap` code is almost the same.
+
+```tsx
+import { useEffect } from 'react';
+import { useIAP, finishTransaction, ErrorCode } from 'expo-iap';
+
+export function usePro() {
+  const { connected, subscriptions, fetchProducts, requestPurchase, restorePurchases } = useIAP({
+    onPurchaseSuccess: async (purchase) => {
+      // Your server checks the token with Apple or Google.
+      const ok = await myServer.verify(purchase.productId, purchase.purchaseToken);
+      if (ok) setPro(true);
+      // Within 3 days on Android, or Google refunds it.
+      await finishTransaction({ purchase, isConsumable: false });
+    },
+    onPurchaseError: (error) => {
+      if (error.code !== ErrorCode.UserCancelled) console.warn(error.message);
+    },
+  });
+
+  useEffect(() => {
+    if (connected) fetchProducts({ skus: ['pro_monthly'], type: 'subs' });
+  }, [connected]);
+
+  const buyPro = async () => {
+    const sub = subscriptions.find((s) => s.id === 'pro_monthly');
+    if (!sub) return;
+    // Android needs an offer token from the product. The result arrives in onPurchaseSuccess.
+    const offerToken = sub.subscriptionOffers?.[0]?.offerTokenAndroid ?? '';
+    await requestPurchase({
+      type: 'subs',
+      request: {
+        apple: { sku: sub.id },
+        google: { skus: [sub.id], subscriptionOffers: [{ sku: sub.id, offerToken }] },
+      },
+    });
+  };
+
+  // The Restore purchases button: restored purchases come back through the same flow.
+  return { buyPro, restore: restorePurchases };
+}
+```
+
+`myServer.verify` is the part you write. It calls each store with your keys, stores the result, and must follow renewals and refunds through store notifications. The hook also offers `hasActiveSubscriptions`, but the docs call it a device-side check that should not grant access without server validation ([OpenIAP](https://openiap.dev/docs/apis/has-active-subscriptions)).
+
+### With react-native-purchases and RevenueDot
+
+```ts
+import { Platform } from 'react-native';
+import Purchases from 'react-native-purchases';
+
+export async function startStore() {
+  // One line of setup sends the SDK to RevenueDot instead of RevenueCat.
+  await Purchases.setProxyURL('https://api.revenuedot.app');
+  Purchases.configure({ apiKey: Platform.OS === 'ios' ? 'appl_YourKey' : 'goog_YourKey' });
+}
+
+export async function buyPro() {
+  const offerings = await Purchases.getOfferings();
+  const pkg = offerings.current?.monthly;
+  if (!pkg) return false;
+  const { customerInfo } = await Purchases.purchasePackage(pkg);
+  return customerInfo.entitlements.active['pro'] !== undefined;
+}
+
+// The Restore purchases button
+export async function restore() {
+  const info = await Purchases.restorePurchases();
+  return info.entitlements.active['pro'] !== undefined;
+}
+```
+
+There is no `verify` function to write. The backend verifies each purchase, acknowledges Google purchases, follows store notifications, and returns entitlements. Drop the `setProxyURL` line and the same code talks to RevenueCat.
+
+## What goes wrong most often?
+
+**With `expo-iap` or `react-native-iap`:**
+
+1. **Granting access without a server check.** The OpenIAP docs warn that "local StoreKit or Play Billing state alone can be bypassed" ([OpenIAP](https://openiap.dev/docs/features/validation)). Google says the same thing: send the purchase "to your secure backend" before you grant anything ([Android Developers](https://developer.android.com/google/play/billing/integrate)). Our [server-side validation guide](https://raw.githubusercontent.com/revenuedot/docs/main/blog/server-side-receipt-validation.md) shows how much code that step takes.
+2. **Forgetting `finishTransaction`.** Google requires each purchase to be acknowledged "within three days so that the purchase isn't automatically refunded" ([Android Developers](https://developer.android.com/google/play/billing/integrate)). In the OpenIAP packages, `finishTransaction` does that ([OpenIAP](https://openiap.dev/docs/setup/expo)).
+3. **Treating restore as a server sync.** `restorePurchases` refreshes purchases on the device, not on your server ([OpenIAP](https://openiap.dev/docs/apis/restore-purchases)). See [restore purchases on iOS and Android](https://raw.githubusercontent.com/revenuedot/docs/main/blog/restore-purchases-ios-android.md).
+
+**With `react-native-purchases` against RevenueDot, from our [React Native docs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/react-native.md):**
+
+1. **Calling `configure` before `setProxyURL` finishes.** It returns a promise. Await it first, or the first requests go to RevenueCat.
+2. **Turning on entitlement verification.** The stock package checks signatures against RevenueCat's key, so `ENFORCED` fails every request. The default, `DISABLED`, is correct.
+3. **Shipping a Test Store key.** Native builds accept `test_` keys only in debug builds. Release builds need the `appl_` and `goog_` keys.
+
+The first list is code you maintain. The second is setup you do once.
+
+## What does each choice cost?
+
+| | Package | Backend | What you pay |
+|---|---|---|---|
+| `expo-iap` or `react-native-iap` + your server | Free (MIT) | You build and run it | Engineering time, hosting and upkeep |
+| `react-native-purchases` + RevenueCat | Free (MIT) | Hosted by RevenueCat | Free to $2,500 in monthly tracked revenue, then 1% ([RevenueCat](https://www.revenuecat.com/pricing/)) |
+| `react-native-purchases` + RevenueDot Cloud | Free (MIT) | Hosted by RevenueDot | Free to $10,000 in monthly tracked revenue; a paid plan is planned ([pricing](https://revenuedot.app/pricing)) |
+| `react-native-purchases` + RevenueDot self-hosted | Free (MIT) | You run the open-source server (AGPL-3.0) | Your hosting, no revenue share |
+
+At $50,000 in monthly tracked revenue, RevenueCat's fee is $500 a month. The [fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator) works it out for your numbers. Our [RevenueCat pricing explainer](https://raw.githubusercontent.com/revenuedot/docs/main/blog/revenuecat-pricing-explained.md) shows worked bills.
+
+RevenueCat earns part of that fee with maturity. It has a longer track record in production than RevenueDot, and that can matter more than price.
+
+## When does each one fit?
+
+**`expo-iap` or `react-native-iap` fits when:**
+
+- You sell on one store, or only consumables whose balance lives on your server.
+- You already run a backend, and someone will own both stores' server APIs and notifications.
+- Your rules forbid any purchase vendor, even a self-hosted one.
+
+Choose `expo-iap` for an Expo app and `react-native-iap` for a bare app on React Native 0.79 or later.
+
+**`react-native-purchases` fits when:**
+
+- You sell subscriptions on iOS and Android and want one entitlement across them.
+- You want webhooks, charts and paywalls without building them.
+- You want to switch backends later without rewriting purchase code.
+
+## Do it with RevenueDot
+
+RevenueDot is an open-source server that speaks the RevenueCat SDK's API. You install the stock `react-native-purchases` package, add one `setProxyURL` line, and get:
+
+- Purchase verification and Google acknowledgement for the [App Store](https://revenuedot.app/stores/app-store) and [Google Play](https://revenuedot.app/stores/google-play).
+- One entitlement across platforms, plus [webhooks](https://revenuedot.app/features/webhooks), [charts](https://revenuedot.app/charts/mrr) and [paywalls](https://revenuedot.app/features/paywalls).
+- Setup details on the [React Native SDK page](https://revenuedot.app/sdks/react-native) and in the [React Native docs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/react-native.md).
+
+You can also install RevenueDot's fork. Version 10.10.2 is on npm as `@revenuedot/react-native-purchases`, and an npm alias keeps every `import ... from "react-native-purchases"` as it is ([React Native docs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/react-native.md)). It has passed a Test Store purchase on the web, and native builds are not verified yet. [Why we forked the RevenueCat SDKs](https://raw.githubusercontent.com/revenuedot/docs/main/blog/why-we-forked-the-revenuecat-sdks.md) explains the reasons.
+
+The limits matter. No real store purchase has run end to end against RevenueDot yet, so test each store in its [sandbox](https://raw.githubusercontent.com/revenuedot/docs/main/blog/sandbox-testing-in-app-purchases.md) before launch. The [RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) lists the other differences.
+
+[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue).
+
+## FAQ
+
+### Should I use react-native-iap or expo-iap in an Expo app?
+
+Use `expo-iap`. The OpenIAP docs say Expo support in `react-native-iap` ended in v15.0.0, and that `expo-iap` "provides the same API on Expo Modules" ([OpenIAP](https://openiap.dev/docs/setup/react-native)).
+
+### Can I test in-app purchases in Expo Go?
+
+Not real ones. Both need a development build for real purchases (see the table above). With RevenueDot, a `test_` key lets you buy from the Test Store in Expo Go ([Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md)).
+
+### Do I need a server with expo-iap?
+
+Yes, if you want to trust the purchase. The docs say to validate each receipt with your backend or IAPKit before you grant access ([OpenIAP](https://openiap.dev/docs/setup/expo)). Renewals and refunds also reach a server, not the app.
+
+### Can I move from expo-iap to react-native-purchases later?
+
+Yes. Replace the purchase code, configure the backend, and call `Purchases.syncPurchases()` once on the first launch of the update so existing subscribers are recorded ([React Native docs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/react-native.md)). Do not run both packages at once.
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
 # How to reduce subscription churn: voluntary and involuntary
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/reduce-subscription-churn.md
@@ -38833,6 +39732,188 @@ Yes, with Apple's Retention Messaging API. Apple shows your message or offer on 
 ### How do I win back users who already cancelled?
 
 Use Apple win-back offers and an email campaign that links to the store. RevenueDot sends each customer a campaign's email once and counts reactivations within 30 days.
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
+# Restore purchases on iOS and Android: what App Review wants
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/restore-purchases-ios-android.md
+Description: Apple guideline 3.1.1 asks for a restore mechanism. When to call AppStore.sync, why Google Play has no restore button, restorePurchases vs syncPurchases, who owns a restored purchase, and how to test it.
+
+Apple's App Review Guidelines ask every app with restorable in-app purchases to have a restore mechanism, and in practice that means a **Restore purchases** button on your paywall or settings screen. With StoreKit 2, the button calls `AppStore.sync()`, which Apple says to call only after an explicit user action because it asks the user to sign in. On launch you read `Transaction.currentEntitlements` instead, which needs no restore at all. Google Play has no restore step: your app calls `queryPurchasesAsync` when it starts or resumes, and every purchase must be acknowledged within three days. With the RevenueCat SDK, the button calls `restorePurchases()` and silent checks call `syncPurchases()`.
+
+This post covers what each store expects, the SDK calls, who owns a purchase that a second account restores, and how to test it. Every Apple, Google and RevenueCat fact links its source and was checked in October 2026.
+
+![Two lanes: on iOS a Restore button calls AppStore.sync, on Android queryPurchasesAsync runs on start and resume, and both end at one server that decides who owns the purchase](https://github.com/revenuedot/docs/blob/main/blog/assets/restore-purchases-ios-android/cover.svg)
+
+## The short answer
+
+- **Apple requires a restore mechanism.** Guideline 3.1.1 says to "make sure you have a restore mechanism for any restorable in-app purchases" ([Apple](https://developer.apple.com/app-store/review/guidelines/#3.1.1)).
+- **On iOS, call `AppStore.sync()` only from a button.** It shows a sign-in prompt ([Apple](https://developer.apple.com/documentation/storekit/appstore/sync%28%29)).
+- **On launch, read `Transaction.currentEntitlements`.** Reinstalls and new devices get all transactions automatically ([Apple](https://developer.apple.com/documentation/storekit/appstore/sync%28%29)).
+- **On Android, query purchases on start and resume.** Acknowledge each purchase within three days, or Google refunds it ([Android Developers](https://developer.android.com/google/play/billing/integrate)).
+- **With the RevenueCat SDK,** `restorePurchases()` is for the button and `syncPurchases()` is for silent calls ([RevenueCat](https://www.revenuecat.com/docs/getting-started/restoring-purchases)).
+- **Decide who owns a restored purchase.** When a second account restores the same store purchase, your server's transfer rule decides who keeps access.
+
+## What does Apple App Review require?
+
+Guideline 3.1.1 is short on this point. It says "you should make sure you have a restore mechanism for any restorable in-app purchases" ([Apple](https://developer.apple.com/app-store/review/guidelines/#3.1.1)). Restorable purchases are subscriptions and non-consumables. Consumables, such as a pack of credits, are not restorable from the store, so you keep their balance on your own server.
+
+Apple's StoreKit documentation says the same thing in code terms: include some mechanism, "such as a Restore Purchases button", to let users restore their purchases ([Apple](https://developer.apple.com/documentation/storekit/appstore/sync%28%29)). Put the button where a returning customer looks for it:
+
+1. **On the paywall**, next to the buy buttons. A customer who reinstalls the app often sees the paywall first.
+2. **In settings or the account screen**, so they can find it later.
+
+## How does restore work with StoreKit 2?
+
+StoreKit 2 keeps the device up to date by itself. Apple's documentation for `AppStore.sync()` says "in regular operations, there's no need to call" it, because StoreKit keeps transactions and subscription status current. When users reinstall or move to a new device, the app "automatically has all transactions available to it upon initial launch" ([Apple](https://developer.apple.com/documentation/storekit/appstore/sync%28%29)).
+
+So the launch path and the button path are different:
+
+- **On app launch, read `Transaction.currentEntitlements`.** It lists the latest transaction for each active subscription and non-consumable, and leaves out refunded or revoked products ([Apple](https://developer.apple.com/documentation/storekit/transaction/currententitlements)).
+- **While the app runs, listen to `Transaction.updates`.** It delivers renewals, Ask to Buy approvals, offer code redemptions and purchases from other devices ([Apple](https://developer.apple.com/documentation/storekit/transaction/updates)).
+- **When the customer taps Restore purchases, call `AppStore.sync()`.** It forces a fetch from the App Store and "displays a system prompt that asks users to authenticate" ([Apple](https://developer.apple.com/documentation/storekit/appstore/sync%28%29)).
+
+```swift
+import StoreKit
+
+func refreshEntitlements() async -> Set<String> {
+    var owned = Set<String>()
+    for await result in Transaction.currentEntitlements {
+        if case .verified(let transaction) = result {
+            owned.insert(transaction.productID)
+        }
+    }
+    return owned
+}
+
+// Only from the Restore purchases button:
+func restoreTapped() async {
+    do {
+        try await AppStore.sync()
+    } catch {
+        // The customer cancelled the sign-in, or the network failed.
+    }
+    let owned = await refreshEntitlements()
+    // Update your UI from `owned`.
+}
+```
+
+Never call `AppStore.sync()` on launch. Apple says to call it "only in response to an explicit user action", and a sign-in prompt that appears by itself confuses customers and reviewers alike.
+
+## How does restore work on Google Play?
+
+Google Play has no restore call. The Play Billing Library returns the purchases the signed-in Google account owns, and your app asks for them. Google's integration guide says to call `queryPurchasesAsync()` when the billing client connects, which it recommends doing when the app launches or comes to the foreground. Google gives two reasons: a purchase can succeed while the device loses network, and "a user may buy an item on one device and then expect to see the item when they switch devices" ([Android Developers](https://developer.android.com/google/play/billing/integrate)). The same guide says to call it in `onResume()` for purchases that finished while the app was not running.
+
+```kotlin
+override fun onResume() {
+    super.onResume()
+    val params = QueryPurchasesParams.newBuilder()
+        .setProductType(BillingClient.ProductType.SUBS)
+        .build()
+    billingClient.queryPurchasesAsync(params) { billingResult, purchases ->
+        if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
+            // Send each purchase token to your server, which verifies it,
+            // grants access and acknowledges it if needed.
+        }
+    }
+}
+```
+
+**The three-day rule.** After you grant access, the purchase must be acknowledged "within three days so that the purchase isn't automatically refunded and entitlement revoked" ([Android Developers](https://developer.android.com/google/play/billing/integrate)). A purchase that only lives on the device is at risk if the customer never reopens the app. Acknowledging it from a server removes that risk.
+
+You can still show a **Restore purchases** button on Android. It is harmless and helps customers who switch between platforms, but Google's guide does not require one.
+
+## restorePurchases or syncPurchases in the RevenueCat SDK?
+
+The RevenueCat SDK wraps both stores and sends every purchase to a backend. It has two calls that look alike:
+
+| Call | Use it for | What the customer sees |
+|---|---|---|
+| `restorePurchases()` | The **Restore purchases** button | On iOS it "may cause OS level sign-in prompts to appear" |
+| `syncPurchases()` | Silent calls, for example once after a migration | Nothing; it "will not cause OS level sign-in prompts to appear" |
+
+Both quotes are from RevenueCat's restore guide, which says `restorePurchases` "should not be triggered programmatically" ([RevenueCat](https://www.revenuecat.com/docs/getting-started/restoring-purchases)).
+
+```swift
+// The Restore purchases button
+let customerInfo = try await Purchases.shared.restorePurchases()
+let isPro = customerInfo.entitlements["pro"]?.isActive == true
+
+// Once, silently, after you move an existing app to a new backend
+let synced = try await Purchases.shared.syncPurchases()
+```
+
+On Android, the backend reads each restored or synced purchase from the Play Developer API. RevenueDot also acknowledges it there, within Google's three-day limit, so a purchase is safe even if the customer never reopens the app ([Google Play guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md)).
+
+## Who owns a restored purchase?
+
+A restore can surprise you. Say Alice buys Pro on her iPhone while signed in to your app as `alice`. Later her partner signs in as `bob` on the same iPhone and taps **Restore purchases**. The App Store purchase belongs to the Apple account on the device, not to your user. Your server must decide whether Pro moves to `bob`, stays with `alice`, or both keep it.
+
+RevenueCat calls this restore behavior and offers four options; the default for new projects transfers the purchase to the user who restored it ([RevenueCat](https://www.revenuecat.com/docs/projects/restore-behavior)). RevenueDot uses the same four values in its `transfer_behavior` project setting ([customers and app user IDs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/customers-and-app-user-ids.md)):
+
+| `transfer_behavior` | What happens when `bob` restores Alice's purchase |
+|---|---|
+| `transfer` (default) | Pro moves to `bob`. RevenueDot sends a `TRANSFER` webhook |
+| `transfer_if_no_active` | Pro moves only if `alice` has no active subscription. Otherwise the restore fails with code 7102 |
+| `keep` | Pro stays with `alice`. The restore fails with code 7102, "receipt already in use" |
+| `share` | The two customers are merged, so both IDs have Pro |
+
+Two cases never depend on the setting. If the current owner is anonymous, it is merged into the customer who restored. If the customer restoring is anonymous and the owner has a real ID, the anonymous ID joins the owner, as if they had logged in. Store notifications never move a purchase; only a receipt posted from a device does.
+
+Pick the rule by how your app treats accounts:
+
+- **One person, one device, accounts optional:** keep `transfer`. Restores always work.
+- **Accounts that must not share Pro,** such as a business seat: use `transfer_if_no_active` or `keep`, and show a clear message on code 7102: "This purchase belongs to another account. Sign in with that account to use it."
+- **Your own database grants access too:** listen for the `TRANSFER` webhook and move access from the `transferred_from` IDs to the `transferred_to` IDs ([restore guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/restore-purchases.md)).
+
+## How do I test restore?
+
+Test each path once before you submit.
+
+1. **iOS sandbox.** Buy with a sandbox account, delete the app, reinstall it and launch. The entitlement should be active before you tap anything, because `currentEntitlements` returns it. Then tap **Restore purchases** and check that the sign-in prompt appears only then.
+2. **Android test track.** Buy as a license tester, clear the app's data or install on a second device with the same Google account, and open the app. The purchase should appear from `queryPurchasesAsync` on start.
+3. **A second account.** Sign in as a second user on the same device and restore. Check that the result matches your transfer rule and that your webhook receives `TRANSFER` when the purchase moves.
+4. **No store at all.** RevenueDot's Test Store runs purchases in debug builds without a store account. The `TRANSFER` webhook example in our restore guide was captured from a Test Store run ([Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md)).
+
+Our [sandbox testing guide](https://raw.githubusercontent.com/revenuedot/docs/main/blog/sandbox-testing-in-app-purchases.md) shows the store screens for sandbox accounts and license testers.
+
+## Do it with RevenueDot
+
+RevenueDot is an open-source server that works with the RevenueCat SDK. Your `restorePurchases()` and `syncPurchases()` code stays the same; the SDK's proxy URL points at RevenueDot. What you get:
+
+- Receipts from restores verified with the [App Store](https://revenuedot.app/stores/app-store) and [Google Play](https://revenuedot.app/stores/google-play), and Google purchases acknowledged on the server.
+- The four transfer rules in **Project settings**, with a separate rule for sandbox purchases.
+- `TRANSFER` events on [webhooks](https://revenuedot.app/features/webhooks) and integrations, with RevenueCat's field names.
+- A [Customer Center](https://revenuedot.app/features/customer-center) configuration for the SDK's self-service screens.
+
+No real App Store or Google Play purchase has run end to end against RevenueDot yet. Store paths are tested against Apple's and Google's formats with mocked stores, so run your sandbox tests before launch. Compare the cost on the [RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) and the [fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator), or see [pricing](https://revenuedot.app/pricing).
+
+[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue).
+
+## FAQ
+
+### Will Apple reject my app without a Restore purchases button?
+
+Guideline 3.1.1 asks for a restore mechanism for restorable in-app purchases ([Apple](https://developer.apple.com/app-store/review/guidelines/#3.1.1)), and Apple's StoreKit docs name a Restore Purchases button as the example ([Apple](https://developer.apple.com/documentation/storekit/appstore/sync%28%29)). Adding the button is the safe choice for any app that sells subscriptions or non-consumables.
+
+### Should I restore purchases automatically on launch?
+
+No. On iOS, read `Transaction.currentEntitlements`, or let the RevenueCat SDK fetch customer info. Call `AppStore.sync()` or `restorePurchases()` only from a button, because both can show a sign-in prompt ([RevenueCat](https://www.revenuecat.com/docs/getting-started/restoring-purchases)).
+
+### Does Android need a restore button?
+
+Google's guide does not ask for one. It asks you to call `queryPurchasesAsync()` when the app starts or resumes ([Android Developers](https://developer.android.com/google/play/billing/integrate)). A button does no harm and keeps your UI the same on both platforms.
+
+### Why does restore say the receipt is already in use?
+
+The purchase belongs to another account in your app, and your transfer rule is `keep`, or `transfer_if_no_active` while the owner's subscription is active. Ask the customer to sign in with the account that bought, or switch the rule to `transfer` ([restore guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/restore-purchases.md)).
+
+### Can consumables be restored?
+
+Not from the store. Apple's `currentEntitlements` leaves consumables out ([Apple](https://developer.apple.com/documentation/storekit/transaction/currententitlements)), so keep credit balances on your server. RevenueDot's in-app currencies do that per customer.
 
 **About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
 
@@ -39690,6 +40771,182 @@ The server in those products does it. The SDK posts the purchase, and the backen
 ### Can I validate purchases without a backend?
 
 You can check locally on the device, but Apple's comparison says server-side validation adds subscription information and resists device clock changes. For anything that grants paid access across devices, use a server.
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
+# How to share one subscription across iOS, Android and the web
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/share-subscription-across-ios-android-web.md
+Description: Give each customer one account ID, attach every store's product to one entitlement, and check the entitlement before you sell. What Apple 3.1.3(b) and Google Play allow, how to avoid double billing, and code.
+
+To share one subscription across iOS, Android and the web, give every customer one account ID from your own sign-in, call `logIn` with that ID on every platform, and attach the App Store, Google Play and web products to one entitlement. Your app then checks the entitlement, not the store. Apple's guideline 3.1.3(b) lets customers use a subscription they bought on another platform or your website, as long as you also sell it as an in-app purchase in the iOS app. Google Play lets a signed-in customer use content they paid for somewhere else. Before you show a paywall, check whether the customer already has the entitlement from another store, so nobody pays twice.
+
+This post walks through the account ID, the entitlement, what each store's rules allow, how to stop double billing, and where the "Manage subscription" button should point. Every Apple, Google and RevenueCat fact links its source and was checked in October 2026.
+
+![One customer account with an App Store, a Google Play and a web subscription all unlocking the same pro entitlement](https://github.com/revenuedot/docs/blob/main/blog/assets/share-subscription-across-ios-android-web/cover.svg)
+
+## The short answer
+
+- **One account ID.** Call `logIn` with your own user ID after sign-in. RevenueCat's docs say anonymous IDs cannot share subscriptions across platforms ([RevenueCat](https://www.revenuecat.com/docs/customers/identifying-customers)).
+- **One entitlement.** Attach `pro_monthly` (App Store), `pro:monthly` (Google Play) and the web product to the same `pro` entitlement.
+- **Apple allows it.** Guideline 3.1.3(b) allows access to subscriptions bought on other platforms, if the iOS app also sells them as in-app purchases ([Apple](https://developer.apple.com/app-store/review/guidelines/#3.1.3b)).
+- **Google allows it.** Google says a user "could log in when the app opens and access content paid for somewhere else" ([Google Play](https://support.google.com/googleplay/android-developer/answer/10281818)).
+- **No double billing.** The stores cannot see each other, so your app must hide the buy buttons when the entitlement is already active from another store.
+- **Manage in the right place.** A subscription can only be cancelled in the store that bills it, so the button must open that store's page.
+
+## What does "one subscription on every platform" mean?
+
+It means one person pays once and gets Pro everywhere they sign in. The purchase still happens in one store: Apple bills an iPhone purchase, Google bills an Android purchase, and Stripe bills a web purchase. None of the three knows about the others. A server ties them together with two records:
+
+1. **A customer** with your user ID. Every purchase the customer makes, in any store, is stored on that customer.
+2. **An entitlement** such as `pro`. Each store's product is attached to it, so a purchase in any store makes `pro` active.
+
+Your app asks one question on every platform: "Is `pro` active for this customer?" It never asks "Did this person buy on the App Store?" That is the whole design. The rest of this post is the code and the rules around it.
+
+## Step 1: use one account ID everywhere
+
+Without your own ID, the SDK creates an anonymous ID such as `$RCAnonymousID:4f2c...` and keeps it on that one device. RevenueCat's docs say a user logged in with the same app user ID on different platforms "will be considered the same user" and can use what they bought on any platform ([RevenueCat](https://www.revenuecat.com/docs/customers/identifying-customers)). Anonymous IDs cannot do that.
+
+So call `logIn` right after your own sign-in succeeds, with the same ID on every platform. Use your database's user ID. RevenueCat recommends against email addresses, hard-coded strings and guessable values ([RevenueCat](https://www.revenuecat.com/docs/customers/identifying-customers)), because the ID appears in dashboards, webhooks and logs.
+
+```swift
+// iOS: after your sign-in succeeds
+let (customerInfo, _) = try await Purchases.shared.logIn(user.id)
+let isPro = customerInfo.entitlements["pro"]?.isActive == true
+```
+
+```kotlin
+// Android: after your sign-in succeeds
+val result = Purchases.sharedInstance.awaitLogIn(user.id)
+val isPro = result.customerInfo.entitlements["pro"]?.isActive == true
+```
+
+```ts
+// Web (purchases-js): pass the same ID when you configure
+const purchases = Purchases.configure({
+  apiKey: "test_...",
+  appUserId: user.id,
+  httpConfig: { proxyURL: "https://api.revenuedot.app" },
+  flags: { collectAnalyticsEvents: false },
+});
+```
+
+If a customer bought while still anonymous and then signs in, `logIn` moves that purchase to their account. RevenueDot's exact merge rules are in [customers and app user IDs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/customers-and-app-user-ids.md).
+
+## Step 2: attach every store's product to one entitlement
+
+Create the plan in each store, then connect the products in one place:
+
+| Store | Product ID example | Attached to |
+|---|---|---|
+| App Store | `pro_monthly` | `pro` |
+| Google Play | `pro:monthly` (subscription and base plan) | `pro` |
+| Web (your Stripe account) | `pro_monthly_web` | `pro` |
+
+Put the App Store and Google Play products in one package of your `default` offering, so one paywall configuration serves both apps. The web product goes in a web offering that a [purchase link](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md) or [funnel](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md) sells. See [products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md) and [offerings and packages](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/offerings-and-packages.md).
+
+## What does Apple allow?
+
+Apple allows access to subscriptions bought elsewhere, with one condition. Guideline 3.1.3(b), Multiplatform Services, says apps that work across platforms "may allow users to access content, subscriptions, or features they have acquired in your app on other platforms or your web site", "provided those items are also available as in-app purchases within the app" ([Apple](https://developer.apple.com/app-store/review/guidelines/#3.1.3b)).
+
+In practice that gives you three rules for the iOS app:
+
+1. **Sell Pro in the iOS app too.** If a customer can buy Pro on the web, the iOS app must also offer Pro as an in-app purchase.
+2. **Unlock Pro for anyone who has it.** A customer who signs in with a web or Android subscription gets Pro on iPhone with no extra step.
+3. **Be careful with links to your web checkout.** Guideline 3.1.3 says apps in that section cannot encourage users, within the app, to use a purchasing method other than in-app purchase, except on the United States storefront and in the cases Apple lists ([Apple](https://developer.apple.com/app-store/review/guidelines/#3.1.3)). Our post on [web checkout for iOS apps](https://raw.githubusercontent.com/revenuedot/docs/main/blog/web-checkout-for-ios-apps-stripe.md) covers the US rules.
+
+Apple's subscription guideline adds one more expectation: an auto-renewable subscription must "be available across all of the user's devices" ([Apple](https://developer.apple.com/app-store/review/guidelines/#3.1.2a)). One account ID and one entitlement give you that.
+
+## What does Google Play allow?
+
+Google requires its billing system for in-app purchases of digital goods and subscriptions, and apps "may not lead users to a payment method other than Google Play's billing system", except under the sections and programs the policy lists ([Google Play Payments policy](https://support.google.com/googleplay/android-developer/answer/9858738)).
+
+Using a subscription bought elsewhere is allowed. Google's policy FAQ says an app can be consumption-only "even if it is part of a paid service", and that "a user could log in when the app opens and access content paid for somewhere else" ([Google Play](https://support.google.com/googleplay/android-developer/answer/10281818)). The same FAQ says Google does not require the same features or prices across platforms, and that you may email customers about offers outside the app.
+
+| Question | App Store | Google Play |
+|---|---|---|
+| Can a customer use a subscription bought on another platform? | Yes, under 3.1.3(b) | Yes, a signed-in user can access content paid for elsewhere |
+| Must the app also sell it in-app? | Yes, if it is for sale elsewhere | No, consumption-only apps are allowed, but any in-app sale must use Play billing |
+| Can the app link to your web checkout? | Only on the US storefront or under Apple's listed cases | Only through Google's programs in eligible regions, such as the EEA and the US |
+
+## How do you avoid double billing?
+
+The stores cannot see each other. If a customer already pays you through Stripe and opens the iOS paywall, Apple will happily sell them a second subscription. Your app is the only place that can prevent it.
+
+Check the entitlement before you show buy buttons. If `pro` is active and came from a different store than the one this app sells through, show a message instead of a paywall. Each active entitlement records the store that unlocked it, in the `store` property ([purchases_flutter reference](https://pub.dev/documentation/purchases_flutter/latest/models_entitlement_info_wrapper/EntitlementInfo-class.html); the native SDKs have the same field).
+
+```swift
+let info = try await Purchases.shared.customerInfo()
+if let pro = info.entitlements["pro"], pro.isActive {
+    switch pro.store {
+    case .appStore, .macAppStore:
+        showManageButton()              // they pay through Apple
+    case .playStore:
+        showMessage("You subscribe on Google Play. Manage it on your Android device.")
+    case .stripe:
+        showMessage("You subscribe on our website. Manage it in your account there.")
+    default:
+        showMessage("You already have Pro.")
+    }
+} else {
+    showPaywall()
+}
+```
+
+Three more habits help:
+
+- **Ask customers to sign in before they buy** on every platform, so every purchase lands on a known account. A purchase made while anonymous is still safe, because `logIn` moves it later.
+- **Pass the user ID to your web checkout.** A RevenueDot purchase link with `?app_user_id=` records the purchase on that customer at once ([purchase links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md)).
+- **Watch for two active subscriptions.** If a customer ends up with two, only they can cancel the one billed by Apple or Google, in that store. Send them to the right page with the button below.
+
+## Where should the "Manage subscription" button go?
+
+To the store that bills the customer, because only that store can cancel or change the plan.
+
+| Store that bills | Where to send the customer | Source |
+|---|---|---|
+| App Store | `AppStore.showManageSubscriptions(in:)`, which shows the same sheet as the App Store app's subscription settings | [Apple](https://developer.apple.com/documentation/storekit/appstore/showmanagesubscriptions%28in:%29) |
+| Google Play | `https://play.google.com/store/account/subscriptions?sku=<productId>&package=<package>` | [Android Developers](https://developer.android.com/google/play/billing/subscriptions) |
+| Stripe (web) | Your Stripe customer portal, where customers update payment methods and cancel | [Stripe](https://docs.stripe.com/customer-management) |
+
+RevenueCat's SDK exposes a `managementURL` on customer info that points to the store of the active subscription, and is null when there is none ([RevenueCat](https://www.revenuecat.com/docs/customers/customer-info)). **With RevenueDot, the SDK's `managementURL` is always null today** ([API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md)). Build the link from the entitlement's `store` as in the code above, or ask your server: RevenueDot's REST API returns the App Store or Google Play page for any subscription at `GET /v2/projects/{project_id}/subscriptions/{subscription_id}/authenticated_management_url` ([REST API](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md)).
+
+## Do it with RevenueDot
+
+RevenueDot is an open-source server that works with the RevenueCat SDK, so the code above runs unchanged once the SDK's proxy URL points at RevenueDot. What it gives a cross-platform app:
+
+- One customer record with purchases from the [App Store](https://revenuedot.app/stores/app-store), [Google Play](https://revenuedot.app/stores/google-play) and [Stripe](https://revenuedot.app/stores/stripe), unlocking one entitlement.
+- [Web checkout](https://revenuedot.app/features/web-billing) and [purchase links](https://revenuedot.app/features/purchase-links) on your own Stripe account, with `?app_user_id=` for signed-in buyers and [redemption links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md) for anonymous ones.
+- [Webhooks](https://revenuedot.app/features/webhooks) with RevenueCat's event names, so your own backend hears about every store.
+- A `TRANSFER` event when a purchase moves between accounts, under the [restore rules](https://raw.githubusercontent.com/revenuedot/docs/main/blog/restore-purchases-ios-android.md) you choose.
+
+The limits: the stock web SDK buys only with Test Store keys against RevenueDot, so real web payments go through RevenueDot's hosted Stripe checkout ([web SDK guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/web.md)). No real store purchase has run end to end against RevenueDot yet, so test each store in its sandbox before you launch. The [RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) and the [fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator) show the cost side by side, and [pricing](https://revenuedot.app/pricing) has the plans.
+
+[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue).
+
+## FAQ
+
+### Can a user who subscribed on Android use the subscription on iPhone?
+
+Yes. Apple's guideline 3.1.3(b) allows access to subscriptions bought on other platforms, as long as the iOS app also sells the subscription as an in-app purchase ([Apple](https://developer.apple.com/app-store/review/guidelines/#3.1.3b)). The customer signs in, your app calls `logIn`, and the `pro` entitlement is active.
+
+### Do I need my own login system to share a subscription?
+
+Yes. The share works through one account ID that the customer proves on every device, which means some sign-in. It can be email, Sign in with Apple, Google or a magic link. Anonymous IDs stay on one device ([RevenueCat](https://www.revenuecat.com/docs/customers/identifying-customers)).
+
+### Can I sell only on the web and unlock the Android app?
+
+Google's FAQ allows consumption-only apps where users "access content paid for somewhere else" ([Google Play](https://support.google.com/googleplay/android-developer/answer/10281818)). Any purchase inside the Android app must still use Google Play billing, and the app may not point users to your web checkout outside Google's programs.
+
+### What happens if a customer pays on two platforms?
+
+Both stores bill them, and the entitlement simply stays active. Show the subscription's store on your account screen, and send the customer to that store to cancel the one they do not want. Checking the entitlement before the paywall prevents most cases.
+
+### Does the price have to be the same on every platform?
+
+No for Google: its FAQ says it does not require parity across platforms ([Google Play](https://support.google.com/googleplay/android-developer/answer/10281818)). Apple's 3.1.3(b) asks only that the items are also available as in-app purchases. Many apps charge less on the web, where the store fee does not apply.
 
 **About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
 

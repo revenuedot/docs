@@ -11,7 +11,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (245)
+## Operations on this page (249)
 
 - **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects), [Update account settings](#update-account-settings), [Email a password reset link](#email-a-password-reset-link), [Check a password reset link](#check-a-password-reset-link), [Set a new password from a reset link](#set-a-new-password-from-a-reset-link), [Confirm an email address](#confirm-an-email-address), [Send a new confirmation email](#send-a-new-confirmation-email), [Look up an invite](#look-up-an-invite), [Accept an invite](#accept-an-invite)
 - **Members and invites**: [List open invites](#list-open-invites), [Invite someone by email](#invite-someone-by-email), [Resend an invite](#resend-an-invite), [Revoke an invite](#revoke-an-invite), [Change a member's role](#change-a-members-role), [Remove a member, or leave the project](#remove-a-member-or-leave-the-project)
@@ -22,8 +22,8 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Auth**: [Auth on or off](#auth-on-or-off), [Turn Auth or anonymous sign-in on or off](#turn-auth-or-anonymous-sign-in-on-or-off), [List identity providers](#list-identity-providers), [Add a Firebase or OpenID Connect provider](#add-a-firebase-or-openid-connect-provider), [Get an identity provider](#get-an-identity-provider), [Update or turn off an identity provider](#update-or-turn-off-an-identity-provider), [Delete an identity provider](#delete-an-identity-provider), [Check an ID token without signing in](#check-an-id-token-without-signing-in), [List signed-in identities](#list-signed-in-identities), [Read a signed-in user's balances and entitlements by identity](#read-a-signed-in-users-balances-and-entitlements-by-identity), [Unlink an identity and sign it out](#unlink-an-identity-and-sign-it-out)
 - **Store setup**: [Store setup state of an app](#store-setup-state-of-an-app), [Check store credentials with Apple, Google, Amazon or Stripe](#check-store-credentials-with-apple-google-amazon-or-stripe), [Extend every active App Store subscriber of a product](#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](#status-of-a-mass-extension), [Setup health](#setup-health)
 - **API keys**: [List secret keys](#list-secret-keys), [Create a secret key](#create-a-secret-key), [Delete a secret key](#delete-a-secret-key)
-- **Webhook deliveries**: [Send a TEST event to one webhook](#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](#whether-each-webhook-is-enabled), [Delivery log of a webhook](#delivery-log-of-a-webhook), [Retry a delivery now](#retry-a-delivery-now)
-- **Integrations**: [What each integration needs](#what-each-integration-needs), [List integrations](#list-integrations), [Connect an integration](#connect-an-integration), [Get an integration](#get-an-integration), [Update, enable or disable an integration](#update-enable-or-disable-an-integration), [Disconnect an integration](#disconnect-an-integration), [Send a TEST event to one integration](#send-a-test-event-to-one-integration), [Delivery log of an integration](#delivery-log-of-an-integration), [Retry a delivery now](#retry-a-delivery-now), [Queue failed or skipped deliveries again](#queue-failed-or-skipped-deliveries-again)
+- **Webhook deliveries**: [Send a TEST event to one webhook](#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](#whether-each-webhook-is-enabled), [Delivery log of a webhook](#delivery-log-of-a-webhook), [One delivery: what was sent and every attempt](#one-delivery-what-was-sent-and-every-attempt), [Retry a delivery now](#retry-a-delivery-now)
+- **Integrations**: [What each integration needs](#what-each-integration-needs), [List integrations](#list-integrations), [Connect an integration](#connect-an-integration), [Get an integration](#get-an-integration), [Update, enable or disable an integration](#update-enable-or-disable-an-integration), [Disconnect an integration](#disconnect-an-integration), [Send a TEST event to one integration](#send-a-test-event-to-one-integration), [Delivery log of an integration](#delivery-log-of-an-integration), [One delivery with every attempt](#one-delivery-with-every-attempt), [Retry a delivery now](#retry-a-delivery-now), [Queue failed or skipped deliveries again](#queue-failed-or-skipped-deliveries-again)
 - **Ads**: [Ads Overview: ad revenue, impressions, eCPM and breakdowns](#ads-overview-ad-revenue-impressions-ecpm-and-breakdowns), [List reward rules in the order they are checked](#list-reward-rules-in-the-order-they-are-checked), [Create a reward rule](#create-a-reward-rule), [Reorder reward rules](#reorder-reward-rules), [Update, turn on or turn off a reward rule](#update-turn-on-or-turn-off-a-reward-rule), [Delete a reward rule](#delete-a-reward-rule), [The rewards ledger](#the-rewards-ledger), [Send a test reward](#send-a-test-reward), [AdMob connection, loaded ad units and the URLs to paste](#admob-connection-loaded-ad-units-and-the-urls-to-paste), [Disconnect AdMob](#disconnect-admob), [Start Google sign-in for AdMob](#start-google-sign-in-for-admob), [Finish Google sign-in for AdMob](#finish-google-sign-in-for-admob), [Load AdMob ad units now](#load-admob-ad-units-now), [Customers and revenue by Apple Search Ads campaign](#customers-and-revenue-by-apple-search-ads-campaign), [Load campaign names from Apple Search Ads](#load-campaign-names-from-apple-search-ads), [AdMob server-side verification callback](#admob-server-side-verification-callback), [Google's redirect after AdMob sign-in](#googles-redirect-after-admob-sign-in)
 - **Data exports**: [List scheduled data exports](#list-scheduled-data-exports), [Create a scheduled data export](#create-a-scheduled-data-export), [Get a data export](#get-a-data-export), [Update a data export](#update-a-data-export), [Delete a data export](#delete-a-data-export), [Run an export now](#run-an-export-now), [Check the bucket and credentials](#check-the-bucket-and-credentials), [Run history](#run-history)
 - **Refund Control**: [Get policies and settings](#get-policies-and-settings), [Save settings and the ordered policies](#save-settings-and-the-ordered-policies), [Refund rate, amounts and counts](#refund-rate-amounts-and-counts), [List refund requests, newest first](#list-refund-requests-newest-first)
@@ -34,7 +34,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Customer lists**: [Customers in a list, with the summary cards](#customers-in-a-list-with-the-summary-cards), [Export a list as CSV](#export-a-list-as-csv)
 - **Event log**: [Event log](#event-log), [Transaction feed](#transaction-feed)
 - **Test Store**: [Simulate a Test Store purchase or lifecycle](#simulate-a-test-store-purchase-or-lifecycle)
-- **Dashboard data**: [Daily history of an overview metric](#daily-history-of-an-overview-metric), [Dashboard rows for customers](#dashboard-rows-for-customers)
+- **Dashboard data**: [Daily history of an overview metric](#daily-history-of-an-overview-metric), [Dashboard rows for customers](#dashboard-rows-for-customers), [Overview cards summed across your projects](#overview-cards-summed-across-your-projects), [Transactions across your projects](#transactions-across-your-projects)
 - **Data moves**: [List the project's exports](#list-the-projects-exports), [Export the whole project](#export-the-whole-project), [Get the latest export](#get-the-latest-export), [Get an export](#get-an-export), [Delete an export's files now](#delete-an-exports-files-now), [Do the next slice of an export now](#do-the-next-slice-of-an-export-now), [Download an archive](#download-an-archive), [Get the project's move state](#get-the-projects-move-state), [Move the project to another server (run by this server)](#move-the-project-to-another-server-run-by-this-server), [Do the next step of the move now](#do-the-next-step-of-the-move-now), [Switch to the target](#switch-to-the-target), [Pause writes for the last copy](#pause-writes-for-the-last-copy), [Forward the paused project to its new server](#forward-the-paused-project-to-its-new-server), [Serve the project here again](#serve-the-project-here-again), [Create an import token (Receive a project)](#create-an-import-token-receive-a-project), [List your moves into this server](#list-your-moves-into-this-server), [Check or start loading an archive](#check-or-start-loading-an-archive), [Get an import](#get-an-import), [List the project's collaborators to invite](#list-the-projects-collaborators-to-invite), [Verify the copy](#verify-the-copy), [Put the project live here](#put-the-project-live-here)
 - **Cloud billing**: [The account's plan, usage and invoices](#the-accounts-plan-usage-and-invoices), [Upgrade to Cloud Standard with Stripe Checkout](#upgrade-to-cloud-standard-with-stripe-checkout), [Open the Stripe Customer Portal](#open-the-stripe-customer-portal), [Webhook of RevenueDot's own Stripe account](#webhook-of-revenuedots-own-stripe-account)
 - **Migration import**: [Import customers with their purchases](#import-customers-with-their-purchases), [Keep an app's existing SDK key](#keep-an-apps-existing-sdk-key), [What still needs attention after an import](#what-still-needs-attention-after-an-import)
@@ -2707,6 +2707,34 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID/deliveries
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
+### One delivery: what was sent and every attempt
+
+`GET /v2/projects/{project_id}/webhooks/{webhook_id}/deliveries/{delivery_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+The request as sent (method, URL, headers and the exact body; the Authorization value is masked) and every attempt, newest last (at most 10): when it was sent, the HTTP status, the latency, the error, the first 4,096 characters of the answer, and the signature header of that attempt. Answers and errors have the webhook's Authorization value (also the credential alone) and signing secret replaced, and anything that looks like a credential: bearer and basic credentials, passwords in URLs, token-like JSON fields and query parameters. `curl` repeats the request with a placeholder for Authorization.
+Bodies can hold customer data, so this needs `read_write` (Admins and Developers). Attempt details are kept for `attempt_log_kept_days` (30) days after each attempt; the delivery itself stays.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `webhook_id` | string | yes | Webhook id. |
+| `delivery_id` | string | yes | Delivery id. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID/deliveries/$DELIVERY_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The delivery.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
 ### Retry a delivery now
 
 `POST /v2/projects/{project_id}/webhooks/{webhook_id}/deliveries/{delivery_id}/retry` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
@@ -3105,6 +3133,33 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRAT
 
 - **200**: Deliveries.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### One delivery with every attempt
+
+`GET /v2/projects/{project_id}/integrations/partners/{integration_id}/deliveries/{delivery_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+The delivery with every attempt, newest last (at most 10): when, HTTP status, latency, error, the requests' methods and URLs and the first 4,096 characters of the answer. Credentials are removed: the integration's own secrets, and anything that looks like one (bearer and basic credentials, passwords in URLs, token-like JSON fields and query parameters). `curl` repeats a single-request delivery with the right `Content-Type` and a placeholder for the partner's credentials; it is null when the delivery made several requests, when the URL is itself the secret (Slack, Discord) or when the body was longer than the log keeps. Needs `read_write` (Admins and Developers): bodies can hold customer data, and the log answers Viewers without `request_body` and `response_body`. Attempt details are kept for 30 days after each attempt.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `integration_id` | string | yes | Integration id (intg_...). |
+| `delivery_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRATION_ID/deliveries/$DELIVERY_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The delivery.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
@@ -5842,6 +5897,8 @@ Built-in lists or a saved audience, optionally filtered by audience rules and a 
 | `list` | string | no | `all` (default), `active`, `sandbox`, `non_subscription`, `expired`, or a saved audience id. |
 | `rules` | string | no | Extra filter: audience rules as JSON. |
 | `search` | string | no | Part of an app user id or email. |
+| `sort` | `id`, `subscription_status`, `auto_renewal_status`, `first_seen_at`, `last_seen_at`, `spent_in_usd` | no | Column to sort by. Default: most recently seen first, and ties keep that order. `subscription_status` ascending runs active, trialing, grace_period, billing_issue, expired, none; `auto_renewal_status` ascending runs on, off. In both directions, customers without an auto-renewal value stay last, and with `sort=id` anonymous IDs (`$RCAnonymousID:...`) come after named app user IDs. |
+| `direction` | `asc`, `desc` | no | Sort direction when `sort` is set. Default `asc`. |
 | `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
 | `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
 
@@ -5876,6 +5933,8 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_lists" -H "Authorizati
 | `list` | string | no | `all` (default), `active`, `sandbox`, `non_subscription`, `expired`, or a saved audience id. |
 | `rules` | string | no | Extra filter: audience rules as JSON. |
 | `search` | string | no | Part of an app user id or email. |
+| `sort` | `id`, `subscription_status`, `auto_renewal_status`, `first_seen_at`, `last_seen_at`, `spent_in_usd` | no | Column to sort by. Default: most recently seen first, and ties keep that order. `subscription_status` ascending runs active, trialing, grace_period, billing_issue, expired, none; `auto_renewal_status` ascending runs on, off. In both directions, customers without an auto-renewal value stay last, and with `sort=id` anonymous IDs (`$RCAnonymousID:...`) come after named app user IDs. |
+| `direction` | `asc`, `desc` | no | Sort direction when `sort` is set. Default `asc`. |
 
 **Example request**
 
@@ -5990,8 +6049,8 @@ Runs a purchase through the same pipeline as an SDK receipt, so events, the tran
 | `app_user_id` | string | yes |  |
 | `product_id` | string | yes | Product id or store identifier of a Test Store product. |
 | `app_id` | string | no | Test Store app; default the project's first. |
-| `price` | number | no |  |
-| `currency` | string | no | Three letters; default USD. |
+| `price` | number | no | Without a price, the product's Test Store price. |
+| `currency` | string | no | ISO 4217 code; default USD. A code with no exchange rate to USD is refused. |
 | `purchased_at` | integer | no | Start, epoch milliseconds. Not with offset_days. |
 | `presented_offering_id` | string | no |  |
 | `scenario` | `purchase`, `trial`, `trial_conversion`, `renewal`, `cancel`, `billing_issue`, `refund`, `expire` | no |  |
@@ -6081,6 +6140,62 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_summaries" -H "Authori
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Overview cards summed across your projects
+
+`GET /v2/overview` · Auth: dashboard session · RevenueDot extension · Permissions: `charts_metrics:overview:read`
+
+The six Overview cards (active trials, active subscriptions, MRR, revenue, new customers, active customers) summed over every project the signed-in user belongs to, as on the dashboard's Overview with "All projects" selected. Each card has `value` (the per-project Overview definition) and `history` (the daily series for `days`, summed per date).
+Each project is checked like a project route: a project counts only where the user's role (or an enterprise custom role) includes `charts_metrics:overview:read`; enforced single sign-on and an organization that deprovisioned the user leave one out. `projects` lists every project the user is a member of with `included` and, when left out, `reason`; a project the user was removed from is not listed at all. Dashboard sessions only: a secret key belongs to one project and gets 403.
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `environment` | `production`, `sandbox` | no |  |
+| `days` | integer | no |  |
+| `project_ids` | string | no | Only these projects (comma separated, at most 100). Ids you cannot open are ignored. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/overview"
+```
+
+**Responses**
+
+- **200**: The summed cards.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+
+### Transactions across your projects
+
+`GET /v2/overview/transactions` · Auth: dashboard session · RevenueDot extension · Permissions: `customer_information:purchases:read`
+
+Every purchase, renewal, trial start, refund and refund reversal of the projects the signed-in user may read purchases in (`customer_information:purchases:read`), newest first, each with `project_id`. The list also carries `projects` with `included` and `reason`, as on `GET /v2/overview`. `starting_after` must be a transaction of an included project.
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `environment` | `production`, `sandbox` | no |  |
+| `project_ids` | string | no | Only these projects (comma separated, at most 100). Ids you cannot open are ignored. |
+| `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
+| `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/overview/transactions"
+```
+
+**Responses**
+
+- **200**: A page of results. Returns a list of [Transaction](#transaction).
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 
 ## Data moves
 
@@ -10872,6 +10987,7 @@ One screen of a funnel. Every step has `id` (1-40 lower-case letters, digits, `-
 | `revenue_in_usd` | number | yes | USD; negative for refunds. |
 | `price` | Price or null | no |  |
 | `country` | string or null | no |  |
+| `project_id` | string | no | The transaction's project. Only on GET /v2/overview/transactions. |
 
 ### V2Error
 

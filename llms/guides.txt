@@ -1373,6 +1373,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/webhooks" 
 - `environment`: `production`, `sandbox`, or `null` for both.
 - `event_types`: lower-case types such as `["initial_purchase","renewal"]`; empty means all except the opt-in types below.
 - `app_id`: only one app's events; `null` for all apps.
+- **See what was sent:** click a delivery on the webhook's dashboard page. The details show the request (URL, headers with Authorization masked, the exact body), every attempt with its time, HTTP status, latency and the first 4 KB of your server's answer (credentials it echoes are masked), the next retry, Retry and Copy as cURL. The API is `GET /v2/projects/{project_id}/webhooks/{webhook_id}/deliveries/{delivery_id}` (Admins and Developers). Attempt details are kept for 30 days after each attempt.
 - **Pause without deleting:** send `{"enabled":false}` to `POST /v2/projects/{project_id}/integrations/webhooks/{id}`, or use the Deliveries switch on the webhook's dashboard page. Events recorded while it is paused are not sent; queued retries resume when you turn it back on. `enabled` is a RevenueDot addition; read it with `GET /v2/projects/{project_id}/webhooks`.
 
 ## 2. What a delivery looks like
@@ -1602,7 +1603,7 @@ curl -s -X POST "$B/products" -H "$H" -H "Content-Type: application/json" \
 Attach the products to your entitlement and offering like any other app's products. The [seed script](https://github.com/revenuedot/examples/blob/main/selfhost/docker-compose/seed.sh) does all of this in one run; see the [Quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md).
 
 - **The product's `subscription.duration` is the period.** A `P1M` product expires one month after purchase. Without a duration, one month is used.
-- **The price is the product's Test Store price.** Set it in the dashboard (Edit product, Test Store price) or with `"test_store_price":{"amount_micros":9990000,"currency":"USD"}` in the create or update call. A product without one shows 0. The price the SDK posts with the purchase is recorded.
+- **The price is the product's Test Store price.** Set it in the dashboard (New product and the app page ask for it; Edit product changes it) or with `"test_store_price":{"amount_micros":9990000,"currency":"USD"}` in the create or update call. A product without one shows 0. The price the SDK posts with the purchase is recorded. Use an ISO 4217 code that has an exchange rate to USD (every App Store and Google Play currency does); other codes are refused, because their purchases would count as no revenue.
 
 ## Buy in the app
 Configure the SDK with the `test_` key and your server as the proxy URL, then call `purchase` as usual. The SDK shows its Test Store dialog; choose the successful purchase. The SDK posts `fetch_token = test_<purchase time in ms>_<id>` to `POST /v1/receipts`, and RevenueDot accepts any token of that form.
@@ -4066,7 +4067,7 @@ or, when you know the app user ID, `GET /v2/projects/{project_id}/customers/{app
 # How do I filter, save and export customer lists?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/customer-lists.md
-Description: The Customers page has built-in lists (all, active subscribers, sandbox, non-subscription, expired), saved audiences, filters from the audience condition builder, four summary cards and CSV export.
+Description: The Customers page has built-in lists (all, active subscribers, sandbox, non-subscription, expired), saved audiences, filters from the audience condition builder, sortable columns, a hide-IDs switch, four summary cards and CSV export.
 
 Open **Customers**. The rail on the left holds the lists:
 
@@ -4080,6 +4081,11 @@ Open **Customers**. The rail on the left holds the lists:
 | Your audiences | Audiences you saved here or under Targeting |
 
 Four cards sum up the list: customers, trialing subscribers, paid subscribers and total revenue (production, in USD).
+
+## Sort and hide IDs
+The list starts with the most recently seen customers, and the **Last seen** header shows that order. Select another column header to sort by it: customer (app user ID), subscription status, auto-renewal, first seen or spent. The first click puts the newest dates, the biggest spend, app user IDs from A to Z, active subscriptions and auto-renewal on first; the next click flips it. Customers with the same value keep the last-seen order. In both directions, anonymous IDs (`$RCAnonymousID:…`) come after named app user IDs, and customers without an auto-renewal value come last. The sort stays in the page address, so a shared link opens in the same order, and **Export all** uses it too. Through the API: `?sort=spent_in_usd&direction=desc`.
+
+The eye button in the Customer header hides app user IDs and emails on screen, for screen sharing and demos. Rows still open the customer. The setting is remembered in this browser.
 
 ## Filter and save
 Select **Filter** and add conditions: country, platform, app version, subscription status, entitlements, total spent, first or last seen, first purchase, last renewal, email, attribution (media source, campaign, ad group, keyword, ad, creative; the value box suggests your project's values, and Apple Search Ads campaigns match by name once [names are loaded](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/attribution.md#name-your-apple-search-ads-campaigns)) or any custom attribute. Conditions in a group must all match; groups are alternatives. **Search** matches part of an app user ID or email.

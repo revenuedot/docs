@@ -1,6 +1,6 @@
 ---
 title: How do I filter, save and export customer lists?
-description: The Customers page has built-in lists (all, active subscribers, sandbox, non-subscription, expired), saved audiences, filters from the audience condition builder, four summary cards and CSV export.
+description: The Customers page has built-in lists (all, active subscribers, sandbox, non-subscription, expired), saved audiences, filters from the audience condition builder, sortable columns, a hide-IDs switch, four summary cards and CSV export.
 ---
 
 # How do I filter, save and export customer lists?
@@ -17,6 +17,11 @@ Open **Customers**. The rail on the left holds the lists:
 | Your audiences | Audiences you saved here or under Targeting |
 
 Four cards sum up the list: customers, trialing subscribers, paid subscribers and total revenue (production, in USD).
+
+## Sort and hide IDs
+The list starts with the most recently seen customers, and the **Last seen** header shows that order. Select another column header to sort by it: customer (app user ID), subscription status, auto-renewal, first seen or spent. The first click puts the newest dates, the biggest spend, app user IDs from A to Z, active subscriptions and auto-renewal on first; the next click flips it. Customers with the same value keep the last-seen order. In both directions, anonymous IDs (`$RCAnonymousID:…`) come after named app user IDs, and customers without an auto-renewal value come last. The sort stays in the page address, so a shared link opens in the same order, and **Export all** uses it too. Through the API: `?sort=spent_in_usd&direction=desc`.
+
+The eye button in the Customer header hides app user IDs and emails on screen, for screen sharing and demos. Rows still open the customer. The setting is remembered in this browser.
 
 ## Filter and save
 Select **Filter** and add conditions: country, platform, app version, subscription status, entitlements, total spent, first or last seen, first purchase, last renewal, email, attribution (media source, campaign, ad group, keyword, ad, creative; the value box suggests your project's values, and Apple Search Ads campaigns match by name once [names are loaded](attribution.md#name-your-apple-search-ads-campaigns)) or any custom attribute. Conditions in a group must all match; groups are alternatives. **Search** matches part of an app user ID or email.
