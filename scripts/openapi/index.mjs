@@ -16,6 +16,7 @@ import { webPaths, webSchemas } from "./web.mjs";
 import { adsPaths } from "./ads.mjs";
 import { settingsPathsAll } from "./settings.mjs";
 import { assistantPaths } from "./assistant.mjs";
+import { recoveryPaths } from "./recovery.mjs";
 import { enterprisePaths, enterpriseSchemas } from "./enterprise.mjs";
 import { movePaths } from "./moves.mjs";
 
@@ -75,6 +76,7 @@ export const TAGS = [
   ["Refund Control", "extensions", "Policies that answer Apple's refund requests with consumption information, the refund request log and its cards."],
   ["Retention", "extensions", "Customer Center cancel and refund offers, and Apple's Retention Messaging API (messages, defaults, the real-time call)."],
   ["Support", "extensions", "Customer Center tickets, the customer summary for help desk sidebars, and the Intercom inbox app's Canvas Kit endpoint. See [Support](../docs/guides/support-integrations.md)."],
+  ["Payment recovery", "extensions", "Emails to subscribers whose renewal failed on any store, with one link to fix the payment, and the revenue that comes back. See [Payment recovery](../docs/guides/payment-recovery.md)."],
   ["Win-back", "extensions", "Campaigns that email churned subscribers an offer, with tracked links and one-click unsubscribe."],
   ["Customer lists", "extensions", "Built-in customer lists, saved audiences, filters, summary cards and CSV export."],
   ["Event log", "extensions", "Every recorded event and money movement."],
@@ -84,6 +86,7 @@ export const TAGS = [
   ["Cloud billing", "extensions", "RevenueDot Cloud only: the account's plan, tracked revenue and invoices, Stripe Checkout and the Customer Portal on RevenueDot's own Stripe account. See [Cloud billing](../docs/guides/cloud-billing.md)."],
   ["Migration import", "extensions", "Bulk import from RevenueCat, used by the `revenuedot import` CLI."],
   ["Web billing", "extensions", "Sell on the web through your own Stripe account: web providers and the setup checklist, the web config (checkout look, success page, deep link scheme), web products created in Stripe, web discounts with RevenueDot's extra settings, and the project's web address and custom domain. See [Sell on the web with Stripe](../docs/guides/web-billing.md)."],
+  ["Stripe Connect", "extensions", "Connect a Stripe app to the developer's own Stripe account through RevenueDot's Stripe Connect platform (OAuth or Account Links), without a restricted key. See [Connect with Stripe](../docs/guides/stripe-connect.md)."],
   ["Purchase links", "extensions", "A hosted checkout page for one offering. See [Purchase links](../docs/guides/purchase-links.md)."],
   ["Funnels", "extensions", "Multi-step web-to-app funnels: quiz, info, email, paywall and success steps, publishing, analytics and Build with AI. See [Funnels](../docs/guides/funnels.md)."],
   ["Hosted pages", "extensions", "The public pages RevenueDot serves for purchase links, funnels and redemption links, and the three calls those pages make. No API key. They live under `/pay` on the API host, at the root of `REVENUEDOT_PAY_URL` when it is a host of its own, and at the root of a verified custom domain."],
@@ -123,7 +126,7 @@ export function buildDocument() {
       { url: "https://{host}", description: "Your self-hosted RevenueDot", variables: { host: { default: "revenuedot.example.com" } } },
     ],
     tags: tags(),
-    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...adsPaths, ...lifecyclePaths, ...webPaths, ...assistantPaths, ...movePaths, ...settingsPathsAll, ...extensionPaths, ...enterprisePaths },
+    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...adsPaths, ...lifecyclePaths, ...webPaths, ...assistantPaths, ...recoveryPaths, ...movePaths, ...settingsPathsAll, ...extensionPaths, ...enterprisePaths },
     webhooks,
     components: { schemas: { ...schemas, ...webSchemas, ...enterpriseSchemas }, parameters, responses, securitySchemes },
     security: [{ secretApiKey: [] }],

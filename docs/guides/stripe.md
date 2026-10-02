@@ -18,10 +18,13 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" \
 
 The app's public key starts with `strp_`. Create its products with `store_identifier` set to the **Stripe product ID** (`prod_…`). To sell several prices of one Stripe product as separate products, use the **price ID** (`price_…`) instead; a price ID wins over its product ID. See [Products and entitlements](../concepts/products-and-entitlements.md).
 
-## 2. Save a restricted API key
+## 2. Connect your Stripe account
+Select **Connect with Stripe** on the app's page and allow RevenueDot in Stripe: no key to copy and no webhook endpoint to add, so skip to step 4. See [Connect with Stripe](stripe-connect.md). If that button is greyed out, or you prefer a key, save a restricted key instead:
+
+### Save a restricted API key
 1. In the [Stripe Dashboard → Developers → API keys](https://dashboard.stripe.com/apikeys/create), click **Create restricted key**.
 2. Give it **Read** access to Subscriptions, Invoices, Checkout Sessions, Charges, Customers, Products and Prices. Leave everything else at None. For [web billing](web-billing.md#1-connect-stripe), give Products, Prices, Checkout Sessions, Coupons and Promotion Codes **Write** instead.
-3. In the dashboard, open the app → **Stripe API key**, paste it and click **Check credentials**. RevenueDot lists one subscription and one Checkout Session: a wrong key says so, and a key without a permission names the one it lacks.
+3. In the dashboard, open the app → **Stripe account**, paste it under **Or use a restricted key** and click **Check credentials**. RevenueDot lists one subscription and one Checkout Session: a wrong key says so, and a key without a permission names the one it lacks.
 
 With the API:
 
@@ -86,11 +89,12 @@ Webhooks report `store: STRIPE` with no store commission. Revenue is what each i
 Both Stripe API shapes work: before 2025-03-31 (period fields on the subscription, `invoice.subscription`) and after (period fields on the subscription item, `invoice.parent.subscription_details`).
 
 ## Not supported yet
-- "Connect with Stripe" (OAuth) instead of a restricted key. It needs RevenueDot's own Stripe platform account and comes later. Hosted checkout works today with a restricted key: see [Sell on the web with Stripe](web-billing.md).
 - Subscription schedules, metered and tiered prices, and subscriptions with several items.
 - A scheduled re-check without webhooks: without the webhook endpoint, a cancellation shows only when your backend posts the subscription again.
 
 ## Related
+- [Connect with Stripe](stripe-connect.md): link your account without a restricted key
+- [Payment recovery](payment-recovery.md): email customers whose renewal failed a link to the Stripe customer portal
 - [Sell on the web with Stripe](web-billing.md): hosted checkout, purchase links, funnels and redemption links
 - [Webhooks out of RevenueDot](webhooks.md)
 - [Sandbox and production](../concepts/sandbox.md)

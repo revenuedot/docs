@@ -13,7 +13,7 @@ Responses under `/v1` and `/rcbilling` are signed when the server has a signing 
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (70)
+## Operations on this page (71)
 
 - **Server**: [Server name and docs link](#server-name-and-docs-link), [Health check](#health-check), [Connectivity probe](#connectivity-probe)
 - **Customer info**: [Get customer info](#get-customer-info)
@@ -25,7 +25,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Web Billing**: [Web offering products](#web-offering-products), [Start a hosted web checkout](#start-a-hosted-web-checkout), [Web Billing purchase (not available)](#web-billing-purchase-not-available), [Prepare a Web Billing checkout (not available)](#prepare-a-web-billing-checkout-not-available), [Start a Web Billing checkout (not available)](#start-a-web-billing-checkout-not-available), [Web Billing checkout status](#web-billing-checkout-status), [Refresh Web Billing checkout pricing](#refresh-web-billing-checkout-pricing), [Complete a Web Billing checkout](#complete-a-web-billing-checkout), [Web checkout branding](#web-checkout-branding)
 - **Subscriber tokens**: [Get customer info (subscriber token)](#get-customer-info-subscriber-token), [Get offerings (subscriber token)](#get-offerings-subscriber-token), [Intro offer eligibility (StoreKit 1) (subscriber token)](#intro-offer-eligibility-storekit-1-subscriber-token), [Attribution data (deprecated iOS call) (subscriber token)](#attribution-data-deprecated-ios-call-subscriber-token), [Read customer attributes (subscriber token)](#read-customer-attributes-subscriber-token), [Set customer attributes (subscriber token)](#set-customer-attributes-subscriber-token), [Apple AdServices token (subscriber token)](#apple-adservices-token-subscriber-token), [SDK health report (subscriber token)](#sdk-health-report-subscriber-token), [Customer Center configuration (subscriber token)](#customer-center-configuration-subscriber-token), [Customer Center support ticket (subscriber token)](#customer-center-support-ticket-subscriber-token), [Virtual currency balances (subscriber token)](#virtual-currency-balances-subscriber-token), [Restore eligibility (StoreKit 2) (subscriber token)](#restore-eligibility-storekit-2-subscriber-token), [Rewarded ad verification status (subscriber token)](#rewarded-ad-verification-status-subscriber-token), [Web offering products (subscriber token)](#web-offering-products-subscriber-token), [Test Store product details (subscriber token)](#test-store-product-details-subscriber-token), [Spend in-app currency as the subscriber](#spend-in-app-currency-as-the-subscriber)
 - **Auth sign-in**: [Sign in with an identity provider's ID token](#sign-in-with-an-identity-providers-id-token), [Refresh the access token](#refresh-the-access-token), [Sign out](#sign-out), [Refresh the access token](#refresh-the-access-token), [Sign out](#sign-out), [Public key of RevenueDot's ID and access tokens](#public-key-of-revenuedots-id-and-access-tokens)
-- **Store notifications**: [App Store Server Notifications v2](#app-store-server-notifications-v2), [Google Play real-time developer notifications (Pub/Sub push)](#google-play-real-time-developer-notifications-pubsub-push), [Amazon Appstore Real-time Notifications (SNS)](#amazon-appstore-real-time-notifications-sns), [Stripe webhooks](#stripe-webhooks)
+- **Store notifications**: [App Store Server Notifications v2](#app-store-server-notifications-v2), [Google Play real-time developer notifications (Pub/Sub push)](#google-play-real-time-developer-notifications-pubsub-push), [Amazon Appstore Real-time Notifications (SNS)](#amazon-appstore-real-time-notifications-sns), [Stripe webhooks](#stripe-webhooks), [Stripe Connect webhooks (RevenueDot's platform)](#stripe-connect-webhooks-revenuedots-platform)
 - **Response signing**: [Public key for response signatures](#public-key-for-response-signatures)
 
 ## Server
@@ -2732,6 +2732,52 @@ curl -s -X POST "$REVENUEDOT_URL/v1/notifications/stripe/$APP_ID"
 - **200**: Handled.
 - **400**: Not accepted. Returns [V1Error](#v1error).
 - **404**: Unknown app. Returns [V1Error](#v1error).
+- **500**: Temporary failure; Stripe retries. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "status": "processed"
+}
+```
+
+### Stripe Connect webhooks (RevenueDot's platform)
+
+`POST /v1/notifications/stripe-connect` · Auth: none · RevenueDot extension
+
+The platform's endpoint for "Events on Connected accounts". Each event carries `account` and is handled for every app connected to that account exactly like its own Stripe endpoint (stored once per app, forwarded, applied), when its `livemode` matches the connection's mode. `account.updated` refreshes onboarding status; `account.application.deauthorized` disconnects the apps.
+
+- **200:** handled, a duplicate, `unknown_account` (no app is connected to it), `other_mode`, or a platform event without `account`. **400:** a bad signature or not a Stripe event. **404:** Connect is not set up on this server. **500:** a temporary failure; Stripe retries.
+
+**Headers**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `Stripe-Signature` | string | yes | Checked against each of the platform's webhook secrets (`REVENUEDOT_STRIPE_CONNECT_WEBHOOK_SECRET`). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `id` | string | yes | evt_… |
+| `type` | string | yes |  |
+| `account` | string | no | acct_… |
+| `livemode` | boolean | no |  |
+| `data` | object | yes |  |
+| `data.object` | object | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/notifications/stripe-connect"
+```
+
+**Responses**
+
+- **200**: Handled.
+- **400**: Not accepted. Returns [V1Error](#v1error).
+- **404**: Connect is not set up. Returns [V1Error](#v1error).
 - **500**: Temporary failure; Stripe retries. Returns [V1Error](#v1error).
 
 Example 200 response:

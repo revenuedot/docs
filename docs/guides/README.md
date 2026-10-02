@@ -13,6 +13,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Accept Google Play purchases and get real-time notifications | [Connect Google Play](google-play.md) |
 | Accept Amazon Appstore purchases on Fire tablets and Fire TV | [Connect the Amazon Appstore](amazon-appstore.md) |
 | Track subscriptions sold with my own Stripe account | [Connect Stripe](stripe.md) |
+| Connect my Stripe account without copying a restricted key | [Connect with Stripe](stripe-connect.md) |
 | Bring the products I already set up in App Store Connect, Google Play or Stripe into the catalog | [Import products](import-products.md) |
 | Sell my app's subscriptions on the web with a hosted Stripe checkout | [Sell on the web with Stripe](web-billing.md) |
 | Share a checkout link for an offering | [Purchase links](purchase-links.md) |
@@ -51,6 +52,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Answer Apple refund requests automatically and see my refund rate | [Refund Control](refund-control.md) |
 | Choose what customers can do on the in-app subscription screen, its colours and its text in 33 languages | [Customer Center](customer-center.md) |
 | Offer a discount when customers cancel, in my app or on Apple's cancel screen | [Retention offers](retention.md) |
+| Email subscribers whose payment failed a link to fix it, and see the revenue that comes back | [Payment recovery](payment-recovery.md) |
 | Email churned subscribers an offer to come back | [Win-back campaigns](win-back-campaigns.md) |
 | Get Customer Center support requests by email, or show subscriptions in the Intercom inbox or a Zendesk sidebar | [Support](support-integrations.md) |
 | Filter, save and export lists of customers | [Customer lists](customer-lists.md) |

@@ -1,6 +1,6 @@
 ---
 title: How do I sell my app's subscriptions on the web with Stripe?
-description: Connect your Stripe account with a restricted key, add a web config, let RevenueDot create web products in Stripe, put them in an offering, then share a purchase link or publish a funnel. Buyers pay on Stripe Checkout and unlock the app with a redemption link.
+description: Connect your Stripe account with Connect with Stripe or a restricted key, add a web config, let RevenueDot create web products in Stripe, put them in an offering, then share a purchase link or publish a funnel. Buyers pay on Stripe Checkout and unlock the app with a redemption link.
 ---
 
 # How do I sell my app's subscriptions on the web with Stripe?
@@ -27,7 +27,9 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" \
   -d '{"name":"Scanner Web","type":"stripe"}'
 ```
 
-Then create a **restricted key** in the [Stripe Dashboard → Developers → API keys](https://dashboard.stripe.com/apikeys/create). Web billing needs more than [tracking Stripe subscriptions](stripe.md) does, because RevenueDot creates products, prices, Checkout Sessions, coupons and promotion codes in your account:
+Then select **Connect with Stripe** on the app's page and allow RevenueDot in Stripe: no keys and no webhook to set up, and RevenueDot takes no fee on your payments. See [Connect with Stripe](stripe-connect.md). Pick **Test** mode first to try everything with Stripe's test cards.
+
+Or create a **restricted key** in the [Stripe Dashboard → Developers → API keys](https://dashboard.stripe.com/apikeys/create). Web billing needs more than [tracking Stripe subscriptions](stripe.md) does, because RevenueDot creates products, prices, Checkout Sessions, coupons and promotion codes in your account:
 
 | Stripe resource | Permission |
 |---|---|
@@ -162,10 +164,9 @@ With `success_mode: redirect`, the page answers 303 to your `success_redirect_ur
 A RevenueCatUI paywall can have a purchase button that opens web checkout (see [Paywalls](paywalls.md)). The iOS SDK then calls `POST /rcbilling/v1/hosted-checkout` with the package. RevenueDot finds the Stripe app that sells that package and answers with a Stripe Checkout URL for the SDK's app user id. The SDK closes the page when it reaches the success or cancel URL, and the purchase is already on the customer. A package with no web product answers 400 with code 7000. Reference: [SDK endpoints](../../api/sdk-endpoints.md#start-a-hosted-web-checkout).
 
 ## Test before you go live
-Use a test-mode key (`rk_test_…`). Purchases are then sandbox data, kept out of production charts, and webhooks carry `environment: SANDBOX`. Pay with [Stripe's test cards](https://docs.stripe.com/testing), such as `4242 4242 4242 4242`. For production, create a second Stripe app with a live key, its own webhook endpoint and its own web products: Stripe keeps test and live products apart.
+Connect in **Test** mode, or use a test-mode key (`rk_test_…`). Purchases are then sandbox data, kept out of production charts, and webhooks carry `environment: SANDBOX`. Pay with [Stripe's test cards](https://docs.stripe.com/testing), such as `4242 4242 4242 4242`. For production, create a second Stripe app connected in **Live** mode (or with a live key and its own webhook endpoint) and its own web products: Stripe keeps test and live products apart.
 
 ## Not built yet
-- **"Connect with Stripe"** (OAuth). It needs RevenueDot's own Stripe platform account. Until then, paste a restricted key.
 - **Paddle** as a web provider.
 - **An embedded checkout** (Stripe Elements on your page) and the purchases-js Web Billing checkout for `rcb_` keys. RevenueDot's checkout is a hosted page.
 - **Apple Pay domain registration** for your custom domain.
