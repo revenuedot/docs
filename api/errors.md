@@ -111,7 +111,7 @@ RevenueDot failed (500, `retryable: true`). Retry with backoff.
 
 ### resource_locked_error
 
-The delivery is being sent right now, so it cannot be retried yet (409, `retryable: true`). Try again in a minute.
+The object is busy, or changed while the request ran (409): a delivery being sent right now (`retryable: true`, try again in a minute), a running export, or an experiment whose status another request changed (reload it first).
 
 <a id="unprocessable-entity-error"></a>
 

@@ -540,7 +540,7 @@ curl -s -X POST "$B/packages/$PACKAGE_ID/actions/attach_products" -H "$H" -H "Co
 **Paywalls, targeting and experiments** also change what customers see without an app update:
 - **Paywalls:** build a paywall in the dashboard from a template, in the visual editor or with AI, and publish it to an offering. RevenueDot sends it in the offerings response and in remote config, and RevenueCatUI's `PaywallView` renders it. An offering has at most one paywall. See [Paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md).
 - **Targeting:** an audience is a set of conditions such as country, platform, app version or active entitlements. A targeting rule gives that audience its own current offering and its own offerings for placements, which the app reads with `offerings.current` and `currentOffering(forPlacement:)`. See [Targeting and experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/targeting-and-experiments.md).
-- **Experiments:** an experiment splits customers between two offerings, keeps each customer in the same variant, and reports conversions, revenue and the chance that the treatment converts better. See [Targeting and experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/targeting-and-experiments.md#experiments).
+- **Experiments:** an experiment splits customers between two to four offerings (each with its own placement offerings), keeps each customer in the same variant, and reports conversion, revenue and retention per variant with the chance that each treatment beats the control. See [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md).
 
 An offering assigned to one customer through the API wins over targeting rules and experiments.
 
@@ -548,6 +548,7 @@ An offering assigned to one customer through the API wins over targeting rules a
 - [Products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md)
 - [Paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md)
 - [Targeting and experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/targeting-and-experiments.md)
+- [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md)
 - [REST API v2: offerings and packages](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md)
 - [SDK endpoints: offerings](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md)
 
@@ -1852,7 +1853,8 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Limit sandbox testing, hand a project to another admin, keep brand colours and fonts, block abusive users, or publish verified revenue numbers | [Project settings](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/project-settings.md) |
 | Sign users in with Firebase or OpenID Connect and read their purchases and balances without a backend | [Auth](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/auth.md) |
 | Build a paywall and show it in my app | [Paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md) |
-| Show different offerings to different customers, or A/B test two | [Targeting and experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/targeting-and-experiments.md) |
+| Show different offerings to different customers, by audience, placement or date | [Targeting and experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/targeting-and-experiments.md) |
+| Test two to four offerings, prices, trials or paywalls against each other and see which earns more | [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md) |
 | Read MRR, revenue, churn, conversion and LTV, and know how each is calculated | [Charts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md) |
 | Run RevenueDot from ChatGPT, Claude or Cursor | [Connect AI assistants](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/connect-ai-assistants.md) |
 | Get an email when store notifications, webhooks or store credentials fail | [Alert emails](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md) |
@@ -4287,6 +4289,7 @@ Every answer comes from tools that read your project through the same API the da
    - "Which offering converts trials best over the last 90 days?"
    - "Why did customer wren@example.com lose access?"
    - "Are any webhooks failing?"
+   - "Which variant of my price test is winning?"
 3. Each tool the assistant runs shows as a card (for example **Revenue metrics** or **Chart · trial conversion rate**). Open a card to see what it asked for and what came back.
 4. Links in the answer open the chart, customer or page the number comes from.
 
@@ -4311,7 +4314,9 @@ These tools change your project. Each one stops and asks first:
 | Create product | Adds a product to an app |
 | Attach products to entitlement / package | Makes products unlock an entitlement, or puts them in a package |
 | Set current offering | Changes the offering apps show by default |
-| Start experiment / Pause experiment | Starts or pauses an offering A/B test |
+| Create experiment draft | Saves a draft experiment: a control offering, 1 to 3 treatment offerings, its type, metrics, hypothesis and audience. Nobody joins until you start it ([Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md#create-an-experiment-with-revenuedot-ai)) |
+| Start experiment / Pause experiment / Stop experiment | Starts or resumes an experiment, pauses it, or stops it for good |
+| Create targeting rule | Adds a targeting rule that gives an audience an offering and placement offerings, optionally between two dates. It is created turned off ([Targeting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/targeting-and-experiments.md#create-a-rule)) |
 | Retry webhook delivery / Replay failed deliveries | Sends failed webhook deliveries again |
 | Import StoreKit products | Creates products from an attached `.storekit` file |
 
@@ -4502,25 +4507,67 @@ Everything the editor does is in REST API v2. See the [API reference](https://ra
 # Targeting and experiments
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/targeting-and-experiments.md
-Description: Show different offerings to different customers with audiences and targeting rules, use placements, and A/B test two offerings with results.
+Description: Show different offerings to different customers with audiences and targeting rules on the Targeting page (Live, Scheduled, Inactive), set the default offering, use placements, and test offerings against each other with experiments.
 
-Your app asks for the current offering (and, with placements, the offering for a spot in the app). RevenueDot decides which offering that is per customer, so you can change what each audience sees without an app release.
+Your app asks for the current offering, and with placements for the offering of one spot in the app. RevenueDot decides which offering that is for each customer, so you can change what each audience sees without an app release:
+
+- **Targeting rules** give an audience its own offering, now or between two dates.
+- **Experiments** split customers between two to four offerings and measure which earns more. They have their own guide: [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md).
+- **The default offering** is what everyone else sees.
 
 ## Audiences
 
 An audience is a set of conditions on customers. Conditions in a group must all be true; separate groups are alternatives. Fields include country, platform, app version, SDK version, locale, subscription status (`active`, `trialing`, `expired`, `never`), active entitlements, total spent, first and last seen dates, latest product, email, attribution (campaign, media source) and any custom attribute (`customAttribute:<key>`).
 
-Create one under **Targeting > Audiences**. **Preview** shows how many of your customers match today.
+Create one under **Targeting > Audiences**. **Preview** shows how many of your customers match today. Targeting rules and experiments can use a saved audience; an experiment can also have conditions of its own. An audience holds up to 20 groups of up to 50 conditions each (a field name up to 200 characters, a value up to 5,000). An audience that a rule or any experiment uses, stopped experiments included, cannot be deleted (409).
 
-## Targeting rules
+## The Targeting page
 
-A rule says: for this audience (or everyone), the current offering is X, and placement P shows offering Y.
+**Targeting** has four tabs:
 
-1. Open **Targeting > Rules** and select **New rule**.
-2. Pick the audience, the current offering and, optionally, placements.
-3. Turn the rule on from its menu. New rules start off.
+- **Live** lists the rules that are on, whose start date has passed or is empty, and whose end date is ahead or empty.
+- **Scheduled** lists the rules that are on with a start date ahead. They move to Live when it comes.
+- **Inactive** lists the rules that are turned off, and the rules past their end date.
+- **Audiences** lists the saved audiences.
 
-Rules are checked from the top; the first live rule that matches decides. Use **Move up** and **Move down** to order them. A rule can also have start and end times through the API. An offering assigned to one customer through the API (`assign_offering`) always wins over targeting.
+Each rule is a card that reads as sentences: "If customer matches **Gold plan** then show `promo` for `onboarding_end`", one line per placement, and "`default` for all other cases" (or "for every placement" when it has no placements). "Any audience" means everyone. The card also shows the rule's name, its position, its schedule and a status tag: Live, Scheduled, Ended or Off.
+
+The **…** menu on a card has:
+
+- **Edit** opens the rule dialog.
+- **Turn on** and **Turn off** move the rule between the tabs.
+- **Move up** and **Move down** change its position. You can also drag the card's handle, or press the up and down arrow keys on it. Moving rules in one tab keeps the other tabs' rules in their places.
+- **Duplicate** makes a copy that is turned off, in Inactive.
+- **Delete** removes the rule. Customers it matched get the next matching rule, or the default offering.
+
+### The default offering
+
+Below the live rules, **Select default offering** shows the offering customers get when no rule matches them and they are in no experiment. Picking another one asks for confirmation and makes it the project's current offering, the same setting as in Product catalog.
+
+### Create a rule
+
+**New rule** has two choices:
+
+1. **Create from scratch** opens the rule dialog:
+   - **Name**.
+   - **Audience**: a saved audience, or **Any audience** for everyone.
+   - **Current offering**: what `Offerings.current` returns for them, and what every placement not listed shows.
+   - **Placements** (optional): a placement id, such as `onboarding_end`, and its offering or **No paywall**. Placement ids are letters, digits, dots, dashes or underscores.
+   - **Starts** and **Ends** (optional): an empty start means as soon as the rule is on; an empty end means until you turn it off. The end must be after the start.
+
+   The dialog checks placement ids and dates and lists only offerings that are not archived. The API checks less: it accepts any placement id and any dates, and a rule may name an archived offering, which the SDK never receives (that customer gets the project's current offering, and the placement is left out).
+2. **Create with RevenueDot AI** asks who should see which offering ("Show the promo offering to customers in Germany") and opens a new [RevenueDot AI](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/revenuedot-ai.md) conversation. The assistant prepares the `create-targeting-rule` call with the name, offering, saved audience, placements and dates. After you approve it, the rule is created **turned off**, in Inactive. Turn it on when it looks right.
+
+New rules go to the end of the order and start off.
+
+## How rules decide
+
+Rules are checked from the top. The first live rule whose audience matches decides the customer's current offering and placement offerings. Before rules, two things win:
+
+1. **An offering override** for one customer, set through the API (`assign_offering`), wins over everything.
+2. **An experiment** the customer is in, or one that enrolls them on this request, wins over targeting. A variant's placements are laid over the matching rule's placements. See [How customers join](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md#how-customers-join).
+
+Customers no rule matches get the default offering. When a rule matched, the SDK's offerings response carries `targeting: { revision, rule_id }`.
 
 In the app, read the result the usual way:
 
@@ -4532,18 +4579,265 @@ let onboarding = offerings.currentOffering(forPlacement: "onboarding_end") // pl
 
 ## Experiments
 
-An experiment compares two offerings, a control (a) and a treatment (b).
+An experiment compares a control offering with one to three treatments. Each customer who joins keeps the same variant and gets its offering and placements. The results show 18 metrics per variant, such as conversion to paying and realized LTV per customer, with 95% intervals, the lift over the control and the chance to beat it.
 
-1. Open **Experiments** and select **New experiment**. Pick both offerings, an optional audience, and the share of customers to enroll.
-2. Select **Start**. Customers who match are enrolled the next time the app fetches offerings and always keep the same variant. Their current offering is their variant's offering.
-3. Read **Results**: customers per variant, conversions (any purchase or trial after enrolling), trials, revenue, revenue per customer, and the chance the treatment converts better. Wait for at least 100 customers in each variant.
-4. **Pause** keeps enrolled customers on their variant and enrolls nobody new. **Stop** ends it for good.
-
-Enrolling sends an `EXPERIMENT_ENROLLMENT` webhook, and enrolled customers' purchase, renewal and cancellation webhooks carry an `experiments` list.
+Everything about experiments is on its own page: [How do I test offerings, prices, trials and paywalls with experiments?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md)
 
 ## API
 
-Audiences: `/v2/projects/{project_id}/audiences`. Rules: `/v2/projects/{project_id}/targeting_rules`. Experiments: `/v2/projects/{project_id}/experiments` and `.../results`. See the [API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md).
+- **Audiences:** `/v2/projects/{project_id}/audiences`, with `actions/preview` and `filter_options`.
+- **Rules:** `/v2/projects/{project_id}/targeting_rules`, with `actions/reorder` for the order (saved all at once) and `starts_at`, `ends_at` and `state` on each rule.
+- **Viewers** see the rules, audiences and the default offering with no control that changes them; the API refuses their changes (403).
+- **The default offering:** `POST /v2/projects/{project_id}/offerings/{offering_id}` with `{ "is_current": true }`.
+- **Experiments:** `/v2/projects/{project_id}/experiments`. See [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md#api).
+
+See the [API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#targeting).
+
+---
+
+# How do I test offerings, prices, trials and paywalls with experiments?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md
+Description: An experiment shows each customer one of two to four offerings and reports which earns more, with 95% intervals and the chance to beat the control. Set up variants, enrollment, audience and priority, then read 18 metrics or export them as CSV.
+
+**An experiment gives each customer one of two to four offerings and tells you which one earns more.** You pick what to test, make the treatment offering from the one you sell today, and start it. Each customer who joins keeps the same variant, and the SDK returns that variant's offering as `Offerings.current`, so your app code does not change. The results compare conversion, revenue and retention per variant, each with a 95% interval, the lift over the control and the chance to beat it.
+
+Targeting rules decide what everyone else sees. They are on the [Targeting and experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/targeting-and-experiments.md) page.
+
+## Start an experiment
+
+1. Open **Experiments** and select **New experiment**.
+2. Pick a starter type, **Create from scratch**, or **Create with RevenueDot AI** (see [below](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md#create-an-experiment-with-revenuedot-ai)). An empty Experiments page shows the six starter types as cards.
+3. Fill in the form: details, variants, enrollment and audience. The form is a full page at `/experiments/new`; a draft opens it again at `/experiments/<id>/edit`.
+4. Select **Start experiment**, or **Save as draft** to start it later. Customers join from their next offerings request.
+
+## The six starter types
+
+Each type fills in the metrics below and says what to change in the treatment offering. If you change the type before you touch the metrics, the metrics follow the new type.
+
+| Type | What the treatment changes | Primary metric | Secondary metrics |
+|---|---|---|---|
+| Introductory offer | Each package's product becomes one with an introductory price, set up in the store | Conversion to paying | Initial conversion rate, Realized LTV per customer, Churned subscribers |
+| Free trial offer | Each package's product becomes one with a longer, shorter or no free trial | Conversion to paying | Initial conversion rate, Trial conversion rate, Realized LTV per customer |
+| Paywall design | The packages stay; a copy of the control's paywall is made for you to change | Initial conversion rate | Conversion to paying, Realized LTV per customer |
+| Price point | Each package's product becomes one with another price | Realized LTV per customer | Conversion to paying, Initial conversion rate, Refund rate |
+| Subscription duration | A package's product becomes one with another period, such as annual for monthly | Realized LTV per customer | Conversion to paying, MRR per customer, Churned subscribers |
+| Subscription ordering | The packages appear in another order; the first one is the plan the paywall selects | Initial conversion rate | Conversion to paying, Realized LTV per customer |
+| Other (from scratch) | Anything about the offerings or placements | Initial conversion rate | Conversion to paying, Realized LTV per customer |
+
+## Fill in the form
+
+### Details
+
+- **Name** is 1 to 256 characters.
+- **Experiment type** is one of the seven above.
+- **Primary metric** decides the winner. It must be a rate or a per-customer mean, because only those have an interval: Initial conversion rate, Trial conversion rate, Conversion to paying, Refund rate, Realized LTV per customer, Realized LTV per paying customer, MRR per customer or MRR per paying customer.
+- **Secondary metrics** are up to 12 more metrics that the results show first.
+- **Notes** hold the hypothesis in Markdown, up to 20,000 characters. The **Preview** tab renders it, and so does the experiment's page.
+
+### Variants
+
+- **The control (A)** is the offering customers see today. The form starts with the project's current offering.
+- **Treatments (B, C and D)** are the offerings to test. **Add variant** adds one, up to three treatments. Customers are split evenly between all variants.
+- **Each variant has a name** (Control, Treatment B ... by default) and an offering, which is what `Offerings.current` returns to its customers.
+- **Placements** give each variant an offering per spot in your app, such as `onboarding_end`, or **No paywall** there. **Add placement** adds a row to every variant, starting at that variant's own offering.
+- **Import from targeting** copies a targeting rule: its offering becomes the control's offering (and the offering of any treatment that has none yet), and its placements fill every variant. Then change the treatments.
+- **Two variants cannot be the same.** Variants with the same offering and the same placement offerings are refused.
+
+### Duplicate the control offering
+
+A treatment usually needs a new offering. Pick **Duplicate default…** (with your control offering's identifier) in a treatment's offering list, or select **Create offering** on an empty treatment. The dialog makes a copy of the control offering:
+
+- **Name and identifier** are filled in, such as `default_price` for a price test, and can be changed.
+- **Packages** stay in the control's order. Drag them, or use the arrow keys on the handle, to reorder them for an ordering test.
+- **Each package's product** can be swapped for another active product of the same app: one with another price, period, trial or introductory offer. (The dashboard offers only those; the API takes any product of the project and checks only that two products of one app do not overlap.)
+- **Copy the paywall** attaches a copy of the control's paywall to the new offering, ready to edit in Paywalls. It is checked for Paywall design tests.
+
+The copy keeps the control's metadata and is never the current offering. The API call is `POST /v2/projects/{project_id}/offerings/{offering_id}/actions/duplicate` ([Duplicate an offering](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#duplicate-an-offering)).
+
+### Enrollment
+
+- **New customers** joins only customers first seen at or after the experiment's first start: the customer's first request with that app user id (customer info or offerings) made them. A customer who installed the app earlier never joins, even if they have not seen a paywall yet. So does a customer whose first record came from somewhere else: a receipt posted for a restore on a new install counts from its earliest purchase, and customers imported from RevenueCat keep RevenueCat's first-seen date. Pausing and resuming keeps the first start, so customers who arrived during the pause can still join after it.
+- **New and existing customers** joins anyone who asks for offerings while the experiment runs, subscribers included. Experiments you make with it need paywall view tracking, which the dashboard and the API turn on for them.
+- **Track paywall views for better analysis** counts a paywall view when the SDK reports one (`paywall_impression` from RevenueDot paywalls, or `custom_paywall_impression` when your own paywall calls `trackCustomPaywallImpression()`). The results then show, by default, only customers who saw a paywall after joining. A/B experiments converted from the first release keep tracking off, so their results count every customer. The stock Android SDK sends paywall events to RevenueCat instead of your server; the [RevenueDot Android fork](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/android.md) sends them to RevenueDot.
+
+### Audience and estimate
+
+- **Everyone**, a **Saved audience** (made under Targeting > Audiences), or **Custom filters** written for this experiment only, with the same conditions as audiences.
+- **Audience percentage** is the share of matching customers who join, from 1 to 100. The others see what they would see without the experiment.
+- **The estimate** updates as you type. **Matching customers (last 7 days)** counts customers first seen in the last 7 days (new customers) or seen in them (new and existing) who match the audience. **Customers per variant (last 7 days)** is that number times the percentage, divided by the number of variants. Above 5,000 customers the audience share of the 5,000 most recent is scaled up, and the number shows as approximate (≈).
+
+New experiments start at the bottom of the enrollment order. Drag the Experiments list to move one up.
+
+## How customers join
+
+Every time the app asks for offerings (`GET /v1/subscribers/{app_user_id}/offerings`), RevenueDot picks the customer's current offering in this order. A new app user id makes the customer on this request, because the SDK asks for customer info and offerings at the same time on a first launch: the first paywall already shows the variant. `GET /v1/offerings` without an app user id enrolls nobody.
+
+1. **An offering override** set for this one customer (`assign_offering`) wins over everything.
+2. **The experiment the customer already joined**, if it is running or paused, gives them the same variant every time.
+3. **A running experiment that admits them now.** Experiments are checked by priority, 1 first. The first one whose enrollment mode, audience and share admit the customer enrolls them, and the rest are skipped. A customer the share leaves out can still join the next experiment in the order.
+4. **The first live targeting rule** that matches.
+5. **The project's current offering** (the default offering on the Targeting page).
+
+A customer is in at most one experiment that has not stopped. Audiences are evaluated with the request's headers (platform, app version, SDK version, storefront, locale), like targeting rules.
+
+**The variant follows the person.** When an anonymous customer logs in with a new app user id, that id becomes an alias of the same customer, who keeps their variant. When they log in to an app user id that already exists, the anonymous customer is merged in and their enrollments move with them; in an experiment both were in, the existing customer's variant stays.
+
+**The split is deterministic.** The share check is the first two bytes of SHA-256(`<experiment id>:enroll:<customer id>`) modulo 100, below the percentage. The variant comes from the first two bytes of SHA-256(`<experiment id>:variant:<customer id>`): with 2 or 4 variants, 0 to 99 is cut into equal ranges; with 3 variants, the number modulo 3. The same customer gets the same answer on every server, and nothing is stored until they join. Raising the percentage later lets more customers in; lowering it removes nobody who already joined.
+
+**Priority** is the order of the **Enrollment order** list on the Experiments page. Drag a row, use the arrow keys on its handle, or use **Move up** and **Move down** in its menu. Stopped experiments are listed below in their own table.
+
+## Pause, resume, stop and edit
+
+- **Pause** stops new enrollments. Enrolled customers keep their variant, and the results keep counting what they do.
+- **Resume** (Start on a paused experiment) lets new customers join again. New-customer experiments still count from the first start.
+- **Stop** ends the experiment for good. On their next request its customers get what targeting gives them, or join another running experiment that admits them. The results stay and keep updating as renewals and refunds arrive. A stopped experiment never enrolls anyone again: use **Duplicate as a draft** in its menu.
+- **Delete** is refused while the experiment runs. It deletes the enrollments and the results; its customers are then free to join another running experiment, as after a stop.
+- **Editing after the start** is limited to the name, type, metrics, notes and audience percentage. Variants, enrollment, paywall tracking and the audience stay fixed, so the results compare like with like. Changing the type never changes the metrics of a started experiment; in the API it never changes them at all (on create, the type's defaults fill only the metrics you leave out).
+- **Viewers** see experiments and results with no control that changes them, and the API refuses their changes (403). Custom roles need the `project_configuration:offerings:read_write` permission to change experiments.
+- **An offering that a draft, running or paused experiment uses cannot be deleted or archived.** The API answers 409 and names the experiment. Archived offerings cannot be picked for a variant or a placement, because the SDK's offerings list leaves them out. A stopped experiment keeps its results and shows a deleted offering's id.
+
+## What the SDK receives
+
+The SDK needs no change. For a customer in a variant:
+
+- `current_offering_id` is the variant's offering, so `offerings.current` is the variant's offering.
+- `placements.offering_ids_by_placement` holds the matching targeting rule's placements with the variant's placements on top, so `currentOffering(forPlacement:)` returns the variant's offering for each placement it sets.
+
+```swift
+let offerings = try await Purchases.shared.offerings()
+let paywall = offerings.current                                          // the variant's offering
+let onboarding = offerings.currentOffering(forPlacement: "onboarding_end") // the variant's placement offering
+```
+
+The customer's page in the dashboard, the customer summary (`current_offering.source` is `experiment`, with `variant` and `variant_name`) and the v2 customer object (`experiment: { object: "experiment_enrollment", id, name, variant }`) show which experiment and variant they are in.
+
+## Webhooks
+
+- **`EXPERIMENT_ENROLLMENT`** is sent once per customer and experiment, when the customer joins. It carries `experiment_id`, `experiment_variant` (`a` to `d`), `offering_id` (the variant offering's identifier), `experiment_enrolled_at_ms` and the `app_user_id` that asked for offerings. It is recorded as a production event with no app, so a webhook set to sandbox only, or to one app, does not get it.
+- **`experiments`** is on the lifecycle events (purchases, renewals, cancellations, expirations and the rest, but not `TRANSFER` or the price-increase consent events) and on `SUBSCRIBER_ALIAS` for customers who joined an experiment: `[{ "experiment_id", "experiment_variant", "enrolled_at_ms" }]`, one entry per experiment, stopped ones included.
+
+See [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#experiment_enrollment).
+
+## Read the results
+
+The experiment's page shows the setup, the notes and the results. Results appear once the experiment has started.
+
+### Who and what counts
+
+- **Customers** are the customers enrolled in the experiment. Production results leave out customers who joined from a test device: a Test Store app, or an iOS sandbox or TestFlight build (the SDK's `X-Is-Sandbox` header). Android test devices cannot be told apart when they join, so they count as production customers without production purchases.
+- **Purchases count when they are made after the customer joined**, together with everything that follows from them: renewals, refunds, trial conversions and product changes. Subscriptions are built with the same rules as [Charts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md). A subscription that started before the customer joined does not count, and neither do its renewals. A minute of grace covers store clocks that run a little ahead.
+- **Money** is USD at the purchase date's exchange rate. Refunds are negative.
+- **Production or sandbox:** results show production purchases by default. **Environment: Sandbox** shows every enrolled customer, test devices included, with their sandbox (test) purchases and paywall views instead. The choice stays in the page's address (`?environment=sandbox`).
+- **Large experiments:** above 25,000 enrolled customers the results come from a fixed random sample of 25,000, the same customers on every load. Rates, per-customer means, intervals and chances are estimated from the sample; counts and totals are the sample's. The guidance banner and each variant's card say so, and the API's `sample` field gives the sample size and the enrolled customers per variant.
+- **Filters:** **Platform** and **Country** come from the customer's last request. **Paywall** shows customers who viewed a paywall after joining, who did not, or all of them. It defaults to viewers when the experiment tracks paywall views, and to everyone otherwise. With viewers only, each customer counts from their first paywall view: a purchase they made after joining but before that view does not count.
+
+### The metrics
+
+| Metric | Kind | Definition |
+|---|---|---|
+| Initial conversions | count | Customers who started a trial or a subscription, or bought anything, after joining |
+| Initial conversion rate | rate | Initial conversions ÷ customers |
+| Trials started | count | Free trials started after joining |
+| Trials completed | count | Trials that ended or turned into a paid subscription |
+| Trials converted | count | Trials followed by a paid period, also through a product change |
+| Trial conversion rate | rate | Trials converted ÷ trials completed |
+| Paid customers | count | Customers with at least one payment above zero (trials excluded) |
+| Conversion to paying | rate | Paid customers ÷ customers |
+| Active subscribers | count | Customers with a paid subscription active now |
+| Churned subscribers | count, lower is better | Customers who had a paid subscription and have none active now |
+| Refunded customers | count, lower is better | Customers with at least one refund |
+| Refund rate | rate, lower is better | Refunded customers ÷ paid customers |
+| Realized LTV | total | Revenue so far, net of refunds |
+| Realized LTV per customer | mean | Revenue so far ÷ customers |
+| Realized LTV per paying customer | mean | Revenue so far ÷ paid customers |
+| MRR | total | Monthly value of the paid subscriptions active now |
+| MRR per customer | mean | MRR ÷ customers |
+| MRR per paying customer | mean | MRR ÷ paid customers |
+
+The page shows:
+
+- **A guidance banner** that says whether there is enough data, which treatment leads, and how many customers a 20% lift needs.
+- **A card per variant** with its customers, paywall viewers (when tracked) and offering.
+- **A metric table** with the primary metric first, then the secondary metrics, and the rest under **All metrics**. Each cell has the value, its 95% interval, "k of n" for rates, the lift over the control with its interval, and the chance to beat the control.
+- **Over time**, a chart of any metric with one line per variant: the value as of the end of each UTC day, counted from the start. **Daily values** lists the same numbers in a table.
+
+### The statistics
+
+All intervals are 95%, two-sided. The code is `packages/core/src/experiments/stats.ts` in the [server repository](https://github.com/revenuedot/revenuedot).
+
+- **Rates** get a Wilson score interval per variant.
+- **The chance to beat the control on a rate** gives each variant a Beta(k + 1, n − k + 1) posterior (a uniform prior) and computes P(variant > control) exactly with [Evan Miller's closed form](https://www.evanmiller.org/bayesian-ab-testing.html#binary_ab_equivalent): a sum over one variant's successes, in log-gamma, or over its failures when the rates are near 100%. Only when both variants have more than 20,000 successes and more than 20,000 failures does a normal approximation of the two Beta distributions answer instead. For refund rate, where lower wins, the direction flips. The page never shows 0% or 100%: it shows "<1%" and ">99%".
+- **Per-customer means** (realized LTV and MRR per customer or per paying customer) get mean ± 1.96 × se, where se = s ÷ √n and s is the sample standard deviation. The lower bound stays at 0 unless the mean is negative. The chance to beat the control is Φ((m_v − m_c) ÷ √(se_v² + se_c²)), where m is a variant's mean and Φ the standard normal distribution. With one customer there is no spread to measure, so the interval and the chance stay empty until a variant has two.
+- **Lift** is the variant's value ÷ the control's value − 1. Its interval uses the delta method on log(variant ÷ control): exp(log ratio ± 1.96 × √(se²_variant ÷ variant² + se²_control ÷ control²)) − 1, so it is asymmetric and never below −100%. For rates this is Katz's interval, with se² ÷ p² = 1/k − 1/n; when a variant converts nobody or everybody, half a success and half a failure are added to both sides first (Haldane), so 0 of 100 against 20 of 100 shows −100% with an interval. Lift is empty when the control's value is 0.
+- **Counts and totals** have no interval.
+- **Enough data** means every variant has at least 100 customers and at least 10 events of the primary metric: conversions for initial conversion rate, payers for conversion to paying, completed trials for trial conversion rate, paid customers for refund rate and for the per-customer means. It is a floor, not a verdict. Many teams wait until a treatment has a 95% chance to beat the control.
+- **Customers needed per variant** is the sample to detect a 20% relative lift at 95% confidence and 80% power, from the control's current value. For rates it is (1.96 + 0.84)² × (p₁(1 − p₁) + p₂(1 − p₂)) ÷ (p₂ − p₁)², with p₂ = 1.2 × p₁; a rate measured on trials or payers is scaled up to customers. For means it is 2 × (1.96 + 0.84)² × σ² ÷ δ², with σ the control's standard deviation and δ = 0.2 × its mean.
+
+Example, with Initial conversion rate as the primary metric: the control converts 98 of 1,204 customers (8.1%, 95% interval 6.7% to 9.8%) and Treatment B 117 of 1,188 (9.8%, 8.3% to 11.7%). B's lift is +21.0% (−6.3% to +56.3%), and its chance to beat the control is 93%. Both variants pass the enough-data floor, but no winner is clear yet. Detecting a 20% lift on an 8.1% rate takes about 4,825 customers per variant.
+
+### Export CSV
+
+**Export CSV** on the results downloads the numbers with the filters you picked:
+
+- **Summary per variant** has one row per variant and metric: `variant_id`, `variant_name`, `offering_id`, `customers`, `metric`, `metric_name`, `value`, `numerator`, `denominator`, `lower_95`, `upper_95`, `lift`, `lift_lower_95`, `lift_upper_95`, `chance_to_beat_control`.
+- **Every metric by day** has one row per day and variant: `date` (UTC), `variant_id`, `variant_name`, then one column per metric id.
+
+Files are named `experiment-<id>-<summary|daily>-<environment>-<date>.csv`. Empty cells are values that do not apply, such as the control's lift. Text that a spreadsheet would run as a formula starts with an apostrophe.
+
+## Create an experiment with RevenueDot AI
+
+1. Select **New experiment > Create with RevenueDot AI**, or the button on the empty Experiments page.
+2. Say what to test, or pick an example such as "Test a 14-day free trial against our 7-day trial". A new [RevenueDot AI](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/revenuedot-ai.md) conversation opens with your request.
+3. The assistant reads your offerings (and audiences when you name one), uses the current offering as the control unless you name another, and prepares the `create-experiment` call.
+4. Approve the card. The experiment is always saved as a **draft**, and the answer links to it. Review it and start it yourself.
+
+The assistant never invents an offering. If no offering differs from the control yet, it tells you which one to duplicate and change on the Experiments page. It sets the name, type, control and 1 to 3 treatment offerings, metrics, notes (up to 5,000 characters), enrollment, a saved audience and the percentage; edit the draft for placements or custom filters. The button is off when RevenueDot AI is not set up, or cannot make changes for you in this project.
+
+RevenueDot AI can also list experiments, read their results, start, pause and stop them (stopping asks for approval like every change), and list saved audiences.
+
+## Experiments made before multi-variant experiments
+
+Upgrading a server to this release (database migration 0028) converts every existing A/B experiment:
+
+- **Offering A becomes variant `a` (Control)** and **offering B becomes variant `b` (Treatment B)**.
+- **Every enrollment is kept**, so no customer changes variant.
+- **Enrollment becomes new and existing customers**, which is what these experiments did.
+- **Priority follows the start time** in each project, earliest first, which was the old enrollment order. Experiments that never started come last.
+- **Paywall tracking stays off**, so their results count every enrolled customer, as before.
+- **Projects moved in from an older server** (an export archive from before this release) are converted the same way when they are imported.
+
+The API keeps the older fields: create and update still take `offering_a` and `offering_b`, and the results still carry `conversions`, `conversion_rate`, `trials`, `paying_customers`, `revenue`, `revenue_per_customer`, `chance_b_beats_a` and `enough_data`. Those numbers now come from the new metrics (initial conversions, trials started, paid customers and realized LTV), and `chance_b_beats_a` uses the exact Beta method, so they can differ slightly from what the first release showed. `enough_data` now also needs 10 events of the primary metric per variant, not only 100 customers. Deleting an offering no longer deletes the experiments that use it: the delete is refused while a draft, running or paused experiment uses the offering.
+
+## How this compares with RevenueCat
+
+RevenueCat's Experiments work the same way in most respects, according to its docs on [configuring experiments](https://www.revenuecat.com/docs/tools/experiments-v1/configuring-experiments-v1) and [reading results](https://www.revenuecat.com/docs/tools/experiments-v1/experiments-results-v1): a control and up to three treatments, the same six starter types, new or new and existing customers, saved or custom audiences, a priority order between experiments, pause and stop with the same meaning, and the same fields locked after the start (RevenueDot also lets you change the type). The differences:
+
+- **Enrollment share:** RevenueCat's lowest audience percentage is 10%. RevenueDot takes 1% to 100%.
+- **Sandbox:** RevenueCat's results count production purchases and paywall views only. RevenueDot shows production by default and sandbox on request.
+- **After a stop:** RevenueCat keeps updating results for 400 days. RevenueDot computes results whenever you open them, with no end date; the daily series shows the latest 400 days.
+- **Method:** RevenueCat describes a Bayesian chance to win with credible intervals. RevenueDot's method is above, and its code is open source.
+
+## API
+
+Every step above is in the [REST API v2 reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#experiments) under **Experiments**, with the `project_configuration:offerings` permissions (the estimate also needs `audiences:audiences:read`, because audience conditions can name one customer):
+
+- `GET` and `POST /v2/projects/{project_id}/experiments`: list and create.
+- `GET`, `POST` and `DELETE /v2/projects/{project_id}/experiments/{experiment_id}`: get, update and delete.
+- `POST .../experiments/{experiment_id}/actions/start`, `/pause` and `/stop`.
+- `POST .../experiments/actions/reorder` with `{ "experiment_ids": [...] }`: [set the enrollment order](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#set-the-enrollment-order).
+- `POST .../experiments/actions/estimate`: [the 7-day estimate](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#estimate-how-many-customers-would-join).
+- `GET .../experiments/{experiment_id}/results` with `environment`, `platform`, `country` and `paywall`: [results](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#results-per-variant).
+- `GET .../experiments/{experiment_id}/results/export?kind=summary|daily`: [CSV](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#export-results-as-csv).
+- `POST /v2/projects/{project_id}/offerings/{offering_id}/actions/duplicate`: [duplicate an offering](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#duplicate-an-offering).
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{
+    "name": "Price point test", "type": "price_point", "enrollment": "new", "enrollment_percent": 50,
+    "variants": [{ "offering_id": "ofrngm2u3h89blc" }, { "name": "Higher price", "offering_id": "ofrng9x8y7z6w5a" }]
+  }'
+```
 
 ---
 
@@ -7693,7 +7987,7 @@ One RevenueDot server answers every API below on one port. The reference is gene
 |---|---|---|---|---|
 | SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 71 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
 | REST API v1 | `/v1/subscribers/...` | secret key | 10 | [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md) |
-| REST API v2 | `/v2/projects/...` | secret key or dashboard session | 163 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
+| REST API v2 | `/v2/projects/...` | secret key or dashboard session | 167 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
 | RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 240 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
 | RevenueDot Enterprise | `/v2/enterprise`, `/v2/organizations/...`, `/sso/...`, `/scim/v2/...` | session, SCIM token or none | 65 | [Enterprise](https://raw.githubusercontent.com/revenuedot/docs/main/api/enterprise.md) |
 | Webhooks (sent by RevenueDot) | your URL | HMAC signature | 22 event types | [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md) |
@@ -7929,7 +8223,7 @@ RevenueDot failed (500, `retryable: true`). Retry with backoff.
 
 ### resource_locked_error
 
-The delivery is being sent right now, so it cannot be retried yet (409, `retryable: true`). Try again in a minute.
+The object is busy, or changed while the request ran (409): a delivery being sent right now (`retryable: true`, try again in a minute), a running export, or an experiment whose status another request changed (reload it first).
 
 ### unprocessable_entity_error
 
@@ -8267,7 +8561,7 @@ What the paywall shows.
 
 `GET /v1/subscribers/{app_user_id}/offerings` · Auth: public app key or secret key
 
-What `Purchases.getOfferings()` calls. Lists active offerings with the packages whose product belongs to the calling app. `current_offering_id` is the customer's override when one is set.
+What `Purchases.getOfferings()` calls. Lists active offerings with the packages whose product belongs to the calling app. A new app user id makes the customer here, as `GET /v1/subscribers/{app_user_id}` does (the SDK sends both at once on a first launch), so the first answer already includes an experiment variant. `current_offering_id` is the customer's override when one is set. Otherwise RevenueDot resolves, in order: the experiment the customer is in (running or paused), a running experiment that enrolls them now (by priority), the first live targeting rule that matches, the project's current offering. A variant's placements overlay the rule's in `placements.offering_ids_by_placement`. See [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md#what-the-sdk-receives).
 
 **Path parameters**
 
@@ -10822,7 +11116,7 @@ The shapes the operations above send and return.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `current_offering_id` | string or null | yes | Lookup key of the current offering, or the customer's override. |
+| `current_offering_id` | string or null | yes | Lookup key of the customer's current offering: their override, else their experiment variant's offering, else the first live targeting rule's, else the project's current offering. |
 | `offerings` | array of object | yes |  |
 | `offerings[].description` | string | yes | Offering display name. |
 | `offerings[].identifier` | string | yes | Offering lookup key. |
@@ -10831,6 +11125,12 @@ The shapes the operations above send and return.
 | `offerings[].packages[].identifier` | string | yes | Package lookup key, for example $rc_monthly. |
 | `offerings[].packages[].platform_product_identifier` | string | yes | Store product id for the calling app. |
 | `offerings[].packages[].platform_product_plan_identifier` | string | no | Google Play base plan id, when the product is `subscription:base-plan`. |
+| `placements` | object | no | What `currentOffering(forPlacement:)` reads. |
+| `placements.fallback_offering_id` | string or null | no | Lookup key of the offering for placements not listed below: the current offering. |
+| `placements.offering_ids_by_placement` | object | no | Placement id → offering lookup key, or null for no paywall there: the matching targeting rule's placements, overlaid with the customer's experiment variant's. |
+| `targeting` | object | no | Present when a targeting rule matched the customer. |
+| `targeting.revision` | integer | yes | The rule's revision. |
+| `targeting.rule_id` | string | yes | The targeting rule that matched. |
 
 ### ReceiptResponse
 
@@ -11780,13 +12080,13 @@ RevenueDot-only endpoints are on [Extensions](https://raw.githubusercontent.com/
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (163)
+## Operations on this page (167)
 
 - **Projects**: [List projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-projects), [Create a project](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-project)
 - **Apps**: [List apps](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-apps), [Create an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-app), [Get an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-app), [Update an app and its store credentials](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-app-and-its-store-credentials), [Delete an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-app), [Get an app's public SDK key](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-apps-public-sdk-key), [Get a StoreKit configuration file](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-storekit-configuration-file), [Issue a subscriber access token](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#issue-a-subscriber-access-token), [List the products in the app's store](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-the-products-in-the-apps-store), [Import products from the app's store](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#import-products-from-the-apps-store)
 - **Products**: [List products](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-products), [Create a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-product), [Get a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-product), [Update a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-product), [Delete a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-product), [Archive a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#archive-a-product), [Unarchive a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#unarchive-a-product), [Create the product in its store](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-the-product-in-its-store)
 - **Entitlements**: [List entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-entitlements), [Create an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-entitlement), [Get an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-entitlement), [Rename an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#rename-an-entitlement), [Delete an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-entitlement), [Archive an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#archive-an-entitlement), [Unarchive an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#unarchive-an-entitlement), [List an entitlement's products](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-an-entitlements-products), [Attach products to an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#attach-products-to-an-entitlement), [Detach products from an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#detach-products-from-an-entitlement)
-- **Offerings**: [List offerings](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-offerings), [Create an offering](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-offering), [Get an offering](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-offering), [Update an offering or make it current](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-offering-or-make-it-current), [Delete an offering](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-offering), [Archive an offering](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#archive-an-offering), [Unarchive an offering](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#unarchive-an-offering)
+- **Offerings**: [List offerings](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-offerings), [Create an offering](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-offering), [Get an offering](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-offering), [Update an offering or make it current](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-offering-or-make-it-current), [Delete an offering](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-offering), [Duplicate an offering](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#duplicate-an-offering), [Archive an offering](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#archive-an-offering), [Unarchive an offering](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#unarchive-an-offering)
 - **Packages**: [List an offering's packages](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-an-offerings-packages), [Create a package](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-package), [Get a package](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-package), [Update a package](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-package), [Delete a package](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-package), [List a package's products](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-packages-products), [Attach products to a package](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#attach-products-to-a-package), [Detach products from a package](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#detach-products-from-a-package)
 - **Customers**: [List or search customers](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-or-search-customers), [Create a customer](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-customer), [Get a customer](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-customer), [Delete a customer](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-customer), [List a customer's app user ids](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-app-user-ids), [List a customer's attributes](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-attributes), [Set a customer's attributes](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#set-a-customers-attributes), [List a customer's active entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-active-entitlements), [List a customer's subscriptions](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-subscriptions), [List a customer's one-time purchases](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-one-time-purchases), [List a customer's events](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-events), [Grant an entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#grant-an-entitlement), [Revoke a granted entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#revoke-a-granted-entitlement), [Assign an offering to a customer](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#assign-an-offering-to-a-customer), [Transfer a customer's purchases to another customer](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#transfer-a-customers-purchases-to-another-customer), [Get the Customer Center configuration](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-the-customer-center-configuration), [Restore a purchase by its store order id](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#restore-a-purchase-by-its-store-order-id), [List the win-back offers Apple lets a customer redeem](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-the-win-back-offers-apple-lets-a-customer-redeem)
 - **Subscriptions**: [Find subscriptions by store id](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#find-subscriptions-by-store-id), [Get a subscription](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-subscription), [List the entitlements a subscription unlocks](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-the-entitlements-a-subscription-unlocks), [List a subscription's payments](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-subscriptions-payments), [Cancel a subscription (Google Play)](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#cancel-a-subscription-google-play), [Refund and revoke a subscription (Google Play)](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#refund-and-revoke-a-subscription-google-play), [Extend a subscription](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#extend-a-subscription), [Refund one payment of a subscription (Google Play)](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#refund-one-payment-of-a-subscription-google-play), [Get where the customer manages a subscription](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-where-the-customer-manages-a-subscription)
@@ -11796,7 +12096,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **In-app currencies**: [List in-app currencies](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-in-app-currencies), [Create an in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-in-app-currency), [Get an in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-in-app-currency), [Update an in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-in-app-currency), [Delete an in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-in-app-currency), [Archive an in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#archive-an-in-app-currency), [Unarchive an in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#unarchive-an-in-app-currency), [List a customer's balances](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-balances), [Credit or spend in-app currency](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#credit-or-spend-in-app-currency), [Change a balance without a ledger entry](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#change-a-balance-without-a-ledger-entry)
 - **Audit log**: [List audit log entries](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-audit-log-entries)
 - **Targeting**: [List audiences](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-audiences), [Create an audience](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-audience), [Preview who matches](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#preview-who-matches), [Known values for attribution and custom-attribute fields](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#known-values-for-attribution-and-custom-attribute-fields), [Get an audience](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-audience), [Update an audience](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-audience), [Delete an unused audience](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-unused-audience), [List targeting rules in order](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-targeting-rules-in-order), [Create a targeting rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-targeting-rule), [Set the evaluation order](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#set-the-evaluation-order), [Get a targeting rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-targeting-rule), [Update a targeting rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-targeting-rule), [Delete a targeting rule](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-targeting-rule)
-- **Experiments**: [List experiments](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-experiments), [Create an offering experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-offering-experiment), [Get an experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-experiment), [Update an experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-experiment), [Delete an experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-experiment), [Start or resume](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#start-or-resume), [Pause: enrolled customers keep their variant, nobody new joins](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#pause-enrolled-customers-keep-their-variant-nobody-new-joins), [Stop for good](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#stop-for-good), [Results per variant](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#results-per-variant)
+- **Experiments**: [List experiments](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-experiments), [Create an offering experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-an-offering-experiment), [Set the enrollment order](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#set-the-enrollment-order), [Estimate how many customers would join](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#estimate-how-many-customers-would-join), [Get an experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-an-experiment), [Update an experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-an-experiment), [Delete an experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-experiment), [Start or resume](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#start-or-resume), [Pause: enrolled customers keep their variant, nobody new joins](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#pause-enrolled-customers-keep-their-variant-nobody-new-joins), [Stop for good](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#stop-for-good), [Results per variant](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#results-per-variant), [Export results as CSV](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#export-results-as-csv)
 - **Paywalls**: [List paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-paywalls), [Create a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-paywall), [Get a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-paywall), [Update a paywall's draft](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-paywalls-draft), [Delete a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-paywall), [Publish a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#publish-a-paywall), [Unpublish a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#unpublish-a-paywall), [Attach an offering to a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#attach-an-offering-to-a-paywall), [Detach the offering from a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#detach-the-offering-from-a-paywall), [Duplicate a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#duplicate-a-paywall), [List saved snapshots](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-saved-snapshots), [Save a named snapshot](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#save-a-named-snapshot), [Restore a snapshot into the draft](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#restore-a-snapshot-into-the-draft), [Get a snapshot](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-snapshot), [Get the template form of a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-the-template-form-of-a-paywall), [Store the template form of a paywall](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#store-the-template-form-of-a-paywall), [List the template gallery](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-the-template-gallery), [Validate paywall components](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#validate-paywall-components), [Whether the AI generator is available](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#whether-the-ai-generator-is-available), [Generate a paywall with AI](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#generate-a-paywall-with-ai), [List images](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-images), [Upload an image](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#upload-an-image), [List fonts](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-fonts), [Upload a font](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#upload-a-font), [Download a paywall image or font](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#download-a-paywall-image-or-font), [Download a built-in paywall icon](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#download-a-built-in-paywall-icon), [Delete an uploaded font](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-an-uploaded-font)
 - **Webhook integrations**: [List webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-webhooks), [Create a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-webhook), [Get a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-webhook), [Update a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-webhook), [Delete a webhook](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-webhook)
 - **Discounts**: [List discounts](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-discounts), [Create a discount](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-a-discount), [Get a discount](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#get-a-discount), [Update a discount](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#update-a-discount), [Delete a discount](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-discount), [Enable a discount](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#enable-a-discount), [Disable a discount](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#disable-a-discount), [List a discount's codes](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-discounts-codes), [Create discount codes](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#create-discount-codes), [Delete a discount code](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#delete-a-discount-code)
@@ -13125,7 +13425,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/offerings/$OFFERING_ID"
 
 `DELETE /v2/projects/{project_id}/offerings/{offering_id}` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read_write`
 
-Deletes its packages and clears customer overrides that point to it.
+Deletes its packages and clears customer overrides that point to it. An offering that a draft, running or paused experiment uses (as a variant's offering or a placement offering) answers 409 and names the experiment: stop the experiment or pick another offering in it first. A stopped experiment keeps its results and shows the deleted offering's id.
 
 **Path parameters**
 
@@ -13146,6 +13446,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/offerings/$OFFERING_I
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
 Example 200 response:
 
@@ -13157,9 +13458,56 @@ Example 200 response:
 }
 ```
 
+### Duplicate an offering
+
+`POST /v2/projects/{project_id}/offerings/{offering_id}/actions/duplicate` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
+
+Copies an offering with its packages, for an experiment's treatment. The copy is never current. Without `packages` the copy is exact: every package in order, with the same products. With `packages`, the list sets which packages are copied and in what order, and a package's `products` replaces its products (to test another price, period, trial or introductory offer). `copy_paywall` copies the offering's paywall, draft and published content, onto the copy.
+
+Answers 400 when a `source_package_id` is not a package of this offering or repeats, a product is not in the project or repeats in a package, or `copy_paywall` is true and the offering has no paywall. Answers 409 when the `lookup_key` is taken, or two products of the same app in a package have overlapping `eligibility_criteria`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `offering_id` | string | yes | The offering to copy. |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `lookup_key` | string | yes |  |
+| `display_name` | string | yes |  |
+| `metadata` | object or null | no | Default: the source offering's metadata. |
+| `packages` | array of object | no | Packages to copy, in the new order. Omitted: every package, as it is. |
+| `packages[].source_package_id` | string | yes | A package of the source offering (pkge...). |
+| `packages[].products` | array of object | no | Replaces the package's products. Omitted: the source package's products. |
+| `packages[].products[].product_id` | string | yes |  |
+| `packages[].products[].eligibility_criteria` | `all`, `google_sdk_lt_6`, `google_sdk_ge_6` | yes |  |
+| `copy_paywall` | boolean | no | Also copy the offering's paywall onto the copy. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/offerings/$OFFERING_ID/actions/duplicate" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"lookup_key":"default_price","display_name":"Standard plans (price point)","packages":[{"source_package_id":"pkge1a2b3c4d5e","products":[{"product_id":"prod9k8j7h6g5f","eligibility_criteria":"all"}]},{"source_package_id":"pkge6f7g8h9i0j"}]}'
+```
+
+**Responses**
+
+- **201**: The copy, with its packages and their products expanded. Returns [Offering](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#offering).
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
 ### Archive an offering
 
 `POST /v2/projects/{project_id}/offerings/{offering_id}/actions/archive` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read_write`
+
+An offering that a draft, running or paused experiment uses cannot be archived (409); the current offering cannot be archived (422).
 
 **Path parameters**
 
@@ -13180,6 +13528,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/offerings/$OFFERING_ID/
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
 ### Unarchive an offering
@@ -15994,11 +16343,13 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/targeting_rules/$RULE
 
 ## Experiments
 
-Offering A/B tests and their results.
+Offering experiments: a control and up to three treatments, each with an offering and placement offerings; enrollment of new or new and existing customers, a saved or custom audience, a share, and a priority order between experiments; results with 95% intervals, lift and the chance to beat the control for 18 metrics, a daily series, CSV export and a 7-day audience estimate. See [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md).
 
 ### List experiments
 
 `GET /v2/projects/{project_id}/experiments` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`
+
+Oldest first. `priority` gives the enrollment order.
 
 **Path parameters**
 
@@ -16021,7 +16372,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments" -H "Authorization:
 
 **Responses**
 
-- **200**: A page of experiments.
+- **200**: A page of experiments. Returns a list of [Experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#experiment).
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
@@ -16031,7 +16382,11 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments" -H "Authorization:
 
 `POST /v2/projects/{project_id}/experiments` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
 
-A draft until started. Running experiments enroll customers who match the audience, in the given percentage, into variant a or b (each customer always gets the same variant), and serve that variant's offering as the current offering. Enrolling records an `EXPERIMENT_ENROLLMENT` event, and enrolled customers' lifecycle events carry `experiments`.
+Creates a **draft** at the bottom of the enrollment order (the highest `priority`). Send `variants` (a control and 1 to 3 treatments), or the older `offering_a` and `offering_b` for two variants. Defaults: `type` `other`, the type's metrics, `enrollment` `new`, everyone, 100%.
+
+Once started, a customer who asks for offerings and is admitted (enrollment mode, then audience, then the share) joins one variant for good and gets its offering as `current_offering_id` and its placements. Enrolling records one `EXPERIMENT_ENROLLMENT` event, and the customer's lifecycle events carry `experiments`.
+
+Answers 400 when: both `variants` and `offering_a`/`offering_b` are sent, or neither; `audience_id` and `audience_rules` are both sent; the audience, an offering or a placement offering is not in the project, or the offering is archived; a condition's field or operator is unknown; a placement id has other characters; a variant's `id` does not match its position; two variants serve the same offering and the same placement offerings; or `enrollment` is `new_and_existing` with `track_paywall_views: false`.
 
 **Path parameters**
 
@@ -16043,26 +16398,183 @@ A draft until started. Running experiments enroll customers who match the audien
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `name` | string | yes |  |
-| `audience_id` | string or null | no |  |
-| `enrollment_percent` | integer | no |  |
-| `offering_a` | string | yes | Control offering. |
-| `offering_b` | string | yes | Treatment offering. |
+| `name` | string | yes | 1 to 256 characters. |
+| `type` | `introductory_offer`, `free_trial_offer`, `paywall_design`, `price_point`, `subscription_duration`, `subscription_ordering`, `other` | no | What is tested. It sets the default metrics: see [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md#the-six-starter-types). |
+| `primary_metric` | `initial_conversion_rate`, `trial_conversion_rate`, `conversion_to_paying`, `refund_rate`, `realized_ltv_per_customer`, `realized_ltv_per_paying_customer`, `mrr_per_customer`, `mrr_per_paying_customer` | no | The metric that decides the winner: a rate or a per-customer mean, because those have an interval. |
+| `secondary_metrics` | array of `initial_conversion_rate`, `initial_conversions`, `trials_started`, `trials_completed`, `trials_converted`, `trial_conversion_rate`, `paid_customers`, `conversion_to_paying`, `active_subscribers`, `churned_subscribers`, `refunded_customers`, `refund_rate`, `realized_ltv`, `realized_ltv_per_customer`, `realized_ltv_per_paying_customer`, `mrr`, `mrr_per_customer`, `mrr_per_paying_customer` | no | Up to 12 more metrics shown first in the results. |
+| `notes` | string | no | The hypothesis, in Markdown. |
+| `enrollment` | `new`, `new_and_existing` | no | `new`: only customers first seen at or after the experiment's first start. `new_and_existing`: anyone who asks for offerings while it runs. |
+| `track_paywall_views` | boolean | no | Default false. Set to true with `new_and_existing`; false there answers 400. |
+| `audience_id` | string or null | no | A saved audience. Send it or `audience_rules`, not both; setting one clears the other. |
+| `audience_rules` | object or null | no | Conditions written for this experiment only, in the audience condition format. Null when it uses a saved audience or everyone. |
+| `audience_rules.groups` | array of object | yes | Groups are OR-ed; conditions in a group are AND-ed. |
+| `audience_rules.groups[].conditions` | array of object | yes |  |
+| `enrollment_percent` | integer | no | Share of matching customers to enroll. Default 100. |
+| `variants` | array of object | no | The control first, then 1 to 3 treatments. |
+| `variants[].id` | `a`, `b`, `c`, `d` | no | Optional; must match the position (a, b, c, d). |
+| `variants[].name` | string | no | Default: Control, Treatment B ... |
+| `variants[].offering_id` | string | yes | Offering id in this project. |
+| `variants[].placements` | object | no | Placement id (letters, digits, `_`, `.`, `-`, up to 100) → offering id, or null for no paywall. |
+| `offering_a` | string | no | Older form: the control offering. Send it with `offering_b` instead of `variants`. |
+| `offering_b` | string | no | Older form: the treatment offering. |
 
 **Example request**
 
 ```bash
 curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments" -H "Authorization: Bearer $SECRET_KEY" \
-  -H "Content-Type: application/json" -d '{"name":"Annual first","offering_a":"ofrngm2u3h89blc","offering_b":"ofrng9x8y7z6w5","enrollment_percent":50}'
+  -H "Content-Type: application/json" -d '{"name":"Price point test","type":"price_point","notes":"## Hypothesis\n$14.99 a month earns more per customer than $9.99.","variants":[{"offering_id":"ofrngm2u3h89blc"},{"name":"Higher price","offering_id":"ofrng9x8y7z6w5a"}],"audience_rules":{"groups":[{"conditions":[{"field":"country","operator":"isAnyOf","value":"US"}]}]},"enrollment_percent":50}'
 ```
 
 **Responses**
 
-- **201**: The experiment.
+- **201**: The draft. Returns [Experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#experiment).
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+Example 201 response:
+
+```json
+{
+  "object": "experiment",
+  "id": "prexp4k2m9q8z1x",
+  "project_id": "proj18pzzkao",
+  "name": "Price point test",
+  "type": "price_point",
+  "status": "draft",
+  "primary_metric": "realized_ltv_per_customer",
+  "secondary_metrics": [
+    "conversion_to_paying",
+    "initial_conversion_rate",
+    "refund_rate"
+  ],
+  "notes": "## Hypothesis\n$14.99 a month earns more per customer than $9.99.",
+  "enrollment": "new",
+  "track_paywall_views": false,
+  "audience_id": null,
+  "audience_rules": {
+    "groups": [
+      {
+        "conditions": [
+          {
+            "field": "country",
+            "operator": "isAnyOf",
+            "value": "US"
+          }
+        ]
+      }
+    ]
+  },
+  "enrollment_percent": 50,
+  "priority": 3,
+  "variants": [
+    {
+      "id": "a",
+      "name": "Control",
+      "offering_id": "ofrngm2u3h89blc",
+      "placements": {}
+    },
+    {
+      "id": "b",
+      "name": "Higher price",
+      "offering_id": "ofrng9x8y7z6w5a",
+      "placements": {}
+    }
+  ],
+  "started_at": null,
+  "paused_at": null,
+  "stopped_at": null,
+  "created_at": 1790800914012,
+  "updated_at": null,
+  "enrolled_customers": 0
+}
+```
+
+### Set the enrollment order
+
+`POST /v2/projects/{project_id}/experiments/actions/reorder` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
+
+When several running experiments could take the same customer, the one with the lowest `priority` enrolls them. Stopped experiments keep their relative order after these.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `experiment_ids` | array of string | yes | Every draft, running and paused experiment of the project, once, first enrolling first. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/actions/reorder" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"experiment_ids":["prexp7h3k1m0p2q","prexp4k2m9q8z1x"]}'
+```
+
+**Responses**
+
+- **200**: Every experiment of the project in priority order, stopped ones last. Returns a list of [Experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#experiment).
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Estimate how many customers would join
+
+`POST /v2/projects/{project_id}/experiments/actions/estimate` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`, `audiences:audiences:read`
+
+What the dashboard's create form shows: customers of the last 7 days who match the audience, times the percentage, split between the variants. Changes nothing.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `audience_id` | string or null | no | A saved audience. Send it or `audience_rules`, not both. |
+| `audience_rules` | object or null | no | Conditions written for this experiment only, in the audience condition format. Null when it uses a saved audience or everyone. |
+| `audience_rules.groups` | array of object | yes | Groups are OR-ed; conditions in a group are AND-ed. |
+| `audience_rules.groups[].conditions` | array of object | yes |  |
+| `enrollment` | `new`, `new_and_existing` | no | `new` (default) counts customers first seen in the last 7 days; `new_and_existing` counts customers seen in them. |
+| `enrollment_percent` | integer | no | Default 100. |
+| `variant_count` | integer | no | Default 2. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/actions/estimate" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"enrollment":"new","audience_rules":{"groups":[{"conditions":[{"field":"country","operator":"isAnyOf","value":"US"}]}]},"enrollment_percent":50,"variant_count":2}'
+```
+
+**Responses**
+
+- **200**: The estimate. Returns [ExperimentEstimate](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#experimentestimate).
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "experiment_estimate",
+  "period_days": 7,
+  "matching_customers": 1840,
+  "enrolled_customers": 920,
+  "customers_per_variant": 460,
+  "is_approximate": false
+}
+```
 
 ### Get an experiment
 
@@ -16073,7 +16585,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments" -H "Author
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
-| `experiment_id` | string | yes |  |
+| `experiment_id` | string | yes | Experiment id (prexp...). |
 
 **Example request**
 
@@ -16083,7 +16595,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT_ID" -H 
 
 **Responses**
 
-- **200**: The experiment.
+- **200**: The experiment. Returns [Experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#experiment).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
@@ -16092,35 +16604,49 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT_ID" -H 
 
 `POST /v2/projects/{project_id}/experiments/{experiment_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
 
-Variants and audience change only while it is a draft.
+A draft takes every field, with the same checks as create. `offering_a` and `offering_b` replace the first two variants' offerings and keep their names and placements. Once an experiment has started (running, paused or stopped), only `name`, `type`, `primary_metric`, `secondary_metrics`, `notes` and `enrollment_percent` can change; any other field answers 422 and names it.
 
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
-| `experiment_id` | string | yes |  |
+| `experiment_id` | string | yes | Experiment id (prexp...). |
 
 **Request body** (`application/json`)
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `name` | string | no |  |
-| `audience_id` | string or null | no |  |
-| `enrollment_percent` | integer | no |  |
-| `offering_a` | string | no | Control offering. |
-| `offering_b` | string | no | Treatment offering. |
+| `name` | string | no | 1 to 256 characters. |
+| `type` | `introductory_offer`, `free_trial_offer`, `paywall_design`, `price_point`, `subscription_duration`, `subscription_ordering`, `other` | no | What is tested. It sets the default metrics: see [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md#the-six-starter-types). |
+| `primary_metric` | `initial_conversion_rate`, `trial_conversion_rate`, `conversion_to_paying`, `refund_rate`, `realized_ltv_per_customer`, `realized_ltv_per_paying_customer`, `mrr_per_customer`, `mrr_per_paying_customer` | no | The metric that decides the winner: a rate or a per-customer mean, because those have an interval. |
+| `secondary_metrics` | array of `initial_conversion_rate`, `initial_conversions`, `trials_started`, `trials_completed`, `trials_converted`, `trial_conversion_rate`, `paid_customers`, `conversion_to_paying`, `active_subscribers`, `churned_subscribers`, `refunded_customers`, `refund_rate`, `realized_ltv`, `realized_ltv_per_customer`, `realized_ltv_per_paying_customer`, `mrr`, `mrr_per_customer`, `mrr_per_paying_customer` | no | Up to 12 more metrics shown first in the results. |
+| `notes` | string | no | The hypothesis, in Markdown. |
+| `enrollment` | `new`, `new_and_existing` | no | `new`: only customers first seen at or after the experiment's first start. `new_and_existing`: anyone who asks for offerings while it runs. |
+| `track_paywall_views` | boolean | no | Default false. Set to true with `new_and_existing`; false there answers 400. |
+| `audience_id` | string or null | no | A saved audience. Send it or `audience_rules`, not both; setting one clears the other. |
+| `audience_rules` | object or null | no | Conditions written for this experiment only, in the audience condition format. Null when it uses a saved audience or everyone. |
+| `audience_rules.groups` | array of object | yes | Groups are OR-ed; conditions in a group are AND-ed. |
+| `audience_rules.groups[].conditions` | array of object | yes |  |
+| `enrollment_percent` | integer | no | Share of matching customers to enroll. Default 100. |
+| `variants` | array of object | no | The control first, then 1 to 3 treatments. |
+| `variants[].id` | `a`, `b`, `c`, `d` | no | Optional; must match the position (a, b, c, d). |
+| `variants[].name` | string | no | Default: Control, Treatment B ... |
+| `variants[].offering_id` | string | yes | Offering id in this project. |
+| `variants[].placements` | object | no | Placement id (letters, digits, `_`, `.`, `-`, up to 100) → offering id, or null for no paywall. |
+| `offering_a` | string | no | Older form: the control offering. Send it with `offering_b` instead of `variants`. |
+| `offering_b` | string | no | Older form: the treatment offering. |
 
 **Example request**
 
 ```bash
 curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT_ID" -H "Authorization: Bearer $SECRET_KEY" \
-  -H "Content-Type: application/json" -d '{"enrollment_percent":100}'
+  -H "Content-Type: application/json" -d '{"enrollment_percent":100,"notes":"Raised to 100% after a week."}'
 ```
 
 **Responses**
 
-- **200**: The experiment.
+- **200**: The experiment. Returns [Experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#experiment).
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
@@ -16131,12 +16657,14 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT
 
 `DELETE /v2/projects/{project_id}/experiments/{experiment_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
 
+Deletes its enrollments and results. On their next request its customers get what targeting gives them, or join another running experiment that admits them. A running experiment answers 422: stop or pause it first.
+
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
-| `experiment_id` | string | yes |  |
+| `experiment_id` | string | yes | Experiment id (prexp...). |
 
 **Example request**
 
@@ -16156,12 +16684,14 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIME
 
 `POST /v2/projects/{project_id}/experiments/{experiment_id}/actions/start` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
 
+A draft or paused experiment runs. The first start sets `started_at`; a resume clears `paused_at` and keeps `started_at`. Answers 422 for a running or stopped experiment, when one of its offerings was deleted or archived, or when it has fewer than two variants; 409 (`resource_locked_error`) when another request changed its status at the same time.
+
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
-| `experiment_id` | string | yes |  |
+| `experiment_id` | string | yes | Experiment id (prexp...). |
 
 **Example request**
 
@@ -16171,22 +16701,25 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT
 
 **Responses**
 
-- **200**: The experiment.
+- **200**: The experiment. Returns [Experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#experiment).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
 ### Pause: enrolled customers keep their variant, nobody new joins
 
 `POST /v2/projects/{project_id}/experiments/{experiment_id}/actions/pause` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
 
+Only a running experiment can pause (422 otherwise; 409 when another request changed its status at the same time). Results keep counting what enrolled customers do.
+
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
-| `experiment_id` | string | yes |  |
+| `experiment_id` | string | yes | Experiment id (prexp...). |
 
 **Example request**
 
@@ -16196,22 +16729,25 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT
 
 **Responses**
 
-- **200**: The experiment.
+- **200**: The experiment. Returns [Experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#experiment).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
 ### Stop for good
 
 `POST /v2/projects/{project_id}/experiments/{experiment_id}/actions/stop` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
 
+A running or paused experiment stops (422 otherwise; 409 when another request changed its status at the same time). On their next request its customers get what targeting gives them, or join another running experiment that admits them. Results stay and keep updating as renewals and refunds arrive. A stopped experiment never enrolls anyone again; duplicate it instead.
+
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
-| `experiment_id` | string | yes |  |
+| `experiment_id` | string | yes | Experiment id (prexp...). |
 
 **Example request**
 
@@ -16221,30 +16757,36 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT
 
 **Responses**
 
-- **200**: The experiment.
+- **200**: The experiment. Returns [Experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#experiment).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
 ### Results per variant
 
 `GET /v2/projects/{project_id}/experiments/{experiment_id}/results` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`
 
-Customers, conversions, trials and revenue after enrolling, and the chance that b converts better than a (normal approximation). `enough_data` is false until both variants have 100 customers.
+Every metric per variant, computed now from the enrolled customers' purchases made after they joined (and the renewals, refunds and trial conversions that follow), in USD. Production results leave out customers who joined from a test device (a Test Store app or an iOS sandbox build); `environment=sandbox` counts every enrolled customer with their test purchases. Above 25,000 enrolled customers the numbers come from a fixed random sample of 25,000, and `sample` says so. Rates have a Wilson interval; per-customer means a normal interval; treatments also have the lift over the control with its interval and the chance to beat the control. `guidance` says whether there is enough data and how many customers a 20% lift needs. `series` holds every metric by day.
+
+The first release's fields stay: `conversions`, `conversion_rate`, `trials`, `paying_customers`, `revenue` and `revenue_per_customer` on each variant, and `chance_b_beats_a` and `enough_data` at the top. See [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md#read-the-results) for every definition and the statistics.
 
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
-| `experiment_id` | string | yes |  |
+| `experiment_id` | string | yes | Experiment id (prexp...). |
 
 **Query parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `environment` | `production`, `sandbox` | no |  |
+| `environment` | `production`, `sandbox` | no | Default `production`. `sandbox` counts test purchases instead. |
+| `platform` | string | no | Only customers whose last request came from this platform (any case), such as `ios` or `android`. |
+| `country` | string | no | Only customers whose last request came from this country (ISO 3166-1 alpha-2, any case). |
+| `paywall` | `all`, `viewed`, `not_viewed` | no | Customers with or without a paywall view after joining. Default `viewed` when the experiment tracks paywall views, else `all`. |
 
 **Example request**
 
@@ -16254,7 +16796,44 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT_ID/resu
 
 **Responses**
 
-- **200**: Results.
+- **200**: Results. Returns [ExperimentResults](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#experimentresults).
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+
+### Export results as CSV
+
+`GET /v2/projects/{project_id}/experiments/{experiment_id}/results/export` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`
+
+The same numbers as the results, as an RFC 4180 CSV with CRLF line ends, named `experiment-<id>-<kind>-<environment>-<YYYY-MM-DD>.csv`. Summary columns: `variant_id`, `variant_name`, `offering_id`, `customers`, `metric`, `metric_name`, `value`, `numerator`, `denominator`, `lower_95`, `upper_95`, `lift`, `lift_lower_95`, `lift_upper_95`, `chance_to_beat_control`. Daily columns: `date` (UTC), `variant_id`, `variant_name`, then each metric id. Empty cells are values that do not apply; text that a spreadsheet would run as a formula starts with an apostrophe.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `experiment_id` | string | yes | Experiment id (prexp...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `kind` | `summary`, `daily` | no | `summary` (default): one row per variant and metric. `daily`: one row per day and variant, one column per metric id. |
+| `environment` | `production`, `sandbox` | no | Default `production`. `sandbox` counts test purchases instead. |
+| `platform` | string | no | Only customers whose last request came from this platform (any case), such as `ios` or `android`. |
+| `country` | string | no | Only customers whose last request came from this country (ISO 3166-1 alpha-2, any case). |
+| `paywall` | `all`, `viewed`, `not_viewed` | no | Customers with or without a paywall view after joining. Default `viewed` when the experiment tracks paywall views, else `all`. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT_ID/results/export" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The CSV file, as an attachment.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
@@ -18080,7 +18659,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `active_entitlements.items` | array of ActiveEntitlement | yes |  |
 | `active_entitlements.next_page` | string or null | yes | Path of the next page, or null on the last page. |
 | `active_entitlements.url` | string | yes | Path of this list. |
-| `experiment` | null | no |  |
+| `experiment` | ExperimentEnrollment or null | no | The experiment the customer is in (running or paused), else the last one they joined, or null. |
 | `attributes` | object | no |  |
 | `attributes.object` | `"list"` | yes |  |
 | `attributes.items` | array of CustomerAttribute | yes |  |
@@ -18207,6 +18786,152 @@ A percentage discount (RevenueCat's shape).
 | `products.next_page` | string or null | yes | Path of the next page, or null on the last page. |
 | `products.url` | string | yes | Path of this list. |
 
+### Experiment
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"experiment"` | yes |  |
+| `id` | string | yes | Experiment id (prexp...). |
+| `project_id` | string | yes |  |
+| `name` | string | yes |  |
+| `type` | `introductory_offer`, `free_trial_offer`, `paywall_design`, `price_point`, `subscription_duration`, `subscription_ordering`, `other` | yes | What is tested. It sets the default metrics: see [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md#the-six-starter-types). |
+| `status` | `draft`, `running`, `paused`, `stopped` | yes | `draft` → `running` ⇄ `paused` → `stopped`. A stopped experiment cannot run again. |
+| `primary_metric` | `initial_conversion_rate`, `trial_conversion_rate`, `conversion_to_paying`, `refund_rate`, `realized_ltv_per_customer`, `realized_ltv_per_paying_customer`, `mrr_per_customer`, `mrr_per_paying_customer` | yes | The metric that decides the winner: a rate or a per-customer mean, because those have an interval. |
+| `secondary_metrics` | array of `initial_conversion_rate`, `initial_conversions`, `trials_started`, `trials_completed`, `trials_converted`, `trial_conversion_rate`, `paid_customers`, `conversion_to_paying`, `active_subscribers`, `churned_subscribers`, `refunded_customers`, `refund_rate`, `realized_ltv`, `realized_ltv_per_customer`, `realized_ltv_per_paying_customer`, `mrr`, `mrr_per_customer`, `mrr_per_paying_customer` | yes | Up to 12 more metrics shown first in the results. |
+| `notes` | string | yes | The hypothesis, in Markdown (up to 20,000 characters). |
+| `enrollment` | `new`, `new_and_existing` | yes | `new`: only customers first seen at or after the experiment's first start. `new_and_existing`: anyone who asks for offerings while it runs. |
+| `track_paywall_views` | boolean | yes | Results count paywall views (SDK `paywall_impression` and `custom_paywall_impression` events) and default to customers who saw a paywall. Turned on for every experiment made or changed to `new_and_existing`; A/B experiments converted from the first release keep `false`. |
+| `audience_id` | string or null | yes | A saved audience (aud...). Null with `audience_rules` or for everyone. |
+| `audience_rules` | object or null | yes | Conditions written for this experiment only, in the audience condition format. Null when it uses a saved audience or everyone. |
+| `audience_rules.groups` | array of object | yes | Groups are OR-ed; conditions in a group are AND-ed. |
+| `audience_rules.groups[].conditions` | array of object | yes |  |
+| `enrollment_percent` | integer | yes | Share of matching customers enrolled, 1 to 100. |
+| `priority` | integer | yes | Enrollment order among the project's experiments, 1 first. New experiments go last; change it with the reorder action. |
+| `variants` | array of ExperimentVariant | yes | The control first, then 1 to 3 treatments. Customers are split evenly. |
+| `started_at` | integer or null | yes | First start. A resume keeps it, so `new` keeps counting from the first start. Epoch milliseconds, or null. |
+| `paused_at` | integer or null | yes | Last pause; cleared on resume. Epoch milliseconds, or null. |
+| `stopped_at` | integer or null | yes | Stopped. Epoch milliseconds, or null. |
+| `created_at` | integer | yes | Created. Epoch milliseconds. |
+| `updated_at` | integer or null | yes | Last change. Epoch milliseconds, or null. |
+| `enrolled_customers` | integer | yes | Customers enrolled so far, sandbox included. |
+
+### ExperimentEnrollment
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"experiment_enrollment"` | yes |  |
+| `id` | string | yes | Experiment id (prexp...). |
+| `name` | string | yes | The experiment's name. |
+| `variant` | `a`, `b`, `c`, `d` | yes | The customer's variant: `a` is the control. |
+
+### ExperimentEstimate
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"experiment_estimate"` | yes |  |
+| `period_days` | integer | yes | Always 7. |
+| `matching_customers` | integer | yes | Customers first seen (`new`) or seen (`new_and_existing`) in the last 7 days who match the audience. |
+| `enrolled_customers` | integer | yes | `matching_customers` × `enrollment_percent`, rounded. |
+| `customers_per_variant` | integer | yes | `enrolled_customers` ÷ `variant_count`, rounded down. |
+| `is_approximate` | boolean | yes | True when more than 5,000 customers were seen: the audience share of the 5,000 most recent is scaled to all of them. |
+
+### ExperimentMetric
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `id` | `initial_conversion_rate`, `initial_conversions`, `trials_started`, `trials_completed`, `trials_converted`, `trial_conversion_rate`, `paid_customers`, `conversion_to_paying`, `active_subscribers`, `churned_subscribers`, `refunded_customers`, `refund_rate`, `realized_ltv`, `realized_ltv_per_customer`, `realized_ltv_per_paying_customer`, `mrr`, `mrr_per_customer`, `mrr_per_paying_customer` | yes |  |
+| `display_name` | string | yes |  |
+| `kind` | `rate`, `mean`, `count`, `total` | yes | `rate`: numerator ÷ denominator with a Wilson interval. `mean`: per-customer average with a normal interval. `count` and `total`: no interval. |
+| `unit` | `%`, `$`, `#` | yes | Rates are fractions (0.12 is 12%); money is USD. |
+| `better` | `higher`, `lower` | yes | Which direction wins. Churned subscribers, refunded customers and refund rate are better when lower. |
+| `description` | string | yes |  |
+
+### ExperimentMetricValue
+
+Counts and totals carry only `value`. The control has no `lift` or `chance_to_beat_control` fields.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `value` | number or null | yes | The metric now. Null for a rate or mean with no customers in its denominator. |
+| `numerator` | integer | no | Rates: the customers or trials counted. |
+| `denominator` | integer | no | Rates: the customers, trials or paid customers it divides by. Means: the customers averaged. |
+| `lower` | number or null | no | Rates and means: the 95% interval's lower bound. |
+| `upper` | number or null | no | Rates and means: the 95% interval's upper bound. |
+| `lift` | number or null | no | Treatments, rates and means: value ÷ control value − 1 (0.12 is 12% above the control). Null when the control's value is 0. |
+| `lift_lower` | number or null | no | The lift's 95% interval, by the delta method on the log of the ratio (Katz's interval for rates, with half counts added when a rate is 0% or 100%). Null for a mean with fewer than two customers on a side, or a mean of 0. |
+| `lift_upper` | number or null | no | Upper bound of the lift's 95% interval. |
+| `chance_to_beat_control` | number or null | no | Treatments, rates and means: the probability this variant beats the control in the metric's `better` direction. Null for a mean with fewer than two customers on a side. |
+
+### ExperimentResults
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"experiment_results"` | yes |  |
+| `experiment_id` | string | yes |  |
+| `environment` | `production`, `sandbox` | yes |  |
+| `currency` | `"USD"` | yes |  |
+| `computed_at` | integer | yes | Computed. Epoch milliseconds. |
+| `primary_metric` | `initial_conversion_rate`, `trial_conversion_rate`, `conversion_to_paying`, `refund_rate`, `realized_ltv_per_customer`, `realized_ltv_per_paying_customer`, `mrr_per_customer`, `mrr_per_paying_customer` | yes |  |
+| `secondary_metrics` | array of `initial_conversion_rate`, `initial_conversions`, `trials_started`, `trials_completed`, `trials_converted`, `trial_conversion_rate`, `paid_customers`, `conversion_to_paying`, `active_subscribers`, `churned_subscribers`, `refunded_customers`, `refund_rate`, `realized_ltv`, `realized_ltv_per_customer`, `realized_ltv_per_paying_customer`, `mrr`, `mrr_per_customer`, `mrr_per_paying_customer` | yes |  |
+| `control_variant_id` | string | yes | Always `a`. |
+| `filters` | object | yes |  |
+| `filters.platform` | string or null | yes | The `platform` filter, or null. |
+| `filters.country` | string or null | yes | The `country` filter, or null. |
+| `filters.paywall` | `all`, `viewed`, `not_viewed` | yes | The paywall filter in effect, after the default. |
+| `filter_options` | object | yes |  |
+| `filter_options.platforms` | array of string | yes | Platforms of the enrolled customers' last requests. |
+| `filter_options.countries` | array of string | yes | Countries of the enrolled customers' last requests. |
+| `sample` | object or null | no | Null when every enrolled customer is counted. Above 25,000 enrolled customers the results come from a fixed random sample of 25,000 (the same customers on every request): rates, means, intervals and chances are estimates from it, and counts and totals are the sample's. |
+| `sample.customers` | integer | yes | Customers in the sample: 25,000. |
+| `sample.enrolled_customers` | integer | yes | Every enrolled customer in this environment. |
+| `sample.enrolled_by_variant` | object | yes | Variant id → its enrolled customers. |
+| `metrics` | array of ExperimentMetric | yes | Every metric's definition, in the order the dashboard lists them. |
+| `variants` | object | yes | One entry per variant, the control first. |
+| `variants.object` | `"list"` | yes |  |
+| `variants.items` | array of ExperimentVariantResult | yes |  |
+| `variants.next_page` | string or null | yes | Path of the next page, or null on the last page. |
+| `variants.url` | string | yes | Path of this list. |
+| `guidance` | object | yes |  |
+| `guidance.enough_data` | boolean | yes | Every variant has at least `min_customers` customers and `min_events` events of the primary metric. |
+| `guidance.min_customers` | integer | yes | 100. |
+| `guidance.min_events` | integer | yes | 10 events per variant: conversions for initial conversion rate, paid customers for conversion to paying, completed trials for trial conversion rate, and paid customers for refund rate and the per-customer means. |
+| `guidance.customers_needed_per_variant` | integer or null | yes | Customers per variant to detect a 20% relative lift on the primary metric at 95% confidence and 80% power, from the control's current value. Null until the control has data. |
+| `guidance.leader` | object or null | yes | The treatment most likely to beat the control on the primary metric. |
+| `guidance.leader.variant_id` | string | yes |  |
+| `guidance.leader.chance_to_beat_control` | number | yes |  |
+| `guidance.message` | string | yes | One sentence for people, such as "Too early to call ...". |
+| `series` | object | yes |  |
+| `series.days` | array of integer | yes | Start of each UTC day from the first start to now (at most the last 400 days). Epoch milliseconds. |
+| `series.values` | object | yes | `values[metric_id][variant_id][i]`: the metric as of the end of `days[i]`, cumulative. |
+| `chance_b_beats_a` | number | yes | Kept from the first release: variant b's chance to beat the control on `initial_conversion_rate` (0.5 when unknown). |
+| `enough_data` | boolean | yes | Kept: `guidance.enough_data`. |
+
+### ExperimentVariant
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `id` | `a`, `b`, `c`, `d` | yes | Set by position: `a` is the control, then `b`, `c`, `d`. |
+| `name` | string | yes | Defaults to Control, Treatment B, Treatment C, Treatment D. |
+| `offering_id` | string | yes | The offering `Offerings.current` returns to customers in this variant (ofrng...). A deleted offering keeps its id here. |
+| `placements` | object | yes | Placement id → offering id for customers in this variant; null shows no paywall there. It overlays the placements of the targeting rule that matches the customer. |
+
+### ExperimentVariantResult
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `id` | `a`, `b`, `c`, `d` | yes |  |
+| `name` | string | yes |  |
+| `offering_id` | string or null | yes | The variant's offering id. |
+| `customers` | integer | yes | Enrolled customers who pass the filters (in the sample, when `sample` is set). Production results leave out customers who joined from a test device. |
+| `paywall_viewers` | integer | yes | Of those, customers with a paywall view after joining. |
+| `metrics` | object | yes | Every metric id → its value, interval, lift and chance to beat the control. |
+| `conversions` | integer | yes | Kept from the first results release: `initial_conversions`. |
+| `conversion_rate` | number | yes | Kept: `initial_conversion_rate`, 4 decimals (0 when there are no customers). |
+| `trials` | integer | yes | Kept: `trials_started`. |
+| `paying_customers` | integer | yes | Kept: `paid_customers`. |
+| `revenue` | number | yes | Kept: `realized_ltv`, USD. |
+| `revenue_per_customer` | number | yes | Kept: `realized_ltv_per_customer`, USD (0 when there are no customers). |
+
 ### IndicativePrice
 
 | Field | Type | Required | Description |
@@ -18238,7 +18963,7 @@ A percentage discount (RevenueCat's shape).
 | `created_at` | integer | yes | Creation time. Epoch milliseconds. |
 | `project_id` | string | yes |  |
 | `state` | `active`, `inactive` | yes |  |
-| `paywall_id` | null | no |  |
+| `paywall_id` | string or null | no | The paywall attached to this offering, or null. |
 | `metadata` | object or null | yes |  |
 | `packages` | object | no |  |
 | `packages.object` | `"list"` | yes |  |
@@ -28652,7 +29377,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `active_entitlements.items` | array of ActiveEntitlement | yes |  |
 | `active_entitlements.next_page` | string or null | yes | Path of the next page, or null on the last page. |
 | `active_entitlements.url` | string | yes | Path of this list. |
-| `experiment` | null | no |  |
+| `experiment` | ExperimentEnrollment or null | no | The experiment the customer is in (running or paused), else the last one they joined, or null. |
 | `attributes` | object | no |  |
 | `attributes.object` | `"list"` | yes |  |
 | `attributes.items` | array of CustomerAttribute | yes |  |
@@ -28694,7 +29419,8 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `current_offering.rule_name` | string or null | no | With `targeting`. |
 | `current_offering.experiment_id` | string | no | With `experiment`. |
 | `current_offering.experiment_name` | string or null | no | With `experiment`. |
-| `current_offering.variant` | `a`, `b` | no | With `experiment`. |
+| `current_offering.variant` | `a`, `b`, `c`, `d` | no | With `experiment`: the variant, `a` being the control. |
+| `current_offering.variant_name` | string | no | With `experiment`: the variant's name, such as Control or Treatment B. |
 | `blocked` | boolean | no | One of the customer's app user ids is blocked: no entitlements anywhere. |
 | `active_entitlements` | array of object | no |  |
 | `granted_entitlements` | array of object | no |  |
@@ -28740,6 +29466,15 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `occurred_at` | integer | yes | When it happened. Epoch milliseconds. |
 | `created_at` | integer | no | Recorded. Epoch milliseconds. |
 | `body` | object | yes | The webhook `event` object, exactly as webhooks receive it. |
+
+### ExperimentEnrollment
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"experiment_enrollment"` | yes |  |
+| `id` | string | yes | Experiment id (prexp...). |
+| `name` | string | yes | The experiment's name. |
+| `variant` | `a`, `b`, `c`, `d` | yes | The customer's variant: `a` is the control. |
 
 ### Funnel
 
@@ -32528,13 +33263,13 @@ RevenueDot POSTs one JSON event per request to each matching webhook: `{ "api_ve
 | [`PRICE_INCREASE_CONSENT_APPROVED`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#price_increase_consent_approved) | The customer accepted the price increase. |
 | [`TRANSFER`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#transfer) | A purchase moved to another customer because that customer restored it (transfer behaviour `transfer` or `transfer_if_no_active`). |
 | [`VIRTUAL_CURRENCY_TRANSACTION`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#virtual_currency_transaction) | An in-app currency was credited because a purchase of a granting product was recorded (`source: in_app_purchase`), or because a rewarded ad was verified and a reward rule granted currency (`source: ad_reward`, a RevenueDot extension; `product_id` and `store` are null and `transaction_id` is the ad network's transaction id). Not sent for adjustments made through the API. |
-| [`EXPERIMENT_ENROLLMENT`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#experiment_enrollment) | A customer was enrolled in an offering experiment. Sent once per customer and experiment. |
+| [`EXPERIMENT_ENROLLMENT`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#experiment_enrollment) | A customer joined an offering experiment: the first offerings request that enrolled them. Its `app_user_id` is the id that asked for offerings. Sent once per customer and experiment, as a production event with no app, so a webhook set to sandbox only or to one app does not get it. See [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md#webhooks). |
 | [`SUBSCRIBER_ALIAS`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#subscriber_alias) | A new app user id joined an existing customer: `logIn` onto an anonymous customer, `logIn` that merged an anonymous customer into an existing one, Android's alias call, or a restore that merged two customers. RevenueCat deprecated this event and sends it only to older projects, so RevenueDot delivers it only to webhooks whose `event_types` filter names `subscriber_alias`; it always appears in the customer's event history. |
 | [`PURCHASE_REDEEMED`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#purchase_redeemed) | A web purchase was redeemed in the app through a redemption link (`POST /v1/subscribers/redeem_purchase`): the anonymous customer who paid on the web was merged into the app user. Fields follow RevenueCat's sample; `app_user_id` is added so analytics tools know who it is. See [Redemption links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md). |
 | [`FUNNEL_VIEWED`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#funnel_viewed) | RevenueDot type. A visitor opened a published funnel. Opt-in: sent only to webhooks and integrations whose `event_types` names `funnel_viewed`. `app_user_id` is null unless the page URL had `?app_user_id=`. See [Funnels](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md). |
 | [`FUNNEL_STEP_COMPLETED`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#funnel_step_completed) | RevenueDot type. A visitor finished a funnel step, with the answer for a question (an email step's answer is `provided`, never the address). Opt-in: `funnel_step_completed`. |
 | [`FUNNEL_PURCHASE`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#funnel_purchase) | RevenueDot type. A funnel's checkout was paid. `app_user_id` is the buyer's (anonymous unless the page had one) and `product_id` the Stripe price. Opt-in: `funnel_purchase`. |
-| [`TEST`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#test) | Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase. |
+| [`TEST`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#test) | Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase, for no real customer, so it never carries `experiments`. |
 
 Accepted in a webhook's `event_types` filter but never sent, because RevenueDot never has the fact behind them: `TEMPORARY_ENTITLEMENT_GRANT` (RevenueDot never grants access it has not verified with the store; during a store outage the SDK keeps the purchase and grants access on the device from the [offline entitlement mapping](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/offline-entitlements.md)) and `INVOICE_ISSUANCE` (only RevenueCat Billing issues invoices). That makes 19 of RevenueCat's 21 event types sent. `SUBSCRIBER_ALIAS` and RevenueDot's three funnel types (`FUNNEL_VIEWED`, `FUNNEL_STEP_COMPLETED`, `FUNNEL_PURCHASE`) are opt-in: they go only to webhooks whose filter names them.
 
@@ -32572,6 +33307,10 @@ The first purchase of a subscription, including a free trial start.
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
 | `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md). |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 
 Example:
 
@@ -32649,6 +33388,10 @@ A new paid period: a renewal, a trial converting (`is_trial_conversion: true`), 
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
 | `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md). |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 | `is_trial_conversion` | boolean | True for the first paid period after a free trial. |
 
 Example:
@@ -32728,6 +33471,10 @@ Auto-renew was turned off, or the purchase was refunded. Access continues to `ex
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
 | `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md). |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 | `cancel_reason` | `UNSUBSCRIBE`, `BILLING_ERROR`, `DEVELOPER_INITIATED`, `PRICE_INCREASE`, `CUSTOMER_SUPPORT`, `UNKNOWN` |  |
 
 Example (auto-renew turned off):
@@ -32850,6 +33597,10 @@ Auto-renew was turned back on before the subscription expired.
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
 | `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md). |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 
 Example:
 
@@ -32927,6 +33678,10 @@ A one-time purchase: consumable, non-consumable or lifetime.
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
 | `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md). |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 
 Example:
 
@@ -33004,6 +33759,10 @@ A Google Play subscription is scheduled to pause. It will not renew at the end o
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
 | `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md). |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 | `auto_resume_at_ms` | integer or null | When it resumes. Epoch milliseconds. |
 
 Example:
@@ -33083,6 +33842,10 @@ Access ended: the period ran out, billing retry gave up or the subscription paus
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
 | `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md). |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 | `expiration_reason` | `UNSUBSCRIBE`, `BILLING_ERROR`, `DEVELOPER_INITIATED`, `PRICE_INCREASE`, `CUSTOMER_SUPPORT`, `UNKNOWN`, `SUBSCRIPTION_PAUSED` |  |
 
 Example:
@@ -33162,6 +33925,10 @@ A renewal charge failed. The store retries; access may continue in a grace perio
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
 | `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md). |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 | `grace_period_expiration_at_ms` | integer or null | End of the grace period, or null when there is none. Epoch milliseconds. |
 
 Example:
@@ -33241,6 +34008,10 @@ The customer changed product: an upgrade now, or a downgrade or crossgrade sched
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
 | `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md). |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 | `new_product_id` | string | The product the customer changed to. |
 
 Example:
@@ -33320,6 +34091,10 @@ The current period got longer without a new payment: an App Store renewal extens
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
 | `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md). |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 
 Example:
 
@@ -33397,6 +34172,10 @@ A refund was reversed and access is back.
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
 | `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md). |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 
 Example:
 
@@ -33644,7 +34423,7 @@ Example:
 
 ## EXPERIMENT_ENROLLMENT
 
-A customer was enrolled in an offering experiment. Sent once per customer and experiment.
+A customer joined an offering experiment: the first offerings request that enrolled them. Its `app_user_id` is the id that asked for offerings. Sent once per customer and experiment, as a production event with no app, so a webhook set to sandbox only or to one app does not get it. See [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md#webhooks).
 
 | Field | Type | Description |
 |---|---|---|
@@ -33655,7 +34434,7 @@ A customer was enrolled in an offering experiment. Sent once per customer and ex
 | `original_app_user_id` | string | The customer's first app user id. |
 | `aliases` | array of string | Every app user id of the customer. |
 | `experiment_id` | string |  |
-| `experiment_variant` | `a`, `b` |  |
+| `experiment_variant` | `a`, `b`, `c`, `d` | `a` is the control; `b`, `c` and `d` are treatments. |
 | `offering_id` | string or null | The variant's offering identifier. |
 | `experiment_enrolled_at_ms` | integer | Epoch milliseconds. |
 
@@ -33695,6 +34474,10 @@ A new app user id joined an existing customer: `logIn` onto an anonymous custome
 | `original_app_user_id` | string | The customer's first app user id. |
 | `aliases` | array of string | Every app user id of the customer. |
 | `subscriber_attributes` | object |  |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 
 Example:
 
@@ -33983,7 +34766,7 @@ Example:
 
 ## TEST
 
-Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase.
+Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase, for no real customer, so it never carries `experiments`.
 
 | Field | Type | Description |
 |---|---|---|
@@ -34015,6 +34798,10 @@ Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id
 | `tax_percentage` | number | Always 0 today. |
 | `commission_percentage` | number | Estimated store commission (0.3 for App Store and Google Play, 0 for Test Store). |
 | `offer_code` | string or null | The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md). |
+| `experiments` | array of object | Every offering experiment the customer joined. Left out when there are none. See [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md#webhooks). |
+| `experiments[].experiment_id` | string |  |
+| `experiments[].experiment_variant` | `a`, `b`, `c`, `d` |  |
+| `experiments[].enrolled_at_ms` | integer | Epoch milliseconds. |
 
 Example:
 
@@ -34131,7 +34918,7 @@ Every platform's version of this line is in the [SDK guides](https://raw.githubu
 ## How is RevenueDot different from RevenueCat?
 - **You choose where it runs.** Use RevenueDot Cloud, or run it yourself and keep your purchase data in your own Postgres.
 - **The server is open source** under AGPL-3.0, so you can read the code that decides who gets access.
-- **It does far less today.** Paywalls, experiments, targeting, charts beyond the overview, Customer Center and virtual currencies are not built. RevenueCat has all of these ([features](https://www.revenuecat.com/pricing)).
+- **It is catching up feature by feature.** Paywalls, experiments, targeting, the charts, Customer Center and virtual currencies are built; [What differs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/what-differs.md) lists what is still missing next to RevenueCat ([features](https://www.revenuecat.com/pricing)).
 - **It is newer.** RevenueCat has a longer track record as a hosted service.
 
 ## What does it cost?
@@ -34193,7 +34980,7 @@ Yes. On RevenueDot Cloud it is at [app.revenuedot.app/login](https://app.revenue
 Yes, with the Test Store: create a `test_store` app and use its `test_` key. See [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md).
 
 ## What happens to paywalls, experiments and Customer Center?
-They are not implemented. The SDK endpoints answer empty or 404 in the way that makes the SDK hide those features, so your app does not crash. Paywalls built in RevenueCat do not render against RevenueDot.
+They work with the stock SDKs: build paywalls in the [paywall editor](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md), run [experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md) with up to four variants, and set up the [Customer Center](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/customer-center.md). The importer does not copy RevenueCat's paywalls, targeting rules or experiments, so you recreate them in RevenueDot.
 
 ## Does the web SDK work?
 `purchases-js` works with Test Store (`test_`) keys against RevenueDot. RevenueCat Billing (`rcb_`) and Paddle purchases do not. For real payments on the web, use RevenueDot's hosted checkout on your Stripe account ([web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md)), or post purchases from your own Stripe checkout from your backend ([Stripe guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md)). With the stock SDK, turn off analytics events (`flags: { collectAnalyticsEvents: false }`), because the stock SDK sends them to RevenueCat. See the [web guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/web.md).
@@ -34313,8 +35100,8 @@ The list below is complete as of **2026-09-30**. The biggest gap: **no real App 
    - Workaround: after upgrading, run `pnpm tsx scripts/backfill-usd.ts` (a dry run), then again with `--apply`, to recompute those rows.
 
 ## SDK features
-6. **Paywalls, Customer Center, virtual currencies, targeting and experiments are not implemented.** The SDK endpoints answer empty results or 404, so the SDK hides these features instead of crashing. Paywalls built in RevenueCat do not render.
-   - Workaround: build the paywall in your own UI code from the offerings.
+6. **Paywalls built in RevenueCat are not imported.** Paywalls, Customer Center, virtual currencies, targeting and experiments work with the stock SDKs, but the importer does not copy RevenueCat paywalls, targeting rules or experiments (item 14).
+   - Workaround: rebuild the paywall in the [paywall editor](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md), and recreate rules and experiments on the [Targeting and Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md) pages.
 7. **The stock Android SDK sends some traffic to RevenueCat.** Diagnostics, paywall events and ad events ignore the proxy URL.
    - Workaround: the RevenueDot Android fork fixes it, but it is not published yet. You can build it from the `revenuedot/main-patches` branch of [revenuedot/purchases-android](https://github.com/revenuedot/purchases-android).
 8. **The stock web SDK sends analytics events to RevenueCat.**

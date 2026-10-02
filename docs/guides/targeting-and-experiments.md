@@ -15,7 +15,7 @@ Your app asks for the current offering, and with placements for the offering of 
 
 An audience is a set of conditions on customers. Conditions in a group must all be true; separate groups are alternatives. Fields include country, platform, app version, SDK version, locale, subscription status (`active`, `trialing`, `expired`, `never`), active entitlements, total spent, first and last seen dates, latest product, email, attribution (campaign, media source) and any custom attribute (`customAttribute:<key>`).
 
-Create one under **Targeting > Audiences**. **Preview** shows how many of your customers match today. Targeting rules and experiments can use a saved audience; an experiment can also have conditions of its own.
+Create one under **Targeting > Audiences**. **Preview** shows how many of your customers match today. Targeting rules and experiments can use a saved audience; an experiment can also have conditions of its own. An audience holds up to 20 groups of up to 50 conditions each (a field name up to 200 characters, a value up to 5,000). An audience that a rule or any experiment uses, stopped experiments included, cannot be deleted (409).
 
 ## The Targeting page
 
@@ -50,6 +50,8 @@ Below the live rules, **Select default offering** shows the offering customers g
    - **Current offering**: what `Offerings.current` returns for them, and what every placement not listed shows.
    - **Placements** (optional): a placement id, such as `onboarding_end`, and its offering or **No paywall**. Placement ids are letters, digits, dots, dashes or underscores.
    - **Starts** and **Ends** (optional): an empty start means as soon as the rule is on; an empty end means until you turn it off. The end must be after the start.
+
+   The dialog checks placement ids and dates and lists only offerings that are not archived. The API checks less: it accepts any placement id and any dates, and a rule may name an archived offering, which the SDK never receives (that customer gets the project's current offering, and the placement is left out).
 2. **Create with RevenueDot AI** asks who should see which offering ("Show the promo offering to customers in Germany") and opens a new [RevenueDot AI](revenuedot-ai.md) conversation. The assistant prepares the `create-targeting-rule` call with the name, offering, saved audience, placements and dates. After you approve it, the rule is created **turned off**, in Inactive. Turn it on when it looks right.
 
 New rules go to the end of the order and start off.
@@ -80,7 +82,8 @@ Everything about experiments is on its own page: [How do I test offerings, price
 ## API
 
 - **Audiences:** `/v2/projects/{project_id}/audiences`, with `actions/preview` and `filter_options`.
-- **Rules:** `/v2/projects/{project_id}/targeting_rules`, with `actions/reorder` for the order and `starts_at`, `ends_at` and `state` on each rule.
+- **Rules:** `/v2/projects/{project_id}/targeting_rules`, with `actions/reorder` for the order (saved all at once) and `starts_at`, `ends_at` and `state` on each rule.
+- **Viewers** see the rules, audiences and the default offering with no control that changes them; the API refuses their changes (403).
 - **The default offering:** `POST /v2/projects/{project_id}/offerings/{offering_id}` with `{ "is_current": true }`.
 - **Experiments:** `/v2/projects/{project_id}/experiments`. See [Experiments](experiments.md#api).
 

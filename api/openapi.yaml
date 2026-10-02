@@ -669,7 +669,7 @@ paths:
       tags:
         - Offerings (SDK)
       summary: Get offerings
-      description: "What `Purchases.getOfferings()` calls. Lists active offerings with the packages whose product belongs to the calling app. `current_offering_id` is the customer's override when one is set. Otherwise RevenueDot resolves, in order: the experiment the customer is in (running or paused), a running experiment that enrolls them now (by priority), the first live targeting rule that matches, the project's current offering. A variant's placements overlay the rule's in `placements.offering_ids_by_placement`. See [Experiments](../docs/guides/experiments.md#what-the-sdk-receives)."
+      description: "What `Purchases.getOfferings()` calls. Lists active offerings with the packages whose product belongs to the calling app. A new app user id makes the customer here, as `GET /v1/subscribers/{app_user_id}` does (the SDK sends both at once on a first launch), so the first answer already includes an experiment variant. `current_offering_id` is the customer's override when one is set. Otherwise RevenueDot resolves, in order: the experiment the customer is in (running or paused), a running experiment that enrolls them now (by priority), the first live targeting rule that matches, the project's current offering. A variant's placements overlay the rule's in `placements.offering_ids_by_placement`. See [Experiments](../docs/guides/experiments.md#what-the-sdk-receives)."
       security:
         - publicApiKey: []
         - secretApiKey: []
@@ -15888,7 +15888,7 @@ paths:
 
         Once started, a customer who asks for offerings and is admitted (enrollment mode, then audience, then the share) joins one variant for good and gets its offering as `current_offering_id` and its placements. Enrolling records one `EXPERIMENT_ENROLLMENT` event, and the customer's lifecycle events carry `experiments`.
 
-        Answers 400 when: both `variants` and `offering_a`/`offering_b` are sent, or neither; `audience_id` and `audience_rules` are both sent; the audience, an offering or a placement offering is not in the project; a condition's field or operator is unknown; a placement id has other characters; a variant's `id` does not match its position; two variants serve the same offering and the same placement offerings; or `enrollment` is `new_and_existing` with `track_paywall_views: false`.
+        Answers 400 when: both `variants` and `offering_a`/`offering_b` are sent, or neither; `audience_id` and `audience_rules` are both sent; the audience, an offering or a placement offering is not in the project, or the offering is archived; a condition's field or operator is unknown; a placement id has other characters; a variant's `id` does not match its position; two variants serve the same offering and the same placement offerings; or `enrollment` is `new_and_existing` with `track_paywall_views: false`.
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -16616,7 +16616,7 @@ paths:
       tags:
         - Experiments
       summary: Delete an experiment
-      description: "Deletes its enrollments and results; its customers get targeting or the current offering on their next request. A running experiment answers 422: stop or pause it first."
+      description: "Deletes its enrollments and results. On their next request its customers get what targeting gives them, or join another running experiment that admits them. A running experiment answers 422: stop or pause it first."
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -16653,7 +16653,7 @@ paths:
       tags:
         - Experiments
       summary: Start or resume
-      description: A draft or paused experiment runs. The first start sets `started_at`; a resume clears `paused_at` and keeps `started_at`. Answers 422 for a running or stopped experiment, or when one of its offerings was deleted.
+      description: A draft or paused experiment runs. The first start sets `started_at`; a resume clears `paused_at` and keeps `started_at`. Answers 422 for a running or stopped experiment, when one of its offerings was deleted or archived, or when it has fewer than two variants; 409 (`resource_locked_error`) when another request changed its status at the same time.
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -16678,6 +16678,8 @@ paths:
           $ref: "#/components/responses/V2Error403"
         "404":
           $ref: "#/components/responses/V2Error404"
+        "409":
+          $ref: "#/components/responses/V2Error409"
         "422":
           $ref: "#/components/responses/V2Error422"
       x-source: routes/v2/experiments.ts
@@ -16690,7 +16692,7 @@ paths:
       tags:
         - Experiments
       summary: "Pause: enrolled customers keep their variant, nobody new joins"
-      description: Only a running experiment can pause (422 otherwise). Results keep counting what enrolled customers do.
+      description: Only a running experiment can pause (422 otherwise; 409 when another request changed its status at the same time). Results keep counting what enrolled customers do.
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -16715,6 +16717,8 @@ paths:
           $ref: "#/components/responses/V2Error403"
         "404":
           $ref: "#/components/responses/V2Error404"
+        "409":
+          $ref: "#/components/responses/V2Error409"
         "422":
           $ref: "#/components/responses/V2Error422"
       x-source: routes/v2/experiments.ts
@@ -16727,7 +16731,7 @@ paths:
       tags:
         - Experiments
       summary: Stop for good
-      description: A running or paused experiment stops. Enrolled customers get targeting or the current offering on their next request. Results stay and keep updating as renewals and refunds arrive. A stopped experiment cannot start again; duplicate it instead.
+      description: A running or paused experiment stops (422 otherwise; 409 when another request changed its status at the same time). On their next request its customers get what targeting gives them, or join another running experiment that admits them. Results stay and keep updating as renewals and refunds arrive. A stopped experiment never enrolls anyone again; duplicate it instead.
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -16752,6 +16756,8 @@ paths:
           $ref: "#/components/responses/V2Error403"
         "404":
           $ref: "#/components/responses/V2Error404"
+        "409":
+          $ref: "#/components/responses/V2Error409"
         "422":
           $ref: "#/components/responses/V2Error422"
       x-source: routes/v2/experiments.ts
@@ -16765,7 +16771,7 @@ paths:
         - Experiments
       summary: Results per variant
       description: |-
-        Every metric per variant, computed now from the enrolled customers' purchases made after they joined (and the renewals, refunds and trial conversions that follow), in USD. Rates have a Wilson interval; per-customer means a normal interval; treatments also have the lift over the control with its interval and the chance to beat the control. `guidance` says whether there is enough data and how many customers a 20% lift needs. `series` holds every metric by day.
+        Every metric per variant, computed now from the enrolled customers' purchases made after they joined (and the renewals, refunds and trial conversions that follow), in USD. Production results leave out customers who joined from a test device (a Test Store app or an iOS sandbox build); `environment=sandbox` counts every enrolled customer with their test purchases. Above 25,000 enrolled customers the numbers come from a fixed random sample of 25,000, and `sample` says so. Rates have a Wilson interval; per-customer means a normal interval; treatments also have the lift over the control with its interval and the chance to beat the control. `guidance` says whether there is enough data and how many customers a 20% lift needs. `series` holds every metric by day.
 
         The first release's fields stay: `conversions`, `conversion_rate`, `trials`, `paying_customers`, `revenue` and `revenue_per_customer` on each variant, and `chance_b_beats_a` and `enough_data` at the top. See [Experiments](../docs/guides/experiments.md#read-the-results) for every definition and the statistics.
       security:
@@ -52432,7 +52438,7 @@ webhooks:
       tags:
         - Webhook events
       summary: EXPERIMENT_ENROLLMENT
-      description: "A customer joined an offering experiment: the first offerings request that enrolled them. Sent once per customer and experiment, as a production event (a webhook set to sandbox only does not get it). See [Experiments](../docs/guides/experiments.md#webhooks)."
+      description: "A customer joined an offering experiment: the first offerings request that enrolled them. Its `app_user_id` is the id that asked for offerings. Sent once per customer and experiment, as a production event with no app, so a webhook set to sandbox only or to one app does not get it. See [Experiments](../docs/guides/experiments.md#webhooks)."
       parameters:
         - name: X-RevenueCat-Webhook-Signature
           in: header
@@ -53350,7 +53356,7 @@ webhooks:
       tags:
         - Webhook events
       summary: TEST
-      description: Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase.
+      description: Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase, for no real customer, so it never carries `experiments`.
       parameters:
         - name: X-RevenueCat-Webhook-Signature
           in: header
@@ -54091,7 +54097,7 @@ components:
             authorization_error: The key lacks a permission, a public app key was used, or the action needs a dashboard admin (403).
             store_error: "The App Store or Google Play refused the action, or could not be reached (`retryable: true`). Always 422."
             server_error: "RevenueDot failed (500, `retryable: true`). Retry with backoff."
-            resource_locked_error: "The delivery is being sent right now, so it cannot be retried yet (409, `retryable: true`). Try again in a minute."
+            resource_locked_error: "The object is busy, or changed while the request ran (409): a delivery being sent right now (`retryable: true`, try again in a minute), a running export, or an experiment whose status another request changed (reload it first)."
             unprocessable_entity_error: The request is valid but not possible in this state or for this store (422), for example archiving the current offering or refunding an App Store purchase.
             invalid_request: The body is not valid JSON (400), or a package would get two products of one app with overlapping eligibility (409).
             entity_references_archived_entities: The action would make an archived object current (422). Unarchive it first.
@@ -56321,7 +56327,7 @@ components:
           description: "`new`: only customers first seen at or after the experiment's first start. `new_and_existing`: anyone who asks for offerings while it runs."
         track_paywall_views:
           type: boolean
-          description: Results count paywall views (SDK `paywall_impression` and `custom_paywall_impression` events) and default to customers who saw a paywall. Always true with `new_and_existing`.
+          description: Results count paywall views (SDK `paywall_impression` and `custom_paywall_impression` events) and default to customers who saw a paywall. Turned on for every experiment made or changed to `new_and_existing`; A/B experiments converted from the first release keep `false`.
         audience_id:
           type:
             - string
@@ -56538,12 +56544,12 @@ components:
           type:
             - number
             - "null"
-          description: "Treatments, rates and means: value ÷ control value − 1 (0.12 is 12% above the control). Null when either value is 0."
+          description: "Treatments, rates and means: value ÷ control value − 1 (0.12 is 12% above the control). Null when the control's value is 0."
         lift_lower:
           type:
             - number
             - "null"
-          description: The lift's 95% interval, by the delta method on the log of the ratio.
+          description: The lift's 95% interval, by the delta method on the log of the ratio (Katz's interval for rates, with half counts added when a rate is 0% or 100%). Null for a mean with fewer than two customers on a side, or a mean of 0.
         lift_upper:
           type:
             - number
@@ -56553,7 +56559,7 @@ components:
           type:
             - number
             - "null"
-          description: "Treatments, rates and means: the probability this variant beats the control in the metric's `better` direction."
+          description: "Treatments, rates and means: the probability this variant beats the control in the metric's `better` direction. Null for a mean with fewer than two customers on a side."
       required:
         - value
       description: Counts and totals carry only `value`. The control has no `lift` or `chance_to_beat_control` fields.
@@ -56576,7 +56582,7 @@ components:
           description: The variant's offering id.
         customers:
           type: integer
-          description: Enrolled customers who pass the filters.
+          description: Enrolled customers who pass the filters (in the sample, when `sample` is set). Production results leave out customers who joined from a test device.
         paywall_viewers:
           type: integer
           description: Of those, customers with a paywall view after joining.
@@ -56713,6 +56719,27 @@ components:
           required:
             - platforms
             - countries
+        sample:
+          type:
+            - object
+            - "null"
+          properties:
+            customers:
+              type: integer
+              description: "Customers in the sample: 25,000."
+            enrolled_customers:
+              type: integer
+              description: Every enrolled customer in this environment.
+            enrolled_by_variant:
+              type: object
+              additionalProperties:
+                type: integer
+              description: Variant id → its enrolled customers.
+          required:
+            - customers
+            - enrolled_customers
+            - enrolled_by_variant
+          description: "Null when every enrolled customer is counted. Above 25,000 enrolled customers the results come from a fixed random sample of 25,000 (the same customers on every request): rates, means, intervals and chances are estimates from it, and counts and totals are the sample's."
         metrics:
           type: array
           items:
@@ -56753,7 +56780,7 @@ components:
               description: "100."
             min_events:
               type: integer
-              description: "10: the rate's numerator (conversions, payers, converted trials or refunds) for a rate, paid customers for a mean."
+              description: "10 events per variant: conversions for initial conversion rate, paid customers for conversion to paying, completed trials for trial conversion rate, and paid customers for refund rate and the per-customer means."
             customers_needed_per_variant:
               type:
                 - integer

@@ -319,7 +319,7 @@ What the paywall shows.
 
 `GET /v1/subscribers/{app_user_id}/offerings` · Auth: public app key or secret key
 
-What `Purchases.getOfferings()` calls. Lists active offerings with the packages whose product belongs to the calling app. `current_offering_id` is the customer's override when one is set. Otherwise RevenueDot resolves, in order: the experiment the customer is in (running or paused), a running experiment that enrolls them now (by priority), the first live targeting rule that matches, the project's current offering. A variant's placements overlay the rule's in `placements.offering_ids_by_placement`. See [Experiments](../docs/guides/experiments.md#what-the-sdk-receives).
+What `Purchases.getOfferings()` calls. Lists active offerings with the packages whose product belongs to the calling app. A new app user id makes the customer here, as `GET /v1/subscribers/{app_user_id}` does (the SDK sends both at once on a first launch), so the first answer already includes an experiment variant. `current_offering_id` is the customer's override when one is set. Otherwise RevenueDot resolves, in order: the experiment the customer is in (running or paused), a running experiment that enrolls them now (by priority), the first live targeting rule that matches, the project's current offering. A variant's placements overlay the rule's in `placements.offering_ids_by_placement`. See [Experiments](../docs/guides/experiments.md#what-the-sdk-receives).
 
 **Path parameters**
 

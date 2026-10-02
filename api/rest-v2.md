@@ -4319,7 +4319,7 @@ Creates a **draft** at the bottom of the enrollment order (the highest `priority
 
 Once started, a customer who asks for offerings and is admitted (enrollment mode, then audience, then the share) joins one variant for good and gets its offering as `current_offering_id` and its placements. Enrolling records one `EXPERIMENT_ENROLLMENT` event, and the customer's lifecycle events carry `experiments`.
 
-Answers 400 when: both `variants` and `offering_a`/`offering_b` are sent, or neither; `audience_id` and `audience_rules` are both sent; the audience, an offering or a placement offering is not in the project; a condition's field or operator is unknown; a placement id has other characters; a variant's `id` does not match its position; two variants serve the same offering and the same placement offerings; or `enrollment` is `new_and_existing` with `track_paywall_views: false`.
+Answers 400 when: both `variants` and `offering_a`/`offering_b` are sent, or neither; `audience_id` and `audience_rules` are both sent; the audience, an offering or a placement offering is not in the project, or the offering is archived; a condition's field or operator is unknown; a placement id has other characters; a variant's `id` does not match its position; two variants serve the same offering and the same placement offerings; or `enrollment` is `new_and_existing` with `track_paywall_views: false`.
 
 **Path parameters**
 
@@ -4590,7 +4590,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT
 
 `DELETE /v2/projects/{project_id}/experiments/{experiment_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
 
-Deletes its enrollments and results; its customers get targeting or the current offering on their next request. A running experiment answers 422: stop or pause it first.
+Deletes its enrollments and results. On their next request its customers get what targeting gives them, or join another running experiment that admits them. A running experiment answers 422: stop or pause it first.
 
 **Path parameters**
 
@@ -4617,7 +4617,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIME
 
 `POST /v2/projects/{project_id}/experiments/{experiment_id}/actions/start` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
 
-A draft or paused experiment runs. The first start sets `started_at`; a resume clears `paused_at` and keeps `started_at`. Answers 422 for a running or stopped experiment, or when one of its offerings was deleted.
+A draft or paused experiment runs. The first start sets `started_at`; a resume clears `paused_at` and keeps `started_at`. Answers 422 for a running or stopped experiment, when one of its offerings was deleted or archived, or when it has fewer than two variants; 409 (`resource_locked_error`) when another request changed its status at the same time.
 
 **Path parameters**
 
@@ -4638,13 +4638,14 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
 
 ### Pause: enrolled customers keep their variant, nobody new joins
 
 `POST /v2/projects/{project_id}/experiments/{experiment_id}/actions/pause` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
 
-Only a running experiment can pause (422 otherwise). Results keep counting what enrolled customers do.
+Only a running experiment can pause (422 otherwise; 409 when another request changed its status at the same time). Results keep counting what enrolled customers do.
 
 **Path parameters**
 
@@ -4665,13 +4666,14 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
 
 ### Stop for good
 
 `POST /v2/projects/{project_id}/experiments/{experiment_id}/actions/stop` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
 
-A running or paused experiment stops. Enrolled customers get targeting or the current offering on their next request. Results stay and keep updating as renewals and refunds arrive. A stopped experiment cannot start again; duplicate it instead.
+A running or paused experiment stops (422 otherwise; 409 when another request changed its status at the same time). On their next request its customers get what targeting gives them, or join another running experiment that admits them. Results stay and keep updating as renewals and refunds arrive. A stopped experiment never enrolls anyone again; duplicate it instead.
 
 **Path parameters**
 
@@ -4692,13 +4694,14 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
 
 ### Results per variant
 
 `GET /v2/projects/{project_id}/experiments/{experiment_id}/results` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`
 
-Every metric per variant, computed now from the enrolled customers' purchases made after they joined (and the renewals, refunds and trial conversions that follow), in USD. Rates have a Wilson interval; per-customer means a normal interval; treatments also have the lift over the control with its interval and the chance to beat the control. `guidance` says whether there is enough data and how many customers a 20% lift needs. `series` holds every metric by day.
+Every metric per variant, computed now from the enrolled customers' purchases made after they joined (and the renewals, refunds and trial conversions that follow), in USD. Production results leave out customers who joined from a test device (a Test Store app or an iOS sandbox build); `environment=sandbox` counts every enrolled customer with their test purchases. Above 25,000 enrolled customers the numbers come from a fixed random sample of 25,000, and `sample` says so. Rates have a Wilson interval; per-customer means a normal interval; treatments also have the lift over the control with its interval and the chance to beat the control. `guidance` says whether there is enough data and how many customers a 20% lift needs. `series` holds every metric by day.
 
 The first release's fields stay: `conversions`, `conversion_rate`, `trials`, `paying_customers`, `revenue` and `revenue_per_customer` on each variant, and `chance_b_beats_a` and `enough_data` at the top. See [Experiments](../docs/guides/experiments.md#read-the-results) for every definition and the statistics.
 
@@ -6730,7 +6733,7 @@ A percentage discount (RevenueCat's shape).
 | `secondary_metrics` | array of `initial_conversion_rate`, `initial_conversions`, `trials_started`, `trials_completed`, `trials_converted`, `trial_conversion_rate`, `paid_customers`, `conversion_to_paying`, `active_subscribers`, `churned_subscribers`, `refunded_customers`, `refund_rate`, `realized_ltv`, `realized_ltv_per_customer`, `realized_ltv_per_paying_customer`, `mrr`, `mrr_per_customer`, `mrr_per_paying_customer` | yes | Up to 12 more metrics shown first in the results. |
 | `notes` | string | yes | The hypothesis, in Markdown (up to 20,000 characters). |
 | `enrollment` | `new`, `new_and_existing` | yes | `new`: only customers first seen at or after the experiment's first start. `new_and_existing`: anyone who asks for offerings while it runs. |
-| `track_paywall_views` | boolean | yes | Results count paywall views (SDK `paywall_impression` and `custom_paywall_impression` events) and default to customers who saw a paywall. Always true with `new_and_existing`. |
+| `track_paywall_views` | boolean | yes | Results count paywall views (SDK `paywall_impression` and `custom_paywall_impression` events) and default to customers who saw a paywall. Turned on for every experiment made or changed to `new_and_existing`; A/B experiments converted from the first release keep `false`. |
 | `audience_id` | string or null | yes | A saved audience (aud...). Null with `audience_rules` or for everyone. |
 | `audience_rules` | object or null | yes | Conditions written for this experiment only, in the audience condition format. Null when it uses a saved audience or everyone. |
 | `audience_rules.groups` | array of object | yes | Groups are OR-ed; conditions in a group are AND-ed. |
@@ -6787,10 +6790,10 @@ Counts and totals carry only `value`. The control has no `lift` or `chance_to_be
 | `denominator` | integer | no | Rates: the customers, trials or paid customers it divides by. Means: the customers averaged. |
 | `lower` | number or null | no | Rates and means: the 95% interval's lower bound. |
 | `upper` | number or null | no | Rates and means: the 95% interval's upper bound. |
-| `lift` | number or null | no | Treatments, rates and means: value ÷ control value − 1 (0.12 is 12% above the control). Null when either value is 0. |
-| `lift_lower` | number or null | no | The lift's 95% interval, by the delta method on the log of the ratio. |
+| `lift` | number or null | no | Treatments, rates and means: value ÷ control value − 1 (0.12 is 12% above the control). Null when the control's value is 0. |
+| `lift_lower` | number or null | no | The lift's 95% interval, by the delta method on the log of the ratio (Katz's interval for rates, with half counts added when a rate is 0% or 100%). Null for a mean with fewer than two customers on a side, or a mean of 0. |
 | `lift_upper` | number or null | no | Upper bound of the lift's 95% interval. |
-| `chance_to_beat_control` | number or null | no | Treatments, rates and means: the probability this variant beats the control in the metric's `better` direction. |
+| `chance_to_beat_control` | number or null | no | Treatments, rates and means: the probability this variant beats the control in the metric's `better` direction. Null for a mean with fewer than two customers on a side. |
 
 ### ExperimentResults
 
@@ -6811,6 +6814,10 @@ Counts and totals carry only `value`. The control has no `lift` or `chance_to_be
 | `filter_options` | object | yes |  |
 | `filter_options.platforms` | array of string | yes | Platforms of the enrolled customers' last requests. |
 | `filter_options.countries` | array of string | yes | Countries of the enrolled customers' last requests. |
+| `sample` | object or null | no | Null when every enrolled customer is counted. Above 25,000 enrolled customers the results come from a fixed random sample of 25,000 (the same customers on every request): rates, means, intervals and chances are estimates from it, and counts and totals are the sample's. |
+| `sample.customers` | integer | yes | Customers in the sample: 25,000. |
+| `sample.enrolled_customers` | integer | yes | Every enrolled customer in this environment. |
+| `sample.enrolled_by_variant` | object | yes | Variant id → its enrolled customers. |
 | `metrics` | array of ExperimentMetric | yes | Every metric's definition, in the order the dashboard lists them. |
 | `variants` | object | yes | One entry per variant, the control first. |
 | `variants.object` | `"list"` | yes |  |
@@ -6820,7 +6827,7 @@ Counts and totals carry only `value`. The control has no `lift` or `chance_to_be
 | `guidance` | object | yes |  |
 | `guidance.enough_data` | boolean | yes | Every variant has at least `min_customers` customers and `min_events` events of the primary metric. |
 | `guidance.min_customers` | integer | yes | 100. |
-| `guidance.min_events` | integer | yes | 10: the rate's numerator (conversions, payers, converted trials or refunds) for a rate, paid customers for a mean. |
+| `guidance.min_events` | integer | yes | 10 events per variant: conversions for initial conversion rate, paid customers for conversion to paying, completed trials for trial conversion rate, and paid customers for refund rate and the per-customer means. |
 | `guidance.customers_needed_per_variant` | integer or null | yes | Customers per variant to detect a 20% relative lift on the primary metric at 95% confidence and 80% power, from the control's current value. Null until the control has data. |
 | `guidance.leader` | object or null | yes | The treatment most likely to beat the control on the primary metric. |
 | `guidance.leader.variant_id` | string | yes |  |
@@ -6848,7 +6855,7 @@ Counts and totals carry only `value`. The control has no `lift` or `chance_to_be
 | `id` | `a`, `b`, `c`, `d` | yes |  |
 | `name` | string | yes |  |
 | `offering_id` | string or null | yes | The variant's offering id. |
-| `customers` | integer | yes | Enrolled customers who pass the filters. |
+| `customers` | integer | yes | Enrolled customers who pass the filters (in the sample, when `sample` is set). Production results leave out customers who joined from a test device. |
 | `paywall_viewers` | integer | yes | Of those, customers with a paywall view after joining. |
 | `metrics` | object | yes | Every metric id → its value, interval, lift and chance to beat the control. |
 | `conversions` | integer | yes | Kept from the first results release: `initial_conversions`. |

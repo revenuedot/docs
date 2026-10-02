@@ -30,13 +30,13 @@ RevenueDot POSTs one JSON event per request to each matching webhook: `{ "api_ve
 | [`PRICE_INCREASE_CONSENT_APPROVED`](#price_increase_consent_approved) | The customer accepted the price increase. |
 | [`TRANSFER`](#transfer) | A purchase moved to another customer because that customer restored it (transfer behaviour `transfer` or `transfer_if_no_active`). |
 | [`VIRTUAL_CURRENCY_TRANSACTION`](#virtual_currency_transaction) | An in-app currency was credited because a purchase of a granting product was recorded (`source: in_app_purchase`), or because a rewarded ad was verified and a reward rule granted currency (`source: ad_reward`, a RevenueDot extension; `product_id` and `store` are null and `transaction_id` is the ad network's transaction id). Not sent for adjustments made through the API. |
-| [`EXPERIMENT_ENROLLMENT`](#experiment_enrollment) | A customer joined an offering experiment: the first offerings request that enrolled them. Sent once per customer and experiment, as a production event (a webhook set to sandbox only does not get it). See [Experiments](../docs/guides/experiments.md#webhooks). |
+| [`EXPERIMENT_ENROLLMENT`](#experiment_enrollment) | A customer joined an offering experiment: the first offerings request that enrolled them. Its `app_user_id` is the id that asked for offerings. Sent once per customer and experiment, as a production event with no app, so a webhook set to sandbox only or to one app does not get it. See [Experiments](../docs/guides/experiments.md#webhooks). |
 | [`SUBSCRIBER_ALIAS`](#subscriber_alias) | A new app user id joined an existing customer: `logIn` onto an anonymous customer, `logIn` that merged an anonymous customer into an existing one, Android's alias call, or a restore that merged two customers. RevenueCat deprecated this event and sends it only to older projects, so RevenueDot delivers it only to webhooks whose `event_types` filter names `subscriber_alias`; it always appears in the customer's event history. |
 | [`PURCHASE_REDEEMED`](#purchase_redeemed) | A web purchase was redeemed in the app through a redemption link (`POST /v1/subscribers/redeem_purchase`): the anonymous customer who paid on the web was merged into the app user. Fields follow RevenueCat's sample; `app_user_id` is added so analytics tools know who it is. See [Redemption links](../docs/guides/redemption-links.md). |
 | [`FUNNEL_VIEWED`](#funnel_viewed) | RevenueDot type. A visitor opened a published funnel. Opt-in: sent only to webhooks and integrations whose `event_types` names `funnel_viewed`. `app_user_id` is null unless the page URL had `?app_user_id=`. See [Funnels](../docs/guides/funnels.md). |
 | [`FUNNEL_STEP_COMPLETED`](#funnel_step_completed) | RevenueDot type. A visitor finished a funnel step, with the answer for a question (an email step's answer is `provided`, never the address). Opt-in: `funnel_step_completed`. |
 | [`FUNNEL_PURCHASE`](#funnel_purchase) | RevenueDot type. A funnel's checkout was paid. `app_user_id` is the buyer's (anonymous unless the page had one) and `product_id` the Stripe price. Opt-in: `funnel_purchase`. |
-| [`TEST`](#test) | Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase. |
+| [`TEST`](#test) | Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase, for no real customer, so it never carries `experiments`. |
 
 Accepted in a webhook's `event_types` filter but never sent, because RevenueDot never has the fact behind them: `TEMPORARY_ENTITLEMENT_GRANT` (RevenueDot never grants access it has not verified with the store; during a store outage the SDK keeps the purchase and grants access on the device from the [offline entitlement mapping](../docs/guides/offline-entitlements.md)) and `INVOICE_ISSUANCE` (only RevenueCat Billing issues invoices). That makes 19 of RevenueCat's 21 event types sent. `SUBSCRIBER_ALIAS` and RevenueDot's three funnel types (`FUNNEL_VIEWED`, `FUNNEL_STEP_COMPLETED`, `FUNNEL_PURCHASE`) are opt-in: they go only to webhooks whose filter names them.
 
@@ -1190,7 +1190,7 @@ Example:
 
 ## EXPERIMENT_ENROLLMENT
 
-A customer joined an offering experiment: the first offerings request that enrolled them. Sent once per customer and experiment, as a production event (a webhook set to sandbox only does not get it). See [Experiments](../docs/guides/experiments.md#webhooks).
+A customer joined an offering experiment: the first offerings request that enrolled them. Its `app_user_id` is the id that asked for offerings. Sent once per customer and experiment, as a production event with no app, so a webhook set to sandbox only or to one app does not get it. See [Experiments](../docs/guides/experiments.md#webhooks).
 
 | Field | Type | Description |
 |---|---|---|
@@ -1533,7 +1533,7 @@ Example:
 
 ## TEST
 
-Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase.
+Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase, for no real customer, so it never carries `experiments`.
 
 | Field | Type | Description |
 |---|---|---|
