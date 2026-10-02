@@ -560,7 +560,7 @@ Store products.
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `app_id` | string | no | Only this app's products. |
-| `expand` | array of `items.app`, `items.indicative_price` | no | `items.app` embeds each product's app. `items.indicative_price` adds each product's Test Store price. |
+| `expand` | array of `items.app`, `items.indicative_price`, `items.store_details` | no | `items.app` embeds each product's app. `items.indicative_price` adds each product's indicative price: the Test Store price, else the store price from the last price read (United States first), else the Stripe web product's price. `items.store_details` (RevenueDot extension) adds each product's store status and price; see [store prices](../docs/guides/product-editor.md#store-prices-and-status-on-the-products-page). |
 | `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
 | `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
 
@@ -593,7 +593,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products" -H "Authorization: Be
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `expand` | array of `indicative_price` | no | `indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price). |
+| `expand` | array of `indicative_price`, `store_details` | no | `indicative_price` adds RevenueCat's IndicativePrice: the Test Store price; else the App Store or Google Play price in the United States from the last store price read (or the in-app purchase's base territory, or the first territory with a price); else the Stripe web product's price; null when none is known. `store_details` (RevenueDot extension) adds the store's status, base price, number of priced territories and when they were read. |
 
 **Request body** (`application/json`)
 
@@ -662,7 +662,7 @@ Example 201 response:
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `expand` | array of `app`, `indicative_price` | no | `app` embeds the app. `indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price). |
+| `expand` | array of `app`, `indicative_price`, `store_details` | no | `app` embeds the app. `indicative_price` adds RevenueCat's IndicativePrice: the Test Store price; else the App Store or Google Play price in the United States from the last store price read (or the in-app purchase's base territory, or the first territory with a price); else the Stripe web product's price; null when none is known. `store_details` (RevenueDot extension) adds the store's status, base price, number of priced territories and when they were read. |
 
 **Example request**
 
@@ -714,7 +714,7 @@ RevenueDot also lets you correct `type` and `subscription.duration` (null clears
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `expand` | array of `app`, `indicative_price` | no | `indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price). |
+| `expand` | array of `app`, `indicative_price`, `store_details` | no | `indicative_price` adds RevenueCat's IndicativePrice: the Test Store price; else the App Store or Google Play price in the United States from the last store price read (or the in-app purchase's base territory, or the first territory with a price); else the Stripe web product's price; null when none is known. `store_details` (RevenueDot extension) adds the store's status, base price, number of priced territories and when they were read. |
 
 **Request body** (`application/json`)
 
@@ -7178,7 +7178,7 @@ Counts and totals carry only `value`. The control has no `lift` or `chance_to_be
 |---|---|---|---|
 | `object` | `"indicative_price"` | yes |  |
 | `currency` | string | yes | ISO 4217 code. |
-| `country` | null | yes |  |
+| `country` | string or null | yes | `US` for a United States store price, the region code for another Google Play region, else null (Test Store and Stripe prices, other App Store territories). |
 | `amount_micros` | integer | yes | Price in micros: 9.99 is 9990000. |
 
 ### MonetaryAmount
@@ -7270,7 +7270,8 @@ Counts and totals carry only `value`. The control has no `lift` or `chance_to_be
 | `app_id` | string | yes |  |
 | `display_name` | string or null | yes |  |
 | `app` | App | no | Only the object for the app's own `type` is present. Store secrets are never returned. |
-| `indicative_price` | IndicativePrice or null | no | With `expand=indicative_price`: the Test Store price, or null. |
+| `indicative_price` | IndicativePrice or null | no | With `expand=indicative_price`: the Test Store price; else the App Store or Google Play price in the United States from the last store price read (or the in-app purchase's base territory, or the first territory with a price); else the Stripe web product's price. Null when none is known. |
+| `store_details` | StoreDetails or null | no | RevenueDot extension, with `expand=store_details`: the store's status and price from the last store price read. Null when the product was never read from App Store Connect or Google Play (other stores, or no read yet). |
 
 ### Project
 
@@ -7318,6 +7319,21 @@ Counts and totals carry only `value`. The control has no `lift` or `chance_to_be
 | `store_purchase_identifier` | string | no |  |
 | `ownership` | `purchased` | no |  |
 | `country` | string | no |  |
+
+### StoreDetails
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"store_details"` | yes |  |
+| `status` | string or null | yes | The store's state in lower case: `approved`, `ready_to_submit`, `waiting_for_review`, `in_review`, `rejected`, `developer_action_needed`, `missing_metadata`, `removed_from_sale` (App Store), `active`, `draft`, `inactive` (Google Play). |
+| `store_state` | string or null | yes | The state as the store spells it, such as `APPROVED` or `ACTIVE`. |
+| `price` | object or null | yes | The United States price when the product has one, else the in-app purchase's base territory or the first territory with a price. Null when the store has no price for it. |
+| `territories` | integer | yes | How many territories have a price. |
+| `duration` | string or null | yes | The store's period for a subscription (`P1M` ...). |
+| `display_name` | string or null | yes | The name in the store. |
+| `editable` | boolean | yes | Whether the product editor can change its prices. |
+| `refreshed_at` | integer | yes | When the prices were read from the store. Epoch milliseconds. |
+| `refresh_status` | `ok`, `failing`, null | yes | The app's last read: `failing` means it failed and these values are from the read before. |
 
 ### StoreProductImport
 

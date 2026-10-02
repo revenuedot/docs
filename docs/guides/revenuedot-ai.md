@@ -41,6 +41,8 @@ These tools change your project. Each one stops and asks first:
 | Grant entitlement | Gives a customer promotional access until a date, for example "Grant pro to wjqx8kd2rn1 for 7 days" |
 | Revoke entitlement | Ends promotional access that was granted |
 | Create product | Adds a product to an app |
+| Create products | Adds up to 50 products in one approval, optionally attached to one entitlement (created when new). Used by **Create with AI** on the Products page |
+| Create offering | Adds an offering with its packages and their products, and can make it current. Used by **Create with AI** on the Offerings page |
 | Attach products to entitlement / package | Makes products unlock an entitlement, or puts them in a package |
 | Set current offering | Changes the offering apps show by default |
 | Create experiment draft | Saves a draft experiment: a control offering, 1 to 3 treatment offerings, its type, metrics, hypothesis and audience. Nobody joins until you start it ([Experiments](experiments.md#create-an-experiment-with-revenuedot-ai)) |
@@ -49,7 +51,7 @@ These tools change your project. Each one stops and asks first:
 | Retry webhook delivery / Replay failed deliveries | Sends failed webhook deliveries again |
 | Import StoreKit products | Creates products from an attached `.storekit` file |
 
-The card says what will change and lists every value the change will use. **Approve** runs it once and shows the result; **Deny** changes nothing and the assistant says so. Approving the same card again, or from a second tab, does not repeat the change. RevenueDot AI cannot create API keys, webhooks, apps or store credentials, cannot delete customers, and never reads or shows secrets.
+The card says what will change and lists every value the change will use. **Create with AI** in the **New product** and **New offering** menus starts a conversation that drafts everything in one Create products or Create offering card; see [Create products and offerings with AI](product-editor.md#create-products-and-offerings-with-ai). **Approve** runs it once and shows the result; **Deny** changes nothing and the assistant says so. Approving the same card again, or from a second tab, does not repeat the change. RevenueDot AI cannot create API keys, webhooks, apps or store credentials, cannot delete customers, and never reads or shows secrets.
 
 Customer attributes, product names and attached files are data the assistant reads, and anyone who can write them could put instructions in them. The approval card is what stops such text from changing your project: nothing changes until you approve. Answers never load images, so a reply cannot send your data to another site without a click.
 

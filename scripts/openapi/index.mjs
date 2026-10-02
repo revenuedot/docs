@@ -19,6 +19,7 @@ import { assistantPaths } from "./assistant.mjs";
 import { recoveryPaths } from "./recovery.mjs";
 import { enterprisePaths, enterpriseSchemas } from "./enterprise.mjs";
 import { movePaths } from "./moves.mjs";
+import { productEditorPaths, productEditorSchemas } from "./product-editor.mjs";
 import { insightsPaths } from "./insights.mjs";
 
 /**
@@ -69,6 +70,7 @@ export const TAGS = [
   ["Verified Metrics", "extensions", "A public page with a project's aggregate production numbers, its settings, image and JSON."],
   ["Auth", "extensions", "Identity providers for Auth (Firebase, OpenID Connect), the project switch, a token tester, and signed-in identities with their balances for your backend. See [Auth](../docs/guides/auth.md)."],
   ["Store setup", "extensions", "Notification URLs, credential checks, setup health and App Store mass extensions."],
+  ["Store prices and product editor", "extensions", "Prices in every territory, periods and store states read from App Store Connect and Google Play, and the product editor: download a CSV of prices per territory, upload it after changing prices or adding products, review the check, and commit it to the store. See [Product editor](../docs/guides/product-editor.md)."],
   ["API keys", "extensions", "Secret keys for the REST API."],
   ["Webhook deliveries", "extensions", "Delivery log, manual retry and test events."],
   ["Integrations", "extensions", "Every tool of RevenueCat's integration catalogue plus BigQuery: 32 that receive events, and the AdMob, Apple Search Ads, Intercom inbox and Zendesk connections: the catalogue, connect, test, the delivery log, retry and replay. See [Integrations](../docs/guides/integrations.md)."],
@@ -130,9 +132,13 @@ export function buildDocument() {
       { url: "https://{host}", description: "Your self-hosted RevenueDot", variables: { host: { default: "revenuedot.example.com" } } },
     ],
     tags: tags(),
-    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...adsPaths, ...lifecyclePaths, ...webPaths, ...assistantPaths, ...insightsPaths, ...recoveryPaths, ...movePaths, ...settingsPathsAll, ...extensionPaths, ...enterprisePaths },
+    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...adsPaths, ...lifecyclePaths, ...webPaths, ...assistantPaths, ...insightsPaths, ...recoveryPaths, ...movePaths, ...productEditorPaths, ...settingsPathsAll, ...extensionPaths, ...enterprisePaths },
     webhooks,
+<<<<<<< HEAD
     components: { schemas: { ...schemas, ...targetingSchemas, ...webSchemas, ...enterpriseSchemas }, parameters, responses, securitySchemes },
+=======
+    components: { schemas: { ...schemas, ...webSchemas, ...productEditorSchemas, ...enterpriseSchemas }, parameters, responses, securitySchemes },
+>>>>>>> origin/main
     security: [{ secretApiKey: [] }],
     externalDocs: { description: "RevenueDot documentation", url: "https://github.com/revenuedot/docs" },
   };
