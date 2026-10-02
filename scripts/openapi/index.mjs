@@ -19,6 +19,7 @@ import { assistantPaths } from "./assistant.mjs";
 import { recoveryPaths } from "./recovery.mjs";
 import { enterprisePaths, enterpriseSchemas } from "./enterprise.mjs";
 import { movePaths } from "./moves.mjs";
+import { insightsPaths } from "./insights.mjs";
 
 /**
  * Tags in reading order. `x-page` is the generated Markdown page (api/<page>.md) the tag's operations go to.
@@ -91,6 +92,9 @@ export const TAGS = [
   ["Funnels", "extensions", "Multi-step web-to-app funnels: quiz, info, email, paywall and success steps, publishing, analytics and Build with AI. See [Funnels](../docs/guides/funnels.md)."],
   ["Hosted pages", "extensions", "The public pages RevenueDot serves for purchase links, funnels and redemption links, and the three calls those pages make. No API key. They live under `/pay` on the API host, at the root of `REVENUEDOT_PAY_URL` when it is a host of its own, and at the root of a verified custom domain."],
   ["RevenueDot AI", "extensions", "The in-app assistant: conversations, streaming answers, attachments (screenshots and .storekit files), @ mentions, what the assistant may do in the project, and the first-sale card. See [RevenueDot AI](../docs/guides/revenuedot-ai.md)."],
+  ["Attribution", "extensions", "Where customers came from: each customer's attribution row (media source, campaign, ad group, keyword, ad, creative, Apple Search Ads ids, partner ids) and revenue by campaign with day-0, day-7, day-30 and to-date revenue. Charts take the same dimensions as filters and segments. See [Attribution](../docs/guides/attribution.md)."],
+  ["Benchmarks", "extensions", "RevenueDot Cloud only: the project's metrics against anonymized percentiles of apps that share, by category, platform and country, and the opt-in setting. See [Benchmarks](../docs/guides/benchmarks.md)."],
+  ["Growth insights", "extensions", "3 to 5 weekly recommendations from RevenueDot AI with the numbers behind them, Refresh, and the weekly digest's one-click opt-out. See [Growth insights](../docs/guides/growth-insights.md)."],
   ["Share cards", "extensions", "Public pages and images RevenueDot makes for sharing, such as the first-sale card. No API key; the token in the URL is the only key."],
   ["OAuth for MCP clients", "extensions", "OAuth 2.1 with PKCE so MCP clients can connect to one project without copying a key."],
   ["Enterprise", "enterprise", "Whether this server runs RevenueDot Enterprise, with which licence and features. See [Enterprise](../docs/guides/enterprise.md)."],
@@ -126,7 +130,7 @@ export function buildDocument() {
       { url: "https://{host}", description: "Your self-hosted RevenueDot", variables: { host: { default: "revenuedot.example.com" } } },
     ],
     tags: tags(),
-    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...adsPaths, ...lifecyclePaths, ...webPaths, ...assistantPaths, ...recoveryPaths, ...movePaths, ...settingsPathsAll, ...extensionPaths, ...enterprisePaths },
+    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...adsPaths, ...lifecyclePaths, ...webPaths, ...assistantPaths, ...insightsPaths, ...recoveryPaths, ...movePaths, ...settingsPathsAll, ...extensionPaths, ...enterprisePaths },
     webhooks,
     components: { schemas: { ...schemas, ...targetingSchemas, ...webSchemas, ...enterpriseSchemas }, parameters, responses, securitySchemes },
     security: [{ secretApiKey: [] }],

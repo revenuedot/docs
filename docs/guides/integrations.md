@@ -240,6 +240,8 @@ Attribution needs no setup. When your app calls `enableAdServicesAttributionToke
 2. In RevenueDot, enter the **Organization ID** (Apple Search Ads › Account settings), **Client ID**, **Team ID** and **Key ID** from the API tab, and paste `private-key.pem` as **Private key (PEM)**. Click **Connect Apple Search Ads**.
 3. Click **Load campaign names**. RevenueDot signs in to Apple's Campaign Management API v5 and loads the names of up to 200 campaigns and their ad groups.
 
+Loaded names also appear on **Analytics > Attribution**, in chart segments and filters, and in Customers filters (see [Attribution](attribution.md)).
+
 ## Appstack
 Appstack publishes no event API: RevenueDot sends RevenueCat's webhook body to Appstack's URL ([how Appstack connects to RevenueCat](https://www.revenuecat.com/docs/integrations/attribution/appstack)).
 1. In Appstack, open **Integrations → RevenueCat** and copy the **Webhook URL** and the **Authorization Header**.

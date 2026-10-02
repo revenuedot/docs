@@ -638,7 +638,7 @@ Example 200 response:
 
 `POST /v1/subscribers/{app_user_id}/attributes` · Auth: public app key or secret key
 
-Saves attributes such as `$email`, `$displayName` or your own keys. A null value deletes the attribute. An invalid `$email` is refused with 7263; the other attributes are saved. `collectDeviceIdentifiers()` sends `$ip` and `$deviceVersion` as `"true"`: RevenueDot stores the request's IP address and the device and OS from the SDK's headers instead.
+Saves attributes such as `$email`, `$displayName` or your own keys. A null value deletes the attribute, except attribution attributes (`$mediaSource`, `$campaign`, `$adGroup`, `$ad`, `$keyword`, `$creative`, `$appleAds*`, `$claimType`, `$conversionType`): they are write-once, so a stored value is kept and a different value or a null is ignored. Correct them with the REST API v2. An invalid `$email` is refused with 7263; the other attributes are saved. `collectDeviceIdentifiers()` sends `$ip` and `$deviceVersion` as `"true"`: RevenueDot stores the request's IP address and the device and OS from the SDK's headers instead.
 
 **Path parameters**
 
