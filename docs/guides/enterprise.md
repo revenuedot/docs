@@ -144,6 +144,7 @@ Organization endpoints take a dashboard session (the `rd_session` cookie from `P
 | The organization audit log | `GET /v2/organizations/{org_id}/audit_logs` |
 
 ## Related
+- [High availability](high-availability.md)
 - [Single sign-on](single-sign-on.md)
 - [SCIM](scim.md)
 - [Data location](data-location.md)
