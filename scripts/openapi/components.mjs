@@ -180,6 +180,13 @@ export const schemas = {
     app: ref("App"),
     indicative_price: { oneOf: [ref("IndicativePrice"), { type: "null" }], description: "With `expand=indicative_price`: the Test Store price, or null." },
   }, ["object", "id", "store_identifier", "type", "state", "created_at", "app_id", "display_name"]),
+  StoreProductImport: obj({
+    object: { type: "string", const: "store_product_import" }, app_id: str(),
+    created: arr(ref("Product"), { description: "Products created by this import." }),
+    existing: arr(ref("Product"), { description: "Requested products the catalog already had; left unchanged." }),
+    failed: arr(obj({ store_identifier: str(), reason: { type: "string", enum: ["not_in_store", "not_importable"] }, message: str() }, ["store_identifier", "reason", "message"]), { description: "Requested identifiers the store does not have, or that cannot be imported." }),
+    entitlement_ids: arr(str(), { description: "The entitlements every created and existing product is attached to." }),
+  }, ["object", "app_id", "created", "existing", "failed", "entitlement_ids"]),
   IndicativePrice: obj({
     object: { type: "string", const: "indicative_price" }, currency: str("ISO 4217 code."), country: { type: "null" }, amount_micros: int("Price in micros: 9.99 is 9990000."),
   }, ["object", "currency", "country", "amount_micros"]),
@@ -409,5 +416,6 @@ export const securitySchemes = {
   secretApiKey: { type: "http", scheme: "bearer", description: "A project secret key (`sk_...`). Server side only. Its `permissions` limit what it can do." },
   dashboardSession: { type: "apiKey", in: "cookie", name: "rd_session", description: "The dashboard session cookie from `POST /auth/login`. It authorizes `/v2` for every project the user belongs to." },
   subscriberToken: { type: "http", scheme: "bearer", description: "A subscriber access token: `rdat_...` from `POST /v2/projects/{project_id}/apps/{app_id}/authenticate`, or the JWT `access_token` of an Auth sign-in (`POST /v1/auth/login`). It speaks for one app user id of one app for one hour. An expired or revoked token, or a path or body naming another app user id, answers 401 with code 7224." },
+  importToken: { type: "http", scheme: "bearer", description: "An import token (`rdi_` and 64 hex characters) from **Receive a project** on the server a project moves to (`POST /v2/imports/tokens`). It lets one project move into the account that created it and lasts 24 hours." },
   googlePubSubOidc: { type: "http", scheme: "bearer", bearerFormat: "JWT", description: "Google-signed OIDC token of a Pub/Sub push subscription. Checked only when the app's `pubsub_audience` credential is set." },
 };

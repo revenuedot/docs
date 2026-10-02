@@ -10,7 +10,7 @@ Generated from https://github.com/revenuedot/docs by scripts/gen-llms.mjs. Index
 # Which guide do I need?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/README.md
-Description: Step-by-step guides for stores, web billing, webhooks, integrations and data exports, ads and rewarded ads, refunds, retention and win-back, support, customer lists, testing, your team, project settings, sign-in with Auth, alerts, and running RevenueDot on your own servers.
+Description: Step-by-step guides for stores, web billing, webhooks, integrations and data exports, ads, refunds, retention, support, testing, your team, project settings, Auth, moving between self-host and Cloud, Cloud billing, and self-hosting.
 
 Each guide is one task, start to finish. Connect a store first, then receive webhooks; run the server yourself with the self-hosting guides.
 
@@ -21,6 +21,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Accept Amazon Appstore purchases on Fire tablets and Fire TV | [Connect the Amazon Appstore](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md) |
 | Track subscriptions sold with my own Stripe account | [Connect Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md) |
 | Connect my Stripe account without copying a restricted key | [Connect with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe-connect.md) |
+| Bring the products I already set up in App Store Connect, Google Play or Stripe into the catalog | [Import products](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/import-products.md) |
 | Sell my app's subscriptions on the web with a hosted Stripe checkout | [Sell on the web with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md) |
 | Share a checkout link for an offering | [Purchase links](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md) |
 | Build a multi-step web-to-app funnel (quiz, email, paywall) | [Funnels](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md) |
@@ -37,6 +38,8 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Run RevenueDot on my own servers | [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md) |
 | Upgrade my server | [Upgrades](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/upgrades.md) |
 | Back up and restore | [Backups](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/backups.md) |
+| Move a project between my own server and RevenueDot Cloud, or download everything a project owns | [Move projects and export everything](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/move-projects.md) |
+| Know what RevenueDot Cloud costs, upgrade, or change my card | [Cloud billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/cloud-billing.md) |
 | Check everything before real customers arrive | [Going to production](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/going-to-production.md) |
 | Invite teammates to a project and set their roles | [Invite your team](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/team.md) |
 | Limit sandbox testing, hand a project to another admin, keep brand colours and fonts, block abusive users, or publish verified revenue numbers | [Project settings](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/project-settings.md) |
@@ -132,7 +135,7 @@ Set these in the app's `app_store` object with `POST /v2/projects/{project_id}/a
 | `app_apple_id` | Your app's Apple ID (a number). Production notifications for another app ID are refused |
 | `xcode_certificate` | The StoreKit test certificate exported from Xcode (PEM). Lets RevenueDot accept purchases made with a StoreKit configuration file in the simulator. See [sandbox testing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/sandbox-testing.md) |
 | `allow_unsigned_receipts` | Development only: accept StoreKit 1 receipts without the In-App Purchase key |
-| `app_store_connect_api_key`, `_id`, `_issuer`, `app_store_connect_vendor_number` | A separate App Store Connect API key with the App Manager role. Used to create products in App Store Connect (below) |
+| `app_store_connect_api_key`, `_id`, `_issuer`, `app_store_connect_vendor_number` | A separate App Store Connect API key with the App Manager role. Used to [import your products](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/import-products.md) and to create products in App Store Connect (below) |
 | `shared_secret` | The legacy app-specific shared secret. Stored but not used: RevenueDot does not call Apple's deprecated verifyReceipt endpoint |
 
 ## What you can do from the server afterwards
@@ -172,7 +175,7 @@ RevenueDot uses the service account to read each purchase from the Google Play D
 
 1. In [Google Cloud](https://console.cloud.google.com/apis/library/androidpublisher.googleapis.com), enable the **Google Play Android Developer API** for your project.
 2. Under **IAM → Service accounts**, create a service account. Open it, choose **Keys → Add key → JSON**, and download the file.
-3. In [Play Console → Users and permissions](https://play.google.com/console/developers/users-and-permissions), invite the service account's email with **View app information**, **View financial data** and **Manage orders and subscriptions**.
+3. In [Play Console → Users and permissions](https://play.google.com/console/developers/users-and-permissions), invite the service account's email with **View app information**, **View financial data** and **Manage orders and subscriptions**. View app information also lets RevenueDot [import your products](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/import-products.md).
 4. In the dashboard, open the app → **Service account credentials**, drop the JSON file and click **Check credentials**. New Play Console permissions can take up to 36 hours to apply; until then the check says the account "works but cannot see this app yet".
 
 With the API, send the file's contents as `play_service_account_credentials_json`:
@@ -421,6 +424,74 @@ Both Stripe API shapes work: before 2025-03-31 (period fields on the subscriptio
 - [Sandbox and production](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/sandbox.md)
 - [SDK endpoints: POST /v1/receipts](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md)
 - [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md)
+
+---
+
+# How do I import my products from App Store Connect, Google Play or Stripe?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/import-products.md
+Description: Click Import products, pick the store products you already set up, and RevenueDot creates them in the catalog with their type, duration and name, attached to the entitlements you choose. Works with App Store Connect, Google Play and Stripe; Amazon products are added by SKU.
+
+Open **Product catalog → Products** and click **Import products** (or **Import** next to one app, or **Import products** on the app's own page). RevenueDot reads the store with the credentials the app already has, lists every product with its type and duration, marks the ones already in the catalog, and creates the ones you pick. Nothing changes in the store. RevenueCat's dashboard has the same button under **+ New → Import Products** ([RevenueCat docs](https://www.revenuecat.com/docs/offerings/products-overview)).
+
+## What each store needs
+| Store | Credential on the app | Permission |
+|---|---|---|
+| App Store, Mac App Store | **App Store Connect API key**: the `.p8` file, its key ID and the issuer ID (app page → App Store Connect API key). The In-App Purchase key cannot read the product list. | A team key with the **App Manager** role ([Users and Access → Integrations → App Store Connect API](https://appstoreconnect.apple.com/access/integrations/api)) |
+| Google Play | The **service account JSON** you already use for purchases | **View app information and download bulk reports (read-only)** for the app in [Play Console → Users and permissions](https://play.google.com/console/developers/users-and-permissions) |
+| Stripe | The app's **restricted key** | **Products: Read** (it covers prices) |
+| Amazon Appstore | Not possible | Amazon has no API that lists an app's in-app items. Add each product with **New product**: a subscription by its term SKU, a one-time product by its SKU. |
+
+When a credential is missing or the store refuses it, the dialog says which one and which role or permission it needs, with a link to the app's settings.
+
+**App Store Connect answers 401?** The most common cause is saving the **In-App Purchase key** (a `SubscriptionKey_….p8` file, used for purchases and notifications) in the App Store Connect API key fields. Apple accepts that key only on the App Store Server API, never on the App Store Connect API, so the product list stays closed. Create a separate team key under [Users and Access → Integrations → App Store Connect API](https://appstoreconnect.apple.com/access/integrations/api) with the App Manager role and save that one. The app can keep both.
+
+## What gets imported
+- **App Store Connect:** every subscription, grouped by subscription group, and every in-app purchase. The product ID becomes the store identifier, the reference name the display name. Subscription periods become durations (`ONE_MONTH` is `P1M`, `ONE_YEAR` is `P1Y`). Consumable, non-consumable and non-renewing types carry over.
+- **Google Play:** one product per **base plan**, as `subscription_id:base_plan_id` (for example `premium:monthly`), with the base plan's billing period; prepaid and installment plans are marked. One-time products come in as `one_time` by product ID. A subscription without a base plan is listed but cannot be imported until it has one. A one-time product with no backwards-compatible purchase option is importable, with a note: SDK versions that predate purchase options cannot buy it. RevenueCat asks you to add those by hand.
+- **Stripe:** one product per **active price** (`price_…`), named after its Stripe product. Recurring prices become subscriptions with their interval; one-time prices become non-consumables (change them to consumable if they can be bought again). Prices whose product ID is already in the catalog count as imported. Metered prices and products without a price cannot be imported. Flat-rate prices can also be sold through [web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md) right away. RevenueCat imports the Stripe product and has you pick one price ([RevenueCat docs](https://www.revenuecat.com/docs/web/integrations/stripe)); importing prices lets a monthly and a yearly price of one Stripe product both be in the catalog.
+
+Prices from Apple and Google are not imported yet: the Products page shows each subscription's duration.
+
+## In the dashboard
+1. Click **Import products** and choose the app.
+2. Search, tick products, or tick the box in the header to **select all** that can be imported. Products already in the catalog show **In catalog** and cannot be ticked.
+3. Optionally tick **entitlements** to attach every imported product to, such as `pro`.
+4. Click **Import N products**. The summary lists what was created, what was already there and anything that failed.
+
+Importing the same products again changes nothing.
+
+## With the API
+List what the store has (every page of the store's lists is read; `next_page` is always null):
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/store_products" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+```json
+{
+  "object": "list", "next_page": null, "app_id": "app1a2b3c4d", "store": "play_store", "warnings": [],
+  "items": [
+    { "object": "store_product_listing", "store_identifier": "premium:monthly", "type": "subscription", "display_name": "Premium (monthly)",
+      "duration": "P1M", "store_state": "ACTIVE", "group": { "id": "premium", "name": "Premium" }, "price": null,
+      "importable": true, "note": null, "in_catalog": true, "product_id": "prod1a2b3c4d5e" }
+  ]
+}
+```
+
+Import the ones you want, attached to entitlements:
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/store_products/actions/import" \
+  -H "Authorization: Bearer $SECRET_KEY" -H "Content-Type: application/json" \
+  -d '{"store_identifiers":["premium:annual","gems_50"],"entitlement_ids":["entl1a2b3c4d5e"]}'
+```
+
+The answer has `created`, `existing` (left unchanged) and `failed` (`not_in_store` or `not_importable`, with a message). It is 201 when something was created, else 200. The key needs `project_configuration:products:read_write`, and `project_configuration:entitlements:read_write` too when you pass `entitlement_ids`. Reference: [List the products in the app's store](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-the-products-in-the-apps-store) and [Import products from the app's store](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#import-products-from-the-apps-store).
+
+## Related
+- [Products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md)
+- [App Store setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md), [Google Play setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md), [Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md)
 
 ---
 
@@ -1846,10 +1917,210 @@ After a restore, the database is as it was at the dump. Purchases made since the
 docker compose down -v   # deletes the volume: every customer and purchase
 ```
 
+## Export one project
+`pg_dump` copies the whole server. To keep or load a single project, download its full export (**Project settings → Export and move → Export project**, or `npx revenuedot export`): every table as JSON Lines with a manifest and checksums, loadable into any RevenueDot server. See [Move projects and export everything](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/move-projects.md).
+
 ## Related
+- [Move projects and export everything](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/move-projects.md)
 - [Upgrades](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/upgrades.md)
 - [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md)
 - [Going to production](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/going-to-production.md)
+
+---
+
+# How do I move a project between self-hosted RevenueDot and RevenueDot Cloud, or export everything?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/move-projects.md
+Description: One command or the dashboard copies a project to another RevenueDot server with its ids, SDK keys, secret keys and webhook signing secrets, verifies every table, then forwards the old server's traffic. A full export gives you every table as JSON Lines with a manifest and checksums.
+
+Run `npx revenuedot move --from <old server> --to <new server>`, or use **Project settings → Export and move** in the dashboard. The project arrives on the new server with the same project, app and customer ids, the same public SDK keys (`appl_`, `goog_`, `test_` …), the same secret API keys (`sk_`) and the same webhook signing secrets. Your apps and your backend keep working without a change. After the switch the old server forwards every SDK call, REST call and store notification to the new one until you point your app and the stores at the new address.
+
+It works in both directions: from your own server to RevenueDot Cloud (`https://api.revenuedot.app`), from Cloud to your own server, or between two self-hosted servers.
+
+## What moves
+
+Everything the project owns, 64 tables in all: the project and its settings, apps and their store credentials, the catalog (products, entitlements, offerings, packages), customers with their aliases and attributes, subscriptions, one-time purchases, transactions, events, webhooks and their delivery log, integrations, scheduled data exports, paywalls with their versions and images, audiences, targeting rules, experiments, in-app currencies with balances and the ledger, Refund Control, retention offers, win-back campaigns, support tickets, web billing (web products, purchase links, funnels, discounts, domains), Auth providers, blocked customers, Verified Metrics and the audit log.
+
+What does not move:
+
+- **Your teammates' accounts and passwords.** The archive lists each collaborator's email and role, and the move lists them for you to invite on the new server (**Project settings → Collaborators**). Nobody is added without an invite, even with an account there. The person who receives the project owns it there.
+- **A custom domain's verification.** DNS proves a domain to one server, so on the new server the domain waits for **Verify**: open **Project settings → Domains** there for its new TXT value, point the CNAME at the new server, then verify. The finish step lists the domain.
+- RevenueDot AI conversations (they belong to one person), pending invites, sessions and subscriber access tokens (they last an hour).
+
+## Move with the command line
+
+1. **On the new server, create an import token.** Sign in, open the project switcher and choose **Receive a project** (or go to `/projects/receive`), then **Create import token**. Copy the token (`rdi_…`); it is shown once and works for 24 hours. RevenueDot Cloud asks you to confirm your email address first.
+2. **On the old server, create a secret API key** for the project with the **project configuration: read and write** permission (API keys page).
+3. **Check what will move.** Nothing is written on either server:
+
+   ```bash
+   npx revenuedot move --from https://revenuedot.example.com --to https://api.revenuedot.app --dry-run
+   ```
+
+   The CLI asks for the secret key and the import token and hides what you type. In CI, set `REVENUEDOT_FROM_KEY` and `REVENUEDOT_TO_TOKEN` instead. The dry run prints, per table, the rows in the archive, the rows the new server has now and the difference.
+4. **Copy and verify.** The old server keeps serving your apps:
+
+   ```bash
+   npx revenuedot move --from https://revenuedot.example.com --to https://api.revenuedot.app
+   ```
+
+   The CLI exports the project, copies each file, then has the new server recompute the row count and a checksum of every table and compares them with the archive. It ends with `All 64 tables match`. If the copy stops (network, laptop sleep), run the same command again: a state file in the current folder (`revenuedot-move-<old host>-to-<new host>.json`, or `--state <file>`) remembers which files are done.
+
+   Your apps keep using the old server during the copy, and it is read table by table. A row that belongs to something created after its table was read, such as the alias of a user who installed the app a minute ago, is left out and counted, and the verification says how many. `--finish` copies everything again, so nothing is lost.
+5. **Switch.** When you are ready:
+
+   ```bash
+   npx revenuedot move --from https://revenuedot.example.com --to https://api.revenuedot.app --finish
+   ```
+
+   `--finish` pauses writes on the old server, waits 10 seconds so every server process sees the pause, copies again so nothing written in the meantime is lost, verifies, puts the project live on the new server and makes the old one forward. If anything fails before the project is live on the new server (verification finds a difference, the network drops), the pause is lifted and the old server keeps serving; run the same command again to retry.
+
+Exit codes: `0` done, `1` failed or verification found differences, `2` a usage error, `130` cancelled.
+
+## Move from the dashboard
+
+On the old server open **Project settings → Export and move → Move this project**. Choose **RevenueDot Cloud** or type another server's URL, paste the import token from the new server's **Receive a project** page, then:
+
+1. **Check**: the same dry run, as a table of rows per table.
+2. **Copy data**: the old server runs the copy and the verification itself. You can close the page; the progress is kept.
+3. **Finish move**: pauses, copies the last changes, verifies, goes live there and forwards from here. **Cancel move** stops at any point before that.
+
+Only project Admins can export or move a project.
+
+## During and after the switch
+
+| State | Where | What happens |
+|---|---|---|
+| Paused | Old server, for the last copy | Reads work. Purchases (`POST /v1/receipts` and the other SDK writes) and store notifications answer `503` with `Retry-After: 60`: the SDK keeps the transaction and retries, Apple and Google retry notifications. API v2 writes answer `423`. Webhooks waiting to be sent move with the data and are sent once, by the new server |
+| Forwarded | Old server, after the switch | Every `/v1`, `/rcbilling` and secret-key `/v2` request for the project, and every store notification, is passed to the new server with the same method, path, headers and body. The answer, response signature included, comes back unchanged with an `x-revenuedot-moved-to` header. The dashboard shows "This project moved to …" |
+| Incoming | New server, while copying | The project is not live. Reads work; SDK writes and store notifications answer `503` and API v2 writes answer `423`. Nothing runs on a schedule for it. An Admin can still delete it, for example after giving up on a move |
+
+Then, at your own pace:
+
+1. **Point your app at the new server** in your next release: set the SDK's proxy URL (`Purchases.proxyURL` on iOS, `setProxyURL` elsewhere) to the new server. Old app versions keep working through the forward.
+2. **Change the store notification URLs.** Only the host changes; the path keeps the app id: `https://<new server>/v1/notifications/{apple|google|amazon|stripe}/{app_id}`. The finish step prints the exact URL for each app and where to change it:
+   - App Store Connect → your app → App Information → App Store Server Notifications (production and sandbox URLs).
+   - Play Console → Monetize → Monetization setup → Real-time developer notifications: the endpoint of the Pub/Sub push subscription.
+   - Amazon Developer Console → Real-time Notifications: the SNS subscription.
+   - Stripe Dashboard → Developers → Webhooks.
+3. **Keep the old server running** until no traffic reaches it. Its request log shows the forwarded calls.
+
+To undo a finished move, call `POST /v2/projects/{project_id}/move/cancel` on the old server: it serves the project again, and the copy on the new server stays.
+
+## Export everything
+
+**Project settings → Export and move → Export project** makes one archive of everything listed above. It is built in the background in short slices and kept for 7 days; **Download** gives a link that works for an hour. From the command line:
+
+```bash
+npx revenuedot export --from https://api.revenuedot.app --out my-project.tar
+```
+
+The archive is a `.tar` with:
+
+```
+manifest.json                      format, version, schema, the project, and per table: columns, rows and checksum
+members.json                       email and role of each collaborator (no passwords)
+tables/<table>/0001.jsonl.gz       one row per line, as stored (UTC timestamps)
+secrets/<table>/0001.json.enc      only with a passphrase
+```
+
+Each table's `checksum` is the hex sum, modulo 2^256, of the SHA-256 of every row line, so it does not depend on row order or how rows are split into files. Each file entry also has the SHA-256 of its gzip bytes.
+
+**Secrets** (store credentials, Amazon and Stripe keys, integration secrets, webhook signing secrets and authorization headers) are left out unless you give a passphrase of 12 or more characters (`--include-secrets`, or the passphrase field in the dashboard). Then they are encrypted with AES-256-GCM and a key derived from the passphrase with PBKDF2-SHA-256. Without them, a server that loads the archive gives each webhook a new signing secret and lists the apps whose store credentials you must enter again. `npx revenuedot move` always encrypts secrets with a random passphrase it never shows, so a move keeps them.
+
+Load an archive into a server with `npx revenuedot move --from-archive my-project.tar --to <server>`.
+
+### Where archives are stored
+
+| Server | Storage |
+|---|---|
+| RevenueDot Cloud | RevenueDot Cloud's own storage, deleted after 7 days |
+| Self-hosted | A folder on disk, `REVENUEDOT_ARCHIVE_DIR` (default `.data/archives`, a volume in `docker-compose.yml`). An S3-compatible bucket (AWS S3, Cloudflare R2, MinIO) when `REVENUEDOT_ARCHIVE_S3_BUCKET` is set, with `REVENUEDOT_ARCHIVE_S3_ENDPOINT`, `REVENUEDOT_ARCHIVE_S3_REGION`, `REVENUEDOT_ARCHIVE_S3_ACCESS_KEY_ID` and `REVENUEDOT_ARCHIVE_S3_SECRET_ACCESS_KEY`. `REVENUEDOT_ARCHIVE_DIR=db` keeps them in Postgres |
+
+## API
+
+Every step has an endpoint, so you can script a move. See the [API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#data-moves): `POST /v2/projects/{project_id}/exports`, `POST /v2/imports/tokens`, `POST /v2/imports`, `PUT /v2/imports/{import_id}/files/{name}`, `POST /v2/imports/{import_id}/verify`, `POST /v2/imports/{import_id}/finish`, and the move state endpoints `pause`, `forward` and `cancel`.
+
+## Troubleshooting
+
+- **"That is not an import token"**: copy the token from the new server's **Receive a project** page; it starts with `rdi_` and lasts 24 hours.
+- **"The archive collides with another project on this server"**: the new server already has a project with the same id or public key, usually a copy left from an earlier move. Run again with `--replace` to replace it.
+- **"A project with id … already exists on this server"** after a copy you gave up on: the unfinished copy is still on the new server. Delete it there (**Project settings → General → Delete project**), create a new import token and move again.
+- **The archive was written by a newer server**: upgrade the server you load it into. An archive loads into a server with the same or a newer schema.
+
+Moving from RevenueCat instead? See [Migrate from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md).
+
+---
+
+# How does RevenueDot Cloud billing work?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/cloud-billing.md
+Description: RevenueDot Cloud is free up to $10,000 of tracked revenue a month. Cloud Standard costs 0.5% of the tracked revenue above $10,000, never more than $999 a month. Self-hosting is free and unmetered. See your usage, upgrade and manage your card on the Billing page.
+
+Billing is not switched on yet: until it is, every RevenueDot Cloud account is free, no usage emails are sent, and the **Billing** link is not in the account menu. This page describes how it works once it is on.
+
+RevenueDot Cloud measures the **tracked revenue** of the projects you own each calendar month. Up to $10,000 a month is free. Above that, Cloud Standard costs 0.5% of the part above $10,000, and never more than $999 a month. A self-hosted RevenueDot has no billing, no meter and no limits.
+
+## Plans
+
+| Plan | Price | Tracked revenue |
+|---|---|---|
+| **Cloud Free** | $0 | Up to $10,000 a month |
+| **Cloud Standard** | 0.5% of tracked revenue above $10,000 a month, capped at $999 a month. The rate never rises | Up to $1,000,000 a month |
+| **Enterprise** | From $50,000 a year | No limit. Write to [hello@revenuedot.app](mailto:hello@revenuedot.app) |
+
+Examples of a month's Cloud Standard bill:
+
+| Tracked revenue in the month | Bill |
+|---|---|
+| $9,000 | $0 |
+| $10,001 | $0.01 |
+| $50,000 | $200 |
+| $209,800 or more | $999 (the cap) |
+
+Prices are on [revenuedot.app/pricing](https://revenuedot.app/pricing).
+
+## What counts as tracked revenue
+
+The sum, in US dollars at the exchange rate of the purchase date, of the **production** purchases of a month in every project you own:
+
+- Counted: new purchases, renewals and one-time purchases, from every store, in the calendar month they were made (UTC).
+- Not counted: sandbox and Test Store purchases, free trials, and anything copied in by a [move](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/move-projects.md) from another server (that revenue was tracked there).
+- Refunds are not subtracted: a refunded purchase was still processed when it was made.
+
+The Billing page updates the numbers about once an hour.
+
+## The Billing page
+
+Open your account menu → **Billing** (`/account/billing`). It shows:
+
+- Your plan and its status, and when a cancelled plan ends.
+- **Tracked revenue** this month, in total and per project, against the plan's limit, and the **bill so far**.
+- The three plans, with **Upgrade to Standard**, **Manage billing** or **Contact us**.
+- **Invoices**, with links to Stripe's invoice page and PDF.
+
+## Upgrade, change your card or cancel
+
+- **Upgrade to Standard** opens Stripe Checkout. Billing starts on the 1st of the next month with no proration, and each invoice charges the month's bill. RevenueDot uses its own Stripe account for this; it never touches the Stripe account you sell with.
+- **Manage billing** opens Stripe's Customer Portal: change the card, see invoices, or cancel. A cancelled plan stays active until the end of the period, then returns to Cloud Free.
+
+## Emails and banners
+
+- Cloud Free: an email at 80% and at 100% of $10,000 in a month, once each, with an upgrade link, and a banner on the Billing page while you are above the limit.
+- Cloud Standard: an email when the month's bill reaches the $999 cap ("you will not pay more this month"), and at 80% and 100% of $1,000,000.
+- **A failed payment** shows a banner on every page with a link to update your card and sends one email per invoice. Stripe retries the payment over the next days. If every retry fails, the account goes back to Cloud Free.
+
+## Your apps never stop
+
+Billing never changes what your apps get. A failed payment, a cancelled plan or a month above the free limit does not block SDK calls, purchases, webhooks, integrations or the REST API. The limits decide which plan fits; they are not switches.
+
+## Self-hosting is free
+
+On a self-hosted RevenueDot the Billing page says billing is only on RevenueDot Cloud, and `/v2/billing` answers 404. There is no metering and nothing is sent anywhere. See [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md), and [Move between self-host and Cloud](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/move-projects.md) to switch either way.
+
+## API
+
+`GET /v2/billing` returns the plan, this month's usage, the bill so far and the invoices for the signed-in account. `POST /v2/billing/checkout` and `POST /v2/billing/portal` return the Stripe URLs. They take a dashboard session, not an API key. See the [API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#cloud-billing).
 
 ---
 
