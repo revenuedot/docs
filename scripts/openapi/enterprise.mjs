@@ -345,7 +345,7 @@ const oidcBody = obj({ issuer: str(), client_id: str(), client_secret: nstr("Sto
 const D = `${O}/sso/domains`;
 const domainParam = path("domain", "The domain, such as acme.com.");
 const redirect = (description) => ({ description, headers: { Location: { schema: str(), description: "Where the browser goes next." } } });
-const SSO_FAIL = "Failures redirect to `/login?sso_error=<message>`; the exact reason goes to the organization audit log as `sso_sign_in_failed`.";
+const SSO_FAIL = "Failures redirect to `/login?sso_error=<code>`, one of `failed`, `connection_off`, `rate_limited`, `not_set_up`, `domain_not_verified`, `access_removed`, `not_a_member`, `other_browser` or `idp_error`; the sign-in page shows the message for the code, and the exact reason goes to the organization audit log as `sso_sign_in_failed`.";
 const ssoPaths = {
   [C]: {
     get: ee({ id: "listSsoConnections", tag: "Single sign-on", summary: "List SSO connections", source: SRC.sso, parameters: [org], description: ADMIN,

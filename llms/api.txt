@@ -21807,7 +21807,7 @@ Example 200 response:
 
 `GET /sso/start` · Auth: none · RevenueDot extension
 
-Opens in the browser. Finds the organization that verified the address's domain and sends the browser to its first enabled connection (oldest first). At most 30 starts a minute per IP address. Failures redirect to `/login?sso_error=<message>`; the exact reason goes to the organization audit log as `sso_sign_in_failed`.
+Opens in the browser. Finds the organization that verified the address's domain and sends the browser to its first enabled connection (oldest first). At most 30 starts a minute per IP address. Failures redirect to `/login?sso_error=<code>`, one of `failed`, `connection_off`, `rate_limited`, `not_set_up`, `domain_not_verified`, `access_removed`, `not_a_member`, `other_browser` or `idp_error`; the sign-in page shows the message for the code, and the exact reason goes to the organization audit log as `sso_sign_in_failed`.
 
 **Query parameters**
 
@@ -21830,7 +21830,7 @@ curl -s "$REVENUEDOT_URL/sso/start"
 
 `GET /sso/connections/{id}/start` · Auth: none · RevenueDot extension
 
-The `start_url` of a connection. Failures redirect to `/login?sso_error=<message>`; the exact reason goes to the organization audit log as `sso_sign_in_failed`.
+The `start_url` of a connection. Failures redirect to `/login?sso_error=<code>`, one of `failed`, `connection_off`, `rate_limited`, `not_set_up`, `domain_not_verified`, `access_removed`, `not_a_member`, `other_browser` or `idp_error`; the sign-in page shows the message for the code, and the exact reason goes to the organization audit log as `sso_sign_in_failed`.
 
 **Path parameters**
 
@@ -21881,7 +21881,7 @@ curl -s "$REVENUEDOT_URL/sso/saml/$ID/metadata"
 
 `POST /sso/saml/{id}/acs` · Auth: none · RevenueDot extension
 
-The identity provider posts the SAML response here (HTTP-POST binding). RevenueDot checks the assertion's signature, audience, recipient, destination, issuer, validity times (60 seconds of leeway) and that the answer belongs to a sign-in this browser started; each assertion is accepted once. Responses without an InResponseTo are IdP-initiated and are refused unless the connection allows them. On success it sets the session cookie. Failures redirect to `/login?sso_error=<message>`; the exact reason goes to the organization audit log as `sso_sign_in_failed`.
+The identity provider posts the SAML response here (HTTP-POST binding). RevenueDot checks the assertion's signature, audience, recipient, destination, issuer, validity times (60 seconds of leeway) and that the answer belongs to a sign-in this browser started; each assertion is accepted once. Responses without an InResponseTo are IdP-initiated and are refused unless the connection allows them. On success it sets the session cookie. Failures redirect to `/login?sso_error=<code>`, one of `failed`, `connection_off`, `rate_limited`, `not_set_up`, `domain_not_verified`, `access_removed`, `not_a_member`, `other_browser` or `idp_error`; the sign-in page shows the message for the code, and the exact reason goes to the organization audit log as `sso_sign_in_failed`.
 
 **Path parameters**
 
@@ -21910,7 +21910,7 @@ curl -s -X POST "$REVENUEDOT_URL/sso/saml/$ID/acs"
 
 `GET /sso/oidc/{id}/callback` · Auth: none · RevenueDot extension
 
-The identity provider sends the browser back here. RevenueDot checks the state against the browser that started the sign-in, exchanges the code with PKCE, and verifies the ID token (issuer, audience, expiry, nonce, `azp`). The token must have an `email` claim, and `email_verified` must not be false. Failures redirect to `/login?sso_error=<message>`; the exact reason goes to the organization audit log as `sso_sign_in_failed`.
+The identity provider sends the browser back here. RevenueDot checks the state against the browser that started the sign-in, exchanges the code with PKCE, and verifies the ID token (issuer, audience, expiry, nonce, `azp`). The token must have an `email` claim, and `email_verified` must not be false. Failures redirect to `/login?sso_error=<code>`, one of `failed`, `connection_off`, `rate_limited`, `not_set_up`, `domain_not_verified`, `access_removed`, `not_a_member`, `other_browser` or `idp_error`; the sign-in page shows the message for the code, and the exact reason goes to the organization audit log as `sso_sign_in_failed`.
 
 **Path parameters**
 
