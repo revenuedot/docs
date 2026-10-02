@@ -11,7 +11,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (236)
+## Operations on this page (238)
 
 - **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects), [Update account settings](#update-account-settings), [Email a password reset link](#email-a-password-reset-link), [Check a password reset link](#check-a-password-reset-link), [Set a new password from a reset link](#set-a-new-password-from-a-reset-link), [Confirm an email address](#confirm-an-email-address), [Send a new confirmation email](#send-a-new-confirmation-email), [Look up an invite](#look-up-an-invite), [Accept an invite](#accept-an-invite)
 - **Members and invites**: [List open invites](#list-open-invites), [Invite someone by email](#invite-someone-by-email), [Resend an invite](#resend-an-invite), [Revoke an invite](#revoke-an-invite), [Change a member's role](#change-a-members-role), [Remove a member, or leave the project](#remove-a-member-or-leave-the-project)
@@ -22,8 +22,8 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Auth**: [Auth on or off](#auth-on-or-off), [Turn Auth or anonymous sign-in on or off](#turn-auth-or-anonymous-sign-in-on-or-off), [List identity providers](#list-identity-providers), [Add a Firebase or OpenID Connect provider](#add-a-firebase-or-openid-connect-provider), [Get an identity provider](#get-an-identity-provider), [Update or turn off an identity provider](#update-or-turn-off-an-identity-provider), [Delete an identity provider](#delete-an-identity-provider), [Check an ID token without signing in](#check-an-id-token-without-signing-in), [List signed-in identities](#list-signed-in-identities), [Read a signed-in user's balances and entitlements by identity](#read-a-signed-in-users-balances-and-entitlements-by-identity), [Unlink an identity and sign it out](#unlink-an-identity-and-sign-it-out)
 - **Store setup**: [Store setup state of an app](#store-setup-state-of-an-app), [Check store credentials with Apple, Google, Amazon or Stripe](#check-store-credentials-with-apple-google-amazon-or-stripe), [Extend every active App Store subscriber of a product](#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](#status-of-a-mass-extension), [Setup health](#setup-health)
 - **API keys**: [List secret keys](#list-secret-keys), [Create a secret key](#create-a-secret-key), [Delete a secret key](#delete-a-secret-key)
-- **Webhook deliveries**: [Send a TEST event to one webhook](#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](#whether-each-webhook-is-enabled), [Delivery log of a webhook](#delivery-log-of-a-webhook), [Retry a delivery now](#retry-a-delivery-now)
-- **Integrations**: [What each integration needs](#what-each-integration-needs), [List integrations](#list-integrations), [Connect an integration](#connect-an-integration), [Get an integration](#get-an-integration), [Update, enable or disable an integration](#update-enable-or-disable-an-integration), [Disconnect an integration](#disconnect-an-integration), [Send a TEST event to one integration](#send-a-test-event-to-one-integration), [Delivery log of an integration](#delivery-log-of-an-integration), [Retry a delivery now](#retry-a-delivery-now), [Queue failed or skipped deliveries again](#queue-failed-or-skipped-deliveries-again)
+- **Webhook deliveries**: [Send a TEST event to one webhook](#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](#whether-each-webhook-is-enabled), [Delivery log of a webhook](#delivery-log-of-a-webhook), [One delivery: what was sent and every attempt](#one-delivery-what-was-sent-and-every-attempt), [Retry a delivery now](#retry-a-delivery-now)
+- **Integrations**: [What each integration needs](#what-each-integration-needs), [List integrations](#list-integrations), [Connect an integration](#connect-an-integration), [Get an integration](#get-an-integration), [Update, enable or disable an integration](#update-enable-or-disable-an-integration), [Disconnect an integration](#disconnect-an-integration), [Send a TEST event to one integration](#send-a-test-event-to-one-integration), [Delivery log of an integration](#delivery-log-of-an-integration), [One delivery with every attempt](#one-delivery-with-every-attempt), [Retry a delivery now](#retry-a-delivery-now), [Queue failed or skipped deliveries again](#queue-failed-or-skipped-deliveries-again)
 - **Ads**: [Ads Overview: ad revenue, impressions, eCPM and breakdowns](#ads-overview-ad-revenue-impressions-ecpm-and-breakdowns), [List reward rules in the order they are checked](#list-reward-rules-in-the-order-they-are-checked), [Create a reward rule](#create-a-reward-rule), [Reorder reward rules](#reorder-reward-rules), [Update, turn on or turn off a reward rule](#update-turn-on-or-turn-off-a-reward-rule), [Delete a reward rule](#delete-a-reward-rule), [The rewards ledger](#the-rewards-ledger), [Send a test reward](#send-a-test-reward), [AdMob connection, loaded ad units and the URLs to paste](#admob-connection-loaded-ad-units-and-the-urls-to-paste), [Disconnect AdMob](#disconnect-admob), [Start Google sign-in for AdMob](#start-google-sign-in-for-admob), [Finish Google sign-in for AdMob](#finish-google-sign-in-for-admob), [Load AdMob ad units now](#load-admob-ad-units-now), [Customers and revenue by Apple Search Ads campaign](#customers-and-revenue-by-apple-search-ads-campaign), [Load campaign names from Apple Search Ads](#load-campaign-names-from-apple-search-ads), [AdMob server-side verification callback](#admob-server-side-verification-callback), [Google's redirect after AdMob sign-in](#googles-redirect-after-admob-sign-in)
 - **Data exports**: [List scheduled data exports](#list-scheduled-data-exports), [Create a scheduled data export](#create-a-scheduled-data-export), [Get a data export](#get-a-data-export), [Update a data export](#update-a-data-export), [Delete a data export](#delete-a-data-export), [Run an export now](#run-an-export-now), [Check the bucket and credentials](#check-the-bucket-and-credentials), [Run history](#run-history)
 - **Refund Control**: [Get policies and settings](#get-policies-and-settings), [Save settings and the ordered policies](#save-settings-and-the-ordered-policies), [Refund rate, amounts and counts](#refund-rate-amounts-and-counts), [List refund requests, newest first](#list-refund-requests-newest-first)
@@ -2703,6 +2703,34 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID/deliveries
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
+### One delivery: what was sent and every attempt
+
+`GET /v2/projects/{project_id}/webhooks/{webhook_id}/deliveries/{delivery_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+The request as sent (method, URL, headers and the exact body; the Authorization value is masked) and every attempt, newest last (at most 10): when it was sent, the HTTP status, the latency, the error, the first 4,096 characters of the answer with the webhook's secrets and bearer tokens replaced, and the signature header of that attempt. `curl` repeats the request with a placeholder for Authorization.
+Bodies can hold customer data, so this needs `read_write` (Admins and Developers). Attempt details are kept for `attempt_log_kept_days` (30) days; the delivery itself stays.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `webhook_id` | string | yes | Webhook id. |
+| `delivery_id` | string | yes | Delivery id. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/webhooks/$WEBHOOK_ID/deliveries/$DELIVERY_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The delivery.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
 ### Retry a delivery now
 
 `POST /v2/projects/{project_id}/webhooks/{webhook_id}/deliveries/{delivery_id}/retry` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
@@ -3101,6 +3129,33 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRAT
 
 - **200**: Deliveries.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### One delivery with every attempt
+
+`GET /v2/projects/{project_id}/integrations/partners/{integration_id}/deliveries/{delivery_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
+
+The delivery with every attempt, newest last (at most 10): when, HTTP status, latency, error, the requests' methods and URLs and the first 4,096 characters of the answer, credentials removed. `curl` repeats a single-request delivery with a placeholder for the partner's credentials (null when the delivery made several requests). Needs `read_write` (Admins and Developers): bodies can hold customer data, and the log answers Viewers without `request_body` and `response_body`. Attempt details are kept 30 days.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `integration_id` | string | yes | Integration id (intg_...). |
+| `delivery_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners/$INTEGRATION_ID/deliveries/$DELIVERY_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The delivery.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).

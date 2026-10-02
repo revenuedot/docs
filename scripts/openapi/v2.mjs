@@ -1,7 +1,7 @@
 // RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
 // This file: REST API v2 (RevenueCat-compatible paths) and RevenueDot's v2 extensions in the OpenAPI document.
 // Docs: https://revenuedot.app/docs/api/rest-v2   Migrate from RevenueCat: https://revenuedot.app/docs/migrate
-import { NONE, SECRET, SESSION, arr, body, bool, en, int, listOf, ms, nstr, num, obj, ok, op, param, ref, str, v2Errors } from "./common.mjs";
+import { NONE, SECRET, SESSION, arr, body, bool, en, int, listOf, ms, nint, nms, nstr, num, obj, ok, op, param, ref, str, v2Errors } from "./common.mjs";
 
 const P = "/v2/projects/{project_id}";
 const project = param("ProjectId");
@@ -500,6 +500,21 @@ On RevenueDot Cloud the admin needs a confirmed email address. A project can sen
     get: op({ id: "listWebhookDeliveries", tag: "Webhook deliveries", summary: "Delivery log of a webhook", security: SECRET, source: R.ext, extension: true, scopes: ["project_configuration:integrations:read"],
       parameters: [project, pathParam("webhook_id", "Webhook id (wh_...)."), { name: "status", in: "query", schema: en(["pending", "delivered", "failed"]) }, ...page],
       description: "Newest first.", responses: { 200: list(ref("WebhookDelivery")), ...v2Errors(400, 401, 403, 404) } }),
+  },
+  [`${P}/webhooks/{webhook_id}/deliveries/{delivery_id}`]: {
+    get: op({ id: "getWebhookDelivery", tag: "Webhook deliveries", summary: "One delivery: what was sent and every attempt", security: SECRET, source: R.ext, extension: true, scopes: ["project_configuration:integrations:read_write"],
+      parameters: [project, pathParam("webhook_id", "Webhook id."), pathParam("delivery_id", "Delivery id.")],
+      description: `
+The request as sent (method, URL, headers and the exact body; the Authorization value is masked) and every attempt, newest last (at most 10): when it was sent, the HTTP status, the latency, the error, the first 4,096 characters of the answer with the webhook's secrets and bearer tokens replaced, and the signature header of that attempt. \`curl\` repeats the request with a placeholder for Authorization.
+Bodies can hold customer data, so this needs \`read_write\` (Admins and Developers). Attempt details are kept for \`attempt_log_kept_days\` (30) days; the delivery itself stays.`,
+      responses: { 200: ok("The delivery.", obj({
+        object: { type: "string", const: "webhook_delivery" }, id: str(), webhook_integration_id: str(), event_id: str(), event_type: str(), status: en(["pending", "delivered", "failed"]), attempts: int(),
+        next_attempt_at: nms("Next try while pending."), response_status: nint(), response_ms: nint(), last_error: nstr(), created_at: ms("Queued."),
+        request: obj({ method: str(), url: str(), headers: arr(obj({ name: str(), value: str() }, ["name", "value"])), body: str("The exact JSON body sent.") }, ["method", "url", "headers", "body"]),
+        curl: str("A cURL command that repeats the request, credentials left as placeholders."),
+        attempt_log: arr(obj({ attempted_at: ms("When it was sent."), response_status: nint(), response_ms: nint(), error: nstr(), response_body: nstr("First 4,096 characters, secrets replaced."), signature: nstr("X-RevenueCat-Webhook-Signature of this attempt.") }, ["attempted_at", "response_status", "response_ms", "error", "response_body"])),
+        attempt_log_kept_days: int("How long attempt details are kept."),
+      }, ["object", "id", "status", "attempts", "request", "curl", "attempt_log", "attempt_log_kept_days"])), ...v2Errors(401, 403, 404) } }),
   },
   [`${P}/webhooks/{webhook_id}/deliveries/{delivery_id}/retry`]: {
     post: op({ id: "retryWebhookDelivery", tag: "Webhook deliveries", summary: "Retry a delivery now", security: SECRET, source: R.ext, extension: true, scopes: ["project_configuration:integrations:read_write"],

@@ -24,6 +24,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/webhooks" 
 - `environment`: `production`, `sandbox`, or `null` for both.
 - `event_types`: lower-case types such as `["initial_purchase","renewal"]`; empty means all except the opt-in types below.
 - `app_id`: only one app's events; `null` for all apps.
+- **See what was sent:** click a delivery on the webhook's dashboard page. The details show the request (URL, headers with Authorization masked, the exact body), every attempt with its time, HTTP status, latency and the first 4 KB of your server's answer, the next retry, Retry and Copy as cURL. The API is `GET /v2/projects/{project_id}/webhooks/{webhook_id}/deliveries/{delivery_id}` (Admins and Developers). Attempt details are kept for 30 days.
 - **Pause without deleting:** send `{"enabled":false}` to `POST /v2/projects/{project_id}/integrations/webhooks/{id}`, or use the Deliveries switch on the webhook's dashboard page. Events recorded while it is paused are not sent; queued retries resume when you turn it back on. `enabled` is a RevenueDot addition; read it with `GET /v2/projects/{project_id}/webhooks`.
 
 ## 2. What a delivery looks like

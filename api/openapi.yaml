@@ -19165,6 +19165,164 @@ paths:
       x-scopes:
         - project_configuration:integrations:read
       x-revenuedot-extension: true
+  /v2/projects/{project_id}/integrations/partners/{integration_id}/deliveries/{delivery_id}:
+    get:
+      operationId: getIntegrationDelivery
+      tags:
+        - Integrations
+      summary: One delivery with every attempt
+      description: "The delivery with every attempt, newest last (at most 10): when, HTTP status, latency, error, the requests' methods and URLs and the first 4,096 characters of the answer, credentials removed. `curl` repeats a single-request delivery with a placeholder for the partner's credentials (null when the delivery made several requests). Needs `read_write` (Admins and Developers): bodies can hold customer data, and the log answers Viewers without `request_body` and `response_body`. Attempt details are kept 30 days."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: integration_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Integration id (intg_...).
+        - name: delivery_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The delivery.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum:
+                      - integration_delivery
+                  id:
+                    type: string
+                  integration_id:
+                    type: string
+                  event_id:
+                    type: string
+                  event_type:
+                    type: string
+                    description: Upper-case webhook event type.
+                  status:
+                    type: string
+                    enum:
+                      - pending
+                      - delivered
+                      - failed
+                      - skipped
+                  attempts:
+                    type: integer
+                  sent_as:
+                    type:
+                      - string
+                      - "null"
+                    description: The name the partner received (an event name, an Adjust token or a Slack step).
+                  next_attempt_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Next attempt, while pending. Epoch milliseconds, or null.
+                  request:
+                    type:
+                      - string
+                      - "null"
+                    description: Method and URL of each request, credentials replaced by [redacted].
+                  request_body:
+                    type:
+                      - string
+                      - "null"
+                    description: The request bodies with credentials replaced by [redacted]; first 4,000 characters.
+                  response_status:
+                    type:
+                      - integer
+                      - "null"
+                  response_ms:
+                    type:
+                      - integer
+                      - "null"
+                  response_body:
+                    type:
+                      - string
+                      - "null"
+                    description: The first 1,000 characters of the partner's answer.
+                  last_error:
+                    type:
+                      - string
+                      - "null"
+                    description: Why it failed or was skipped.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Queued. Epoch milliseconds.
+                  curl:
+                    type:
+                      - string
+                      - "null"
+                    description: A cURL command, credentials left as placeholders.
+                  attempt_log:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        attempted_at:
+                          type: integer
+                          format: int64
+                          description: When it was sent. Epoch milliseconds.
+                        response_status:
+                          type:
+                            - integer
+                            - "null"
+                        response_ms:
+                          type:
+                            - integer
+                            - "null"
+                        error:
+                          type:
+                            - string
+                            - "null"
+                        response_body:
+                          type:
+                            - string
+                            - "null"
+                          description: First 4,096 characters, credentials removed.
+                        request:
+                          type:
+                            - string
+                            - "null"
+                          description: Method and URL of each request.
+                      required:
+                        - attempted_at
+                        - response_status
+                        - response_ms
+                        - error
+                        - response_body
+                  attempt_log_kept_days:
+                    type: integer
+                    description: How long attempt details are kept.
+                required:
+                  - object
+                  - id
+                  - status
+                  - attempts
+                  - attempt_log
+                  - attempt_log_kept_days
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/partner-integrations.ts
+      x-scopes:
+        - project_configuration:integrations:read_write
+      x-revenuedot-extension: true
   /v2/projects/{project_id}/integrations/partners/{integration_id}/deliveries/{delivery_id}/retry:
     post:
       operationId: retryIntegrationDelivery
@@ -42616,6 +42774,170 @@ paths:
       x-source: routes/v2/extensions.ts
       x-scopes:
         - project_configuration:integrations:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/webhooks/{webhook_id}/deliveries/{delivery_id}:
+    get:
+      operationId: getWebhookDelivery
+      tags:
+        - Webhook deliveries
+      summary: "One delivery: what was sent and every attempt"
+      description: |-
+        The request as sent (method, URL, headers and the exact body; the Authorization value is masked) and every attempt, newest last (at most 10): when it was sent, the HTTP status, the latency, the error, the first 4,096 characters of the answer with the webhook's secrets and bearer tokens replaced, and the signature header of that attempt. `curl` repeats the request with a placeholder for Authorization.
+        Bodies can hold customer data, so this needs `read_write` (Admins and Developers). Attempt details are kept for `attempt_log_kept_days` (30) days; the delivery itself stays.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: webhook_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Webhook id.
+        - name: delivery_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Delivery id.
+      responses:
+        "200":
+          description: The delivery.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    const: webhook_delivery
+                  id:
+                    type: string
+                  webhook_integration_id:
+                    type: string
+                  event_id:
+                    type: string
+                  event_type:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - pending
+                      - delivered
+                      - failed
+                  attempts:
+                    type: integer
+                  next_attempt_at:
+                    type:
+                      - integer
+                      - "null"
+                    format: int64
+                    description: Next try while pending. Epoch milliseconds, or null.
+                  response_status:
+                    type:
+                      - integer
+                      - "null"
+                  response_ms:
+                    type:
+                      - integer
+                      - "null"
+                  last_error:
+                    type:
+                      - string
+                      - "null"
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Queued. Epoch milliseconds.
+                  request:
+                    type: object
+                    properties:
+                      method:
+                        type: string
+                      url:
+                        type: string
+                      headers:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                            value:
+                              type: string
+                          required:
+                            - name
+                            - value
+                      body:
+                        type: string
+                        description: The exact JSON body sent.
+                    required:
+                      - method
+                      - url
+                      - headers
+                      - body
+                  curl:
+                    type: string
+                    description: A cURL command that repeats the request, credentials left as placeholders.
+                  attempt_log:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        attempted_at:
+                          type: integer
+                          format: int64
+                          description: When it was sent. Epoch milliseconds.
+                        response_status:
+                          type:
+                            - integer
+                            - "null"
+                        response_ms:
+                          type:
+                            - integer
+                            - "null"
+                        error:
+                          type:
+                            - string
+                            - "null"
+                        response_body:
+                          type:
+                            - string
+                            - "null"
+                          description: First 4,096 characters, secrets replaced.
+                        signature:
+                          type:
+                            - string
+                            - "null"
+                          description: X-RevenueCat-Webhook-Signature of this attempt.
+                      required:
+                        - attempted_at
+                        - response_status
+                        - response_ms
+                        - error
+                        - response_body
+                  attempt_log_kept_days:
+                    type: integer
+                    description: How long attempt details are kept.
+                required:
+                  - object
+                  - id
+                  - status
+                  - attempts
+                  - request
+                  - curl
+                  - attempt_log
+                  - attempt_log_kept_days
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/extensions.ts
+      x-scopes:
+        - project_configuration:integrations:read_write
       x-revenuedot-extension: true
   /v2/projects/{project_id}/webhooks/{webhook_id}/deliveries/{delivery_id}/retry:
     post:
