@@ -17,6 +17,8 @@ Open **Product catalog → Products** and click **Import products** (or **Import
 
 When a credential is missing or the store refuses it, the dialog says which one and which role or permission it needs, with a link to the app's settings.
 
+**App Store Connect answers 401?** The most common cause is saving the **In-App Purchase key** (a `SubscriptionKey_….p8` file, used for purchases and notifications) in the App Store Connect API key fields. Apple accepts that key only on the App Store Server API, never on the App Store Connect API, so the product list stays closed. Create a separate team key under [Users and Access → Integrations → App Store Connect API](https://appstoreconnect.apple.com/access/integrations/api) with the App Manager role and save that one. The app can keep both.
+
 ## What gets imported
 - **App Store Connect:** every subscription, grouped by subscription group, and every in-app purchase. The product ID becomes the store identifier, the reference name the display name. Subscription periods become durations (`ONE_MONTH` is `P1M`, `ONE_YEAR` is `P1Y`). Consumable, non-consumable and non-renewing types carry over.
 - **Google Play:** one product per **base plan**, as `subscription_id:base_plan_id` (for example `premium:monthly`), with the base plan's billing period; prepaid and installment plans are marked. One-time products come in as `one_time` by product ID. A subscription without a base plan is listed but cannot be imported until it has one. A one-time product with no backwards-compatible purchase option is importable, with a note: SDK versions that predate purchase options cannot buy it. RevenueCat asks you to add those by hand.
