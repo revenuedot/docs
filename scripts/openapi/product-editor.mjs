@@ -278,11 +278,11 @@ Rows that share one store call share its outcome. A row whose store price alread
 
 One call writes for at most 20 seconds. When rows are left, it answers \`status: "committing"\`: call commit again until the status changes. Each call is in the audit log as \`product_edit_commit\`, and each row adds \`store_price_changed\` (each new product \`store_product_created\`) with the territory, the old and new price and the result.
 
-409 \`invalid_request\` when the file has errors or is already committed; 409 \`resource_locked_error\` while another commit of the same file runs. 422 \`unprocessable_entity_error\` when the app's key is missing.`,
+409 \`invalid_request\` when the file has errors or is already committed; 409 \`resource_locked_error\` while a commit of the same file, or of another file of the same app, runs. 422 \`unprocessable_entity_error\` when the app's key is missing.`,
       responses: {
         200: ok("The file after this call, with each row's result.", ref("ProductEdit"), partialExample),
         ...v2Errors(401, 403, 404),
-        409: err(409, "The file has errors or is already committed (`invalid_request`), or another commit of it is running (`resource_locked_error`).", "resource_locked_error", "This edit is being committed right now. Wait for it to finish."),
+        409: err(409, "The file has errors or is already committed (`invalid_request`), or a commit of it or of another file of the same app is running (`resource_locked_error`).", "resource_locked_error", "This edit is being committed right now. Wait for it to finish."),
         422: noKey,
       } }),
   },
@@ -292,11 +292,11 @@ One call writes for at most 20 seconds. When rows are left, it answers \`status:
       description: `
 Sets the failed rows back to pending and commits them again, like \`…/actions/commit\`. Rows that succeeded are not sent again. Products the first commit created are not created twice, and an App Store subscription row whose price is already in the store succeeds without a write. Logged as \`product_edit_retry\`.
 
-409 \`invalid_request\` when no row failed; 409 \`resource_locked_error\` while a commit of the file runs.`,
+409 \`invalid_request\` when no row failed; 409 \`resource_locked_error\` while a commit of the file, or of another file of the same app, runs.`,
       responses: {
         200: ok("The file after the retry.", ref("ProductEdit")),
         ...v2Errors(401, 403, 404),
-        409: err(409, "No row failed (`invalid_request`), or a commit of the file is running (`resource_locked_error`).", "invalid_request", "No row failed, so there is nothing to retry."),
+        409: err(409, "No row failed (`invalid_request`), or a commit of the file or of another file of the same app is running (`resource_locked_error`).", "invalid_request", "No row failed, so there is nothing to retry."),
         422: noKey,
       } }),
   },
