@@ -5,6 +5,8 @@ description: RevenueDot Cloud is free up to $10,000 of tracked revenue a month. 
 
 # How does RevenueDot Cloud billing work?
 
+Billing is not switched on yet: until it is, every RevenueDot Cloud account is free, no usage emails are sent, and the **Billing** link is not in the account menu. This page describes how it works once it is on.
+
 RevenueDot Cloud measures the **tracked revenue** of the projects you own each calendar month. Up to $10,000 a month is free. Above that, Cloud Standard costs 0.5% of the part above $10,000, and never more than $999 a month. A self-hosted RevenueDot has no billing, no meter and no limits.
 
 ## Plans

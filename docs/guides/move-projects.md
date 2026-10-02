@@ -15,7 +15,8 @@ Everything the project owns, 64 tables in all: the project and its settings, app
 
 What does not move:
 
-- **Your teammates' accounts and passwords.** The archive lists each collaborator's email and role. People who already have an account on the new server are added with their role; the rest are listed so you can invite them. The person who receives the project owns it there.
+- **Your teammates' accounts and passwords.** The archive lists each collaborator's email and role, and the move lists them for you to invite on the new server (**Project settings → Collaborators**). Nobody is added without an invite, even with an account there. The person who receives the project owns it there.
+- **A custom domain's verification.** DNS proves a domain to one server, so on the new server the domain waits for **Verify**: open **Project settings → Domains** there for its new TXT value, point the CNAME at the new server, then verify. The finish step lists the domain.
 - RevenueDot AI conversations (they belong to one person), pending invites, sessions and subscriber access tokens (they last an hour).
 
 ## Move with the command line
@@ -36,13 +37,15 @@ What does not move:
    ```
 
    The CLI exports the project, copies each file, then has the new server recompute the row count and a checksum of every table and compares them with the archive. It ends with `All 64 tables match`. If the copy stops (network, laptop sleep), run the same command again: a state file in the current folder (`revenuedot-move-<old host>-to-<new host>.json`, or `--state <file>`) remembers which files are done.
+
+   Your apps keep using the old server during the copy, and it is read table by table. A row that belongs to something created after its table was read, such as the alias of a user who installed the app a minute ago, is left out and counted, and the verification says how many. `--finish` copies everything again, so nothing is lost.
 5. **Switch.** When you are ready:
 
    ```bash
    npx revenuedot move --from https://revenuedot.example.com --to https://api.revenuedot.app --finish
    ```
 
-   `--finish` pauses writes on the old server, waits 10 seconds so every server process sees the pause, copies again so nothing written in the meantime is lost, verifies, puts the project live on the new server and makes the old one forward. If verification finds a difference, the pause is lifted and the old server keeps serving.
+   `--finish` pauses writes on the old server, waits 10 seconds so every server process sees the pause, copies again so nothing written in the meantime is lost, verifies, puts the project live on the new server and makes the old one forward. If anything fails before the project is live on the new server (verification finds a difference, the network drops), the pause is lifted and the old server keeps serving; run the same command again to retry.
 
 Exit codes: `0` done, `1` failed or verification found differences, `2` a usage error, `130` cancelled.
 
@@ -62,7 +65,7 @@ Only project Admins can export or move a project.
 |---|---|---|
 | Paused | Old server, for the last copy | Reads work. Purchases (`POST /v1/receipts` and the other SDK writes) and store notifications answer `503` with `Retry-After: 60`: the SDK keeps the transaction and retries, Apple and Google retry notifications. API v2 writes answer `423`. Webhooks waiting to be sent move with the data and are sent once, by the new server |
 | Forwarded | Old server, after the switch | Every `/v1`, `/rcbilling` and secret-key `/v2` request for the project, and every store notification, is passed to the new server with the same method, path, headers and body. The answer, response signature included, comes back unchanged with an `x-revenuedot-moved-to` header. The dashboard shows "This project moved to …" |
-| Incoming | New server, while copying | The project is not live: SDK and store requests answer `503`, nothing runs on a schedule for it |
+| Incoming | New server, while copying | The project is not live. Reads work; SDK writes and store notifications answer `503` and API v2 writes answer `423`. Nothing runs on a schedule for it. An Admin can still delete it, for example after giving up on a move |
 
 Then, at your own pace:
 
@@ -103,7 +106,7 @@ Load an archive into a server with `npx revenuedot move --from-archive my-projec
 
 | Server | Storage |
 |---|---|
-| RevenueDot Cloud | Cloudflare R2 |
+| RevenueDot Cloud | RevenueDot Cloud's own storage, deleted after 7 days |
 | Self-hosted | A folder on disk, `REVENUEDOT_ARCHIVE_DIR` (default `.data/archives`, a volume in `docker-compose.yml`). An S3-compatible bucket (AWS S3, Cloudflare R2, MinIO) when `REVENUEDOT_ARCHIVE_S3_BUCKET` is set, with `REVENUEDOT_ARCHIVE_S3_ENDPOINT`, `REVENUEDOT_ARCHIVE_S3_REGION`, `REVENUEDOT_ARCHIVE_S3_ACCESS_KEY_ID` and `REVENUEDOT_ARCHIVE_S3_SECRET_ACCESS_KEY`. `REVENUEDOT_ARCHIVE_DIR=db` keeps them in Postgres |
 
 ## API
@@ -114,6 +117,7 @@ Every step has an endpoint, so you can script a move. See the [API reference](..
 
 - **"That is not an import token"**: copy the token from the new server's **Receive a project** page; it starts with `rdi_` and lasts 24 hours.
 - **"The archive collides with another project on this server"**: the new server already has a project with the same id or public key, usually a copy left from an earlier move. Run again with `--replace` to replace it.
+- **"A project with id … already exists on this server"** after a copy you gave up on: the unfinished copy is still on the new server. Delete it there (**Project settings → General → Delete project**), create a new import token and move again.
 - **The archive was written by a newer server**: upgrade the server you load it into. An archive loads into a server with the same or a newer schema.
 
 Moving from RevenueCat instead? See [Migrate from RevenueCat](../migrate/README.md).

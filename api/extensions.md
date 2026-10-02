@@ -34,7 +34,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Event log**: [Event log](#event-log), [Transaction feed](#transaction-feed)
 - **Test Store**: [Simulate a Test Store purchase or lifecycle](#simulate-a-test-store-purchase-or-lifecycle)
 - **Dashboard data**: [Daily history of an overview metric](#daily-history-of-an-overview-metric), [Dashboard rows for customers](#dashboard-rows-for-customers)
-- **Data moves**: [List the project's exports](#list-the-projects-exports), [Export the whole project](#export-the-whole-project), [Get the latest export](#get-the-latest-export), [Get an export](#get-an-export), [Delete an export's files now](#delete-an-exports-files-now), [Do the next slice of an export now](#do-the-next-slice-of-an-export-now), [Download an archive](#download-an-archive), [Get the project's move state](#get-the-projects-move-state), [Move the project to another server (run by this server)](#move-the-project-to-another-server-run-by-this-server), [Do the next step of the move now](#do-the-next-step-of-the-move-now), [Switch to the target](#switch-to-the-target), [Pause writes for the last copy](#pause-writes-for-the-last-copy), [Forward the paused project to its new server](#forward-the-paused-project-to-its-new-server), [Serve the project here again](#serve-the-project-here-again), [Create an import token (Receive a project)](#create-an-import-token-receive-a-project), [List your moves into this server](#list-your-moves-into-this-server), [Check or start loading an archive](#check-or-start-loading-an-archive), [Get an import](#get-an-import), [Add the project's collaborators](#add-the-projects-collaborators), [Verify the copy](#verify-the-copy), [Put the project live here](#put-the-project-live-here)
+- **Data moves**: [List the project's exports](#list-the-projects-exports), [Export the whole project](#export-the-whole-project), [Get the latest export](#get-the-latest-export), [Get an export](#get-an-export), [Delete an export's files now](#delete-an-exports-files-now), [Do the next slice of an export now](#do-the-next-slice-of-an-export-now), [Download an archive](#download-an-archive), [Get the project's move state](#get-the-projects-move-state), [Move the project to another server (run by this server)](#move-the-project-to-another-server-run-by-this-server), [Do the next step of the move now](#do-the-next-step-of-the-move-now), [Switch to the target](#switch-to-the-target), [Pause writes for the last copy](#pause-writes-for-the-last-copy), [Forward the paused project to its new server](#forward-the-paused-project-to-its-new-server), [Serve the project here again](#serve-the-project-here-again), [Create an import token (Receive a project)](#create-an-import-token-receive-a-project), [List your moves into this server](#list-your-moves-into-this-server), [Check or start loading an archive](#check-or-start-loading-an-archive), [Get an import](#get-an-import), [List the project's collaborators to invite](#list-the-projects-collaborators-to-invite), [Verify the copy](#verify-the-copy), [Put the project live here](#put-the-project-live-here)
 - **Cloud billing**: [The account's plan, usage and invoices](#the-accounts-plan-usage-and-invoices), [Upgrade to Cloud Standard with Stripe Checkout](#upgrade-to-cloud-standard-with-stripe-checkout), [Open the Stripe Customer Portal](#open-the-stripe-customer-portal), [Webhook of RevenueDot's own Stripe account](#webhook-of-revenuedots-own-stripe-account)
 - **Migration import**: [Import customers with their purchases](#import-customers-with-their-purchases), [Keep an app's existing SDK key](#keep-an-apps-existing-sdk-key), [What still needs attention after an import](#what-still-needs-attention-after-an-import)
 - **Web billing**: [List web discounts with their settings](#list-web-discounts-with-their-settings), [Get the Web page: providers and checklist](#get-the-web-page-providers-and-checklist), [Get a Stripe app's web config](#get-a-stripe-apps-web-config), [Save a Stripe app's web config](#save-a-stripe-apps-web-config), [List a Stripe app's web products](#list-a-stripe-apps-web-products), [Create a web product in Stripe](#create-a-web-product-in-stripe), [Get the project's web address and custom domain](#get-the-projects-web-address-and-custom-domain), [Change the project's slug or custom domain](#change-the-projects-slug-or-custom-domain), [Check the custom domain's DNS records](#check-the-custom-domains-dns-records)
@@ -198,6 +198,8 @@ Example 200 response:
   "account": {
     "edition": "cloud",
     "plan": "free",
+    "billing_ready": false,
+    "billing_status": "none",
     "email_verification_required": false
   },
   "projects": []
@@ -6060,7 +6062,7 @@ curl -s "$REVENUEDOT_URL/v2/imports"
 
 `POST /v2/imports` · Auth: dashboard session · RevenueDot extension
 
-With `dry_run`: what loading would do (conflicts, rows per table here now against the archive); nothing is written. Without: starts the import (the project is created `incoming`). Then send each file with `PUT /v2/imports/{import_id}/files/{name}` (its SHA-256 must match the manifest; tables upsert by primary key, a file already loaded answers `applied: false`), `members.json` to `…/members`, then `…/verify` and `…/finish`. Sending a new manifest starts the incoming copy over.
+With `dry_run`: what loading would do (conflicts, rows per table here now against the archive); nothing is written. Without: starts the import (the project is created `incoming`). Then send each file with `PUT /v2/imports/{import_id}/files/{name}` (its SHA-256 must match the manifest; tables upsert by primary key and never change another project's rows; a row whose parent record is not here, such as an alias of a customer created on the source during the export, is left out and counted; a file already loaded answers `applied: false`), `members.json` to `…/members`, then `…/verify` and `…/finish`. Sending a new manifest starts the incoming copy over.
 
 **Request body** (`application/json`)
 
@@ -6108,11 +6110,11 @@ curl -s "$REVENUEDOT_URL/v2/imports/$IMPORT_ID"
 - **401**: Missing token.
 - **404**: Not found.
 
-### Add the project's collaborators
+### List the project's collaborators to invite
 
 `POST /v2/imports/{import_id}/members` · Auth: dashboard session · RevenueDot extension
 
-The archive's members.json. People with an account here are added with their role; the rest are listed to invite.
+The archive's members.json. Everyone in it is listed to invite on this server (the finish report repeats the list); nobody is added directly, even with an account here. The person who imports owns the project.
 
 **Path parameters**
 
@@ -6136,8 +6138,9 @@ curl -s -X POST "$REVENUEDOT_URL/v2/imports/$IMPORT_ID/members"
 
 **Responses**
 
-- **200**: Added and to invite.
+- **200**: To invite.
 - **401**: Missing token.
+- **409**: Nothing imported yet, or the import is finished.
 
 ### Verify the copy
 

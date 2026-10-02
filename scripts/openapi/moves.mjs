@@ -27,20 +27,21 @@ const exportShape = obj({
 }, ["object", "id", "status"]);
 
 const planShape = obj({
-  project: obj({ id: str(), name: nstr(), exists: bool("The project is on the target already."), state: nstr("Its move state there.") }),
+  project: obj({ id: str(), name: nstr(), exists: bool("The project is on the target already."), state: nstr("Its move state there (only shown to an Admin of that project).") }),
   conflicts: arr(str(), { description: "Why the archive cannot load here: another project uses the id, a public SDK key, the web address or the Verified Metrics address." }),
   needs_replace: bool("A moved-away copy of this project is on the target; load with `replace: true`."),
-  tables: arr(obj({ name: str(), archive_rows: int(), target_rows: int("Rows the target has now.") })),
+  tables: arr(obj({ name: str(), archive_rows: int(), target_rows: int("Rows the target has now. 0 when the project there belongs to someone else: only its Admins see its numbers.") })),
   secrets_included: bool(),
 });
-const verifyTable = obj({ name: str(), source_rows: int(), target_rows: int(), source_checksum: str(), target_checksum: str(), match: bool() });
+const verifyTable = obj({ name: str(), source_rows: int(), target_rows: int(), skipped_rows: int("Rows left out because the record they belong to was created on the source after its table was exported (such as a new app user's alias). They count towards the match; a `--finish` copy brings them."), source_checksum: str(), target_checksum: str(), match: bool() });
 const urlRow = obj({ app_id: str(), app_name: str(), store: str(), url: str("The notification URL on this server."), where: str("Where to change it in the store's console.") });
 const finishReport = obj({
   project_id: str(),
   webhooks_with_new_secrets: arr(obj({ id: str(), name: str(), url: str() }), { description: "Webhooks that got a new signing secret because the archive had no secrets." }),
   apps_needing_credentials: arr(obj({ id: str(), name: str(), type: str() }), { description: "Store apps whose credentials must be entered again." }),
-  members_added: arr(obj({ email: str(), role: str() })), members_to_invite: arr(obj({ email: str(), role: str() })),
+  members_added: arr(obj({ email: str(), role: str() }), { description: "Always empty: collaborators are listed to invite, never added directly." }), members_to_invite: arr(obj({ email: str(), role: str() }), { description: "The collaborators from members.json, to invite on this server." }),
   notification_urls: arr(urlRow),
+  domains_to_verify: arr(str(), { description: "Custom domains for hosted pages. A domain is verified per server: open Project settings → Domains here for its new TXT value, point the CNAME here, then Verify." }),
 });
 const moveShape = obj({
   object: en(["project_move"]), id: str(), status: en(["running", "ready", "copied", "finished", "failed", "cancelled"]), target_url: str(),
@@ -130,7 +131,7 @@ export const movePaths = {
   "/v2/imports": {
     get: op({ extension: true, security: SESSION, id: "listImports", tag: "Data moves", summary: "List your moves into this server", source: IMPORTS, responses: { 200: ok("The last 20 imports.", listOf(importShape)), 401: plain("Not signed in.") } }),
     post: op({ extension: true, security: IMPORT_TOKEN, id: "beginImport", tag: "Data moves", summary: "Check or start loading an archive", source: IMPORTS,
-      description: "With `dry_run`: what loading would do (conflicts, rows per table here now against the archive); nothing is written. Without: starts the import (the project is created `incoming`). Then send each file with `PUT /v2/imports/{import_id}/files/{name}` (its SHA-256 must match the manifest; tables upsert by primary key, a file already loaded answers `applied: false`), `members.json` to `…/members`, then `…/verify` and `…/finish`. Sending a new manifest starts the incoming copy over.",
+      description: "With `dry_run`: what loading would do (conflicts, rows per table here now against the archive); nothing is written. Without: starts the import (the project is created `incoming`). Then send each file with `PUT /v2/imports/{import_id}/files/{name}` (its SHA-256 must match the manifest; tables upsert by primary key and never change another project's rows; a row whose parent record is not here, such as an alias of a customer created on the source during the export, is left out and counted; a file already loaded answers `applied: false`), `members.json` to `…/members`, then `…/verify` and `…/finish`. Sending a new manifest starts the incoming copy over.",
       requestBody: body(obj({ manifest: { type: "object", description: "The archive's manifest.json." }, passphrase: str("Needed when the archive includes secrets."), dry_run: bool(), replace: bool("Replace a moved-away copy of the project that is still here.") }, ["manifest"])),
       responses: { 200: ok("The plan (dry run).", obj({ object: en(["import_plan"]), import_id: str(), plan: planShape })), 201: ok("The import.", importShape), 400: plain("Bad manifest or passphrase."), 401: plain("Missing or expired import token."), 409: plain("A conflict with another project here, or the import is finished."), 422: plain("The archive was written by a newer RevenueDot.") } }),
   },
@@ -138,10 +139,10 @@ export const movePaths = {
     get: op({ extension: true, security: IMPORT_TOKEN, id: "getImport", tag: "Data moves", summary: "Get an import", source: IMPORTS, parameters: [importId], responses: { 200: ok("The import.", importShape), 401: plain("Missing token."), 404: plain("Not found.") } }),
   },
   "/v2/imports/{import_id}/members": {
-    post: op({ extension: true, security: IMPORT_TOKEN, id: "importMembers", tag: "Data moves", summary: "Add the project's collaborators", source: IMPORTS, parameters: [importId],
-      description: "The archive's members.json. People with an account here are added with their role; the rest are listed to invite.",
+    post: op({ extension: true, security: IMPORT_TOKEN, id: "importMembers", tag: "Data moves", summary: "List the project's collaborators to invite", source: IMPORTS, parameters: [importId],
+      description: "The archive's members.json. Everyone in it is listed to invite on this server (the finish report repeats the list); nobody is added directly, even with an account here. The person who imports owns the project.",
       requestBody: body(obj({ members: arr(obj({ email: str(), role: str() })) })),
-      responses: { 200: ok("Added and to invite.", obj({ object: en(["import_members"]), added: arr(obj({ email: str(), role: str() })), invite: arr(obj({ email: str(), role: str() })) })), 401: plain("Missing token.") } }),
+      responses: { 200: ok("To invite.", obj({ object: en(["import_members"]), added: arr(obj({ email: str(), role: str() }), { description: "Always empty." }), invite: arr(obj({ email: str(), role: str() })) })), 401: plain("Missing token."), 409: plain("Nothing imported yet, or the import is finished.") } }),
   },
   "/v2/imports/{import_id}/verify": {
     post: op({ extension: true, security: IMPORT_TOKEN, id: "verifyImport", tag: "Data moves", summary: "Verify the copy", source: IMPORTS, parameters: [importId],
