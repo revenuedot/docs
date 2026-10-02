@@ -42,6 +42,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Win back lapsed App Store subscribers with Apple's win-back offers | [Win-back offers](win-back-offers.md) |
 | Know what happens to customers' access when the server is down | [Offline entitlements](offline-entitlements.md) |
 | Answer Apple refund requests automatically and see my refund rate | [Refund Control](refund-control.md) |
+| Choose what customers can do on the in-app subscription screen, its colours and its text in 33 languages | [Customer Center](customer-center.md) |
 | Offer a discount when customers cancel, in my app or on Apple's cancel screen | [Retention offers](retention.md) |
 | Email churned subscribers an offer to come back | [Win-back campaigns](win-back-campaigns.md) |
 | Get Customer Center support requests by email, or show subscriptions in the Intercom inbox or a Zendesk sidebar | [Support](support-integrations.md) |
