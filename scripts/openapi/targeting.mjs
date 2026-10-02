@@ -201,7 +201,7 @@ Answers 400 when: both \`variants\` and \`offering_a\`/\`offering_b\` are sent, 
       responses: { 200: ok("Every experiment of the project in priority order, stopped ones last.", listOf(ref("Experiment"))), ...v2Errors(400, 401, 403, 404) } }),
   },
   [`${P}/experiments/actions/estimate`]: {
-    post: op({ id: "estimateExperiment", tag: "Experiments", summary: "Estimate how many customers would join", security: SECRET, source: X, extension: true, scopes: OR, parameters: [project],
+    post: op({ id: "estimateExperiment", tag: "Experiments", summary: "Estimate how many customers would join", security: SECRET, source: X, extension: true, scopes: [...OR, ...AR], parameters: [project],
       description: "What the dashboard's create form shows: customers of the last 7 days who match the audience, times the percentage, split between the variants. Changes nothing.",
       requestBody: body(obj({
         audience_id: nstr("A saved audience. Send it or `audience_rules`, not both."), audience_rules: audienceRules, enrollment: en(["new", "new_and_existing"], "`new` (default) counts customers first seen in the last 7 days; `new_and_existing` counts customers seen in them."),

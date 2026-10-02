@@ -20,8 +20,8 @@ The list below is complete as of **2026-09-30**. The biggest gap: **no real App 
    - Workaround: after upgrading, run `pnpm tsx scripts/backfill-usd.ts` (a dry run), then again with `--apply`, to recompute those rows.
 
 ## SDK features
-6. **Paywalls, Customer Center, virtual currencies, targeting and experiments are not implemented.** The SDK endpoints answer empty results or 404, so the SDK hides these features instead of crashing. Paywalls built in RevenueCat do not render.
-   - Workaround: build the paywall in your own UI code from the offerings.
+6. **Paywalls built in RevenueCat are not imported.** Paywalls, Customer Center, virtual currencies, targeting and experiments work with the stock SDKs, but the importer does not copy RevenueCat paywalls, targeting rules or experiments (item 14).
+   - Workaround: rebuild the paywall in the [paywall editor](../guides/paywalls.md), and recreate rules and experiments on the [Targeting and Experiments](../guides/experiments.md) pages.
 7. **The stock Android SDK sends some traffic to RevenueCat.** Diagnostics, paywall events and ad events ignore the proxy URL.
    - Workaround: the RevenueDot Android fork fixes it, but it is not published yet. You can build it from the `revenuedot/main-patches` branch of [revenuedot/purchases-android](https://github.com/revenuedot/purchases-android).
 8. **The stock web SDK sends analytics events to RevenueCat.**

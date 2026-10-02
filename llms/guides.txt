@@ -2887,7 +2887,7 @@ A customer is in at most one experiment that has not stopped. Audiences are eval
 - **Stop** ends the experiment for good. Enrolled customers get targeting or the current offering on their next request. The results stay and keep updating as renewals and refunds arrive. A stopped experiment cannot run again: use **Duplicate as a draft** in its menu.
 - **Delete** is refused while the experiment runs. It deletes the enrollments and the results.
 - **Editing after the start** is limited to the name, type, metrics, notes and audience percentage. Variants, enrollment, paywall tracking and the audience stay fixed, so the results compare like with like.
-- **An offering that a draft, running or paused experiment uses cannot be deleted.** The API answers 409 and names the experiment. A stopped experiment keeps its results and shows a deleted offering's id.
+- **An offering that a draft, running or paused experiment uses cannot be deleted or archived.** The API answers 409 and names the experiment. Archived offerings cannot be picked for a variant or a placement, because the SDK's offerings list leaves them out. A stopped experiment keeps its results and shows a deleted offering's id.
 
 ## What the SDK receives
 
@@ -2921,7 +2921,7 @@ The experiment's page shows the setup, the notes and the results. Results appear
 - **Purchases count when they are made after the customer joined**, together with everything that follows from them: renewals, refunds, trial conversions and product changes. Subscriptions are built with the same rules as [Charts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md). A subscription that started before the customer joined does not count, and neither do its renewals. A minute of grace covers store clocks that run a little ahead.
 - **Money** is USD at the purchase date's exchange rate. Refunds are negative.
 - **Production or sandbox:** results show production purchases by default. **Environment: Sandbox** shows the same enrolled customers with their sandbox (test) purchases and paywall views instead.
-- **Filters:** **Platform** and **Country** come from the customer's last request. **Paywall** shows customers who viewed a paywall after joining, who did not, or all of them. It defaults to viewers when the experiment tracks paywall views, and to everyone otherwise.
+- **Filters:** **Platform** and **Country** come from the customer's last request. **Paywall** shows customers who viewed a paywall after joining, who did not, or all of them. It defaults to viewers when the experiment tracks paywall views, and to everyone otherwise. With viewers only, each customer counts from their first paywall view: a purchase they made after joining but before that view does not count.
 
 ### The metrics
 
@@ -2962,7 +2962,7 @@ All intervals are 95%, two-sided. The code is `packages/core/src/experiments/sta
 - **Per-customer means** (realized LTV and MRR per customer or per paying customer) get mean ± 1.96 × se, where se = s ÷ √n and s is the sample standard deviation. The lower bound stays at 0. The chance to beat the control is Φ((m_v − m_c) ÷ √(se_v² + se_c²)), where m is a variant's mean and Φ the standard normal distribution.
 - **Lift** is the variant's value ÷ the control's value − 1. Its interval uses the delta method on log(variant ÷ control): exp(log ratio ± 1.96 × √(se²_variant ÷ variant² + se²_control ÷ control²)) − 1, so it is asymmetric and never below −100%. For rates, se² = p(1 − p) / n. Lift is empty when either value is 0.
 - **Counts and totals** have no interval.
-- **Enough data** means every variant has at least 100 customers and at least 10 events of the primary metric: its numerator for a rate (conversions, payers, converted trials or refunds), or paid customers for a mean. It is a floor, not a verdict. Many teams wait until a treatment has a 95% chance to beat the control.
+- **Enough data** means every variant has at least 100 customers and at least 10 events of the primary metric: conversions for initial conversion rate, payers for conversion to paying, completed trials for trial conversion rate, paid customers for refund rate and for the per-customer means. It is a floor, not a verdict. Many teams wait until a treatment has a 95% chance to beat the control.
 - **Customers needed per variant** is the sample to detect a 20% relative lift at 95% confidence and 80% power, from the control's current value. For rates it is (1.96 + 0.84)² × (p₁(1 − p₁) + p₂(1 − p₂)) ÷ (p₂ − p₁)², with p₂ = 1.2 × p₁; a rate measured on trials or payers is scaled up to customers. For means it is 2 × (1.96 + 0.84)² × σ² ÷ δ², with σ the control's standard deviation and δ = 0.2 × its mean.
 
 Example, with Initial conversion rate as the primary metric: the control converts 98 of 1,204 customers (8.1%, 95% interval 6.7% to 9.8%) and Treatment B 117 of 1,188 (9.8%, 8.3% to 11.7%). B's lift is +21.0% (−6.3% to +56.3%), and its chance to beat the control is 93%. Both variants pass the enough-data floor, but no winner is clear yet. Detecting a 20% lift on an 8.1% rate takes about 4,825 customers per variant.

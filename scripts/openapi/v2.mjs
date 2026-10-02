@@ -15,7 +15,7 @@ const E = (...c) => v2Errors(401, 403, ...c);
 const list = (schema, description = "A page of results.", example) => ok(description, listOf(schema), example);
 const del = (object) => ok("Deleted.", ref("Deleted"), { object, id: "…", deleted_at: 1790801342625 });
 const archive = (tag, id, what, source, scopes) => ({
-  [`${P}/${what}s/{${what}_id}/actions/archive`]: { post: op({ id: `archive${id}`, tag, summary: `Archive ${/^[aeiou]/.test(what) ? "an" : "a"} ${what}`, security: SECRET, source, scopes, parameters: [project, pathParam(`${what}_id`, `${id} id.`)], responses: { 200: ok(`The archived ${what}.`, ref(id)), ...E(404, ...(what === "offering" ? [422] : [])) } }) },
+  [`${P}/${what}s/{${what}_id}/actions/archive`]: { post: op({ id: `archive${id}`, tag, summary: `Archive ${/^[aeiou]/.test(what) ? "an" : "a"} ${what}`, security: SECRET, source, scopes, parameters: [project, pathParam(`${what}_id`, `${id} id.`)], description: what === "offering" ? "An offering that a draft, running or paused experiment uses cannot be archived (409); the current offering cannot be archived (422)." : undefined, responses: { 200: ok(`The archived ${what}.`, ref(id)), ...E(404, ...(what === "offering" ? [409, 422] : [])) } }) },
 });
 const errBody = obj({ type: str(), message: str() });
 const authErr = ok("Not signed in.", errBody, { type: "authentication_error", message: "Not signed in." });

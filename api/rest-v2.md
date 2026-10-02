@@ -1440,6 +1440,8 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/offerings/$OFFERING_ID/
 
 `POST /v2/projects/{project_id}/offerings/{offering_id}/actions/archive` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read_write`
 
+An offering that a draft, running or paused experiment uses cannot be archived (409); the current offering cannot be archived (422).
+
 **Path parameters**
 
 | Name | Type | Required | Description |
@@ -1459,6 +1461,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/offerings/$OFFERING_ID/
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
 
 ### Unarchive an offering
@@ -4456,7 +4459,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/actions/reo
 
 ### Estimate how many customers would join
 
-`POST /v2/projects/{project_id}/experiments/actions/estimate` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`
+`POST /v2/projects/{project_id}/experiments/actions/estimate` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`, `audiences:audiences:read`
 
 What the dashboard's create form shows: customers of the last 7 days who match the audience, times the percentage, split between the variants. Changes nothing.
 
