@@ -72,7 +72,7 @@ Set these in the app's `app_store` object with `POST /v2/projects/{project_id}/a
 | `app_apple_id` | Your app's Apple ID (a number). Production notifications for another app ID are refused |
 | `xcode_certificate` | The StoreKit test certificate exported from Xcode (PEM). Lets RevenueDot accept purchases made with a StoreKit configuration file in the simulator. See [sandbox testing](sandbox-testing.md) |
 | `allow_unsigned_receipts` | Development only: accept StoreKit 1 receipts without the In-App Purchase key |
-| `app_store_connect_api_key`, `_id`, `_issuer`, `app_store_connect_vendor_number` | A separate App Store Connect API key with the App Manager role. Used to create products in App Store Connect (below) |
+| `app_store_connect_api_key`, `_id`, `_issuer`, `app_store_connect_vendor_number` | A separate App Store Connect API key with the App Manager role. Used to [import your products](import-products.md) and to create products in App Store Connect (below) |
 | `shared_secret` | The legacy app-specific shared secret. Stored but not used: RevenueDot does not call Apple's deprecated verifyReceipt endpoint |
 
 ## What you can do from the server afterwards

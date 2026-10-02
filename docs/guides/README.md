@@ -13,6 +13,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Accept Google Play purchases and get real-time notifications | [Connect Google Play](google-play.md) |
 | Accept Amazon Appstore purchases on Fire tablets and Fire TV | [Connect the Amazon Appstore](amazon-appstore.md) |
 | Track subscriptions sold with my own Stripe account | [Connect Stripe](stripe.md) |
+| Bring the products I already set up in App Store Connect, Google Play or Stripe into the catalog | [Import products](import-products.md) |
 | Sell my app's subscriptions on the web with a hosted Stripe checkout | [Sell on the web with Stripe](web-billing.md) |
 | Share a checkout link for an offering | [Purchase links](purchase-links.md) |
 | Build a multi-step web-to-app funnel (quiz, email, paywall) | [Funnels](funnels.md) |

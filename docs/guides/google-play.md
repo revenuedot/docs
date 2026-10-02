@@ -21,7 +21,7 @@ RevenueDot uses the service account to read each purchase from the Google Play D
 
 1. In [Google Cloud](https://console.cloud.google.com/apis/library/androidpublisher.googleapis.com), enable the **Google Play Android Developer API** for your project.
 2. Under **IAM → Service accounts**, create a service account. Open it, choose **Keys → Add key → JSON**, and download the file.
-3. In [Play Console → Users and permissions](https://play.google.com/console/developers/users-and-permissions), invite the service account's email with **View app information**, **View financial data** and **Manage orders and subscriptions**.
+3. In [Play Console → Users and permissions](https://play.google.com/console/developers/users-and-permissions), invite the service account's email with **View app information**, **View financial data** and **Manage orders and subscriptions**. View app information also lets RevenueDot [import your products](import-products.md).
 4. In the dashboard, open the app → **Service account credentials**, drop the JSON file and click **Check credentials**. New Play Console permissions can take up to 36 hours to apply; until then the check says the account "works but cannot see this app yet".
 
 With the API, send the file's contents as `play_service_account_credentials_json`:
