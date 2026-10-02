@@ -15,7 +15,7 @@ const E = (...c) => v2Errors(401, 403, ...c);
 const list = (schema, description = "A page of results.", example) => ok(description, listOf(schema), example);
 const del = (object) => ok("Deleted.", ref("Deleted"), { object, id: "…", deleted_at: 1790801342625 });
 const archive = (tag, id, what, source, scopes) => ({
-  [`${P}/${what}s/{${what}_id}/actions/archive`]: { post: op({ id: `archive${id}`, tag, summary: `Archive ${/^[aeiou]/.test(what) ? "an" : "a"} ${what}`, security: SECRET, source, scopes, parameters: [project, pathParam(`${what}_id`, `${id} id.`)], responses: { 200: ok(`The archived ${what}.`, ref(id)), ...E(404, ...(what === "offering" ? [422] : [])) } }) },
+  [`${P}/${what}s/{${what}_id}/actions/archive`]: { post: op({ id: `archive${id}`, tag, summary: `Archive ${/^[aeiou]/.test(what) ? "an" : "a"} ${what}`, security: SECRET, source, scopes, parameters: [project, pathParam(`${what}_id`, `${id} id.`)], description: what === "offering" ? "An offering that a draft, running or paused experiment uses cannot be archived (409); the current offering cannot be archived (422)." : undefined, responses: { 200: ok(`The archived ${what}.`, ref(id)), ...E(404, ...(what === "offering" ? [409, 422] : [])) } }) },
 });
 const errBody = obj({ type: str(), message: str() });
 const authErr = ok("Not signed in.", errBody, { type: "authentication_error", message: "Not signed in." });
@@ -169,7 +169,23 @@ RevenueDot extensions in the store object: \`notification_forward_url\` (copy st
       requestBody: body(obj({ display_name: str(), is_current: bool(), metadata: { type: ["object", "null"] } }), { is_current: true }),
       responses: { 200: ok("The offering.", ref("Offering")), ...v2Errors(400, 401, 403, 404, 422) } }),
     delete: op({ id: "deleteOffering", tag: "Offerings", summary: "Delete an offering", security: SECRET, source: R.offerings, scopes: ["project_configuration:offerings:read_write"], parameters: [project, pathParam("offering_id", "Offering id.")],
-      description: "Deletes its packages and clears customer overrides that point to it.", responses: { 200: del("offering"), ...E(404) } }),
+      description: "Deletes its packages and clears customer overrides that point to it. An offering that a draft, running or paused experiment uses (as a variant's offering or a placement offering) answers 409 and names the experiment: stop the experiment or pick another offering in it first. A stopped experiment keeps its results and shows the deleted offering's id.",
+      responses: { 200: del("offering"), ...E(404, 409) } }),
+  },
+  [`${P}/offerings/{offering_id}/actions/duplicate`]: {
+    post: op({ id: "duplicateOffering", tag: "Offerings", summary: "Duplicate an offering", security: SECRET, source: R.offerings, extension: true, scopes: ["project_configuration:offerings:read_write"], parameters: [project, pathParam("offering_id", "The offering to copy.")],
+      description: `Copies an offering with its packages, for an experiment's treatment. The copy is never current. Without \`packages\` the copy is exact: every package in order, with the same products. With \`packages\`, the list sets which packages are copied and in what order, and a package's \`products\` replaces its products (to test another price, period, trial or introductory offer). \`copy_paywall\` copies the offering's paywall, draft and published content, onto the copy.
+
+Answers 400 when a \`source_package_id\` is not a package of this offering or repeats, a product is not in the project or repeats in a package, or \`copy_paywall\` is true and the offering has no paywall. Answers 409 when the \`lookup_key\` is taken, or two products of the same app in a package have overlapping \`eligibility_criteria\`.`,
+      requestBody: body(obj({
+        lookup_key: str(undefined, { maxLength: 200 }), display_name: str(undefined, { maxLength: 1500 }), metadata: { type: ["object", "null"], description: "Default: the source offering's metadata." },
+        packages: arr(obj({
+          source_package_id: str("A package of the source offering (pkge...)."),
+          products: arr(obj({ product_id: str(), eligibility_criteria: en(["all", "google_sdk_lt_6", "google_sdk_ge_6"]) }, ["product_id", "eligibility_criteria"]), { maxItems: 50, description: "Replaces the package's products. Omitted: the source package's products." }),
+        }, ["source_package_id"]), { maxItems: 50, description: "Packages to copy, in the new order. Omitted: every package, as it is." }),
+        copy_paywall: bool("Also copy the offering's paywall onto the copy."),
+      }, ["lookup_key", "display_name"]), { lookup_key: "default_price", display_name: "Standard plans (price point)", packages: [{ source_package_id: "pkge1a2b3c4d5e", products: [{ product_id: "prod9k8j7h6g5f", eligibility_criteria: "all" }] }, { source_package_id: "pkge6f7g8h9i0j" }] }),
+      responses: { 201: ok("The copy, with its packages and their products expanded.", ref("Offering")), ...v2Errors(400, 401, 403, 404, 409) } }),
   },
   ...archive("Offerings", "Offering", "offering", R.offerings, ["project_configuration:offerings:read_write"]),
   [`${P}/offerings/{offering_id}/actions/unarchive`]: {

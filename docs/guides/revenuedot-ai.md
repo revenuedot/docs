@@ -16,6 +16,7 @@ Every answer comes from tools that read your project through the same API the da
    - "Which offering converts trials best over the last 90 days?"
    - "Why did customer wren@example.com lose access?"
    - "Are any webhooks failing?"
+   - "Which variant of my price test is winning?"
 3. Each tool the assistant runs shows as a card (for example **Revenue metrics** or **Chart · trial conversion rate**). Open a card to see what it asked for and what came back.
 4. Links in the answer open the chart, customer or page the number comes from.
 
@@ -44,7 +45,9 @@ These tools change your project. Each one stops and asks first:
 | Create offering | Adds an offering with its packages and their products, and can make it current. Used by **Create with AI** on the Offerings page |
 | Attach products to entitlement / package | Makes products unlock an entitlement, or puts them in a package |
 | Set current offering | Changes the offering apps show by default |
-| Start experiment / Pause experiment | Starts or pauses an offering A/B test |
+| Create experiment draft | Saves a draft experiment: a control offering, 1 to 3 treatment offerings, its type, metrics, hypothesis and audience. Nobody joins until you start it ([Experiments](experiments.md#create-an-experiment-with-revenuedot-ai)) |
+| Start experiment / Pause experiment / Stop experiment | Starts or resumes an experiment, pauses it, or stops it for good |
+| Create targeting rule | Adds a targeting rule that gives an audience an offering and placement offerings, optionally between two dates. It is created turned off ([Targeting](targeting-and-experiments.md#create-a-rule)) |
 | Retry webhook delivery / Replay failed deliveries | Sends failed webhook deliveries again |
 | Import StoreKit products | Creates products from an attached `.storekit` file |
 

@@ -121,7 +121,7 @@ tags:
     description: Audiences, and rules that pick the offering and placement offerings for each customer.
     x-page: rest-v2
   - name: Experiments
-    description: Offering A/B tests and their results.
+    description: "Offering experiments: a control and up to three treatments, each with an offering and placement offerings; enrollment of new or new and existing customers, a saved or custom audience, a share, and a priority order between experiments; results with 95% intervals, lift and the chance to beat the control for 18 metrics, a daily series, CSV export and a 7-day audience estimate. See [Experiments](../docs/guides/experiments.md)."
     x-page: rest-v2
   - name: Paywalls
     description: Paywall components the SDK renders, their publishing and versions, and the images and fonts they use.
@@ -681,7 +681,7 @@ paths:
       tags:
         - Offerings (SDK)
       summary: Get offerings
-      description: What `Purchases.getOfferings()` calls. Lists active offerings with the packages whose product belongs to the calling app. `current_offering_id` is the customer's override when one is set.
+      description: "What `Purchases.getOfferings()` calls. Lists active offerings with the packages whose product belongs to the calling app. A new app user id makes the customer here, as `GET /v1/subscribers/{app_user_id}` does (the SDK sends both at once on a first launch), so the first answer already includes an experiment variant. `current_offering_id` is the customer's override when one is set. Otherwise RevenueDot resolves, in order: the experiment the customer is in (running or paused), a running experiment that enrolls them now (by priority), the first live targeting rule that matches, the project's current offering. A variant's placements overlay the rule's in `placements.offering_ids_by_placement`. See [Experiments](../docs/guides/experiments.md#what-the-sdk-receives)."
       security:
         - publicApiKey: []
         - secretApiKey: []
@@ -6067,7 +6067,7 @@ paths:
       tags:
         - Offerings
       summary: Delete an offering
-      description: Deletes its packages and clears customer overrides that point to it.
+      description: "Deletes its packages and clears customer overrides that point to it. An offering that a draft, running or paused experiment uses (as a variant's offering or a placement offering) answers 409 and names the experiment: stop the experiment or pick another offering in it first. A stopped experiment keeps its results and shows the deleted offering's id."
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -6096,15 +6096,123 @@ paths:
           $ref: "#/components/responses/V2Error403"
         "404":
           $ref: "#/components/responses/V2Error404"
+        "409":
+          $ref: "#/components/responses/V2Error409"
       x-source: routes/v2/offerings.ts
       x-scopes:
         - project_configuration:offerings:read_write
+  /v2/projects/{project_id}/offerings/{offering_id}/actions/duplicate:
+    post:
+      operationId: duplicateOffering
+      tags:
+        - Offerings
+      summary: Duplicate an offering
+      description: |-
+        Copies an offering with its packages, for an experiment's treatment. The copy is never current. Without `packages` the copy is exact: every package in order, with the same products. With `packages`, the list sets which packages are copied and in what order, and a package's `products` replaces its products (to test another price, period, trial or introductory offer). `copy_paywall` copies the offering's paywall, draft and published content, onto the copy.
+
+        Answers 400 when a `source_package_id` is not a package of this offering or repeats, a product is not in the project or repeats in a package, or `copy_paywall` is true and the offering has no paywall. Answers 409 when the `lookup_key` is taken, or two products of the same app in a package have overlapping `eligibility_criteria`.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: offering_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The offering to copy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                lookup_key:
+                  type: string
+                  maxLength: 200
+                display_name:
+                  type: string
+                  maxLength: 1500
+                metadata:
+                  type:
+                    - object
+                    - "null"
+                  description: "Default: the source offering's metadata."
+                packages:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      source_package_id:
+                        type: string
+                        description: A package of the source offering (pkge...).
+                      products:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            product_id:
+                              type: string
+                            eligibility_criteria:
+                              type: string
+                              enum:
+                                - all
+                                - google_sdk_lt_6
+                                - google_sdk_ge_6
+                          required:
+                            - product_id
+                            - eligibility_criteria
+                        maxItems: 50
+                        description: "Replaces the package's products. Omitted: the source package's products."
+                    required:
+                      - source_package_id
+                  maxItems: 50
+                  description: "Packages to copy, in the new order. Omitted: every package, as it is."
+                copy_paywall:
+                  type: boolean
+                  description: Also copy the offering's paywall onto the copy.
+              required:
+                - lookup_key
+                - display_name
+            example:
+              lookup_key: default_price
+              display_name: Standard plans (price point)
+              packages:
+                - source_package_id: pkge1a2b3c4d5e
+                  products:
+                    - product_id: prod9k8j7h6g5f
+                      eligibility_criteria: all
+                - source_package_id: pkge6f7g8h9i0j
+      responses:
+        "201":
+          description: The copy, with its packages and their products expanded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Offering"
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+        "409":
+          $ref: "#/components/responses/V2Error409"
+      x-source: routes/v2/offerings.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+      x-revenuedot-extension: true
   /v2/projects/{project_id}/offerings/{offering_id}/actions/archive:
     post:
       operationId: archiveOffering
       tags:
         - Offerings
       summary: Archive an offering
+      description: An offering that a draft, running or paused experiment uses cannot be archived (409); the current offering cannot be archived (422).
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -6129,6 +6237,8 @@ paths:
           $ref: "#/components/responses/V2Error403"
         "404":
           $ref: "#/components/responses/V2Error404"
+        "409":
+          $ref: "#/components/responses/V2Error409"
         "422":
           $ref: "#/components/responses/V2Error422"
       x-source: routes/v2/offerings.ts
@@ -15736,6 +15846,7 @@ paths:
       tags:
         - Experiments
       summary: List experiments
+      description: Oldest first. `priority` gives the enrollment order.
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -15762,59 +15873,7 @@ paths:
                   items:
                     type: array
                     items:
-                      type: object
-                      properties:
-                        object:
-                          type: string
-                          enum:
-                            - experiment
-                        id:
-                          type: string
-                        project_id:
-                          type: string
-                        name:
-                          type: string
-                        status:
-                          type: string
-                          enum:
-                            - draft
-                            - running
-                            - paused
-                            - stopped
-                        audience_id:
-                          type:
-                            - string
-                            - "null"
-                        enrollment_percent:
-                          type: integer
-                        variants:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              id:
-                                type: string
-                                enum:
-                                  - a
-                                  - b
-                              offering_id:
-                                type: string
-                        started_at:
-                          type:
-                            - integer
-                            - "null"
-                          format: int64
-                          description: Started. Epoch milliseconds, or null.
-                        stopped_at:
-                          type:
-                            - integer
-                            - "null"
-                          format: int64
-                          description: Stopped. Epoch milliseconds, or null.
-                        created_at:
-                          type: integer
-                          format: int64
-                          description: Created. Epoch milliseconds.
+                      $ref: "#/components/schemas/Experiment"
                   next_page:
                     type:
                       - string
@@ -15831,7 +15890,7 @@ paths:
           $ref: "#/components/responses/V2Error403"
         "404":
           $ref: "#/components/responses/V2Error404"
-      x-source: routes/v2/targeting.ts
+      x-source: routes/v2/experiments.ts
       x-scopes:
         - project_configuration:offerings:read
       x-revenuedot-extension: true
@@ -15840,7 +15899,12 @@ paths:
       tags:
         - Experiments
       summary: Create an offering experiment
-      description: A draft until started. Running experiments enroll customers who match the audience, in the given percentage, into variant a or b (each customer always gets the same variant), and serve that variant's offering as the current offering. Enrolling records an `EXPERIMENT_ENROLLMENT` event, and enrolled customers' lifecycle events carry `experiments`.
+      description: |-
+        Creates a **draft** at the bottom of the enrollment order (the highest `priority`). Send `variants` (a control and 1 to 3 treatments), or the older `offering_a` and `offering_b` for two variants. Defaults: `type` `other`, the type's metrics, `enrollment` `new`, everyone, 100%.
+
+        Once started, a customer who asks for offerings and is admitted (enrollment mode, then audience, then the share) joins one variant for good and gets its offering as `current_offering_id` and its placements. Enrolling records one `EXPERIMENT_ENROLLMENT` event, and the customer's lifecycle events carry `experiments`.
+
+        Answers 400 when: both `variants` and `offering_a`/`offering_b` are sent, or neither; `audience_id` and `audience_rules` are both sent; the audience, an offering or a placement offering is not in the project, or the offering is archived; a condition's field or operator is unknown; a placement id has other characters; a variant's `id` does not match its position; two variants serve the same offering and the same placement offerings; or `enrollment` is `new_and_existing` with `track_paywall_views: false`.
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -15855,88 +15919,242 @@ paths:
               properties:
                 name:
                   type: string
+                  description: 1 to 256 characters.
+                  maxLength: 256
+                type:
+                  type: string
+                  enum:
+                    - introductory_offer
+                    - free_trial_offer
+                    - paywall_design
+                    - price_point
+                    - subscription_duration
+                    - subscription_ordering
+                    - other
+                  description: "What is tested. It sets the default metrics: see [Experiments](../docs/guides/experiments.md#the-six-starter-types)."
+                primary_metric:
+                  type: string
+                  enum:
+                    - initial_conversion_rate
+                    - trial_conversion_rate
+                    - conversion_to_paying
+                    - refund_rate
+                    - realized_ltv_per_customer
+                    - realized_ltv_per_paying_customer
+                    - mrr_per_customer
+                    - mrr_per_paying_customer
+                  description: "The metric that decides the winner: a rate or a per-customer mean, because those have an interval."
+                secondary_metrics:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - initial_conversion_rate
+                      - initial_conversions
+                      - trials_started
+                      - trials_completed
+                      - trials_converted
+                      - trial_conversion_rate
+                      - paid_customers
+                      - conversion_to_paying
+                      - active_subscribers
+                      - churned_subscribers
+                      - refunded_customers
+                      - refund_rate
+                      - realized_ltv
+                      - realized_ltv_per_customer
+                      - realized_ltv_per_paying_customer
+                      - mrr
+                      - mrr_per_customer
+                      - mrr_per_paying_customer
+                  maxItems: 12
+                  description: Up to 12 more metrics shown first in the results.
+                notes:
+                  type: string
+                  description: The hypothesis, in Markdown.
+                  maxLength: 20000
+                enrollment:
+                  type: string
+                  enum:
+                    - new
+                    - new_and_existing
+                  description: "`new`: only customers first seen at or after the experiment's first start. `new_and_existing`: anyone who asks for offerings while it runs."
+                track_paywall_views:
+                  type: boolean
+                  description: Default false. Set to true with `new_and_existing`; false there answers 400.
                 audience_id:
                   type:
                     - string
                     - "null"
+                  description: A saved audience. Send it or `audience_rules`, not both; setting one clears the other.
+                audience_rules:
+                  type:
+                    - object
+                    - "null"
+                  properties:
+                    groups:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          conditions:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                field:
+                                  type: string
+                                  description: A customer field such as `country`, `appVersion`, `status`, `activeEntitlements`, `totalSpent`, `firstSeenAt`, or `customAttribute:<key>`.
+                                operator:
+                                  type: string
+                                  enum:
+                                    - is
+                                    - isNot
+                                    - isAnyOf
+                                    - isNotAnyOf
+                                    - greaterThan
+                                    - greaterThanOrEqual
+                                    - lessThan
+                                    - lessThanOrEqual
+                                    - equal
+                                    - notEqual
+                                    - contains
+                                    - doesNotContain
+                                    - containsAnyOf
+                                    - before
+                                    - beforeOrOn
+                                    - on
+                                    - after
+                                    - afterOrOn
+                                    - within
+                                    - between
+                                    - notBetween
+                                    - isEmpty
+                                    - isNotEmpty
+                                value:
+                                  type: string
+                                  description: Comma-separated for multi-value operators; a duration such as `7d` for `within`.
+                                currency:
+                                  type: string
+                              required:
+                                - field
+                                - operator
+                        required:
+                          - conditions
+                      description: Groups are OR-ed; conditions in a group are AND-ed.
+                  required:
+                    - groups
+                  description: Conditions written for this experiment only, in the audience condition format. Null when it uses a saved audience or everyone.
                 enrollment_percent:
                   type: integer
+                  description: Share of matching customers to enroll. Default 100.
                   minimum: 1
                   maximum: 100
+                variants:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        enum:
+                          - a
+                          - b
+                          - c
+                          - d
+                        description: Optional; must match the position (a, b, c, d).
+                      name:
+                        type: string
+                        description: "Default: Control, Treatment B ..."
+                        maxLength: 100
+                      offering_id:
+                        type: string
+                        description: Offering id in this project.
+                      placements:
+                        type: object
+                        additionalProperties:
+                          type:
+                            - string
+                            - "null"
+                        description: Placement id (letters, digits, `_`, `.`, `-`, up to 100) → offering id, or null for no paywall.
+                    required:
+                      - offering_id
+                  minItems: 2
+                  maxItems: 4
+                  description: The control first, then 1 to 3 treatments.
                 offering_a:
                   type: string
-                  description: Control offering.
+                  description: "Older form: the control offering. Send it with `offering_b` instead of `variants`."
                 offering_b:
                   type: string
-                  description: Treatment offering.
+                  description: "Older form: the treatment offering."
               required:
                 - name
-                - offering_a
-                - offering_b
             example:
-              name: Annual first
-              offering_a: ofrngm2u3h89blc
-              offering_b: ofrng9x8y7z6w5
+              name: Price point test
+              type: price_point
+              notes: |-
+                ## Hypothesis
+                $14.99 a month earns more per customer than $9.99.
+              variants:
+                - offering_id: ofrngm2u3h89blc
+                - name: Higher price
+                  offering_id: ofrng9x8y7z6w5a
+              audience_rules:
+                groups:
+                  - conditions:
+                      - field: country
+                        operator: isAnyOf
+                        value: US
               enrollment_percent: 50
       responses:
         "201":
-          description: The experiment.
+          description: The draft.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  object:
-                    type: string
-                    enum:
-                      - experiment
-                  id:
-                    type: string
-                  project_id:
-                    type: string
-                  name:
-                    type: string
-                  status:
-                    type: string
-                    enum:
-                      - draft
-                      - running
-                      - paused
-                      - stopped
-                  audience_id:
-                    type:
-                      - string
-                      - "null"
-                  enrollment_percent:
-                    type: integer
-                  variants:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          enum:
-                            - a
-                            - b
-                        offering_id:
-                          type: string
-                  started_at:
-                    type:
-                      - integer
-                      - "null"
-                    format: int64
-                    description: Started. Epoch milliseconds, or null.
-                  stopped_at:
-                    type:
-                      - integer
-                      - "null"
-                    format: int64
-                    description: Stopped. Epoch milliseconds, or null.
-                  created_at:
-                    type: integer
-                    format: int64
-                    description: Created. Epoch milliseconds.
+                $ref: "#/components/schemas/Experiment"
+              example:
+                object: experiment
+                id: prexp4k2m9q8z1x
+                project_id: proj18pzzkao
+                name: Price point test
+                type: price_point
+                status: draft
+                primary_metric: realized_ltv_per_customer
+                secondary_metrics:
+                  - conversion_to_paying
+                  - initial_conversion_rate
+                  - refund_rate
+                notes: |-
+                  ## Hypothesis
+                  $14.99 a month earns more per customer than $9.99.
+                enrollment: new
+                track_paywall_views: false
+                audience_id: null
+                audience_rules:
+                  groups:
+                    - conditions:
+                        - field: country
+                          operator: isAnyOf
+                          value: US
+                enrollment_percent: 50
+                priority: 3
+                variants:
+                  - id: a
+                    name: Control
+                    offering_id: ofrngm2u3h89blc
+                    placements: {}
+                  - id: b
+                    name: Higher price
+                    offering_id: ofrng9x8y7z6w5a
+                    placements: {}
+                started_at: null
+                paused_at: null
+                stopped_at: null
+                created_at: 1790800914012
+                updated_at: null
+                enrolled_customers: 0
         "400":
           $ref: "#/components/responses/V2Error400"
         "401":
@@ -15945,9 +16163,216 @@ paths:
           $ref: "#/components/responses/V2Error403"
         "404":
           $ref: "#/components/responses/V2Error404"
-      x-source: routes/v2/targeting.ts
+      x-source: routes/v2/experiments.ts
       x-scopes:
         - project_configuration:offerings:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/experiments/actions/reorder:
+    post:
+      operationId: reorderExperiments
+      tags:
+        - Experiments
+      summary: Set the enrollment order
+      description: When several running experiments could take the same customer, the one with the lowest `priority` enrolls them. Stopped experiments keep their relative order after these.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                experiment_ids:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 1
+                  maxItems: 500
+                  description: Every draft, running and paused experiment of the project, once, first enrolling first.
+              required:
+                - experiment_ids
+            example:
+              experiment_ids:
+                - prexp7h3k1m0p2q
+                - prexp4k2m9q8z1x
+      responses:
+        "200":
+          description: Every experiment of the project in priority order, stopped ones last.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Experiment"
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/experiments.ts
+      x-scopes:
+        - project_configuration:offerings:read_write
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/experiments/actions/estimate:
+    post:
+      operationId: estimateExperiment
+      tags:
+        - Experiments
+      summary: Estimate how many customers would join
+      description: "What the dashboard's create form shows: customers of the last 7 days who match the audience, times the percentage, split between the variants. Changes nothing."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                audience_id:
+                  type:
+                    - string
+                    - "null"
+                  description: A saved audience. Send it or `audience_rules`, not both.
+                audience_rules:
+                  type:
+                    - object
+                    - "null"
+                  properties:
+                    groups:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          conditions:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                field:
+                                  type: string
+                                  description: A customer field such as `country`, `appVersion`, `status`, `activeEntitlements`, `totalSpent`, `firstSeenAt`, or `customAttribute:<key>`.
+                                operator:
+                                  type: string
+                                  enum:
+                                    - is
+                                    - isNot
+                                    - isAnyOf
+                                    - isNotAnyOf
+                                    - greaterThan
+                                    - greaterThanOrEqual
+                                    - lessThan
+                                    - lessThanOrEqual
+                                    - equal
+                                    - notEqual
+                                    - contains
+                                    - doesNotContain
+                                    - containsAnyOf
+                                    - before
+                                    - beforeOrOn
+                                    - on
+                                    - after
+                                    - afterOrOn
+                                    - within
+                                    - between
+                                    - notBetween
+                                    - isEmpty
+                                    - isNotEmpty
+                                value:
+                                  type: string
+                                  description: Comma-separated for multi-value operators; a duration such as `7d` for `within`.
+                                currency:
+                                  type: string
+                              required:
+                                - field
+                                - operator
+                        required:
+                          - conditions
+                      description: Groups are OR-ed; conditions in a group are AND-ed.
+                  required:
+                    - groups
+                  description: Conditions written for this experiment only, in the audience condition format. Null when it uses a saved audience or everyone.
+                enrollment:
+                  type: string
+                  enum:
+                    - new
+                    - new_and_existing
+                  description: "`new` (default) counts customers first seen in the last 7 days; `new_and_existing` counts customers seen in them."
+                enrollment_percent:
+                  type: integer
+                  description: Default 100.
+                  minimum: 1
+                  maximum: 100
+                variant_count:
+                  type: integer
+                  description: Default 2.
+                  minimum: 2
+                  maximum: 4
+            example:
+              enrollment: new
+              audience_rules:
+                groups:
+                  - conditions:
+                      - field: country
+                        operator: isAnyOf
+                        value: US
+              enrollment_percent: 50
+              variant_count: 2
+      responses:
+        "200":
+          description: The estimate.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperimentEstimate"
+              example:
+                object: experiment_estimate
+                period_days: 7
+                matching_customers: 1840
+                enrolled_customers: 920
+                customers_per_variant: 460
+                is_approximate: false
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/experiments.ts
+      x-scopes:
+        - project_configuration:offerings:read
+        - audiences:audiences:read
       x-revenuedot-extension: true
   /v2/projects/{project_id}/experiments/{experiment_id}:
     get:
@@ -15965,72 +16390,21 @@ paths:
           required: true
           schema:
             type: string
+          description: Experiment id (prexp...).
       responses:
         "200":
           description: The experiment.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  object:
-                    type: string
-                    enum:
-                      - experiment
-                  id:
-                    type: string
-                  project_id:
-                    type: string
-                  name:
-                    type: string
-                  status:
-                    type: string
-                    enum:
-                      - draft
-                      - running
-                      - paused
-                      - stopped
-                  audience_id:
-                    type:
-                      - string
-                      - "null"
-                  enrollment_percent:
-                    type: integer
-                  variants:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          enum:
-                            - a
-                            - b
-                        offering_id:
-                          type: string
-                  started_at:
-                    type:
-                      - integer
-                      - "null"
-                    format: int64
-                    description: Started. Epoch milliseconds, or null.
-                  stopped_at:
-                    type:
-                      - integer
-                      - "null"
-                    format: int64
-                    description: Stopped. Epoch milliseconds, or null.
-                  created_at:
-                    type: integer
-                    format: int64
-                    description: Created. Epoch milliseconds.
+                $ref: "#/components/schemas/Experiment"
         "401":
           $ref: "#/components/responses/V2Error401"
         "403":
           $ref: "#/components/responses/V2Error403"
         "404":
           $ref: "#/components/responses/V2Error404"
-      x-source: routes/v2/targeting.ts
+      x-source: routes/v2/experiments.ts
       x-scopes:
         - project_configuration:offerings:read
       x-revenuedot-extension: true
@@ -16039,7 +16413,7 @@ paths:
       tags:
         - Experiments
       summary: Update an experiment
-      description: Variants and audience change only while it is a draft.
+      description: A draft takes every field, with the same checks as create. `offering_a` and `offering_b` replace the first two variants' offerings and keep their names and placements. Once an experiment has started (running, paused or stopped), only `name`, `type`, `primary_metric`, `secondary_metrics`, `notes` and `enrollment_percent` can change; any other field answers 422 and names it.
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -16050,6 +16424,7 @@ paths:
           required: true
           schema:
             type: string
+          description: Experiment id (prexp...).
       requestBody:
         required: true
         content:
@@ -16059,81 +16434,185 @@ paths:
               properties:
                 name:
                   type: string
+                  description: 1 to 256 characters.
+                  maxLength: 256
+                type:
+                  type: string
+                  enum:
+                    - introductory_offer
+                    - free_trial_offer
+                    - paywall_design
+                    - price_point
+                    - subscription_duration
+                    - subscription_ordering
+                    - other
+                  description: "What is tested. It sets the default metrics: see [Experiments](../docs/guides/experiments.md#the-six-starter-types)."
+                primary_metric:
+                  type: string
+                  enum:
+                    - initial_conversion_rate
+                    - trial_conversion_rate
+                    - conversion_to_paying
+                    - refund_rate
+                    - realized_ltv_per_customer
+                    - realized_ltv_per_paying_customer
+                    - mrr_per_customer
+                    - mrr_per_paying_customer
+                  description: "The metric that decides the winner: a rate or a per-customer mean, because those have an interval."
+                secondary_metrics:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - initial_conversion_rate
+                      - initial_conversions
+                      - trials_started
+                      - trials_completed
+                      - trials_converted
+                      - trial_conversion_rate
+                      - paid_customers
+                      - conversion_to_paying
+                      - active_subscribers
+                      - churned_subscribers
+                      - refunded_customers
+                      - refund_rate
+                      - realized_ltv
+                      - realized_ltv_per_customer
+                      - realized_ltv_per_paying_customer
+                      - mrr
+                      - mrr_per_customer
+                      - mrr_per_paying_customer
+                  maxItems: 12
+                  description: Up to 12 more metrics shown first in the results.
+                notes:
+                  type: string
+                  description: The hypothesis, in Markdown.
+                  maxLength: 20000
+                enrollment:
+                  type: string
+                  enum:
+                    - new
+                    - new_and_existing
+                  description: "`new`: only customers first seen at or after the experiment's first start. `new_and_existing`: anyone who asks for offerings while it runs."
+                track_paywall_views:
+                  type: boolean
+                  description: Default false. Set to true with `new_and_existing`; false there answers 400.
                 audience_id:
                   type:
                     - string
                     - "null"
+                  description: A saved audience. Send it or `audience_rules`, not both; setting one clears the other.
+                audience_rules:
+                  type:
+                    - object
+                    - "null"
+                  properties:
+                    groups:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          conditions:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                field:
+                                  type: string
+                                  description: A customer field such as `country`, `appVersion`, `status`, `activeEntitlements`, `totalSpent`, `firstSeenAt`, or `customAttribute:<key>`.
+                                operator:
+                                  type: string
+                                  enum:
+                                    - is
+                                    - isNot
+                                    - isAnyOf
+                                    - isNotAnyOf
+                                    - greaterThan
+                                    - greaterThanOrEqual
+                                    - lessThan
+                                    - lessThanOrEqual
+                                    - equal
+                                    - notEqual
+                                    - contains
+                                    - doesNotContain
+                                    - containsAnyOf
+                                    - before
+                                    - beforeOrOn
+                                    - on
+                                    - after
+                                    - afterOrOn
+                                    - within
+                                    - between
+                                    - notBetween
+                                    - isEmpty
+                                    - isNotEmpty
+                                value:
+                                  type: string
+                                  description: Comma-separated for multi-value operators; a duration such as `7d` for `within`.
+                                currency:
+                                  type: string
+                              required:
+                                - field
+                                - operator
+                        required:
+                          - conditions
+                      description: Groups are OR-ed; conditions in a group are AND-ed.
+                  required:
+                    - groups
+                  description: Conditions written for this experiment only, in the audience condition format. Null when it uses a saved audience or everyone.
                 enrollment_percent:
                   type: integer
+                  description: Share of matching customers to enroll. Default 100.
                   minimum: 1
                   maximum: 100
+                variants:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        enum:
+                          - a
+                          - b
+                          - c
+                          - d
+                        description: Optional; must match the position (a, b, c, d).
+                      name:
+                        type: string
+                        description: "Default: Control, Treatment B ..."
+                        maxLength: 100
+                      offering_id:
+                        type: string
+                        description: Offering id in this project.
+                      placements:
+                        type: object
+                        additionalProperties:
+                          type:
+                            - string
+                            - "null"
+                        description: Placement id (letters, digits, `_`, `.`, `-`, up to 100) → offering id, or null for no paywall.
+                    required:
+                      - offering_id
+                  minItems: 2
+                  maxItems: 4
+                  description: The control first, then 1 to 3 treatments.
                 offering_a:
                   type: string
-                  description: Control offering.
+                  description: "Older form: the control offering. Send it with `offering_b` instead of `variants`."
                 offering_b:
                   type: string
-                  description: Treatment offering.
+                  description: "Older form: the treatment offering."
             example:
               enrollment_percent: 100
+              notes: Raised to 100% after a week.
       responses:
         "200":
           description: The experiment.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  object:
-                    type: string
-                    enum:
-                      - experiment
-                  id:
-                    type: string
-                  project_id:
-                    type: string
-                  name:
-                    type: string
-                  status:
-                    type: string
-                    enum:
-                      - draft
-                      - running
-                      - paused
-                      - stopped
-                  audience_id:
-                    type:
-                      - string
-                      - "null"
-                  enrollment_percent:
-                    type: integer
-                  variants:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          enum:
-                            - a
-                            - b
-                        offering_id:
-                          type: string
-                  started_at:
-                    type:
-                      - integer
-                      - "null"
-                    format: int64
-                    description: Started. Epoch milliseconds, or null.
-                  stopped_at:
-                    type:
-                      - integer
-                      - "null"
-                    format: int64
-                    description: Stopped. Epoch milliseconds, or null.
-                  created_at:
-                    type: integer
-                    format: int64
-                    description: Created. Epoch milliseconds.
+                $ref: "#/components/schemas/Experiment"
         "400":
           $ref: "#/components/responses/V2Error400"
         "401":
@@ -16144,7 +16623,7 @@ paths:
           $ref: "#/components/responses/V2Error404"
         "422":
           $ref: "#/components/responses/V2Error422"
-      x-source: routes/v2/targeting.ts
+      x-source: routes/v2/experiments.ts
       x-scopes:
         - project_configuration:offerings:read_write
       x-revenuedot-extension: true
@@ -16153,6 +16632,7 @@ paths:
       tags:
         - Experiments
       summary: Delete an experiment
+      description: "Deletes its enrollments and results. On their next request its customers get what targeting gives them, or join another running experiment that admits them. A running experiment answers 422: stop or pause it first."
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -16163,6 +16643,7 @@ paths:
           required: true
           schema:
             type: string
+          description: Experiment id (prexp...).
       responses:
         "200":
           description: Deleted.
@@ -16178,7 +16659,7 @@ paths:
           $ref: "#/components/responses/V2Error404"
         "422":
           $ref: "#/components/responses/V2Error422"
-      x-source: routes/v2/targeting.ts
+      x-source: routes/v2/experiments.ts
       x-scopes:
         - project_configuration:offerings:read_write
       x-revenuedot-extension: true
@@ -16188,6 +16669,7 @@ paths:
       tags:
         - Experiments
       summary: Start or resume
+      description: A draft or paused experiment runs. The first start sets `started_at`; a resume clears `paused_at` and keeps `started_at`. Answers 422 for a running or stopped experiment, when one of its offerings was deleted or archived, or when it has fewer than two variants; 409 (`resource_locked_error`) when another request changed its status at the same time.
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -16198,74 +16680,25 @@ paths:
           required: true
           schema:
             type: string
+          description: Experiment id (prexp...).
       responses:
         "200":
           description: The experiment.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  object:
-                    type: string
-                    enum:
-                      - experiment
-                  id:
-                    type: string
-                  project_id:
-                    type: string
-                  name:
-                    type: string
-                  status:
-                    type: string
-                    enum:
-                      - draft
-                      - running
-                      - paused
-                      - stopped
-                  audience_id:
-                    type:
-                      - string
-                      - "null"
-                  enrollment_percent:
-                    type: integer
-                  variants:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          enum:
-                            - a
-                            - b
-                        offering_id:
-                          type: string
-                  started_at:
-                    type:
-                      - integer
-                      - "null"
-                    format: int64
-                    description: Started. Epoch milliseconds, or null.
-                  stopped_at:
-                    type:
-                      - integer
-                      - "null"
-                    format: int64
-                    description: Stopped. Epoch milliseconds, or null.
-                  created_at:
-                    type: integer
-                    format: int64
-                    description: Created. Epoch milliseconds.
+                $ref: "#/components/schemas/Experiment"
         "401":
           $ref: "#/components/responses/V2Error401"
         "403":
           $ref: "#/components/responses/V2Error403"
         "404":
           $ref: "#/components/responses/V2Error404"
+        "409":
+          $ref: "#/components/responses/V2Error409"
         "422":
           $ref: "#/components/responses/V2Error422"
-      x-source: routes/v2/targeting.ts
+      x-source: routes/v2/experiments.ts
       x-scopes:
         - project_configuration:offerings:read_write
       x-revenuedot-extension: true
@@ -16275,6 +16708,7 @@ paths:
       tags:
         - Experiments
       summary: "Pause: enrolled customers keep their variant, nobody new joins"
+      description: Only a running experiment can pause (422 otherwise; 409 when another request changed its status at the same time). Results keep counting what enrolled customers do.
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -16285,74 +16719,25 @@ paths:
           required: true
           schema:
             type: string
+          description: Experiment id (prexp...).
       responses:
         "200":
           description: The experiment.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  object:
-                    type: string
-                    enum:
-                      - experiment
-                  id:
-                    type: string
-                  project_id:
-                    type: string
-                  name:
-                    type: string
-                  status:
-                    type: string
-                    enum:
-                      - draft
-                      - running
-                      - paused
-                      - stopped
-                  audience_id:
-                    type:
-                      - string
-                      - "null"
-                  enrollment_percent:
-                    type: integer
-                  variants:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          enum:
-                            - a
-                            - b
-                        offering_id:
-                          type: string
-                  started_at:
-                    type:
-                      - integer
-                      - "null"
-                    format: int64
-                    description: Started. Epoch milliseconds, or null.
-                  stopped_at:
-                    type:
-                      - integer
-                      - "null"
-                    format: int64
-                    description: Stopped. Epoch milliseconds, or null.
-                  created_at:
-                    type: integer
-                    format: int64
-                    description: Created. Epoch milliseconds.
+                $ref: "#/components/schemas/Experiment"
         "401":
           $ref: "#/components/responses/V2Error401"
         "403":
           $ref: "#/components/responses/V2Error403"
         "404":
           $ref: "#/components/responses/V2Error404"
+        "409":
+          $ref: "#/components/responses/V2Error409"
         "422":
           $ref: "#/components/responses/V2Error422"
-      x-source: routes/v2/targeting.ts
+      x-source: routes/v2/experiments.ts
       x-scopes:
         - project_configuration:offerings:read_write
       x-revenuedot-extension: true
@@ -16362,6 +16747,7 @@ paths:
       tags:
         - Experiments
       summary: Stop for good
+      description: A running or paused experiment stops (422 otherwise; 409 when another request changed its status at the same time). On their next request its customers get what targeting gives them, or join another running experiment that admits them. Results stay and keep updating as renewals and refunds arrive. A stopped experiment never enrolls anyone again; duplicate it instead.
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -16372,74 +16758,25 @@ paths:
           required: true
           schema:
             type: string
+          description: Experiment id (prexp...).
       responses:
         "200":
           description: The experiment.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  object:
-                    type: string
-                    enum:
-                      - experiment
-                  id:
-                    type: string
-                  project_id:
-                    type: string
-                  name:
-                    type: string
-                  status:
-                    type: string
-                    enum:
-                      - draft
-                      - running
-                      - paused
-                      - stopped
-                  audience_id:
-                    type:
-                      - string
-                      - "null"
-                  enrollment_percent:
-                    type: integer
-                  variants:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          enum:
-                            - a
-                            - b
-                        offering_id:
-                          type: string
-                  started_at:
-                    type:
-                      - integer
-                      - "null"
-                    format: int64
-                    description: Started. Epoch milliseconds, or null.
-                  stopped_at:
-                    type:
-                      - integer
-                      - "null"
-                    format: int64
-                    description: Stopped. Epoch milliseconds, or null.
-                  created_at:
-                    type: integer
-                    format: int64
-                    description: Created. Epoch milliseconds.
+                $ref: "#/components/schemas/Experiment"
         "401":
           $ref: "#/components/responses/V2Error401"
         "403":
           $ref: "#/components/responses/V2Error403"
         "404":
           $ref: "#/components/responses/V2Error404"
+        "409":
+          $ref: "#/components/responses/V2Error409"
         "422":
           $ref: "#/components/responses/V2Error422"
-      x-source: routes/v2/targeting.ts
+      x-source: routes/v2/experiments.ts
       x-scopes:
         - project_configuration:offerings:read_write
       x-revenuedot-extension: true
@@ -16449,7 +16786,10 @@ paths:
       tags:
         - Experiments
       summary: Results per variant
-      description: Customers, conversions, trials and revenue after enrolling, and the chance that b converts better than a (normal approximation). `enough_data` is false until both variants have 100 customers.
+      description: |-
+        Every metric per variant, computed now from the enrolled customers' purchases made after they joined (and the renewals, refunds and trial conversions that follow), in USD. Production results leave out customers who joined from a test device (a Test Store app or an iOS sandbox build); `environment=sandbox` counts every enrolled customer with their test purchases. Above 25,000 enrolled customers the numbers come from a fixed random sample of 25,000, and `sample` says so. Rates have a Wilson interval; per-customer means a normal interval; treatments also have the lift over the control with its interval and the chance to beat the control. `guidance` says whether there is enough data and how many customers a 20% lift needs. `series` holds every metric by day.
+
+        The first release's fields stay: `conversions`, `conversion_rate`, `trials`, `paying_customers`, `revenue` and `revenue_per_customer` on each variant, and `chance_b_beats_a` and `enough_data` at the top. See [Experiments](../docs/guides/experiments.md#read-the-results) for every definition and the statistics.
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -16460,6 +16800,7 @@ paths:
           required: true
           schema:
             type: string
+          description: Experiment id (prexp...).
         - name: environment
           in: query
           schema:
@@ -16467,76 +16808,33 @@ paths:
             enum:
               - production
               - sandbox
+          description: Default `production`. `sandbox` counts test purchases instead.
+        - name: platform
+          in: query
+          schema:
+            type: string
+          description: Only customers whose last request came from this platform (any case), such as `ios` or `android`.
+        - name: country
+          in: query
+          schema:
+            type: string
+          description: Only customers whose last request came from this country (ISO 3166-1 alpha-2, any case).
+        - name: paywall
+          in: query
+          schema:
+            type: string
+            enum:
+              - all
+              - viewed
+              - not_viewed
+          description: Customers with or without a paywall view after joining. Default `viewed` when the experiment tracks paywall views, else `all`.
       responses:
         "200":
           description: Results.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  object:
-                    type: string
-                    enum:
-                      - experiment_results
-                  experiment_id:
-                    type: string
-                  environment:
-                    type: string
-                  currency:
-                    type: string
-                  variants:
-                    type: object
-                    required:
-                      - object
-                      - items
-                      - next_page
-                      - url
-                    properties:
-                      object:
-                        type: string
-                        const: list
-                      items:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            id:
-                              type: string
-                              enum:
-                                - a
-                                - b
-                            offering_id:
-                              type: string
-                            customers:
-                              type: integer
-                              description: Enrolled.
-                            conversions:
-                              type: integer
-                              description: Made any purchase or started a trial after enrolling.
-                            trials:
-                              type: integer
-                            paying_customers:
-                              type: integer
-                            conversion_rate:
-                              type: number
-                            revenue:
-                              type: number
-                              description: USD after enrolling.
-                            revenue_per_customer:
-                              type: number
-                      next_page:
-                        type:
-                          - string
-                          - "null"
-                        description: Path of the next page, or null on the last page.
-                      url:
-                        type: string
-                        description: Path of this list.
-                  chance_b_beats_a:
-                    type: number
-                  enough_data:
-                    type: boolean
+                $ref: "#/components/schemas/ExperimentResults"
         "400":
           $ref: "#/components/responses/V2Error400"
         "401":
@@ -16545,7 +16843,89 @@ paths:
           $ref: "#/components/responses/V2Error403"
         "404":
           $ref: "#/components/responses/V2Error404"
-      x-source: routes/v2/targeting.ts
+      x-source: routes/v2/experiments.ts
+      x-scopes:
+        - project_configuration:offerings:read
+      x-revenuedot-extension: true
+  /v2/projects/{project_id}/experiments/{experiment_id}/results/export:
+    get:
+      operationId: exportExperimentResults
+      tags:
+        - Experiments
+      summary: Export results as CSV
+      description: "The same numbers as the results, as an RFC 4180 CSV with CRLF line ends, named `experiment-<id>-<kind>-<environment>-<YYYY-MM-DD>.csv`. Summary columns: `variant_id`, `variant_name`, `offering_id`, `customers`, `metric`, `metric_name`, `value`, `numerator`, `denominator`, `lower_95`, `upper_95`, `lift`, `lift_lower_95`, `lift_upper_95`, `chance_to_beat_control`. Daily columns: `date` (UTC), `variant_id`, `variant_name`, then each metric id. Empty cells are values that do not apply; text that a spreadsheet would run as a formula starts with an apostrophe."
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: experiment_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Experiment id (prexp...).
+        - name: kind
+          in: query
+          schema:
+            type: string
+            enum:
+              - summary
+              - daily
+          description: "`summary` (default): one row per variant and metric. `daily`: one row per day and variant, one column per metric id."
+        - name: environment
+          in: query
+          schema:
+            type: string
+            enum:
+              - production
+              - sandbox
+          description: Default `production`. `sandbox` counts test purchases instead.
+        - name: platform
+          in: query
+          schema:
+            type: string
+          description: Only customers whose last request came from this platform (any case), such as `ios` or `android`.
+        - name: country
+          in: query
+          schema:
+            type: string
+          description: Only customers whose last request came from this country (ISO 3166-1 alpha-2, any case).
+        - name: paywall
+          in: query
+          schema:
+            type: string
+            enum:
+              - all
+              - viewed
+              - not_viewed
+          description: Customers with or without a paywall view after joining. Default `viewed` when the experiment tracks paywall views, else `all`.
+      responses:
+        "200":
+          description: The CSV file, as an attachment.
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: '`attachment; filename="experiment-<id>-<kind>-<environment>-<date>.csv"`'
+          content:
+            text/csv:
+              schema:
+                type: string
+              example: "variant_id,variant_name,offering_id,customers,metric,metric_name,value,numerator,denominator,lower_95,upper_95,lift,lift_lower_95,lift_upper_95,chance_to_beat_control\r
+
+                a,Control,ofrngm2u3h89blc,1204,initial_conversion_rate,Initial conversion rate,0.081395,98,1204,0.067249,0.098205,,,,\r
+
+                b,Higher price,ofrng9x8y7z6w5a,1188,initial_conversion_rate,Initial conversion rate,0.098485,117,1188,0.082813,0.116745,0.209957,-0.063452,0.563183,0.9277\r\n"
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/experiments.ts
       x-scopes:
         - project_configuration:offerings:read
       x-revenuedot-extension: true
@@ -52359,6 +52739,28 @@ webhooks:
                         - string
                         - "null"
                       description: The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md).
+                    experiments:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          experiment_id:
+                            type: string
+                          experiment_variant:
+                            type: string
+                            enum:
+                              - a
+                              - b
+                              - c
+                              - d
+                          enrolled_at_ms:
+                            type: integer
+                            description: Epoch milliseconds.
+                        required:
+                          - experiment_id
+                          - experiment_variant
+                          - enrolled_at_ms
+                      description: Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks).
                   required:
                     - id
                     - type
@@ -52578,6 +52980,28 @@ webhooks:
                         - string
                         - "null"
                       description: The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md).
+                    experiments:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          experiment_id:
+                            type: string
+                          experiment_variant:
+                            type: string
+                            enum:
+                              - a
+                              - b
+                              - c
+                              - d
+                          enrolled_at_ms:
+                            type: integer
+                            description: Epoch milliseconds.
+                        required:
+                          - experiment_id
+                          - experiment_variant
+                          - enrolled_at_ms
+                      description: Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks).
                     is_trial_conversion:
                       type: boolean
                       description: True for the first paid period after a free trial.
@@ -52801,6 +53225,28 @@ webhooks:
                         - string
                         - "null"
                       description: The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md).
+                    experiments:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          experiment_id:
+                            type: string
+                          experiment_variant:
+                            type: string
+                            enum:
+                              - a
+                              - b
+                              - c
+                              - d
+                          enrolled_at_ms:
+                            type: integer
+                            description: Epoch milliseconds.
+                        required:
+                          - experiment_id
+                          - experiment_variant
+                          - enrolled_at_ms
+                      description: Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks).
                     cancel_reason:
                       type: string
                       enum:
@@ -53069,6 +53515,28 @@ webhooks:
                         - string
                         - "null"
                       description: The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md).
+                    experiments:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          experiment_id:
+                            type: string
+                          experiment_variant:
+                            type: string
+                            enum:
+                              - a
+                              - b
+                              - c
+                              - d
+                          enrolled_at_ms:
+                            type: integer
+                            description: Epoch milliseconds.
+                        required:
+                          - experiment_id
+                          - experiment_variant
+                          - enrolled_at_ms
+                      description: Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks).
                   required:
                     - id
                     - type
@@ -53288,6 +53756,28 @@ webhooks:
                         - string
                         - "null"
                       description: The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md).
+                    experiments:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          experiment_id:
+                            type: string
+                          experiment_variant:
+                            type: string
+                            enum:
+                              - a
+                              - b
+                              - c
+                              - d
+                          enrolled_at_ms:
+                            type: integer
+                            description: Epoch milliseconds.
+                        required:
+                          - experiment_id
+                          - experiment_variant
+                          - enrolled_at_ms
+                      description: Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks).
                   required:
                     - id
                     - type
@@ -53507,6 +53997,28 @@ webhooks:
                         - string
                         - "null"
                       description: The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md).
+                    experiments:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          experiment_id:
+                            type: string
+                          experiment_variant:
+                            type: string
+                            enum:
+                              - a
+                              - b
+                              - c
+                              - d
+                          enrolled_at_ms:
+                            type: integer
+                            description: Epoch milliseconds.
+                        required:
+                          - experiment_id
+                          - experiment_variant
+                          - enrolled_at_ms
+                      description: Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks).
                     auto_resume_at_ms:
                       type:
                         - integer
@@ -53732,6 +54244,28 @@ webhooks:
                         - string
                         - "null"
                       description: The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md).
+                    experiments:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          experiment_id:
+                            type: string
+                          experiment_variant:
+                            type: string
+                            enum:
+                              - a
+                              - b
+                              - c
+                              - d
+                          enrolled_at_ms:
+                            type: integer
+                            description: Epoch milliseconds.
+                        required:
+                          - experiment_id
+                          - experiment_variant
+                          - enrolled_at_ms
+                      description: Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks).
                     expiration_reason:
                       type: string
                       enum:
@@ -53962,6 +54496,28 @@ webhooks:
                         - string
                         - "null"
                       description: The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md).
+                    experiments:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          experiment_id:
+                            type: string
+                          experiment_variant:
+                            type: string
+                            enum:
+                              - a
+                              - b
+                              - c
+                              - d
+                          enrolled_at_ms:
+                            type: integer
+                            description: Epoch milliseconds.
+                        required:
+                          - experiment_id
+                          - experiment_variant
+                          - enrolled_at_ms
+                      description: Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks).
                     grace_period_expiration_at_ms:
                       type:
                         - integer
@@ -54187,6 +54743,28 @@ webhooks:
                         - string
                         - "null"
                       description: The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md).
+                    experiments:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          experiment_id:
+                            type: string
+                          experiment_variant:
+                            type: string
+                            enum:
+                              - a
+                              - b
+                              - c
+                              - d
+                          enrolled_at_ms:
+                            type: integer
+                            description: Epoch milliseconds.
+                        required:
+                          - experiment_id
+                          - experiment_variant
+                          - enrolled_at_ms
+                      description: Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks).
                     new_product_id:
                       type: string
                       description: The product the customer changed to.
@@ -54410,6 +54988,28 @@ webhooks:
                         - string
                         - "null"
                       description: The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md).
+                    experiments:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          experiment_id:
+                            type: string
+                          experiment_variant:
+                            type: string
+                            enum:
+                              - a
+                              - b
+                              - c
+                              - d
+                          enrolled_at_ms:
+                            type: integer
+                            description: Epoch milliseconds.
+                        required:
+                          - experiment_id
+                          - experiment_variant
+                          - enrolled_at_ms
+                      description: Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks).
                   required:
                     - id
                     - type
@@ -54629,6 +55229,28 @@ webhooks:
                         - string
                         - "null"
                       description: The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md).
+                    experiments:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          experiment_id:
+                            type: string
+                          experiment_variant:
+                            type: string
+                            enum:
+                              - a
+                              - b
+                              - c
+                              - d
+                          enrolled_at_ms:
+                            type: integer
+                            description: Epoch milliseconds.
+                        required:
+                          - experiment_id
+                          - experiment_variant
+                          - enrolled_at_ms
+                      description: Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks).
                   required:
                     - id
                     - type
@@ -55267,7 +55889,7 @@ webhooks:
       tags:
         - Webhook events
       summary: EXPERIMENT_ENROLLMENT
-      description: A customer was enrolled in an offering experiment. Sent once per customer and experiment.
+      description: "A customer joined an offering experiment: the first offerings request that enrolled them. Its `app_user_id` is the id that asked for offerings. Sent once per customer and experiment, as a production event with no app, so a webhook set to sandbox only or to one app does not get it. See [Experiments](../docs/guides/experiments.md#webhooks)."
       parameters:
         - name: X-RevenueCat-Webhook-Signature
           in: header
@@ -55325,6 +55947,9 @@ webhooks:
                       enum:
                         - a
                         - b
+                        - c
+                        - d
+                      description: "`a` is the control; `b`, `c` and `d` are treatments."
                     offering_id:
                       type:
                         - string
@@ -55429,6 +56054,28 @@ webhooks:
                               - "null"
                           updated_at_ms:
                             type: integer
+                    experiments:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          experiment_id:
+                            type: string
+                          experiment_variant:
+                            type: string
+                            enum:
+                              - a
+                              - b
+                              - c
+                              - d
+                          enrolled_at_ms:
+                            type: integer
+                            description: Epoch milliseconds.
+                        required:
+                          - experiment_id
+                          - experiment_variant
+                          - enrolled_at_ms
+                      description: Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks).
                   required:
                     - id
                     - type
@@ -56160,7 +56807,7 @@ webhooks:
       tags:
         - Webhook events
       summary: TEST
-      description: Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase.
+      description: Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase, for no real customer, so it never carries `experiments`.
       parameters:
         - name: X-RevenueCat-Webhook-Signature
           in: header
@@ -56324,6 +56971,28 @@ webhooks:
                         - string
                         - "null"
                       description: The App Store or Google Play offer id of this period (a promotional offer, offer code, win-back offer or Google offer), or null. See [Win-back offers](../docs/guides/win-back-offers.md).
+                    experiments:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          experiment_id:
+                            type: string
+                          experiment_variant:
+                            type: string
+                            enum:
+                              - a
+                              - b
+                              - c
+                              - d
+                          enrolled_at_ms:
+                            type: integer
+                            description: Epoch milliseconds.
+                        required:
+                          - experiment_id
+                          - experiment_variant
+                          - enrolled_at_ms
+                      description: Every offering experiment the customer joined. Left out when there are none. See [Experiments](../docs/guides/experiments.md#webhooks).
                   required:
                     - id
                     - type
@@ -56776,7 +57445,7 @@ components:
           type:
             - string
             - "null"
-          description: Lookup key of the current offering, or the customer's override.
+          description: "Lookup key of the customer's current offering: their override, else their experiment variant's offering, else the first live targeting rule's, else the project's current offering."
         offerings:
           type: array
           items:
@@ -56815,6 +57484,35 @@ components:
               - identifier
               - metadata
               - packages
+        placements:
+          type: object
+          properties:
+            fallback_offering_id:
+              type:
+                - string
+                - "null"
+              description: "Lookup key of the offering for placements not listed below: the current offering."
+            offering_ids_by_placement:
+              type: object
+              additionalProperties:
+                type:
+                  - string
+                  - "null"
+              description: "Placement id → offering lookup key, or null for no paywall there: the matching targeting rule's placements, overlaid with the customer's experiment variant's."
+          description: What `currentOffering(forPlacement:)` reads.
+        targeting:
+          type: object
+          properties:
+            revision:
+              type: integer
+              description: The rule's revision.
+            rule_id:
+              type: string
+              description: The targeting rule that matched.
+          required:
+            - revision
+            - rule_id
+          description: Present when a targeting rule matched the customer.
       required:
         - current_offering_id
         - offerings
@@ -56850,7 +57548,7 @@ components:
             authorization_error: The key lacks a permission, a public app key was used, or the action needs a dashboard admin (403).
             store_error: "The App Store or Google Play refused the action, or could not be reached (`retryable: true`). Always 422."
             server_error: "RevenueDot failed (500, `retryable: true`). Retry with backoff."
-            resource_locked_error: "The same work is already running (409, `retryable: true`): a commit of the same product file or of another file of the same app, a run of the same data export, or a webhook delivery being sent. Wait for it to finish, then try again."
+            resource_locked_error: "The object is busy, or changed while the request ran (409): a commit of the same product file or of another file of the same app, a run of the same data export, or a webhook delivery being sent (`retryable: true`; wait for it to finish, then try again), or an experiment whose status another request changed (reload it first)."
             unprocessable_entity_error: The request is valid but not possible in this state or for this store (422), for example archiving the current offering or refunding an App Store purchase.
             invalid_request: The body is not valid JSON (400); a package would get two products of one app with overlapping eligibility (409); or a product file is not in a state that allows the action, such as committing a file with errors (409).
             entity_references_archived_entities: The action would make an archived object current (422). Unarchive it first.
@@ -57527,7 +58225,10 @@ components:
             - active
             - inactive
         paywall_id:
-          type: "null"
+          type:
+            - string
+            - "null"
+          description: The paywall attached to this offering, or null.
         metadata:
           type:
             - object
@@ -57662,7 +58363,10 @@ components:
               type: string
               description: Path of this list.
         experiment:
-          type: "null"
+          oneOf:
+            - $ref: "#/components/schemas/ExperimentEnrollment"
+            - type: "null"
+          description: The experiment the customer is in (running or paused), else the last one they joined, or null.
         attributes:
           type: object
           required:
@@ -57693,6 +58397,31 @@ components:
         - first_seen_at
         - last_seen_at
       description: "`active_entitlements` and `experiment` are present on single-customer answers; `attributes` only with `expand=attributes`."
+    ExperimentEnrollment:
+      type: object
+      properties:
+        object:
+          type: string
+          const: experiment_enrollment
+        id:
+          type: string
+          description: Experiment id (prexp...).
+        name:
+          type: string
+          description: The experiment's name.
+        variant:
+          type: string
+          enum:
+            - a
+            - b
+            - c
+            - d
+          description: "The customer's variant: `a` is the control."
+      required:
+        - object
+        - id
+        - name
+        - variant
     CustomerAlias:
       type: object
       properties:
@@ -58932,7 +59661,12 @@ components:
               enum:
                 - a
                 - b
-              description: With `experiment`.
+                - c
+                - d
+              description: "With `experiment`: the variant, `a` being the control."
+            variant_name:
+              type: string
+              description: "With `experiment`: the variant's name, such as Control or Treatment B."
           required:
             - id
             - lookup_key
@@ -59019,6 +59753,672 @@ components:
         - subscriptions
         - needs_token_refresh
         - needs_token_refresh_by_app
+    ExperimentVariant:
+      type: object
+      properties:
+        id:
+          type: string
+          enum:
+            - a
+            - b
+            - c
+            - d
+          description: "Set by position: `a` is the control, then `b`, `c`, `d`."
+        name:
+          type: string
+          description: Defaults to Control, Treatment B, Treatment C, Treatment D.
+          maxLength: 100
+        offering_id:
+          type: string
+          description: The offering `Offerings.current` returns to customers in this variant (ofrng...). A deleted offering keeps its id here.
+        placements:
+          type: object
+          additionalProperties:
+            type:
+              - string
+              - "null"
+          description: Placement id → offering id for customers in this variant; null shows no paywall there. It overlays the placements of the targeting rule that matches the customer.
+      required:
+        - id
+        - name
+        - offering_id
+        - placements
+    Experiment:
+      type: object
+      properties:
+        object:
+          type: string
+          const: experiment
+        id:
+          type: string
+          description: Experiment id (prexp...).
+        project_id:
+          type: string
+        name:
+          type: string
+          maxLength: 256
+        type:
+          type: string
+          enum:
+            - introductory_offer
+            - free_trial_offer
+            - paywall_design
+            - price_point
+            - subscription_duration
+            - subscription_ordering
+            - other
+          description: "What is tested. It sets the default metrics: see [Experiments](../docs/guides/experiments.md#the-six-starter-types)."
+        status:
+          type: string
+          enum:
+            - draft
+            - running
+            - paused
+            - stopped
+          description: "`draft` → `running` ⇄ `paused` → `stopped`. A stopped experiment cannot run again."
+        primary_metric:
+          type: string
+          enum:
+            - initial_conversion_rate
+            - trial_conversion_rate
+            - conversion_to_paying
+            - refund_rate
+            - realized_ltv_per_customer
+            - realized_ltv_per_paying_customer
+            - mrr_per_customer
+            - mrr_per_paying_customer
+          description: "The metric that decides the winner: a rate or a per-customer mean, because those have an interval."
+        secondary_metrics:
+          type: array
+          items:
+            type: string
+            enum:
+              - initial_conversion_rate
+              - initial_conversions
+              - trials_started
+              - trials_completed
+              - trials_converted
+              - trial_conversion_rate
+              - paid_customers
+              - conversion_to_paying
+              - active_subscribers
+              - churned_subscribers
+              - refunded_customers
+              - refund_rate
+              - realized_ltv
+              - realized_ltv_per_customer
+              - realized_ltv_per_paying_customer
+              - mrr
+              - mrr_per_customer
+              - mrr_per_paying_customer
+          maxItems: 12
+          description: Up to 12 more metrics shown first in the results.
+        notes:
+          type: string
+          description: The hypothesis, in Markdown (up to 20,000 characters).
+        enrollment:
+          type: string
+          enum:
+            - new
+            - new_and_existing
+          description: "`new`: only customers first seen at or after the experiment's first start. `new_and_existing`: anyone who asks for offerings while it runs."
+        track_paywall_views:
+          type: boolean
+          description: Results count paywall views (SDK `paywall_impression` and `custom_paywall_impression` events) and default to customers who saw a paywall. Turned on for every experiment made or changed to `new_and_existing`; A/B experiments converted from the first release keep `false`.
+        audience_id:
+          type:
+            - string
+            - "null"
+          description: A saved audience (aud...). Null with `audience_rules` or for everyone.
+        audience_rules:
+          type:
+            - object
+            - "null"
+          properties:
+            groups:
+              type: array
+              items:
+                type: object
+                properties:
+                  conditions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        field:
+                          type: string
+                          description: A customer field such as `country`, `appVersion`, `status`, `activeEntitlements`, `totalSpent`, `firstSeenAt`, or `customAttribute:<key>`.
+                        operator:
+                          type: string
+                          enum:
+                            - is
+                            - isNot
+                            - isAnyOf
+                            - isNotAnyOf
+                            - greaterThan
+                            - greaterThanOrEqual
+                            - lessThan
+                            - lessThanOrEqual
+                            - equal
+                            - notEqual
+                            - contains
+                            - doesNotContain
+                            - containsAnyOf
+                            - before
+                            - beforeOrOn
+                            - on
+                            - after
+                            - afterOrOn
+                            - within
+                            - between
+                            - notBetween
+                            - isEmpty
+                            - isNotEmpty
+                        value:
+                          type: string
+                          description: Comma-separated for multi-value operators; a duration such as `7d` for `within`.
+                        currency:
+                          type: string
+                      required:
+                        - field
+                        - operator
+                required:
+                  - conditions
+              description: Groups are OR-ed; conditions in a group are AND-ed.
+          required:
+            - groups
+          description: Conditions written for this experiment only, in the audience condition format. Null when it uses a saved audience or everyone.
+        enrollment_percent:
+          type: integer
+          description: Share of matching customers enrolled, 1 to 100.
+          minimum: 1
+          maximum: 100
+        priority:
+          type: integer
+          description: Enrollment order among the project's experiments, 1 first. New experiments go last; change it with the reorder action.
+        variants:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExperimentVariant"
+          minItems: 2
+          maxItems: 4
+          description: The control first, then 1 to 3 treatments. Customers are split evenly.
+        started_at:
+          type:
+            - integer
+            - "null"
+          format: int64
+          description: First start. A resume keeps it, so `new` keeps counting from the first start. Epoch milliseconds, or null.
+        paused_at:
+          type:
+            - integer
+            - "null"
+          format: int64
+          description: Last pause; cleared on resume. Epoch milliseconds, or null.
+        stopped_at:
+          type:
+            - integer
+            - "null"
+          format: int64
+          description: Stopped. Epoch milliseconds, or null.
+        created_at:
+          type: integer
+          format: int64
+          description: Created. Epoch milliseconds.
+        updated_at:
+          type:
+            - integer
+            - "null"
+          format: int64
+          description: Last change. Epoch milliseconds, or null.
+        enrolled_customers:
+          type: integer
+          description: Customers enrolled so far, sandbox included.
+      required:
+        - object
+        - id
+        - project_id
+        - name
+        - type
+        - status
+        - primary_metric
+        - secondary_metrics
+        - notes
+        - enrollment
+        - track_paywall_views
+        - audience_id
+        - audience_rules
+        - enrollment_percent
+        - priority
+        - variants
+        - started_at
+        - paused_at
+        - stopped_at
+        - created_at
+        - updated_at
+        - enrolled_customers
+    ExperimentMetric:
+      type: object
+      properties:
+        id:
+          type: string
+          enum:
+            - initial_conversion_rate
+            - initial_conversions
+            - trials_started
+            - trials_completed
+            - trials_converted
+            - trial_conversion_rate
+            - paid_customers
+            - conversion_to_paying
+            - active_subscribers
+            - churned_subscribers
+            - refunded_customers
+            - refund_rate
+            - realized_ltv
+            - realized_ltv_per_customer
+            - realized_ltv_per_paying_customer
+            - mrr
+            - mrr_per_customer
+            - mrr_per_paying_customer
+        display_name:
+          type: string
+        kind:
+          type: string
+          enum:
+            - rate
+            - mean
+            - count
+            - total
+          description: "`rate`: numerator ÷ denominator with a Wilson interval. `mean`: per-customer average with a normal interval. `count` and `total`: no interval."
+        unit:
+          type: string
+          enum:
+            - "%"
+            - $
+            - "#"
+          description: Rates are fractions (0.12 is 12%); money is USD.
+        better:
+          type: string
+          enum:
+            - higher
+            - lower
+          description: Which direction wins. Churned subscribers, refunded customers and refund rate are better when lower.
+        description:
+          type: string
+      required:
+        - id
+        - display_name
+        - kind
+        - unit
+        - better
+        - description
+    ExperimentMetricValue:
+      type: object
+      properties:
+        value:
+          type:
+            - number
+            - "null"
+          description: The metric now. Null for a rate or mean with no customers in its denominator.
+        numerator:
+          type: integer
+          description: "Rates: the customers or trials counted."
+        denominator:
+          type: integer
+          description: "Rates: the customers, trials or paid customers it divides by. Means: the customers averaged."
+        lower:
+          type:
+            - number
+            - "null"
+          description: "Rates and means: the 95% interval's lower bound."
+        upper:
+          type:
+            - number
+            - "null"
+          description: "Rates and means: the 95% interval's upper bound."
+        lift:
+          type:
+            - number
+            - "null"
+          description: "Treatments, rates and means: value ÷ control value − 1 (0.12 is 12% above the control). Null when the control's value is 0."
+        lift_lower:
+          type:
+            - number
+            - "null"
+          description: The lift's 95% interval, by the delta method on the log of the ratio (Katz's interval for rates, with half counts added when a rate is 0% or 100%). Null for a mean with fewer than two customers on a side, or a mean of 0.
+        lift_upper:
+          type:
+            - number
+            - "null"
+          description: Upper bound of the lift's 95% interval.
+        chance_to_beat_control:
+          type:
+            - number
+            - "null"
+          description: "Treatments, rates and means: the probability this variant beats the control in the metric's `better` direction. Null for a mean with fewer than two customers on a side."
+      required:
+        - value
+      description: Counts and totals carry only `value`. The control has no `lift` or `chance_to_beat_control` fields.
+    ExperimentVariantResult:
+      type: object
+      properties:
+        id:
+          type: string
+          enum:
+            - a
+            - b
+            - c
+            - d
+        name:
+          type: string
+        offering_id:
+          type:
+            - string
+            - "null"
+          description: The variant's offering id.
+        customers:
+          type: integer
+          description: Enrolled customers who pass the filters (in the sample, when `sample` is set). Production results leave out customers who joined from a test device.
+        paywall_viewers:
+          type: integer
+          description: Of those, customers with a paywall view after joining.
+        metrics:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/ExperimentMetricValue"
+          description: Every metric id → its value, interval, lift and chance to beat the control.
+        conversions:
+          type: integer
+          description: "Kept from the first results release: `initial_conversions`."
+        conversion_rate:
+          type: number
+          description: "Kept: `initial_conversion_rate`, 4 decimals (0 when there are no customers)."
+        trials:
+          type: integer
+          description: "Kept: `trials_started`."
+        paying_customers:
+          type: integer
+          description: "Kept: `paid_customers`."
+        revenue:
+          type: number
+          description: "Kept: `realized_ltv`, USD."
+        revenue_per_customer:
+          type: number
+          description: "Kept: `realized_ltv_per_customer`, USD (0 when there are no customers)."
+      required:
+        - id
+        - name
+        - offering_id
+        - customers
+        - paywall_viewers
+        - metrics
+        - conversions
+        - conversion_rate
+        - trials
+        - paying_customers
+        - revenue
+        - revenue_per_customer
+    ExperimentResults:
+      type: object
+      properties:
+        object:
+          type: string
+          const: experiment_results
+        experiment_id:
+          type: string
+        environment:
+          type: string
+          enum:
+            - production
+            - sandbox
+        currency:
+          type: string
+          const: USD
+        computed_at:
+          type: integer
+          format: int64
+          description: Computed. Epoch milliseconds.
+        primary_metric:
+          type: string
+          enum:
+            - initial_conversion_rate
+            - trial_conversion_rate
+            - conversion_to_paying
+            - refund_rate
+            - realized_ltv_per_customer
+            - realized_ltv_per_paying_customer
+            - mrr_per_customer
+            - mrr_per_paying_customer
+        secondary_metrics:
+          type: array
+          items:
+            type: string
+            enum:
+              - initial_conversion_rate
+              - initial_conversions
+              - trials_started
+              - trials_completed
+              - trials_converted
+              - trial_conversion_rate
+              - paid_customers
+              - conversion_to_paying
+              - active_subscribers
+              - churned_subscribers
+              - refunded_customers
+              - refund_rate
+              - realized_ltv
+              - realized_ltv_per_customer
+              - realized_ltv_per_paying_customer
+              - mrr
+              - mrr_per_customer
+              - mrr_per_paying_customer
+        control_variant_id:
+          type: string
+          description: Always `a`.
+        filters:
+          type: object
+          properties:
+            platform:
+              type:
+                - string
+                - "null"
+              description: The `platform` filter, or null.
+            country:
+              type:
+                - string
+                - "null"
+              description: The `country` filter, or null.
+            paywall:
+              type: string
+              enum:
+                - all
+                - viewed
+                - not_viewed
+              description: The paywall filter in effect, after the default.
+          required:
+            - platform
+            - country
+            - paywall
+        filter_options:
+          type: object
+          properties:
+            platforms:
+              type: array
+              items:
+                type: string
+              description: Platforms of the enrolled customers' last requests.
+            countries:
+              type: array
+              items:
+                type: string
+              description: Countries of the enrolled customers' last requests.
+          required:
+            - platforms
+            - countries
+        sample:
+          type:
+            - object
+            - "null"
+          properties:
+            customers:
+              type: integer
+              description: "Customers in the sample: 25,000."
+            enrolled_customers:
+              type: integer
+              description: Every enrolled customer in this environment.
+            enrolled_by_variant:
+              type: object
+              additionalProperties:
+                type: integer
+              description: Variant id → its enrolled customers.
+          required:
+            - customers
+            - enrolled_customers
+            - enrolled_by_variant
+          description: "Null when every enrolled customer is counted. Above 25,000 enrolled customers the results come from a fixed random sample of 25,000 (the same customers on every request): rates, means, intervals and chances are estimates from it, and counts and totals are the sample's."
+        metrics:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExperimentMetric"
+          description: Every metric's definition, in the order the dashboard lists them.
+        variants:
+          type: object
+          required:
+            - object
+            - items
+            - next_page
+            - url
+          properties:
+            object:
+              type: string
+              const: list
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/ExperimentVariantResult"
+            next_page:
+              type:
+                - string
+                - "null"
+              description: Path of the next page, or null on the last page.
+            url:
+              type: string
+              description: Path of this list.
+          description: One entry per variant, the control first.
+        guidance:
+          type: object
+          properties:
+            enough_data:
+              type: boolean
+              description: Every variant has at least `min_customers` customers and `min_events` events of the primary metric.
+            min_customers:
+              type: integer
+              description: "100."
+            min_events:
+              type: integer
+              description: "10 events per variant: conversions for initial conversion rate, paid customers for conversion to paying, completed trials for trial conversion rate, and paid customers for refund rate and the per-customer means."
+            customers_needed_per_variant:
+              type:
+                - integer
+                - "null"
+              description: Customers per variant to detect a 20% relative lift on the primary metric at 95% confidence and 80% power, from the control's current value. Null until the control has data.
+            leader:
+              type:
+                - object
+                - "null"
+              properties:
+                variant_id:
+                  type: string
+                chance_to_beat_control:
+                  type: number
+              required:
+                - variant_id
+                - chance_to_beat_control
+              description: The treatment most likely to beat the control on the primary metric.
+            message:
+              type: string
+              description: One sentence for people, such as "Too early to call ...".
+          required:
+            - enough_data
+            - min_customers
+            - min_events
+            - customers_needed_per_variant
+            - leader
+            - message
+        series:
+          type: object
+          properties:
+            days:
+              type: array
+              items:
+                type: integer
+              description: Start of each UTC day from the first start to now (at most the last 400 days). Epoch milliseconds.
+            values:
+              type: object
+              additionalProperties:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    type:
+                      - number
+                      - "null"
+              description: "`values[metric_id][variant_id][i]`: the metric as of the end of `days[i]`, cumulative."
+          required:
+            - days
+            - values
+        chance_b_beats_a:
+          type: number
+          description: "Kept from the first release: variant b's chance to beat the control on `initial_conversion_rate` (0.5 when unknown)."
+        enough_data:
+          type: boolean
+          description: "Kept: `guidance.enough_data`."
+      required:
+        - object
+        - experiment_id
+        - environment
+        - currency
+        - computed_at
+        - primary_metric
+        - secondary_metrics
+        - control_variant_id
+        - filters
+        - filter_options
+        - metrics
+        - variants
+        - guidance
+        - series
+        - chance_b_beats_a
+        - enough_data
+    ExperimentEstimate:
+      type: object
+      properties:
+        object:
+          type: string
+          const: experiment_estimate
+        period_days:
+          type: integer
+          description: Always 7.
+        matching_customers:
+          type: integer
+          description: Customers first seen (`new`) or seen (`new_and_existing`) in the last 7 days who match the audience.
+        enrolled_customers:
+          type: integer
+          description: "`matching_customers` × `enrollment_percent`, rounded."
+        customers_per_variant:
+          type: integer
+          description: "`enrolled_customers` ÷ `variant_count`, rounded down."
+        is_approximate:
+          type: boolean
+          description: "True when more than 5,000 customers were seen: the audience share of the 5,000 most recent is scaled to all of them."
+      required:
+        - object
+        - period_days
+        - matching_customers
+        - enrolled_customers
+        - customers_per_variant
+        - is_approximate
     DiscountPercentageVariant:
       type: object
       properties:

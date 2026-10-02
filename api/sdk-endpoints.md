@@ -319,7 +319,7 @@ What the paywall shows.
 
 `GET /v1/subscribers/{app_user_id}/offerings` · Auth: public app key or secret key
 
-What `Purchases.getOfferings()` calls. Lists active offerings with the packages whose product belongs to the calling app. `current_offering_id` is the customer's override when one is set.
+What `Purchases.getOfferings()` calls. Lists active offerings with the packages whose product belongs to the calling app. A new app user id makes the customer here, as `GET /v1/subscribers/{app_user_id}` does (the SDK sends both at once on a first launch), so the first answer already includes an experiment variant. `current_offering_id` is the customer's override when one is set. Otherwise RevenueDot resolves, in order: the experiment the customer is in (running or paused), a running experiment that enrolls them now (by priority), the first live targeting rule that matches, the project's current offering. A variant's placements overlay the rule's in `placements.offering_ids_by_placement`. See [Experiments](../docs/guides/experiments.md#what-the-sdk-receives).
 
 **Path parameters**
 
@@ -2874,7 +2874,7 @@ The shapes the operations above send and return.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `current_offering_id` | string or null | yes | Lookup key of the current offering, or the customer's override. |
+| `current_offering_id` | string or null | yes | Lookup key of the customer's current offering: their override, else their experiment variant's offering, else the first live targeting rule's, else the project's current offering. |
 | `offerings` | array of object | yes |  |
 | `offerings[].description` | string | yes | Offering display name. |
 | `offerings[].identifier` | string | yes | Offering lookup key. |
@@ -2883,6 +2883,12 @@ The shapes the operations above send and return.
 | `offerings[].packages[].identifier` | string | yes | Package lookup key, for example $rc_monthly. |
 | `offerings[].packages[].platform_product_identifier` | string | yes | Store product id for the calling app. |
 | `offerings[].packages[].platform_product_plan_identifier` | string | no | Google Play base plan id, when the product is `subscription:base-plan`. |
+| `placements` | object | no | What `currentOffering(forPlacement:)` reads. |
+| `placements.fallback_offering_id` | string or null | no | Lookup key of the offering for placements not listed below: the current offering. |
+| `placements.offering_ids_by_placement` | object | no | Placement id → offering lookup key, or null for no paywall there: the matching targeting rule's placements, overlaid with the customer's experiment variant's. |
+| `targeting` | object | no | Present when a targeting rule matched the customer. |
+| `targeting.revision` | integer | yes | The rule's revision. |
+| `targeting.rule_id` | string | yes | The targeting rule that matched. |
 
 ### ReceiptResponse
 
