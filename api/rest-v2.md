@@ -13,10 +13,10 @@ RevenueDot-only endpoints are on [Extensions](extensions.md).
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (161)
+## Operations on this page (163)
 
 - **Projects**: [List projects](#list-projects), [Create a project](#create-a-project)
-- **Apps**: [List apps](#list-apps), [Create an app](#create-an-app), [Get an app](#get-an-app), [Update an app and its store credentials](#update-an-app-and-its-store-credentials), [Delete an app](#delete-an-app), [Get an app's public SDK key](#get-an-apps-public-sdk-key), [Get a StoreKit configuration file](#get-a-storekit-configuration-file), [Issue a subscriber access token](#issue-a-subscriber-access-token)
+- **Apps**: [List apps](#list-apps), [Create an app](#create-an-app), [Get an app](#get-an-app), [Update an app and its store credentials](#update-an-app-and-its-store-credentials), [Delete an app](#delete-an-app), [Get an app's public SDK key](#get-an-apps-public-sdk-key), [Get a StoreKit configuration file](#get-a-storekit-configuration-file), [Issue a subscriber access token](#issue-a-subscriber-access-token), [List the products in the app's store](#list-the-products-in-the-apps-store), [Import products from the app's store](#import-products-from-the-apps-store)
 - **Products**: [List products](#list-products), [Create a product](#create-a-product), [Get a product](#get-a-product), [Update a product](#update-a-product), [Delete a product](#delete-a-product), [Archive a product](#archive-a-product), [Unarchive a product](#unarchive-a-product), [Create the product in its store](#create-the-product-in-its-store)
 - **Entitlements**: [List entitlements](#list-entitlements), [Create an entitlement](#create-an-entitlement), [Get an entitlement](#get-an-entitlement), [Rename an entitlement](#rename-an-entitlement), [Delete an entitlement](#delete-an-entitlement), [Archive an entitlement](#archive-an-entitlement), [Unarchive an entitlement](#unarchive-an-entitlement), [List an entitlement's products](#list-an-entitlements-products), [Attach products to an entitlement](#attach-products-to-an-entitlement), [Detach products from an entitlement](#detach-products-from-an-entitlement)
 - **Offerings**: [List offerings](#list-offerings), [Create an offering](#create-an-offering), [Get an offering](#get-an-offering), [Update an offering or make it current](#update-an-offering-or-make-it-current), [Delete an offering](#delete-an-offering), [Archive an offering](#archive-an-offering), [Unarchive an offering](#unarchive-an-offering)
@@ -405,6 +405,141 @@ Example 200 response:
   "expires_at": 1790804514034
 }
 ```
+
+### List the products in the app's store
+
+`GET /v2/projects/{project_id}/apps/{app_id}/store_products` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:products:read`
+
+What the app's store has, read with the credentials the app already has, every page of the store's lists, each item marked `in_catalog`. Nothing in the store changes. See [Import products](../docs/guides/import-products.md).
+
+- **App Store and Mac App Store:** the App Store Connect API key (`app_store_connect_api_key`, `_id`, `_issuer`), a team key with the App Manager role. Subscriptions by subscription group, then in-app purchases (consumable, non-consumable, non-renewing).
+- **Google Play:** the service account, with "View app information and download bulk reports (read-only)" in Play Console. One item per subscription base plan (`subscription_id:base_plan_id`) with its billing period, then one-time products (`monetization.onetimeproducts`, or the legacy `inappproducts` list where that API is not available).
+- **Stripe:** the app's restricted key with "Products" read (it covers prices). One item per active price; recurring prices are subscriptions.
+
+422 `unprocessable_entity_error` when the credential is missing or the store refuses it (the message names the role or permission), for Amazon (it has no API that lists in-app items; add products by SKU) and the Test Store. 422 `store_error` with `retryable: true` while the store cannot be reached.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes | App id (app...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/store_products" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The store's products. `next_page` is always null: every store page has been read.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "list",
+  "next_page": null,
+  "url": "/v2/projects/proj18pzzkao/apps/app1a2b3c4d/store_products",
+  "app_id": "app1a2b3c4d",
+  "store": "app_store",
+  "warnings": [],
+  "items": [
+    {
+      "object": "store_product_listing",
+      "store_identifier": "pro_monthly",
+      "type": "subscription",
+      "display_name": "Pro Monthly",
+      "duration": "P1M",
+      "store_state": "APPROVED",
+      "group": {
+        "id": "21000001",
+        "name": "Pro"
+      },
+      "price": null,
+      "importable": true,
+      "note": null,
+      "in_catalog": true,
+      "product_id": "prod1a2b3c4d5e"
+    },
+    {
+      "object": "store_product_listing",
+      "store_identifier": "pro_annual",
+      "type": "subscription",
+      "display_name": "Pro Annual",
+      "duration": "P1Y",
+      "store_state": "APPROVED",
+      "group": {
+        "id": "21000001",
+        "name": "Pro"
+      },
+      "price": null,
+      "importable": true,
+      "note": null,
+      "in_catalog": false,
+      "product_id": null
+    },
+    {
+      "object": "store_product_listing",
+      "store_identifier": "coins_100",
+      "type": "consumable",
+      "display_name": "100 coins",
+      "duration": null,
+      "store_state": "APPROVED",
+      "group": null,
+      "price": null,
+      "importable": true,
+      "note": null,
+      "in_catalog": false,
+      "product_id": null
+    }
+  ]
+}
+```
+
+### Import products from the app's store
+
+`POST /v2/projects/{project_id}/apps/{app_id}/store_products/actions/import` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:products:read_write`
+
+Creates catalog products for the chosen store identifiers. The store is read again, so the type, duration and display name always come from the store. Products already in the catalog are left as they are and reported in `existing`; identifiers the store does not have, or cannot be imported, are reported in `failed`. Every created and existing product is attached to the `entitlement_ids`. With `entitlement_ids`, an API key also needs `project_configuration:entitlements:read_write`. Running the same import twice changes nothing. Flat-rate Stripe prices also become web products, so the web checkout can sell them.
+
+201 when at least one product was created, else 200. Errors as for listing; 400 for an `entitlement_ids` entry that is not an entitlement of the project.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes | App id (app...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `store_identifiers` | array of string | yes | `store_identifier` values from the list. |
+| `entitlement_ids` | array of string | no | Entitlements to attach the products to. Optional. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/store_products/actions/import" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"store_identifiers":["pro_annual","coins_100"],"entitlement_ids":["entl1a2b3c4d5e"]}'
+```
+
+**Responses**
+
+- **200**: Nothing new was created. Returns [StoreProductImport](#storeproductimport).
+- **201**: Products were created. Returns [StoreProductImport](#storeproductimport).
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
 
 ## Products
 
@@ -6451,6 +6586,20 @@ A percentage discount (RevenueCat's shape).
 | `store_purchase_identifier` | string | no |  |
 | `ownership` | `purchased` | no |  |
 | `country` | string | no |  |
+
+### StoreProductImport
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"store_product_import"` | yes |  |
+| `app_id` | string | yes |  |
+| `created` | array of Product | yes | Products created by this import. |
+| `existing` | array of Product | yes | Requested products the catalog already had; left unchanged. |
+| `failed` | array of object | yes | Requested identifiers the store does not have, or that cannot be imported. |
+| `failed[].store_identifier` | string | yes |  |
+| `failed[].reason` | `not_in_store`, `not_importable` | yes |  |
+| `failed[].message` | string | yes |  |
+| `entitlement_ids` | array of string | yes | The entitlements every created and existing product is attached to. |
 
 ### Subscription
 
