@@ -11,7 +11,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (193)
+## Operations on this page (218)
 
 - **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects), [Update account settings](#update-account-settings), [Email a password reset link](#email-a-password-reset-link), [Check a password reset link](#check-a-password-reset-link), [Set a new password from a reset link](#set-a-new-password-from-a-reset-link), [Confirm an email address](#confirm-an-email-address), [Send a new confirmation email](#send-a-new-confirmation-email), [Look up an invite](#look-up-an-invite), [Accept an invite](#accept-an-invite)
 - **Members and invites**: [List open invites](#list-open-invites), [Invite someone by email](#invite-someone-by-email), [Resend an invite](#resend-an-invite), [Revoke an invite](#revoke-an-invite), [Change a member's role](#change-a-members-role), [Remove a member, or leave the project](#remove-a-member-or-leave-the-project)
@@ -34,6 +34,8 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Event log**: [Event log](#event-log), [Transaction feed](#transaction-feed)
 - **Test Store**: [Simulate a Test Store purchase or lifecycle](#simulate-a-test-store-purchase-or-lifecycle)
 - **Dashboard data**: [Daily history of an overview metric](#daily-history-of-an-overview-metric), [Dashboard rows for customers](#dashboard-rows-for-customers)
+- **Data moves**: [List the project's exports](#list-the-projects-exports), [Export the whole project](#export-the-whole-project), [Get the latest export](#get-the-latest-export), [Get an export](#get-an-export), [Delete an export's files now](#delete-an-exports-files-now), [Do the next slice of an export now](#do-the-next-slice-of-an-export-now), [Download an archive](#download-an-archive), [Get the project's move state](#get-the-projects-move-state), [Move the project to another server (run by this server)](#move-the-project-to-another-server-run-by-this-server), [Do the next step of the move now](#do-the-next-step-of-the-move-now), [Switch to the target](#switch-to-the-target), [Pause writes for the last copy](#pause-writes-for-the-last-copy), [Forward the paused project to its new server](#forward-the-paused-project-to-its-new-server), [Serve the project here again](#serve-the-project-here-again), [Create an import token (Receive a project)](#create-an-import-token-receive-a-project), [List your moves into this server](#list-your-moves-into-this-server), [Check or start loading an archive](#check-or-start-loading-an-archive), [Get an import](#get-an-import), [List the project's collaborators to invite](#list-the-projects-collaborators-to-invite), [Verify the copy](#verify-the-copy), [Put the project live here](#put-the-project-live-here)
+- **Cloud billing**: [The account's plan, usage and invoices](#the-accounts-plan-usage-and-invoices), [Upgrade to Cloud Standard with Stripe Checkout](#upgrade-to-cloud-standard-with-stripe-checkout), [Open the Stripe Customer Portal](#open-the-stripe-customer-portal), [Webhook of RevenueDot's own Stripe account](#webhook-of-revenuedots-own-stripe-account)
 - **Migration import**: [Import customers with their purchases](#import-customers-with-their-purchases), [Keep an app's existing SDK key](#keep-an-apps-existing-sdk-key), [What still needs attention after an import](#what-still-needs-attention-after-an-import)
 - **Web billing**: [List web discounts with their settings](#list-web-discounts-with-their-settings), [Get the Web page: providers and checklist](#get-the-web-page-providers-and-checklist), [Get a Stripe app's web config](#get-a-stripe-apps-web-config), [Save a Stripe app's web config](#save-a-stripe-apps-web-config), [List a Stripe app's web products](#list-a-stripe-apps-web-products), [Create a web product in Stripe](#create-a-web-product-in-stripe), [Get the project's web address and custom domain](#get-the-projects-web-address-and-custom-domain), [Change the project's slug or custom domain](#change-the-projects-slug-or-custom-domain), [Check the custom domain's DNS records](#check-the-custom-domains-dns-records)
 - **Purchase links**: [List purchase links](#list-purchase-links), [Create a purchase link](#create-a-purchase-link), [Get a purchase link](#get-a-purchase-link), [Update a purchase link](#update-a-purchase-link), [Delete a purchase link](#delete-a-purchase-link)
@@ -196,6 +198,8 @@ Example 200 response:
   "account": {
     "edition": "cloud",
     "plan": "free",
+    "billing_ready": false,
+    "billing_status": "none",
     "email_verification_required": false
   },
   "projects": []
@@ -5648,6 +5652,639 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_summaries" -H "Authori
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+## Data moves
+
+Full exports of a project and moves between RevenueDot servers (self-hosted and Cloud) that keep ids, SDK keys, secret keys and webhook secrets: export jobs and downloads, move states (paused, forwarded), the dashboard's server-run move, and the target side with an import token. See [Move projects and export everything](../docs/guides/move-projects.md).
+
+### List the project's exports
+
+`GET /v2/projects/{project_id}/exports` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/exports" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Exports, newest first.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Export the whole project
+
+`POST /v2/projects/{project_id}/exports` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Starts an export job of everything the project owns (64 tables) as a versioned archive: gzip JSON Lines per table and a manifest with the schema version, row counts and checksums. The job runs in short slices in the background; poll it, or call `actions/advance`. Secrets are left out unless `passphrase` is given (12 or more characters); then they are encrypted with it (AES-256-GCM, PBKDF2-SHA-256). Admins only in the dashboard.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `purpose` | `download`, `move` | no |  |
+| `include_secrets` | boolean | no |  |
+| `passphrase` | string | no | 12 to 200 characters. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/exports" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"include_secrets":true,"passphrase":"correct horse battery staple"}'
+```
+
+**Responses**
+
+- **202**: The export, queued.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Get the latest export
+
+`GET /v2/projects/{project_id}/export` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/export" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The export.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Get an export
+
+`GET /v2/projects/{project_id}/exports/{export_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Once `succeeded`, it has the `manifest` and a `download_url` valid for an hour. Each archive file can also be read one by one with `GET …/exports/{export_id}/files/{name}` (`manifest.json`, `members.json`, `tables/<table>/0001.jsonl.gz`, `secrets/<table>/0001.json.enc`).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `export_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/exports/$EXPORT_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The export.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Delete an export's files now
+
+`DELETE /v2/projects/{project_id}/exports/{export_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `export_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/exports/$EXPORT_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deleted.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Do the next slice of an export now
+
+`POST /v2/projects/{project_id}/exports/{export_id}/actions/advance` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Works for about eight seconds and returns the export. `npx revenuedot export` and `move` drive exports with it; the server's scheduled tick also advances queued exports.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `export_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/exports/$EXPORT_ID/actions/advance" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The export.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Download an archive
+
+`GET /v2/exports/download/{token}` · Auth: none · RevenueDot extension
+
+The whole archive as one uncompressed .tar whose members are the archive files. The token is signed and expires after an hour; it is the only auth.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/exports/download/$TOKEN"
+```
+
+**Responses**
+
+- **200**: The archive.
+- **404**: Expired or unknown link, or the export is gone.
+
+### Get the project's move state
+
+`GET /v2/projects/{project_id}/move` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/move" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The state.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Move the project to another server (run by this server)
+
+`POST /v2/projects/{project_id}/move` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+The dashboard's move: this server exports the project and copies it to `to_url` with the target's import token, then verifies. `dry_run` only compares rows per table. Poll `GET …/move` or call `move/actions/advance`; then `move/finish`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `to_url` | string | yes | The target server, e.g. https://api.revenuedot.app. |
+| `to_token` | string | yes | An import token (rdi_…) from the target's Receive a project. |
+| `dry_run` | boolean | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/move" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"to_url":"https://api.revenuedot.app","to_token":"rdi_…","dry_run":true}'
+```
+
+**Responses**
+
+- **202**: The move.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: The project is already moving. Returns [V2Error](#v2error).
+
+### Do the next step of the move now
+
+`POST /v2/projects/{project_id}/move/actions/advance` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/move/actions/advance" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The move.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Switch to the target
+
+`POST /v2/projects/{project_id}/move/finish` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Pauses writes here, copies again, verifies, puts the project live on the target and forwards this server's traffic there. A verification failure lifts the pause.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/move/finish" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **202**: The move.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: The move is not copied yet, or it failed. Returns [V2Error](#v2error).
+
+### Pause writes for the last copy
+
+`POST /v2/projects/{project_id}/move/pause` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Reads keep working. SDK writes and store notifications answer 503 with `Retry-After: 60` (the SDKs and the stores retry); API v2 writes answer 423. `npx revenuedot move --finish` calls it.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/move/pause" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The state.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: The project is forwarded or incoming. Returns [V2Error](#v2error).
+
+### Forward the paused project to its new server
+
+`POST /v2/projects/{project_id}/move/forward` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Every `/v1`, `/rcbilling` and secret-key `/v2` request for the project, and every store notification, is passed to `to_url` with the same method, path, headers and body; the answer comes back unchanged with an `x-revenuedot-moved-to` header. A forwarding loop answers 508.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `to_url` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/move/forward" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"to_url":"https://api.revenuedot.app"}'
+```
+
+**Responses**
+
+- **200**: The state.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: Pause and copy the project first. Returns [V2Error](#v2error).
+
+### Serve the project here again
+
+`POST /v2/projects/{project_id}/move/cancel` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Stops a running move and clears `paused` or `forwarded`. A copy already on the target stays there.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/move/cancel" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The state.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: The project is being copied in here. Returns [V2Error](#v2error).
+
+### Create an import token (Receive a project)
+
+`POST /v2/imports/tokens` · Auth: dashboard session · RevenueDot extension
+
+A token (`rdi_` and 64 hex characters) that lets one project move into the signed-in account on this server. Shown once; lasts 24 hours. RevenueDot Cloud needs a confirmed email address.
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/imports/tokens"
+```
+
+**Responses**
+
+- **201**: The token.
+- **401**: Not signed in.
+- **403**: Confirm your email first, or the request did not come from the dashboard.
+
+### List your moves into this server
+
+`GET /v2/imports` · Auth: dashboard session · RevenueDot extension
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/imports"
+```
+
+**Responses**
+
+- **200**: The last 20 imports.
+- **401**: Not signed in.
+
+### Check or start loading an archive
+
+`POST /v2/imports` · Auth: dashboard session · RevenueDot extension
+
+With `dry_run`: what loading would do (conflicts, rows per table here now against the archive); nothing is written. Without: starts the import (the project is created `incoming`). Then send each file with `PUT /v2/imports/{import_id}/files/{name}` (its SHA-256 must match the manifest; tables upsert by primary key and never change another project's rows; a row whose parent record is not here, such as an alias of a customer created on the source during the export, is left out and counted; a file already loaded answers `applied: false`), `members.json` to `…/members`, then `…/verify` and `…/finish`. Sending a new manifest starts the incoming copy over.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `manifest` | object | yes | The archive's manifest.json. |
+| `passphrase` | string | no | Needed when the archive includes secrets. |
+| `dry_run` | boolean | no |  |
+| `replace` | boolean | no | Replace a moved-away copy of the project that is still here. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/imports"
+```
+
+**Responses**
+
+- **200**: The plan (dry run).
+- **201**: The import.
+- **400**: Bad manifest or passphrase.
+- **401**: Missing or expired import token.
+- **409**: A conflict with another project here, or the import is finished.
+- **422**: The archive was written by a newer RevenueDot.
+
+### Get an import
+
+`GET /v2/imports/{import_id}` · Auth: dashboard session · RevenueDot extension
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `import_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/imports/$IMPORT_ID"
+```
+
+**Responses**
+
+- **200**: The import.
+- **401**: Missing token.
+- **404**: Not found.
+
+### List the project's collaborators to invite
+
+`POST /v2/imports/{import_id}/members` · Auth: dashboard session · RevenueDot extension
+
+The archive's members.json. Everyone in it is listed to invite on this server (the finish report repeats the list); nobody is added directly, even with an account here. The person who imports owns the project.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `import_id` | string | yes |  |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `members` | array of object | no |  |
+| `members[].email` | string | no |  |
+| `members[].role` | string | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/imports/$IMPORT_ID/members"
+```
+
+**Responses**
+
+- **200**: To invite.
+- **401**: Missing token.
+- **409**: Nothing imported yet, or the import is finished.
+
+### Verify the copy
+
+`POST /v2/imports/{import_id}/verify` · Auth: dashboard session · RevenueDot extension
+
+Recomputes the rows and checksum of every table here and compares them with the manifest. Large projects take several calls: `done: false` until finished.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `import_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/imports/$IMPORT_ID/verify"
+```
+
+**Responses**
+
+- **200**: Progress or the result.
+- **401**: Missing token.
+- **409**: Nothing imported yet, or verification failed.
+
+### Put the project live here
+
+`POST /v2/imports/{import_id}/finish` · Auth: dashboard session · RevenueDot extension
+
+Every file must be loaded. Webhooks without a secret get a new one. The answer lists the store notification URLs to change and where.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `import_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/imports/$IMPORT_ID/finish"
+```
+
+**Responses**
+
+- **200**: The report.
+- **401**: Missing token.
+- **409**: Files are missing, or the import is finished.
+
+## Cloud billing
+
+RevenueDot Cloud only: the account's plan, tracked revenue and invoices, Stripe Checkout and the Customer Portal on RevenueDot's own Stripe account. See [Cloud billing](../docs/guides/cloud-billing.md).
+
+### The account's plan, usage and invoices
+
+`GET /v2/billing` · Auth: dashboard session · RevenueDot extension
+
+RevenueDot Cloud only; a self-hosted server answers 404. Tracked revenue is the USD sum of the month's production purchases, renewals and one-time purchases in the projects the account owns.
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/billing"
+```
+
+**Responses**
+
+- **200**: Billing.
+- **401**: Not signed in.
+- **404**: Self-hosted: billing is only on RevenueDot Cloud.
+
+### Upgrade to Cloud Standard with Stripe Checkout
+
+`POST /v2/billing/checkout` · Auth: dashboard session · RevenueDot extension
+
+A Stripe Checkout session on RevenueDot's own Stripe account: the metered Standard price, billing from the 1st of next month, no proration.
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `plan` | `standard` | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/billing/checkout" \
+  -H "Content-Type: application/json" -d '{"plan":"standard"}'
+```
+
+**Responses**
+
+- **200**: Go to url.
+- **400**: Only Standard has a self-serve checkout.
+- **401**: Not signed in.
+- **409**: Already on Standard.
+- **502**: Stripe refused.
+- **503**: Billing is not set up on this server.
+
+### Open the Stripe Customer Portal
+
+`POST /v2/billing/portal` · Auth: dashboard session · RevenueDot extension
+
+Change the card, see invoices or cancel at period end.
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/billing/portal"
+```
+
+**Responses**
+
+- **200**: Go to url.
+- **401**: Not signed in.
+- **409**: No payment method yet.
+- **502**: Stripe refused.
+- **503**: Billing is not set up on this server.
+
+### Webhook of RevenueDot's own Stripe account
+
+`POST /v2/billing/stripe/webhook` · Auth: none · RevenueDot extension
+
+Stripe only, signed with `REVENUEDOT_BILLING_STRIPE_WEBHOOK_SECRET`: `checkout.session.completed`, `customer.subscription.*` and `invoice.*` events keep the plan, the payment status and the invoices.
+
+**Request body** (`application/json`)
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/billing/stripe/webhook"
+```
+
+**Responses**
+
+- **200**: Handled.
+- **400**: Bad signature or body.
+- **503**: Billing webhooks are not set up.
 
 ## Migration import
 

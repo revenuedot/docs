@@ -1,6 +1,6 @@
 ---
 title: Which guide do I need?
-description: Step-by-step guides for stores, web billing, webhooks, integrations and data exports, ads and rewarded ads, refunds, retention and win-back, support, customer lists, testing, your team, project settings, sign-in with Auth, alerts, and running RevenueDot on your own servers.
+description: Step-by-step guides for stores, web billing, webhooks, integrations and data exports, ads, refunds, retention, support, testing, your team, project settings, Auth, moving between self-host and Cloud, Cloud billing, and self-hosting.
 ---
 
 # Which guide do I need?
@@ -30,6 +30,8 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Run RevenueDot on my own servers | [Self-hosting](self-hosting.md) |
 | Upgrade my server | [Upgrades](upgrades.md) |
 | Back up and restore | [Backups](backups.md) |
+| Move a project between my own server and RevenueDot Cloud, or download everything a project owns | [Move projects and export everything](move-projects.md) |
+| Know what RevenueDot Cloud costs, upgrade, or change my card | [Cloud billing](cloud-billing.md) |
 | Check everything before real customers arrive | [Going to production](going-to-production.md) |
 | Invite teammates to a project and set their roles | [Invite your team](team.md) |
 | Limit sandbox testing, hand a project to another admin, keep brand colours and fonts, block abusive users, or publish verified revenue numbers | [Project settings](project-settings.md) |
