@@ -83,7 +83,7 @@ Sandbox purchases, granted access and Family Sharing are excluded; money is USD 
         q("segment", str(), "One dimension from `/options`."),
         q("limit_num_segments", int(undefined, { minimum: 1 }), "Top N segments by the first measure; the rest become \"Other\"."),
         q("aggregate", str(), "`average`, `total` or both, comma separated: `values` is empty and `summary` holds only these."),
-        q("currency", en(CURRENCIES)), q("include_annotations", bool()), q("realtime", bool(), "Accepted for compatibility; every chart uses the real-time (v3) definitions."), environment],
+        q("currency", en(CURRENCIES)), q("week_start", str(), "RevenueDot extension: the first day of weekly buckets, 0 (Sunday) to 6 (Saturday) or a day's name. Default 1 (Monday)."), q("include_annotations", bool()), q("realtime", bool(), "Accepted for compatibility; every chart uses the real-time (v3) definitions."), environment],
       responses: { 200: ok("The chart.", chartData), ...v2Errors(400, 401, 403, 404) } }),
   },
   [`${P}/options`]: {

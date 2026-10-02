@@ -141,6 +141,9 @@ tags:
   - name: Dashboard auth
     description: Sign-up, sign-in, password reset, email confirmation, invites and account settings for the dashboard. The session cookie also authorizes REST API v2.
     x-page: extensions
+  - name: Account settings
+    description: "Everything that belongs to the signed-in person: email change, password, sessions, two-factor authentication, OAuth tokens, Stripe accounts, projects with plans, deletion, notification emails and the display currency's rate. Dashboard session only. See [Account settings](../docs/guides/account-settings.md)."
+    x-page: extensions
   - name: Members and invites
     description: Invite people to a project by email, change their role, remove them. Dashboard session only.
     x-page: extensions
@@ -16665,6 +16668,11 @@ paths:
               - PLN
               - NZD
               - CHF
+        - name: week_start
+          in: query
+          schema:
+            type: string
+          description: "RevenueDot extension: the first day of weekly buckets, 0 (Sunday) to 6 (Saturday) or a day's name. Default 1 (Monday)."
         - name: include_annotations
           in: query
           schema:
@@ -41020,7 +41028,7 @@ paths:
       tags:
         - Dashboard auth
       summary: Sign in
-      description: "The dashboard's sign-in. A request with an `Authorization` header is an app's Auth sign-in instead: see `POST /v1/auth/login`, which takes the same body at this path for the RevenueCat SDKs' token login."
+      description: "With two-factor authentication on, a correct password answers `two_factor_required: true` and a `challenge` instead of a session; finish with `POST /auth/login/2fa`."
       security: []
       requestBody:
         required: true
@@ -41038,7 +41046,7 @@ paths:
                 - password
       responses:
         "200":
-          description: Signed in; `rd_session` is set.
+          description: Signed in (`rd_session` is set), or the two-factor step.
           content:
             application/json:
               schema:
@@ -41046,6 +41054,17 @@ paths:
                 properties:
                   ok:
                     type: boolean
+                  two_factor_required:
+                    type: boolean
+                  challenge:
+                    type: string
+                    description: For `POST /auth/login/2fa`; 10 minutes.
+                  methods:
+                    type: array
+                    items:
+                      type: string
+                  message:
+                    type: string
               example:
                 ok: true
         "400":
@@ -41453,6 +41472,62 @@ paths:
                       alert_emails:
                         type: boolean
                         description: Whether the user gets alert emails for projects they administer.
+                      preferences:
+                        type: object
+                        properties:
+                          theme:
+                            type: string
+                            enum:
+                              - system
+                              - light
+                              - dark
+                          tint:
+                            type:
+                              - string
+                              - "null"
+                            description: "Accent colour #RRGGBB, or null for the gold."
+                          week_start:
+                            type: integer
+                            description: First day of the week, 0 (Sunday) to 6 (Saturday).
+                            minimum: 0
+                            maximum: 6
+                          display_currency:
+                            type: string
+                            description: The currency the dashboard shows money in.
+                      has_password:
+                        type: boolean
+                        description: False for accounts made by single sign-on.
+                      two_factor:
+                        type: object
+                        properties:
+                          enabled:
+                            type: boolean
+                          enabled_at:
+                            type:
+                              - integer
+                              - "null"
+                            format: int64
+                          recovery_codes_left:
+                            type: integer
+                      pending_email:
+                        type:
+                          - object
+                          - "null"
+                        properties:
+                          email:
+                            type: string
+                          expires_at:
+                            type: integer
+                            format: int64
+                        description: A waiting email change.
+                      password_changed_at:
+                        type:
+                          - integer
+                          - "null"
+                        format: int64
+                      created_at:
+                        type: integer
+                        format: int64
                   account:
                     type: object
                     properties:
@@ -41514,7 +41589,7 @@ paths:
       tags:
         - Dashboard auth
       summary: Update account settings
-      description: The display name and whether the user gets [alert emails](../docs/guides/alerts.md) for projects they administer. Send only the fields to change. A null or empty `name` clears it.
+      description: The display name, whether the user gets [alert emails](../docs/guides/alerts.md) for projects they administer, and the [Interface and Date and region preferences](../docs/guides/account-settings.md). Send only the fields to change. A null or empty `name` clears it.
       security:
         - dashboardSession: []
       requestBody:
@@ -41532,8 +41607,42 @@ paths:
                 alert_emails:
                   type: boolean
                   description: False stops alert emails for every project.
+                theme:
+                  type: string
+                  enum:
+                    - system
+                    - light
+                    - dark
+                tint:
+                  type:
+                    - string
+                    - "null"
+                  description: "#RRGGBB, or null for the default gold."
+                week_start:
+                  type: integer
+                  minimum: 0
+                  maximum: 6
+                display_currency:
+                  type: string
+                  enum:
+                    - USD
+                    - EUR
+                    - GBP
+                    - AUD
+                    - CAD
+                    - JPY
+                    - BRL
+                    - KRW
+                    - CNY
+                    - MXN
+                    - SEK
+                    - PLN
+                    - NZD
+                    - CHF
             example:
               alert_emails: false
+              week_start: 0
+              display_currency: EUR
       responses:
         "200":
           description: The updated user.
@@ -41559,6 +41668,62 @@ paths:
                       alert_emails:
                         type: boolean
                         description: Whether the user gets alert emails for projects they administer.
+                      preferences:
+                        type: object
+                        properties:
+                          theme:
+                            type: string
+                            enum:
+                              - system
+                              - light
+                              - dark
+                          tint:
+                            type:
+                              - string
+                              - "null"
+                            description: "Accent colour #RRGGBB, or null for the gold."
+                          week_start:
+                            type: integer
+                            description: First day of the week, 0 (Sunday) to 6 (Saturday).
+                            minimum: 0
+                            maximum: 6
+                          display_currency:
+                            type: string
+                            description: The currency the dashboard shows money in.
+                      has_password:
+                        type: boolean
+                        description: False for accounts made by single sign-on.
+                      two_factor:
+                        type: object
+                        properties:
+                          enabled:
+                            type: boolean
+                          enabled_at:
+                            type:
+                              - integer
+                              - "null"
+                            format: int64
+                          recovery_codes_left:
+                            type: integer
+                      pending_email:
+                        type:
+                          - object
+                          - "null"
+                        properties:
+                          email:
+                            type: string
+                          expires_at:
+                            type: integer
+                            format: int64
+                        description: A waiting email change.
+                      password_changed_at:
+                        type:
+                          - integer
+                          - "null"
+                        format: int64
+                      created_at:
+                        type: integer
+                        format: int64
               example:
                 user:
                   id: usr_8k2m4q
@@ -41727,7 +41892,7 @@ paths:
       tags:
         - Dashboard auth
       summary: Set a new password from a reset link
-      description: Sets the password, signs the user out on every device, marks the email as confirmed (the link proved the inbox) and signs this browser in with a new `rd_session` cookie. Every other open reset link of the user stops working.
+      description: "Sets the password, signs the user out on every device, marks the email as confirmed (the link proved the inbox) and signs this browser in with a new `rd_session` cookie. Every other open reset link of the user stops working. With two-factor authentication on, it answers `two_factor_required: true` and a `challenge` instead of signing in; finish with `POST /auth/login/2fa`."
       security: []
       requestBody:
         required: true
@@ -44127,6 +44292,1975 @@ paths:
       x-source: routes/v2/import.ts
       x-scopes:
         - customer_information:customers:read
+      x-revenuedot-extension: true
+  /auth/login/2fa:
+    post:
+      operationId: loginTwoFactor
+      tags:
+        - Account settings
+      summary: Finish a sign-in with a two-factor code
+      description: |-
+        With two-factor authentication on, `POST /auth/login` (and `POST /auth/password/reset`) answer `{ "two_factor_required": true, "challenge": "…" }` without a session. Send the challenge here with a code from the authenticator app or a recovery code. The challenge works once and expires after 10 minutes. A code is never accepted twice.
+
+        Limits: 5 attempts per challenge (then sign in again), 10 code attempts per account in 15 minutes.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                challenge:
+                  type: string
+                  maxLength: 200
+                code:
+                  type: string
+                  description: A 6-digit code from the authenticator app. Needed when two-factor authentication is on.
+                recovery_code:
+                  type: string
+                  description: A recovery code (`abcde-fghjk`) instead of `code`.
+              required:
+                - challenge
+            example:
+              challenge: …
+              code: "123456"
+      responses:
+        "200":
+          description: Signed in; `rd_session` is set. A recovery code also answers how many are left.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  recovery_codes_left:
+                    type: integer
+              example:
+                ok: true
+        "400":
+          description: The challenge expired, was used, or two-factor was turned off (`challenge_invalid` with a `reason`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - invalid
+                      - expired
+                      - used
+                  message:
+                    type: string
+        "401":
+          description: Wrong code.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authentication_error
+                message: That code is not right. Check your authenticator app, or use a recovery code.
+        "429":
+          description: Too many attempts.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: rate_limit_error
+                message: Too many wrong codes. Enter your password again.
+      x-source: routes/auth.ts
+      x-revenuedot-extension: true
+  /auth/logout/all:
+    post:
+      operationId: logoutAll
+      tags:
+        - Account settings
+      summary: Sign out of every session
+      description: Ends every session of the signed-in person, this one included.
+      security:
+        - dashboardSession: []
+      responses:
+        "200":
+          description: Signed out everywhere.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  sessions_revoked:
+                    type: integer
+              example:
+                ok: true
+                sessions_revoked: 3
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authentication_error
+                message: Not signed in.
+        "403":
+          description: "A write from another site (Sec-Fetch-Site: cross-site or same-site)."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authorization_error
+                message: Dashboard requests must come from the dashboard.
+      x-source: routes/auth.ts
+      x-revenuedot-extension: true
+  /auth/email/change:
+    post:
+      operationId: changeEmail
+      tags:
+        - Account settings
+      summary: Change the account's email
+      description: Emails a link (`/confirm-email?token=…`, 24 hours, works once) to the new address and a notice to the current one. The account keeps its address until the link is used with `POST /auth/email/change/confirm`. A new request replaces an open one. Needs the current password, and `code` when two-factor authentication is on. 5 requests per hour.
+      security:
+        - dashboardSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                new_email:
+                  type: string
+                  format: email
+                  maxLength: 320
+                password:
+                  type: string
+                  description: The current password.
+                code:
+                  type: string
+                  description: With two-factor authentication on.
+              required:
+                - new_email
+            example:
+              new_email: dana@newcompany.com
+              password: current-password
+      responses:
+        "200":
+          description: The link was sent.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  pending_email:
+                    type: object
+                    properties:
+                      email:
+                        type: string
+                      expires_at:
+                        type: integer
+                        format: int64
+                        description: When the link stops working. Epoch milliseconds.
+                  notice_sent:
+                    type: boolean
+                    description: Whether the notice to the current address was accepted.
+        "400":
+          description: Invalid address, the same address, a wrong password or code.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authentication_error
+                message: Not signed in.
+        "403":
+          description: Single sign-on manages one of the addresses (`sso_required`), or a write from another site.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "409":
+          description: Another account uses the address.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: email_taken
+                message: Another RevenueDot account uses that address.
+        "429":
+          description: Too many attempts.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: rate_limit_error
+                message: Too many email changes. Try again in an hour.
+        "502":
+          description: The email could not be sent.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/account.ts
+      x-revenuedot-extension: true
+    delete:
+      operationId: cancelEmailChange
+      tags:
+        - Account settings
+      summary: Cancel a waiting email change
+      description: The link sent to the new address stops working.
+      security:
+        - dashboardSession: []
+      responses:
+        "200":
+          description: Cancelled.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  pending_email:
+                    type: "null"
+              example:
+                ok: true
+                pending_email: null
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authentication_error
+                message: Not signed in.
+        "403":
+          description: "A write from another site (Sec-Fetch-Site: cross-site or same-site)."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authorization_error
+                message: Dashboard requests must come from the dashboard.
+      x-source: routes/account.ts
+      x-revenuedot-extension: true
+  /auth/email/change/confirm:
+    post:
+      operationId: confirmEmailChange
+      tags:
+        - Account settings
+      summary: Confirm an email change
+      description: The link from the confirmation email; works in any browser. The account moves to the new address, which counts as confirmed, and every link sent to the old address stops working. The old address gets a notice.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                  maxLength: 200
+              required:
+                - token
+      responses:
+        "200":
+          description: The account uses the new address.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  email:
+                    type: string
+              example:
+                ok: true
+                email: dana@newcompany.com
+        "400":
+          description: The link is not valid (`token_invalid` with a `reason`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - invalid
+                      - expired
+                      - used
+                  message:
+                    type: string
+              example:
+                type: token_invalid
+                reason: expired
+                message: This link has expired. Change your email again from Account settings.
+        "409":
+          description: Another account started using the address.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/account.ts
+      x-revenuedot-extension: true
+  /auth/password/change:
+    post:
+      operationId: changePassword
+      tags:
+        - Account settings
+      summary: Change the password
+      description: Needs the current password (10 wrong attempts per 15 minutes, then 429). Every other session is signed out, open password reset links stop working, and the account gets an email.
+      security:
+        - dashboardSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                current_password:
+                  type: string
+                new_password:
+                  type: string
+                  minLength: 8
+                  maxLength: 200
+              required:
+                - current_password
+                - new_password
+      responses:
+        "200":
+          description: Changed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  sessions_revoked:
+                    type: integer
+                    description: Other sessions signed out.
+              example:
+                ok: true
+                sessions_revoked: 1
+        "400":
+          description: Wrong current password (`invalid_password`), a short password, the same password, or an account without one (`no_password`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authentication_error
+                message: Not signed in.
+        "403":
+          description: The account must sign in with single sign-on (`sso_required`), or a write from another site.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "429":
+          description: Too many attempts.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: rate_limit_error
+                message: Too many attempts. Try again in 15 minutes.
+      x-source: routes/account.ts
+      x-revenuedot-extension: true
+  /auth/sessions:
+    get:
+      operationId: listSessions
+      tags:
+        - Account settings
+      summary: List signed-in sessions
+      description: This browser first, then the others by last activity.
+      security:
+        - dashboardSession: []
+      responses:
+        "200":
+          description: Sessions.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          const: session
+                        id:
+                          type: string
+                          description: A hash of the session, never the cookie.
+                        current:
+                          type: boolean
+                          description: This browser.
+                        method:
+                          type: string
+                          enum:
+                            - password
+                            - two_factor
+                            - signup
+                            - reset
+                            - invite
+                            - email_change
+                            - sso
+                          description: How the session began.
+                        browser:
+                          type: string
+                          description: "From the user agent: Chrome, Safari, Firefox, Edge …"
+                        os:
+                          type: string
+                          description: macOS, Windows, iOS, Android, Linux …
+                        user_agent:
+                          type:
+                            - string
+                            - "null"
+                        ip:
+                          type:
+                            - string
+                            - "null"
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: When it began. Epoch milliseconds.
+                        last_seen_at:
+                          type: integer
+                          format: int64
+                          description: Last request (updated at most every 5 minutes). Epoch milliseconds.
+                        expires_at:
+                          type: integer
+                          format: int64
+                          description: When it ends. Epoch milliseconds.
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authentication_error
+                message: Not signed in.
+      x-source: routes/account.ts
+      x-revenuedot-extension: true
+  /auth/sessions/{session_id}:
+    delete:
+      operationId: revokeSession
+      tags:
+        - Account settings
+      summary: Sign out one session
+      security:
+        - dashboardSession: []
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The `id` from the list.
+      responses:
+        "200":
+          description: Signed out.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  id:
+                    type: string
+                  current:
+                    type: boolean
+                    description: "This browser: its cookie is cleared too."
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authentication_error
+                message: Not signed in.
+        "403":
+          description: "A write from another site (Sec-Fetch-Site: cross-site or same-site)."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authorization_error
+                message: Dashboard requests must come from the dashboard.
+        "404":
+          description: Already ended.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/account.ts
+      x-revenuedot-extension: true
+  /auth/sessions/revoke_others:
+    post:
+      operationId: revokeOtherSessions
+      tags:
+        - Account settings
+      summary: Sign out every other session
+      security:
+        - dashboardSession: []
+      responses:
+        "200":
+          description: Signed out.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  sessions_revoked:
+                    type: integer
+              example:
+                ok: true
+                sessions_revoked: 2
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authentication_error
+                message: Not signed in.
+        "403":
+          description: "A write from another site (Sec-Fetch-Site: cross-site or same-site)."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authorization_error
+                message: Dashboard requests must come from the dashboard.
+      x-source: routes/account.ts
+      x-revenuedot-extension: true
+  /auth/2fa/setup:
+    post:
+      operationId: setupTwoFactor
+      tags:
+        - Account settings
+      summary: Start two-factor setup
+      description: "A new TOTP secret (RFC 6238: SHA-1, 6 digits, 30 seconds), sealed at rest and answered once as base32 and an `otpauth://` URI for a QR code. Two-factor stays off until `POST /auth/2fa/enable` gets a code from it. Needs the current password."
+      security:
+        - dashboardSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                  description: The current password.
+      responses:
+        "200":
+          description: The secret.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    const: two_factor_setup
+                  secret:
+                    type: string
+                    description: Base32.
+                  otpauth_url:
+                    type: string
+                  issuer:
+                    type: string
+                  account:
+                    type: string
+                  digits:
+                    type: integer
+                  period:
+                    type: integer
+                  algorithm:
+                    type: string
+              example:
+                object: two_factor_setup
+                secret: JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP
+                otpauth_url: otpauth://totp/RevenueDot:dana%40example.com?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=RevenueDot&algorithm=SHA1&digits=6&period=30
+                issuer: RevenueDot
+                account: dana@example.com
+                digits: 6
+                period: 30
+                algorithm: SHA1
+        "400":
+          description: Wrong password.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authentication_error
+                message: Not signed in.
+        "403":
+          description: "A write from another site (Sec-Fetch-Site: cross-site or same-site)."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authorization_error
+                message: Dashboard requests must come from the dashboard.
+        "409":
+          description: Two-factor is already on.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "429":
+          description: Too many attempts.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: rate_limit_error
+                message: Too many attempts. Try again in 15 minutes.
+      x-source: routes/account.ts
+      x-revenuedot-extension: true
+  /auth/2fa/enable:
+    post:
+      operationId: enableTwoFactor
+      tags:
+        - Account settings
+      summary: Turn two-factor authentication on
+      description: Checks a code from the pending secret, turns two-factor on and answers 10 recovery codes once (stored as SHA-256; each works once). The account gets an email.
+      security:
+        - dashboardSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+              required:
+                - code
+            example:
+              code: "123456"
+      responses:
+        "200":
+          description: On.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  enabled:
+                    type: boolean
+                  recovery_codes:
+                    type: array
+                    items:
+                      type: string
+                    minItems: 10
+                    maxItems: 10
+        "400":
+          description: Wrong code (`invalid_code`) or wrong current password (`invalid_password`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: invalid_code
+                message: That code is not right. Check your authenticator app, or use a recovery code.
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authentication_error
+                message: Not signed in.
+        "403":
+          description: "A write from another site (Sec-Fetch-Site: cross-site or same-site)."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authorization_error
+                message: Dashboard requests must come from the dashboard.
+        "409":
+          description: Already on, or no setup to finish.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "429":
+          description: Too many attempts.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: rate_limit_error
+                message: Too many code attempts. Try again in 15 minutes.
+      x-source: routes/account.ts
+      x-revenuedot-extension: true
+  /auth/2fa/disable:
+    post:
+      operationId: disableTwoFactor
+      tags:
+        - Account settings
+      summary: Turn two-factor authentication off
+      description: Needs a current code or a recovery code. The account gets an email.
+      security:
+        - dashboardSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: A 6-digit code from the authenticator app. Needed when two-factor authentication is on.
+                recovery_code:
+                  type: string
+                  description: A recovery code (`abcde-fghjk`) instead of `code`.
+      responses:
+        "200":
+          description: Off.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  enabled:
+                    type: boolean
+              example:
+                ok: true
+                enabled: false
+        "400":
+          description: Wrong code (`invalid_code`) or wrong current password (`invalid_password`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: invalid_code
+                message: That code is not right. Check your authenticator app, or use a recovery code.
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authentication_error
+                message: Not signed in.
+        "403":
+          description: "A write from another site (Sec-Fetch-Site: cross-site or same-site)."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authorization_error
+                message: Dashboard requests must come from the dashboard.
+        "409":
+          description: Two-factor is off.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "429":
+          description: Too many attempts.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: rate_limit_error
+                message: Too many code attempts. Try again in 15 minutes.
+      x-source: routes/account.ts
+      x-revenuedot-extension: true
+  /auth/2fa/recovery_codes:
+    post:
+      operationId: newRecoveryCodes
+      tags:
+        - Account settings
+      summary: Make new recovery codes
+      description: 10 new codes, answered once; the old ones stop working. Needs a current code or a recovery code.
+      security:
+        - dashboardSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: A 6-digit code from the authenticator app. Needed when two-factor authentication is on.
+                recovery_code:
+                  type: string
+                  description: A recovery code (`abcde-fghjk`) instead of `code`.
+      responses:
+        "200":
+          description: New codes.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  recovery_codes:
+                    type: array
+                    items:
+                      type: string
+        "400":
+          description: Wrong code (`invalid_code`) or wrong current password (`invalid_password`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: invalid_code
+                message: That code is not right. Check your authenticator app, or use a recovery code.
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authentication_error
+                message: Not signed in.
+        "403":
+          description: "A write from another site (Sec-Fetch-Site: cross-site or same-site)."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authorization_error
+                message: Dashboard requests must come from the dashboard.
+        "409":
+          description: Two-factor is off.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "429":
+          description: Too many attempts.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: rate_limit_error
+                message: Too many code attempts. Try again in 15 minutes.
+      x-source: routes/account.ts
+      x-revenuedot-extension: true
+  /auth/oauth_tokens:
+    get:
+      operationId: listOAuthTokens
+      tags:
+        - Account settings
+      summary: List OAuth tokens you granted
+      description: Keys made by `POST /oauth/token` after you clicked **Allow access** (ChatGPT, Claude, Cursor …), in any project. Keys granted before this list existed are on each project's API keys page.
+      security:
+        - dashboardSession: []
+      responses:
+        "200":
+          description: Tokens.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          const: oauth_token
+                        id:
+                          type: string
+                          description: The API key id.
+                        client:
+                          type: object
+                          properties:
+                            id:
+                              type:
+                                - string
+                                - "null"
+                            name:
+                              type: string
+                            url:
+                              type:
+                                - string
+                                - "null"
+                        project:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                        access:
+                          type: string
+                          enum:
+                            - read
+                            - read_write
+                            - read_write_support
+                        key_prefix:
+                          type: string
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: Granted. Epoch milliseconds.
+                        last_used_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Last API call. Epoch milliseconds, or null.
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authentication_error
+                message: Not signed in.
+      x-source: routes/account.ts
+      x-revenuedot-extension: true
+  /auth/oauth_tokens/{key_id}:
+    delete:
+      operationId: revokeOAuthToken
+      tags:
+        - Account settings
+      summary: Revoke an OAuth token
+      description: Deletes the key; the app gets 401 on its next call. The project's audit log records it.
+      security:
+        - dashboardSession: []
+      parameters:
+        - name: key_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  id:
+                    type: string
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authentication_error
+                message: Not signed in.
+        "403":
+          description: "A write from another site (Sec-Fetch-Site: cross-site or same-site)."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authorization_error
+                message: Dashboard requests must come from the dashboard.
+        "404":
+          description: Already revoked, or not yours.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/account.ts
+      x-revenuedot-extension: true
+  /auth/stripe_accounts:
+    get:
+      operationId: listStripeAccounts
+      tags:
+        - Account settings
+      summary: List connected Stripe accounts
+      description: Stripe accounts connected with Connect with Stripe to Stripe apps in your projects (masked), and the Stripe apps you could connect. Connecting and disconnecting happen per app.
+      security:
+        - dashboardSession: []
+      responses:
+        "200":
+          description: Accounts.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  available:
+                    type: boolean
+                    description: Whether this server can connect Stripe accounts.
+                  unavailable_reason:
+                    type:
+                      - string
+                      - "null"
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          const: stripe_account
+                        app:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                        project:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                        role:
+                          type: string
+                        account:
+                          type:
+                            - string
+                            - "null"
+                          description: acct_…1234
+                        mode:
+                          type: string
+                          enum:
+                            - live
+                            - test
+                        method:
+                          type:
+                            - string
+                            - "null"
+                          description: oauth or account_link.
+                        charges_enabled:
+                          type:
+                            - boolean
+                            - "null"
+                        details_submitted:
+                          type:
+                            - boolean
+                            - "null"
+                        connected_at:
+                          type:
+                            - integer
+                            - "null"
+                          format: int64
+                          description: Connected. Epoch milliseconds, or null.
+                  connectable_apps:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        app:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                        project:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authentication_error
+                message: Not signed in.
+      x-source: routes/account.ts
+      x-revenuedot-extension: true
+  /auth/account/projects:
+    get:
+      operationId: listAccountProjects
+      tags:
+        - Account settings
+      summary: List your projects with role and plan
+      description: Owned projects first. `plan` is the owner's RevenueDot Cloud plan, or Self-hosted.
+      security:
+        - dashboardSession: []
+      responses:
+        "200":
+          description: Projects.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  edition:
+                    type: string
+                    enum:
+                      - cloud
+                      - self-hosted
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          const: account_project
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        role:
+                          type: string
+                          enum:
+                            - admin
+                            - developer
+                            - viewer
+                        is_owner:
+                          type: boolean
+                        members:
+                          type: integer
+                        owner:
+                          type:
+                            - object
+                            - "null"
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type:
+                                - string
+                                - "null"
+                            email:
+                              type: string
+                        plan:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                        created_at:
+                          type: integer
+                          format: int64
+                          description: Created. Epoch milliseconds.
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authentication_error
+                message: Not signed in.
+      x-source: routes/account.ts
+      x-revenuedot-extension: true
+  /auth/account/delete:
+    get:
+      operationId: checkAccountDeletion
+      tags:
+        - Account settings
+      summary: What deleting the account would do
+      description: Whether deletion is allowed now; if not, why (`ownership_transfer_required` with the projects, `billing_active`, or an enterprise refusal); if so, which projects are deleted with it and which are left.
+      security:
+        - dashboardSession: []
+      responses:
+        "200":
+          description: The check.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    const: account_deletion
+                  allowed:
+                    type: boolean
+                  type:
+                    type: string
+                  message:
+                    type: string
+                  projects:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        reason:
+                          type: string
+                          enum:
+                            - owner
+                            - last_admin
+                        members:
+                          type: integer
+                  projects_deleted:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                  projects_left:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authentication_error
+                message: Not signed in.
+      x-source: routes/account.ts
+      x-revenuedot-extension: true
+    post:
+      operationId: deleteAccount
+      tags:
+        - Account settings
+      summary: Delete the account
+      description: Refused (409) while you own a project with other members or are the last admin of one (`ownership_transfer_required`), while Cloud Standard is active (`billing_active`), or when an enterprise organization still needs you as its owner. Deletes the account, its sessions, links, recovery codes, preferences and AI conversations, the OAuth keys you granted, and the projects where you are the only member. Audit log entries stay. Sends a confirmation email and clears the cookie.
+      security:
+        - dashboardSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  description: Your email, typed to confirm.
+                password:
+                  type: string
+                  description: Needed when the account has a password.
+                code:
+                  type: string
+                  description: A 6-digit code from the authenticator app. Needed when two-factor authentication is on.
+                recovery_code:
+                  type: string
+                  description: A recovery code (`abcde-fghjk`) instead of `code`.
+              required:
+                - email
+            example:
+              email: dana@example.com
+              password: current-password
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  deleted:
+                    type: boolean
+                  projects_deleted:
+                    type: array
+                    items:
+                      type: string
+              example:
+                ok: true
+                deleted: true
+                projects_deleted: []
+        "400":
+          description: The typed email does not match (`confirmation_mismatch`), or a wrong password or code.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authentication_error
+                message: Not signed in.
+        "403":
+          description: "A write from another site (Sec-Fetch-Site: cross-site or same-site)."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authorization_error
+                message: Dashboard requests must come from the dashboard.
+        "409":
+          description: "Not now: see the type."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    enum:
+                      - ownership_transfer_required
+                      - billing_active
+                      - extension_refused
+                  message:
+                    type: string
+                  projects:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        reason:
+                          type: string
+                        members:
+                          type: integer
+        "429":
+          description: Too many attempts.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: rate_limit_error
+                message: Too many attempts. Try again in 15 minutes.
+      x-source: routes/account.ts
+      x-revenuedot-extension: true
+  /auth/notifications:
+    get:
+      operationId: getNotificationSettings
+      tags:
+        - Account settings
+      summary: Get notification choices
+      description: Alert emails, and per project the weekly summary, experiment results and revenue anomaly alerts. Everything is off until you turn it on.
+      security:
+        - dashboardSession: []
+      responses:
+        "200":
+          description: Choices.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    const: notification_settings
+                  alert_emails:
+                    type: boolean
+                  projects:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        project:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                            role:
+                              type: string
+                        weekly_summary:
+                          type: boolean
+                          description: The weekly summary email on the first day of the person's week.
+                        experiment_results:
+                          type: boolean
+                          description: An email when an experiment has enough data and when it ends.
+                        anomaly_alerts:
+                          type: boolean
+                          description: Daily revenue anomaly alerts.
+                        anomaly_sensitivity:
+                          type: string
+                          enum:
+                            - low
+                            - medium
+                            - high
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authentication_error
+                message: Not signed in.
+      x-source: routes/account.ts
+      x-revenuedot-extension: true
+  /auth/notifications/{project_id}:
+    put:
+      operationId: updateNotificationSettings
+      tags:
+        - Account settings
+      summary: Choose a project's emails
+      description: Send only the fields to change. Any member of the project may choose.
+      security:
+        - dashboardSession: []
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                weekly_summary:
+                  type: boolean
+                  description: The weekly summary email on the first day of the person's week.
+                experiment_results:
+                  type: boolean
+                  description: An email when an experiment has enough data and when it ends.
+                anomaly_alerts:
+                  type: boolean
+                  description: Daily revenue anomaly alerts.
+                anomaly_sensitivity:
+                  type: string
+                  enum:
+                    - low
+                    - medium
+                    - high
+            example:
+              weekly_summary: true
+              anomaly_alerts: true
+              anomaly_sensitivity: medium
+      responses:
+        "200":
+          description: Saved.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    const: project_notifications
+                  project_id:
+                    type: string
+                  weekly_summary:
+                    type: boolean
+                    description: The weekly summary email on the first day of the person's week.
+                  experiment_results:
+                    type: boolean
+                    description: An email when an experiment has enough data and when it ends.
+                  anomaly_alerts:
+                    type: boolean
+                    description: Daily revenue anomaly alerts.
+                  anomaly_sensitivity:
+                    type: string
+                    enum:
+                      - low
+                      - medium
+                      - high
+        "400":
+          description: Invalid field.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authentication_error
+                message: Not signed in.
+        "403":
+          description: "A write from another site (Sec-Fetch-Site: cross-site or same-site)."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authorization_error
+                message: Dashboard requests must come from the dashboard.
+        "404":
+          description: Not a member of the project.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+      x-source: routes/account.ts
+      x-revenuedot-extension: true
+  /auth/fx:
+    get:
+      operationId: getDisplayRate
+      tags:
+        - Account settings
+      summary: The display currency's exchange rate
+      description: Units of the currency per 1 USD on the latest day with a European Central Bank reference rate (cached, with bundled rates when the source cannot be reached). The dashboard multiplies USD amounts by it.
+      security:
+        - dashboardSession: []
+      parameters:
+        - name: currency
+          in: query
+          schema:
+            type: string
+          description: "Default: your display currency. One of USD, EUR, GBP, AUD, CAD, JPY, BRL, KRW, CNY, MXN, SEK, PLN, NZD, CHF."
+      responses:
+        "200":
+          description: The rate.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    const: fx_rate
+                  base:
+                    type: string
+                    const: USD
+                  currency:
+                    type: string
+                  rate:
+                    type: number
+                  date:
+                    type: string
+                    description: YYYY-MM-DD.
+                  source:
+                    type: string
+              example:
+                object: fx_rate
+                base: USD
+                currency: EUR
+                rate: 0.8531
+                date: 2026-10-01
+                source: ecb
+        "400":
+          description: Unknown currency.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+        "401":
+          description: Not signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+              example:
+                type: authentication_error
+                message: Not signed in.
+      x-source: routes/account.ts
       x-revenuedot-extension: true
   /v2/enterprise:
     get:

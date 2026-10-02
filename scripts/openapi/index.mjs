@@ -19,6 +19,7 @@ import { assistantPaths } from "./assistant.mjs";
 import { recoveryPaths } from "./recovery.mjs";
 import { enterprisePaths, enterpriseSchemas } from "./enterprise.mjs";
 import { movePaths } from "./moves.mjs";
+import { accountPaths } from "./account.mjs";
 
 /**
  * Tags in reading order. `x-page` is the generated Markdown page (api/<page>.md) the tag's operations go to.
@@ -61,6 +62,7 @@ export const TAGS = [
   ["Invoices", "rest-v2", "RevenueCat Billing invoices. Stripe issues the invoices for RevenueDot's web checkout, so these answer on purpose: the list is empty and a file is 404."],
   ["Collaborators", "rest-v2", "Dashboard users of the project."],
   ["Dashboard auth", "extensions", "Sign-up, sign-in, password reset, email confirmation, invites and account settings for the dashboard. The session cookie also authorizes REST API v2."],
+  ["Account settings", "extensions", "Everything that belongs to the signed-in person: email change, password, sessions, two-factor authentication, OAuth tokens, Stripe accounts, projects with plans, deletion, notification emails and the display currency's rate. Dashboard session only. See [Account settings](../docs/guides/account-settings.md)."],
   ["Members and invites", "extensions", "Invite people to a project by email, change their role, remove them. Dashboard session only."],
   ["Project settings", "extensions", "Project name, transfer behaviour, sandbox testing access, ownership and deletion. See [Project settings](../docs/guides/project-settings.md)."],
   ["Brand", "extensions", "Colour and gradient presets for the paywall editor and the SDKs' named colours."],
@@ -126,7 +128,7 @@ export function buildDocument() {
       { url: "https://{host}", description: "Your self-hosted RevenueDot", variables: { host: { default: "revenuedot.example.com" } } },
     ],
     tags: tags(),
-    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...adsPaths, ...lifecyclePaths, ...webPaths, ...assistantPaths, ...recoveryPaths, ...movePaths, ...settingsPathsAll, ...extensionPaths, ...enterprisePaths },
+    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...adsPaths, ...lifecyclePaths, ...webPaths, ...assistantPaths, ...recoveryPaths, ...movePaths, ...settingsPathsAll, ...extensionPaths, ...accountPaths, ...enterprisePaths },
     webhooks,
     components: { schemas: { ...schemas, ...webSchemas, ...enterpriseSchemas }, parameters, responses, securitySchemes },
     security: [{ secretApiKey: [] }],

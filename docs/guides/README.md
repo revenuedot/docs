@@ -35,6 +35,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Know what RevenueDot Cloud costs, upgrade, or change my card | [Cloud billing](cloud-billing.md) |
 | Check everything before real customers arrive | [Going to production](going-to-production.md) |
 | Invite teammates to a project and set their roles | [Invite your team](team.md) |
+| Change your email or password, turn on two-factor authentication, sign out sessions, revoke AI assistants, pick summary and anomaly emails, a theme, a week start and a display currency | [Account settings](account-settings.md) |
 | Group projects into an organization, turn on RevenueDot Enterprise, or build custom roles | [Enterprise](enterprise.md) |
 | Sign my team in with Okta, Microsoft Entra ID, Google Workspace or any SAML or OpenID Connect provider | [Single sign-on](single-sign-on.md) |
 | Create, update and deactivate people from my identity provider and map its groups to roles | [SCIM](scim.md) |
