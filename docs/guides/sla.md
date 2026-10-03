@@ -5,7 +5,7 @@ description: RevenueDot Enterprise promises 99.9% monthly uptime for the purchas
 
 # What does the RevenueDot SLA promise?
 
-RevenueDot Enterprise customers get two promises. On **RevenueDot Cloud**, the purchase path is up **99.9% of each calendar month**, or the month earns a service credit. On **Cloud and self-hosted**, we **answer within 1 hour, at any hour, when purchases are failing in production**, and faster than our standard support for everything else. Free and Cloud Standard plans and the open-source server have no SLA.
+RevenueDot Enterprise customers get two promises. On **RevenueDot Cloud**, the purchase path is up **99.9% of each calendar month**, or the month earns a service credit. On **Cloud and self-hosted**, we **answer within 1 hour, at any hour, when purchases are failing in production**, and faster than our standard support for everything else. Cloud Free, Cloud Standard and the open-source server have no SLA. Cloud Standard includes email support with a first reply within 2 business days, which is a support target, not an SLA.
 
 Your order form is the contract. If it says something different from this page, the order form wins.
 

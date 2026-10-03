@@ -5,8 +5,6 @@ description: RevenueDot Cloud is free up to $10,000 of tracked revenue a month. 
 
 # How does RevenueDot Cloud billing work?
 
-Billing is not switched on yet: until it is, every RevenueDot Cloud account is free, no usage emails are sent, and the **Billing** link is not in the account menu. This page describes how it works once it is on.
-
 RevenueDot Cloud measures the **tracked revenue** of the projects you own each calendar month. Up to $10,000 a month is free. Above that, Cloud Standard costs 0.5% of the part above $10,000, and never more than $999 a month. A self-hosted RevenueDot has no billing, no meter and no limits.
 
 ## Plans
@@ -15,7 +13,15 @@ RevenueDot Cloud measures the **tracked revenue** of the projects you own each c
 |---|---|---|
 | **Cloud Free** | $0 | Up to $10,000 a month |
 | **Cloud Standard** | 0.5% of tracked revenue above $10,000 a month, capped at $999 a month. The rate never rises | Up to $1,000,000 a month |
-| **Enterprise** | From $50,000 a year | No limit. Write to [hello@revenuedot.app](mailto:hello@revenuedot.app) |
+| **Enterprise** | From $50,000 a year | No limit. [Contact sales](https://revenuedot.app/contact-sales) |
+
+What each plan includes:
+
+- **Cloud Free:** the whole open-source core (projects, the SDK API, the dashboard, the REST API), the Admin, Developer and Viewer roles, and community and email support. The project audit log keeps 90 days.
+- **Cloud Standard:** everything in Cloud Free, plus organizations, custom roles and single sign-on (SAML 2.0 and OpenID Connect, verified domains, required SSO). The audit logs keep 90 days. Email support answers first within 2 business days; this is not an SLA.
+- **Enterprise:** everything in Cloud Standard, plus SCIM, audit retention from 30 days to 10 years (or forever, the default), signed compliance exports, data location settings, the licence for self-hosting, the [SLA](sla.md) and no revenue limit. RevenueDot marks your account as Enterprise when the contract is signed.
+
+On Cloud Free and Cloud Standard, project and organization audit log entries older than 90 days are deleted every hour. An organization gets the features of the best plan among its owners. [Which plan has which feature](enterprise.md) has the full table and what happens when an organization loses a plan.
 
 Examples of a month's Cloud Standard bill:
 
@@ -44,7 +50,7 @@ Open your account menu → **Billing** (`/account/billing`). It shows:
 
 - Your plan and its status, and when a cancelled plan ends.
 - **Tracked revenue** this month, in total and per project, against the plan's limit, and the **bill so far**.
-- The three plans, with **Upgrade to Standard**, **Manage billing** or **Contact us**.
+- The three plans, with **Upgrade to Standard**, **Manage billing** or **Contact sales**, and what each plan includes.
 - **Invoices**, with links to Stripe's invoice page and PDF.
 
 ## Upgrade, change your card or cancel

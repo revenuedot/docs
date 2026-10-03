@@ -32,7 +32,7 @@ Every platform's version of this line is in the [SDK guides](../sdks/README.md).
 - **It is newer.** RevenueCat has a longer track record as a hosted service.
 
 ## What does it cost?
-RevenueDot Cloud is free up to $10,000 in monthly tracked revenue. Sign-up is open at [app.revenuedot.app/signup](https://app.revenuedot.app/signup), every account is on the free plan. Cloud Standard, 0.5% of tracked revenue above $10,000 a month capped at $999 a month, is built and starts when billing is switched on; see [Cloud billing](../guides/cloud-billing.md). Self-hosting is free: you pay only for your server and database. RevenueCat's Pro plan is free up to $2,500 in monthly tracked revenue and then charges 1% of tracked revenue ([pricing](https://www.revenuecat.com/pricing)).
+RevenueDot Cloud is free up to $10,000 in monthly tracked revenue. Sign up at [app.revenuedot.app/signup](https://app.revenuedot.app/signup); every new account starts on Cloud Free. Cloud Standard costs 0.5% of tracked revenue above $10,000 a month, at most $999 a month, and adds organizations, custom roles and single sign-on. Enterprise starts at $50,000 a year. See [Cloud billing](../guides/cloud-billing.md) and [which plan has which feature](../guides/enterprise.md). Self-hosting is free: you pay only for your server and database. RevenueCat's Pro plan is free up to $2,500 in monthly tracked revenue and then charges 1% of tracked revenue ([pricing](https://www.revenuecat.com/pricing)).
 
 ## Which licenses apply?
 - The server and dashboard are AGPL-3.0.
