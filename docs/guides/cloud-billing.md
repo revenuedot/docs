@@ -5,8 +5,6 @@ description: RevenueDot Cloud is free up to $10,000 of tracked revenue a month. 
 
 # How does RevenueDot Cloud billing work?
 
-Billing is not switched on yet: until it is, every RevenueDot Cloud account is free, no usage emails are sent, and the **Billing** link is not in the account menu. This page describes how it works once it is on.
-
 RevenueDot Cloud measures the **tracked revenue** of the projects you own each calendar month. Up to $10,000 a month is free. Above that, Cloud Standard costs 0.5% of the part above $10,000, and never more than $999 a month. A self-hosted RevenueDot has no billing, no meter and no limits.
 
 ## Plans
@@ -51,6 +49,7 @@ Open your account menu → **Billing** (`/account/billing`). It shows:
 
 - **Upgrade to Standard** opens Stripe Checkout. Billing starts on the 1st of the next month with no proration, and each invoice charges the month's bill. RevenueDot uses its own Stripe account for this; it never touches the Stripe account you sell with.
 - **Manage billing** opens Stripe's Customer Portal: change the card, see invoices, or cancel. A cancelled plan stays active until the end of the period, then returns to Cloud Free.
+- An account has one Standard subscription. While it is active, **Upgrade** is not offered again; a second Checkout started in another tab is closed automatically.
 
 ## Emails and banners
 
