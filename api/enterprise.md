@@ -30,7 +30,7 @@ Whether this server runs RevenueDot Enterprise, with which licence and features.
 
 `GET /v2/enterprise` · Auth: dashboard session · RevenueDot extension
 
-Any signed-in user. The route exists only when the server was started with `REVENUEDOT_LICENSE_KEY` or `REVENUEDOT_EE_DEV=true`; the open-source build answers 404. With an invalid key it still answers, with `mode: invalid` and no features, and no other enterprise route exists.
+Any signed-in user. On a self-hosted server the route exists only when the server was started with `REVENUEDOT_LICENSE_KEY` or `REVENUEDOT_EE_DEV=true`; the open-source build answers 404. With an invalid key it still answers, with `mode: invalid` and no features, and no other enterprise route exists. On RevenueDot Cloud it answers `mode: cloud` with the account's `plan` and the features that plan has.
 
 **Example request**
 
@@ -133,7 +133,7 @@ Example 200 response:
 
 `POST /v2/organizations` · Auth: dashboard session · RevenueDot extension
 
-You become its owner. `region` defaults to this deployment's region. A licence with an organization limit answers 403 once the server has that many organizations.
+You become its owner. On RevenueDot Cloud this needs Cloud Standard or Enterprise. `region` defaults to this deployment's region; another region needs data location in the licence or plan and must be one of `selectable_regions` (403 or 400 otherwise). A licence with an organization limit answers 403 once the server has that many organizations.
 
 **Request body** (`application/json`)
 
@@ -261,7 +261,7 @@ Example 200 response:
 
 `POST /v2/organizations/{org_id}` · Auth: dashboard session · RevenueDot extension
 
-Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). Changing `audit_retention_days`, `seats` or `billing_email` needs an owner. `sso_enforced: true` needs an enabled SSO connection and a verified domain (422 otherwise). `region` must be one of `selectable_regions`. Each field needs its feature in the licence (403 otherwise). Changes are recorded in the organization audit log as `organization_updated`.
+Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). Changing `audit_retention_days`, `seats` or `billing_email` needs an owner. `sso_enforced: true` needs an enabled SSO connection and a verified domain (422 otherwise). `region` must be one of `selectable_regions`. Each field needs its feature in the licence, or on RevenueDot Cloud in the organization's plan (403 otherwise). Changes are recorded in the organization audit log as `organization_updated`.
 
 **Path parameters**
 
@@ -2920,8 +2920,12 @@ The shapes the operations above send and return.
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `object` | `"enterprise"` | yes |  |
-| `mode` | `licensed`, `development`, `invalid` | yes | `licensed`: a valid licence key. `development`: `REVENUEDOT_EE_DEV=true`, for development and testing only. `invalid`: a key that failed or expired more than 14 days ago; no feature is on. |
-| `features` | array of `organizations`, `custom_roles`, `sso`, `scim`, `data_location`, `audit_retention`, `compliance_exports` | yes | The features that are on. |
+| `mode` | `licensed`, `development`, `invalid`, `cloud` | yes | `licensed`: a valid licence key. `development`: `REVENUEDOT_EE_DEV=true`, for development and testing only. `invalid`: a key that failed or expired more than 14 days ago; no feature is on. `cloud`: RevenueDot Cloud, where the account's plan decides the features. |
+| `plan` | `free`, `standard`, `enterprise` | no | RevenueDot Cloud only: the signed-in account's plan. Absent on a self-hosted server. |
+| `features` | array of `organizations`, `custom_roles`, `sso`, `scim`, `data_location`, `audit_retention`, `compliance_exports` | yes | The features that are on. On RevenueDot Cloud, the features of the account's plan. |
+| `locked` | array of object | no | Features that are off, each with the plan that has it. |
+| `locked[].feature` | `organizations`, `custom_roles`, `sso`, `scim`, `data_location`, `audit_retention`, `compliance_exports` | yes |  |
+| `locked[].plan` | `standard`, `enterprise` | yes | The cheapest plan that has the feature: `standard` (upgrade in Billing) or `enterprise` (contact sales). Always `enterprise` on a self-hosted server. |
 | `licensee` | string or null | no | Who the licence is for. |
 | `expires_at` | integer or null | no | When the licence expires. Features keep working for 14 days after it. Epoch milliseconds, or null. |
 | `message` | string or null | no | Why the licence is invalid, or a renewal warning. |
@@ -2946,7 +2950,11 @@ The shapes the operations above send and return.
 | `billing_email` | string or null | no |  |
 | `member_count` | integer | no | Active members. |
 | `project_count` | integer | no |  |
-| `features` | array of string | no | The enterprise features this server's licence turns on. |
+| `features` | array of string | no | The enterprise features this organization has: the licence's on a self-hosted server, its plan's on RevenueDot Cloud. |
+| `plan` | `free`, `standard`, `enterprise` | no | RevenueDot Cloud only: the best plan among the organization's owners, which decides its features. Absent on a self-hosted server. |
+| `locked` | array of object | no | Features the organization lacks (its plan on RevenueDot Cloud, the licence on a self-hosted server), each with the plan that has it. The dashboard still shows them, with that note. |
+| `locked[].feature` | `organizations`, `custom_roles`, `sso`, `scim`, `data_location`, `audit_retention`, `compliance_exports` | yes |  |
+| `locked[].plan` | `standard`, `enterprise` | yes | The cheapest plan that has the feature: `standard` (upgrade in Billing) or `enterprise` (contact sales). Always `enterprise` on a self-hosted server. |
 | `created_at` | integer | no | Creation time. Epoch milliseconds. |
 | `updated_at` | integer | no | Last change. Epoch milliseconds. |
 

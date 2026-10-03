@@ -45622,7 +45622,7 @@ paths:
                           - self-hosted
                       plan:
                         type: string
-                        description: The account plan (`free` on RevenueDot Cloud).
+                        description: "The account plan on RevenueDot Cloud: `free`, `standard` or `enterprise`."
                       billing_ready:
                         type: boolean
                         description: "RevenueDot Cloud: billing is switched on, so the dashboard links the Billing page. Always false on a self-hosted server."
@@ -50607,7 +50607,7 @@ paths:
       tags:
         - Enterprise
       summary: Licence state and features
-      description: "Any signed-in user. The route exists only when the server was started with `REVENUEDOT_LICENSE_KEY` or `REVENUEDOT_EE_DEV=true`; the open-source build answers 404. With an invalid key it still answers, with `mode: invalid` and no features, and no other enterprise route exists."
+      description: "Any signed-in user. On a self-hosted server the route exists only when the server was started with `REVENUEDOT_LICENSE_KEY` or `REVENUEDOT_EE_DEV=true`; the open-source build answers 404. With an invalid key it still answers, with `mode: invalid` and no features, and no other enterprise route exists. On RevenueDot Cloud it answers `mode: cloud` with the account's `plan` and the features that plan has."
       security:
         - dashboardSession: []
       responses:
@@ -50715,7 +50715,7 @@ paths:
       tags:
         - Organizations
       summary: Create an organization
-      description: You become its owner. `region` defaults to this deployment's region. A licence with an organization limit answers 403 once the server has that many organizations.
+      description: You become its owner. On RevenueDot Cloud this needs Cloud Standard or Enterprise. `region` defaults to this deployment's region; another region needs data location in the licence or plan and must be one of `selectable_regions` (403 or 400 otherwise). A licence with an organization limit answers 403 once the server has that many organizations.
       security:
         - dashboardSession: []
       requestBody:
@@ -50847,7 +50847,7 @@ paths:
       tags:
         - Organizations
       summary: Update an organization
-      description: "Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). Changing `audit_retention_days`, `seats` or `billing_email` needs an owner. `sso_enforced: true` needs an enabled SSO connection and a verified domain (422 otherwise). `region` must be one of `selectable_regions`. Each field needs its feature in the licence (403 otherwise). Changes are recorded in the organization audit log as `organization_updated`."
+      description: "Organization owners and admins. When the organization requires single sign-on, people on its verified domains other than owners need a session that began with its SSO (403 otherwise). Changing `audit_retention_days`, `seats` or `billing_email` needs an owner. `sso_enforced: true` needs an enabled SSO connection and a verified domain (422 otherwise). `region` must be one of `selectable_regions`. Each field needs its feature in the licence, or on RevenueDot Cloud in the organization's plan (403 otherwise). Changes are recorded in the organization audit log as `organization_updated`."
       security:
         - dashboardSession: []
       parameters:
@@ -64710,7 +64710,15 @@ components:
             - licensed
             - development
             - invalid
-          description: "`licensed`: a valid licence key. `development`: `REVENUEDOT_EE_DEV=true`, for development and testing only. `invalid`: a key that failed or expired more than 14 days ago; no feature is on."
+            - cloud
+          description: "`licensed`: a valid licence key. `development`: `REVENUEDOT_EE_DEV=true`, for development and testing only. `invalid`: a key that failed or expired more than 14 days ago; no feature is on. `cloud`: RevenueDot Cloud, where the account's plan decides the features."
+        plan:
+          type: string
+          enum:
+            - free
+            - standard
+            - enterprise
+          description: "RevenueDot Cloud only: the signed-in account's plan. Absent on a self-hosted server."
         features:
           type: array
           items:
@@ -64723,7 +64731,32 @@ components:
               - data_location
               - audit_retention
               - compliance_exports
-          description: The features that are on.
+          description: The features that are on. On RevenueDot Cloud, the features of the account's plan.
+        locked:
+          type: array
+          items:
+            type: object
+            properties:
+              feature:
+                type: string
+                enum:
+                  - organizations
+                  - custom_roles
+                  - sso
+                  - scim
+                  - data_location
+                  - audit_retention
+                  - compliance_exports
+              plan:
+                type: string
+                enum:
+                  - standard
+                  - enterprise
+                description: "The cheapest plan that has the feature: `standard` (upgrade in Billing) or `enterprise` (contact sales). Always `enterprise` on a self-hosted server."
+            required:
+              - feature
+              - plan
+          description: Features that are off, each with the plan that has it.
         licensee:
           type:
             - string
@@ -64815,7 +64848,39 @@ components:
           type: array
           items:
             type: string
-          description: The enterprise features this server's licence turns on.
+          description: "The enterprise features this organization has: the licence's on a self-hosted server, its plan's on RevenueDot Cloud."
+        plan:
+          type: string
+          enum:
+            - free
+            - standard
+            - enterprise
+          description: "RevenueDot Cloud only: the best plan among the organization's owners, which decides its features. Absent on a self-hosted server."
+        locked:
+          type: array
+          items:
+            type: object
+            properties:
+              feature:
+                type: string
+                enum:
+                  - organizations
+                  - custom_roles
+                  - sso
+                  - scim
+                  - data_location
+                  - audit_retention
+                  - compliance_exports
+              plan:
+                type: string
+                enum:
+                  - standard
+                  - enterprise
+                description: "The cheapest plan that has the feature: `standard` (upgrade in Billing) or `enterprise` (contact sales). Always `enterprise` on a self-hosted server."
+            required:
+              - feature
+              - plan
+          description: Features the organization lacks (its plan on RevenueDot Cloud, the licence on a self-hosted server), each with the plan that has it. The dashboard still shows them, with that note.
         created_at:
           type: integer
           format: int64

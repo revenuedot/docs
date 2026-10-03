@@ -5,12 +5,12 @@ description: Create a SCIM token, paste it and the base URL into Okta or Microso
 
 # How do I provision RevenueDot users and groups with SCIM?
 
-SCIM is part of [RevenueDot Enterprise](enterprise.md). Your identity provider creates people in your RevenueDot organization, keeps their details current, pushes groups, and deactivates people when they leave. **Group role mappings** turn those groups into project roles. Deactivating someone removes their access to the organization's projects and signs them out at once.
+SCIM is part of [RevenueDot Enterprise](enterprise.md), on Cloud and self-hosted. Cloud Standard does not include it. Your identity provider creates people in your RevenueDot organization, keeps their details current, pushes groups, and deactivates people when they leave. **Group role mappings** turn those groups into project roles. Deactivating someone removes their access to the organization's projects and signs them out at once.
 
 RevenueDot follows SCIM 2.0 ([RFC 7643](https://datatracker.ietf.org/doc/html/rfc7643), [RFC 7644](https://datatracker.ietf.org/doc/html/rfc7644)) and accepts the request forms Okta and Microsoft Entra ID send. RevenueCat offers SCIM only on its Enterprise plan, through WorkOS ([SSO](https://www.revenuecat.com/docs/projects/sso)).
 
 ## Before you start
-- **An Enterprise licence with the `scim` feature,** or development mode ([Turn it on](enterprise.md#turn-it-on)).
+- **On RevenueDot Cloud, Enterprise** for an owner of the organization. **On a self-hosted server, an Enterprise licence key with the `scim` feature,** or development mode ([Turn it on](enterprise.md#turn-it-on)).
 - **A verified email domain.** SCIM only creates people whose email is on a domain your organization verified ([Verify your email domain](single-sign-on.md#verify-your-email-domain)). Anyone else is refused, so an identity provider can never take over someone else's account.
 - **Single sign-on,** so the people SCIM creates can sign in. They get no password ([Single sign-on](single-sign-on.md)).
 - **Self-hosted servers: set `REVENUEDOT_PUBLIC_URL`,** or the base URL shown in the dashboard follows whatever address you opened it on.

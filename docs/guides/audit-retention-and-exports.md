@@ -5,7 +5,7 @@ description: Owners set audit retention from 30 days to 10 years, or forever; an
 
 # How long does RevenueDot keep audit logs, and how do I export signed copies?
 
-**RevenueDot keeps audit logs forever unless an organization sets a retention.** With [RevenueDot Enterprise](enterprise.md), an organization owner picks how long to keep them, from 30 days to 10 years. Organization admins download the audit log and an **access review** as CSV or JSON files, **signed with Ed25519** so an auditor can prove a file came from your server unchanged.
+**A self-hosted server keeps audit logs forever unless an organization sets a retention. RevenueDot Cloud Free and Cloud Standard keep them 90 days.** With [RevenueDot Enterprise](enterprise.md), an organization owner picks how long to keep them, from 30 days to 10 years, or forever (the default for Enterprise organizations). Organization admins download the audit log and an **access review** as CSV or JSON files, **signed with Ed25519** so an auditor can prove a file came from your server unchanged.
 
 RevenueCat keeps a per-project audit log with a CSV export and publishes no retention period ([Audit logs](https://www.revenuecat.com/docs/dashboard-and-metrics/audit-logs)).
 
@@ -30,7 +30,8 @@ Each entry has who did it (a user, a SCIM token, an SSO connection or the system
 2. Under **Retention**, pick **Keep forever** (the default), 90 days, 1 year, 2, 3, 5, 7 or 10 years.
 
 - **Only owners change retention,** because a shorter retention deletes history for good. The API takes any whole number of days from 30 to 3,650, or `null` for forever.
-- **It covers the organization log and the audit logs of every project in the organization.** Projects outside an organization keep their logs forever.
+- **It covers the organization log and the audit logs of every project in the organization.** On a self-hosted server, projects outside an organization keep their logs forever.
+- **On RevenueDot Cloud Free and Cloud Standard,** the hourly job deletes project and organization audit log entries older than 90 days. Enterprise organizations choose their own retention ([which plan has which feature](enterprise.md)).
 - **An hourly job deletes older entries,** up to 5,000 rows a run. When more are left, it runs again a minute later until it has caught up. Each run that deletes something adds an `audit_logs_purged` entry with the number of rows and the cut-off date.
 - Shortening retention in the dashboard asks you to confirm first.
 

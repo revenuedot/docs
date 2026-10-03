@@ -1,34 +1,71 @@
 ---
-title: What does RevenueDot Enterprise add, and how do I turn it on?
-description: Enterprise adds organizations, custom roles, single sign-on, SCIM, data location, audit retention and signed compliance exports. A licence key turns it on; without one the open-source build is unchanged.
+title: Which RevenueDot plan has organizations, SSO and the other team features, and how do I turn them on?
+description: Cloud Standard adds organizations, custom roles and single sign-on. Enterprise adds SCIM, audit retention, compliance exports, data location, the SLA and the licence for self-hosting. Self-hosted servers turn these features on with a licence key, as before.
 ---
 
-# What does RevenueDot Enterprise add, and how do I turn it on?
+# Which RevenueDot plan has organizations, SSO and the other team features, and how do I turn them on?
 
-RevenueDot Enterprise is the paid code in the `ee/` folder of the server. It groups projects into **organizations** and adds **custom roles**, **single sign-on**, **SCIM provisioning**, **data location**, **audit retention** and **signed compliance exports**. You turn it on with a licence key in `REVENUEDOT_LICENSE_KEY`. Without the key, the server never loads `ee/`: no route, page or response changes.
+**Cloud Standard adds organizations, custom roles and single sign-on. Enterprise adds everything else: SCIM, audit retention, signed compliance exports, data location, the SLA and the licence for self-hosting.** The open-source core (projects, the SDK API, the dashboard, the REST API, the built-in Admin, Developer and Viewer roles) is in every plan, and self-hosting it is free under AGPL-3.0 with no limits.
 
-The `ee/` folder is under the RevenueDot Enterprise License, not AGPL-3.0. You may use it for development and testing without paying. Production use needs a RevenueDot Enterprise subscription; contact sales from the [pricing page](https://revenuedot.app/pricing).
+The team features are the code in the `ee/` folder of the server. It is under the RevenueDot Enterprise License, not AGPL-3.0. **On a self-hosted server, every `ee/` feature needs an Enterprise licence key** in `REVENUEDOT_LICENSE_KEY`, exactly as before. Without the key, the server never loads `ee/`: no route, page or response changes. `REVENUEDOT_EE_DEV=true` turns them on for development and testing only. On RevenueDot Cloud you set no key: your plan decides.
 
-## Features
-A licence lists the features it covers. Each one is off unless the licence has it.
+## What each plan includes
 
-| Feature | Name in the licence | What it does | Guide |
+| Feature | Self-host | Cloud Free | Cloud Standard | Enterprise |
+|---|---|---|---|---|
+| Price | Free | $0 | 0.5% of tracked revenue above $10,000 a month, at most $999 a month | From $50,000 a year |
+| Tracked revenue | No limit | Up to $10,000 a month | Up to $1,000,000 a month | No limit |
+| Open-source core: projects, SDK API, dashboard, REST API | Yes | Yes | Yes | Yes |
+| Admin, Developer and Viewer roles | Yes | Yes | Yes | Yes |
+| Project audit log | Kept forever | Kept 90 days | Kept 90 days | Kept as long as you choose |
+| Organizations | With an Enterprise licence key | No | Yes | Yes |
+| Custom roles | With an Enterprise licence key | No | Yes | Yes |
+| Single sign-on (SAML 2.0, OpenID Connect, verified domains, required SSO) | With an Enterprise licence key | No | Yes | Yes |
+| SCIM provisioning | With an Enterprise licence key | No | No | Yes |
+| Audit retention from 30 days to 10 years, or forever | With an Enterprise licence key | No | No | Yes |
+| Signed compliance exports | With an Enterprise licence key | No | No | Yes |
+| Data location settings (US or EU) | With an Enterprise licence key | No | No | Yes; Cloud runs in the US only today |
+| Support | Community | Community and email | Email, first reply within 2 business days | The [SLA](sla.md) response times |
+| Uptime and support SLA | No | No | No | Yes ([SLA](sla.md)) |
+
+Cloud prices and the billing rules are on [Cloud billing](cloud-billing.md). Enterprise is a contract: [contact sales](https://revenuedot.app/contact-sales) or write to [sales@revenuedot.app](mailto:sales@revenuedot.app).
+
+## The features
+Each feature has a name. A self-hosted licence key lists the names it covers, and `GET /v2/enterprise` lists the names that are on.
+
+| Feature | Name | What it does | Guide |
 |---|---|---|---|
 | Organizations | `organizations` | Group projects, members and settings under one organization | This page |
 | Custom roles | `custom_roles` | Roles built from API permissions, for every project or one | [Custom roles](#custom-roles) |
 | Single sign-on | `sso` | SAML 2.0 and OpenID Connect, verified email domains, required SSO | [Single sign-on](single-sign-on.md) |
 | SCIM | `scim` | Your identity provider creates, updates and deactivates people and groups | [SCIM](scim.md) |
-| Data location | `data_location` | A region (US or EU) on each organization and project | [Data location](data-location.md) |
+| Data location | `data_location` | A region (US or EU) recorded on each organization and project. RevenueDot Cloud runs in the US only today, so on Cloud the region is always US | [Data location](data-location.md) |
 | Audit retention | `audit_retention` | Keep audit logs 30 days to 10 years, or forever | [Audit retention and exports](audit-retention-and-exports.md) |
 | Compliance exports | `compliance_exports` | Signed CSV or JSON files of the audit log and an access review | [Audit retention and exports](audit-retention-and-exports.md#compliance-exports) |
 
 How it compares with RevenueCat:
-- **Roles.** RevenueCat has six fixed collaborator roles and no custom roles ([Collaborators](https://www.revenuecat.com/docs/projects/collaborators)). RevenueDot has Admin, Developer and Viewer in the open-source build, and custom roles in Enterprise.
-- **SSO and SCIM.** RevenueCat offers SSO and SCIM on its Enterprise plan only, through WorkOS ([SSO](https://www.revenuecat.com/docs/projects/sso)). RevenueDot's set-up is in the dashboard.
+- **Roles.** RevenueCat has six fixed collaborator roles and no custom roles ([Collaborators](https://www.revenuecat.com/docs/projects/collaborators)). RevenueDot has Admin, Developer and Viewer in every plan, and custom roles from Cloud Standard up.
+- **SSO and SCIM.** RevenueCat offers SSO and SCIM on its Enterprise plan only, through WorkOS ([SSO](https://www.revenuecat.com/docs/projects/sso)). RevenueDot includes single sign-on in Cloud Standard, and you set it up in the dashboard.
 - **Data location.** RevenueCat stores data in the US ([DPA](https://www.revenuecat.com/dpa)).
 
+## How Cloud decides which features an organization gets
+**An organization gets the features of the best plan among its owners.** If one owner is on Cloud Standard, the organization has the Cloud Standard features. If one owner is on Enterprise, it has every feature. The plans of admins and members do not count.
+
+- **Creating an organization on Cloud needs Cloud Standard or Enterprise.** On Cloud Free the dashboard offers the upgrade instead.
+- **Features your plan lacks still show in the dashboard,** with a note: "Part of Cloud Standard. Upgrade in Billing" or "Part of Enterprise. Contact sales".
+- **The API says which plan applies.** On Cloud, organization responses carry `plan` (`free`, `standard` or `enterprise`) and `locked`, the features that plan lacks, each with the plan that has it (for example `{ "feature": "scim", "plan": "enterprise" }`).
+
+### When an organization loses a plan
+This happens when the last owner on Cloud Standard or Enterprise cancels, leaves or stops being an owner.
+
+- **Projects keep working.** Apps, purchases, webhooks and the API are not affected, and everyone with a built-in role keeps it.
+- **The organization becomes read-only.** Its people can still see it, move projects out and delete it, and admins can still delete custom roles, SSO connections, verified domains and SCIM tokens (so a domain can move to another organization). Every other change answers 403 until an owner is back on a plan that has organizations.
+- **People with a custom role get no access** until an organization admin gives them a built-in role (Admin, Developer or Viewer). The custom roles are kept.
+- **Required SSO is no longer enforced,** so people sign in with a password. People who only ever signed in with SSO have no password; they reset it from the sign-in page.
+- **Single sign-on and SCIM settings are kept but switched off.** They work again, unchanged, when an owner is back on a plan that has them.
+
 ## Turn it on
-**Self-hosted.** Add the licence key to `.env` and pass it to the container. The default `docker-compose.yml` does not pass it, so add a `docker-compose.override.yml`, which Compose reads automatically:
+**Self-hosted.** This works exactly as before. Add the Enterprise licence key to `.env` and pass it to the container. The default `docker-compose.yml` does not pass it, so add a `docker-compose.override.yml`, which Compose reads automatically:
 
 ```yaml
 # docker-compose.override.yml
@@ -38,14 +75,22 @@ services:
       REVENUEDOT_LICENSE_KEY: ${REVENUEDOT_LICENSE_KEY}
 ```
 
-Restart the server. The log prints `RevenueDot Enterprise: licensed`. Also set `REVENUEDOT_PUBLIC_URL` to the address people use to open the dashboard; single sign-on needs it ([why](single-sign-on.md#before-you-start)).
+Restart the server. The log prints `RevenueDot Enterprise: licensed`. Also set `REVENUEDOT_PUBLIC_URL` to the address people use to open the dashboard; single sign-on needs it ([why](single-sign-on.md#before-you-start)). For a licence key, [contact sales](https://revenuedot.app/contact-sales).
 
-**RevenueDot Cloud.** The licence key is a setting of RevenueDot's own servers, so you do not set it. To use Enterprise on Cloud, contact sales from the [pricing page](https://revenuedot.app/pricing).
+**RevenueDot Cloud Standard.** Open your account menu → **Billing** and click **Upgrade to Standard**. Below $10,000 of tracked revenue a month it costs $0. See [Cloud billing](cloud-billing.md).
 
-**Check it.** Open the project switcher menu: **Organization settings** appears when organizations are on. **General** shows the licence. The API answers `GET /v2/enterprise` with the mode and the features:
+**RevenueDot Cloud Enterprise.** [Contact sales](https://revenuedot.app/contact-sales). When the contract is signed, RevenueDot marks your account as Enterprise. You set no licence key on Cloud.
+
+**Check it.** Open the project switcher menu: **Organization settings** appears when organizations are on. **General** shows the licence or the plan. The API answers `GET /v2/enterprise` with the mode and the features. A self-hosted server with a key answers:
 
 ```json
 { "object": "enterprise", "mode": "licensed", "features": ["organizations", "custom_roles", "sso", "scim", "data_location", "audit_retention", "compliance_exports"], "licensee": "Acme Inc.", "expires_at": 1822348800000, "message": null }
+```
+
+On RevenueDot Cloud, `mode` is `cloud`, `plan` is your account's plan, and `features` are the features that plan has:
+
+```json
+{ "object": "enterprise", "mode": "cloud", "plan": "standard", "features": ["organizations", "custom_roles", "sso"], "locked": [{ "feature": "scim", "plan": "enterprise" }, { "feature": "data_location", "plan": "enterprise" }, { "feature": "audit_retention", "plan": "enterprise" }, { "feature": "compliance_exports", "plan": "enterprise" }], "licensee": null, "expires_at": null, "message": null }
 ```
 
 ### What the licence key is
@@ -62,7 +107,7 @@ Restart the server. The log prints `RevenueDot Enterprise: licensed`. Also set `
 An organization owns projects. It holds the members, single sign-on, SCIM, custom roles, the default data location, audit retention, seats and a billing email.
 
 1. Open the project switcher menu and click **Organization settings**.
-2. Enter a name and click **Create organization**. You become its owner.
+2. Enter a name and click **Create organization**. You become its owner. On RevenueDot Cloud this needs Cloud Standard or Enterprise.
 3. Open **Projects** and click **Move a project in**.
 
 ### Organization roles
@@ -134,7 +179,7 @@ Organization endpoints take a dashboard session (the `rd_session` cookie from `P
 
 | Task | Request |
 |---|---|
-| Licence state | `GET /v2/enterprise` |
+| Licence or Cloud plan, and the features that are on | `GET /v2/enterprise` |
 | List or create organizations | `GET` or `POST /v2/organizations` |
 | Update an organization | `POST /v2/organizations/{org_id}` |
 | Members | `GET` or `POST /v2/organizations/{org_id}/members`, `POST` or `DELETE .../members/{user_id}` |
