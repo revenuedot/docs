@@ -1,6 +1,6 @@
 ---
 title: Which guide do I need?
-description: Step-by-step guides for stores, web billing, webhooks, integrations, ads, attribution, benchmarks, growth insights, refunds, retention, support, testing, your team, Auth, moving, billing, Enterprise, self-hosting and high availability.
+description: Step-by-step guides for stores, web billing, webhooks, integrations, ads, attribution, benchmarks, growth insights, refunds, retention, support, testing, your team, Auth, moving, billing, Enterprise and its SLA, self-hosting and high availability.
 ---
 
 # Which guide do I need?
@@ -42,6 +42,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Invite teammates to a project and set their roles | [Invite your team](team.md) |
 | Change your email or password, turn on two-factor authentication, sign out sessions, revoke AI assistants, pick summary and anomaly emails, a theme, a week start and a display currency | [Account settings](account-settings.md) |
 | Group projects into an organization, turn on RevenueDot Enterprise, or build custom roles | [Enterprise](enterprise.md) |
+| Know the uptime and support response times RevenueDot Enterprise promises | [Service level agreement](sla.md) |
 | Sign my team in with Okta, Microsoft Entra ID, Google Workspace or any SAML or OpenID Connect provider | [Single sign-on](single-sign-on.md) |
 | Create, update and deactivate people from my identity provider and map its groups to roles | [SCIM](scim.md) |
 | Keep data in the US or the EU | [Data location](data-location.md) |
