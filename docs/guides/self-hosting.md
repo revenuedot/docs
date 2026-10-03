@@ -1,26 +1,28 @@
 ---
 title: How do I self-host RevenueDot?
-description: Run one Docker image (API plus dashboard) next to Postgres with docker compose. Configure it with a .env file, put HTTPS in front, and set REVENUEDOT_SIGNING_KEY if you sign responses.
+description: Run the published image ghcr.io/revenuedot/revenuedot (API plus dashboard) next to Postgres with docker compose. Configure it with a .env file, put HTTPS in front, and set REVENUEDOT_SIGNING_KEY if you sign responses.
 ---
 
 # How do I self-host RevenueDot?
 
-Clone the repository, copy `.env.example` to `.env`, and run `docker compose up -d`. You get one container that serves the SDK API, the REST API, store notifications and the dashboard on port 8787, next to Postgres 16 with a persistent volume. The server applies database migrations itself when it starts, so upgrades are a rebuild and a restart.
+Clone the repository, copy `.env.example` to `.env`, and run `docker compose up -d`. You get one container that serves the SDK API, the REST API, store notifications and the dashboard on port 8787, next to Postgres 16 with a persistent volume. The server applies database migrations itself when it starts, so upgrades are a pull and a restart.
 
 ```bash
 git clone https://github.com/revenuedot/revenuedot.git
 cd revenuedot
 cp .env.example .env          # set POSTGRES_PASSWORD before the first start
-docker compose up -d          # builds the image and starts RevenueDot and Postgres
+docker compose up -d          # pulls ghcr.io/revenuedot/revenuedot and starts RevenueDot and Postgres
 curl http://localhost:8787/v1/health        # {"status":"ok"}
 ```
 
-Open `http://localhost:8787/login` and sign up. **The first account is the owner.** After that, sign-up is closed to everyone except the addresses you [invite to a project](team.md), unless you set `REVENUEDOT_ALLOW_SIGNUP=true`. Set up [email](#email) so password resets, invites and alerts reach people. There is no published image yet; Compose builds it from the source.
+Open `http://localhost:8787/login` and sign up. **The first account is the owner.** After that, sign-up is closed to everyone except the addresses you [invite to a project](team.md), unless you set `REVENUEDOT_ALLOW_SIGNUP=true`. Set up [email](#email) so password resets, invites and alerts reach people.
+
+The image is [`ghcr.io/revenuedot/revenuedot`](https://github.com/revenuedot/revenuedot/pkgs/container/revenuedot), built for amd64 and arm64 on every change to `main` and tagged `latest`, by date (`2026.10.03`) and by commit. `docker pull ghcr.io/revenuedot/revenuedot:latest` needs no account. Compose pulls it; set `REVENUEDOT_IMAGE=ghcr.io/revenuedot/revenuedot:2026.10.03` in `.env` to pin a build, and run `docker compose build` to build the same image from the checkout instead.
 
 ## What runs
 | Piece | What it does |
 |---|---|
-| `revenuedot` container (Node.js 22) | One process: SDK API (`/v1`), REST API (`/v2`), dashboard sign-in (`/auth`), OAuth for MCP clients (`/oauth`), store notifications (`/v1/notifications/...`) and the dashboard's web app. A background job runs every 30 seconds: it records expirations, runs the daily Google Play voided-purchase check, re-checks store credentials, sends webhooks and sends [alert emails](alerts.md) |
+| `revenuedot` container (Node.js 24) | One process: SDK API (`/v1`), REST API (`/v2`), dashboard sign-in (`/auth`), OAuth for MCP clients (`/oauth`), store notifications (`/v1/notifications/...`) and the dashboard's web app. A background job runs every 30 seconds: it records expirations, runs the daily Google Play voided-purchase check, re-checks store credentials, sends webhooks and sends [alert emails](alerts.md) |
 | `db` container (Postgres 16) | Every customer, purchase, event and setting, in the `revenuedot-data` volume |
 
 One container is enough for most apps. To run two or more against the same database, behind a load balancer, see [High availability](high-availability.md): migrations and the background job take Postgres locks, so each webhook and email still goes out once. The server answers `GET /healthz` (process alive) and `GET /readyz` (database reachable, not shutting down) for health checks, and finishes requests in flight when it gets SIGTERM.
@@ -32,6 +34,7 @@ Edit `.env` next to `docker-compose.yml`. Store credentials (Apple keys, Google 
 |---|---|---|
 | `POSTGRES_PASSWORD` | `revenuedot` in Compose | Password of the bundled Postgres. Set it before the first start: it is written into the volume then, and changing it later also needs `ALTER USER` in Postgres |
 | `REVENUEDOT_PORT` | `8787` | Host port for everything |
+| `REVENUEDOT_IMAGE` | `ghcr.io/revenuedot/revenuedot:latest` | The server image. Pin a date tag (`2026.10.03`) or a commit tag so a restart never picks up a newer build than you tested |
 | `REVENUEDOT_ALLOW_SIGNUP` | `false` | `true` lets anyone who reaches the dashboard create an account. Invited addresses can always create one |
 | `REVENUEDOT_SMTP_URL`, `REVENUEDOT_MAIL_FROM`, `REVENUEDOT_MAIL_REPLY_TO`, `REVENUEDOT_PUBLIC_URL` | unset | Outgoing email. See [Email](#email) |
 | `REVENUEDOT_SIGNING_KEY` | unset | Base64 Ed25519 seed. Turns on [response signing](trusted-entitlements.md). Not passed through by the default `docker-compose.yml`; see below |

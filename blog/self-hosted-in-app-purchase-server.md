@@ -73,11 +73,11 @@ You need Docker, Docker Compose, a server with a public IP and a domain name. Th
 git clone https://github.com/revenuedot/revenuedot.git
 cd revenuedot
 cp .env.example .env          # set POSTGRES_PASSWORD before the first start
-docker compose up -d          # builds the image and starts RevenueDot and Postgres
+docker compose up -d          # pulls ghcr.io/revenuedot/revenuedot and starts RevenueDot and Postgres
 curl http://localhost:8787/v1/health        # {"status":"ok"}
 ```
 
-There is no published image yet. Compose builds it from source, so the first start takes a few minutes. The server applies database migrations itself when it starts.
+Compose pulls the published image, `ghcr.io/revenuedot/revenuedot` (amd64 and arm64). The server applies database migrations itself when it starts.
 
 Open `http://localhost:8787/login` and sign up. **The first account is the owner.** After that, sign-up closes to everyone except the people you invite, unless you set `REVENUEDOT_ALLOW_SIGNUP=true`.
 
@@ -161,7 +161,6 @@ Long outages are another matter. New customers cannot finish a purchase in your 
 ## Honest limits
 
 - RevenueDot launched in 2026, so it has far less production history than RevenueCat. Run your own sandbox purchase before you depend on it.
-- There is no published Docker image, so Compose builds from source.
 - Run one server container per database for now.
 - You carry security patches, backups and on-call duty.
 - RevenueCat has years of production use and a [SOC 2 Type II](https://www.revenuecat.com/security-and-compliance) audit. If you need that paper today, check whether you can meet your own review another way.
