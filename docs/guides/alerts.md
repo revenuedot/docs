@@ -10,7 +10,7 @@ RevenueDot emails a project's admins when one of three things breaks: **store no
 ## The three alerts
 | Alert | When it starts | When it ends |
 |---|---|---|
-| **Store notifications failing** | An App Store, Mac App Store or Google Play app's setup health says notifications are **failing**: the newest notification from the store could not be processed (for example a bad signature, another bundle ID or package name, or an invalid purchase token) | The next notification from the store is processed |
+| **Store notifications failing** | An App Store, Mac App Store or Google Play app's setup health says notifications are **failing**: the newest notification the store really sent could not be processed (for example another bundle ID or package name, or an invalid purchase token). Requests without a valid signature are rejected requests and never raise this alert | The next notification from the store is processed |
 | **Webhook failing** | The last 5 delivery attempts to one webhook all failed. Paused webhooks do not alert | A delivery succeeds, or you pause the webhook |
 | **Store credentials failing** | Apple answers 401 to the app's in-app purchase key, or Google answers 401 or 403 to the service account. This counts on any call: receipt checks, store notifications, the Google Play voided-purchases scan and the dashboard's **Check credentials** button | A check with the store succeeds |
 

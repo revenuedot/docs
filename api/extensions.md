@@ -12583,6 +12583,9 @@ One screen of a funnel. Every step has `id` (1-40 lower-case letters, digits, `-
 | `apps[].last_notification_error.type` | string or null | no |  |
 | `apps[].last_notification_error.message` | string | no |  |
 | `apps[].notification_status` | `ready`, `failing`, `received`, `waiting` | no |  |
+| `apps[].rejected_requests` | object | no |  |
+| `apps[].rejected_requests.last_24h` | integer | yes | Requests without a valid signature in the last 24 hours. They never change notification_status. |
+| `apps[].rejected_requests.last` | object or null | yes | The newest one, or null when there was none in 24 hours. |
 | `apps[].credentials_configured` | boolean | no |  |
 | `webhooks` | object | yes |  |
 | `webhooks.total` | integer | no |  |
@@ -12678,6 +12681,11 @@ One screen of a funnel. Every step has `id` (1-40 lower-case letters, digits, `-
 | `last_notification_error` | string or null | no |  |
 | `last_notification_received_at` | integer or null | no | Last notification received. Epoch milliseconds, or null. |
 | `notification_status` | `ready`, `failing`, `received`, `waiting` | yes |  |
+| `rejected_requests` | object | no |  |
+| `rejected_requests.last_24h` | integer | yes | Requests without a valid signature in the last 24 hours. They never change notification_status. |
+| `rejected_requests.last` | object or null | yes | The newest one, or null when there was none in 24 hours. |
+| `rejected_requests.last.at` | integer | no |  |
+| `rejected_requests.last.message` | string | no |  |
 | `last_forward` | object or null | no |  |
 | `last_forward.status` | integer | no | HTTP status of the forward; 0 means no answer. |
 | `last_forward.at` | integer | no |  |

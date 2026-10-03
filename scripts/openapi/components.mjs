@@ -57,6 +57,11 @@ const monetary = obj({
 }, ["currency", "gross", "commission", "tax", "proceeds"]);
 
 const embeddedList = (item) => listOf(item);
+/** Store notification requests that failed authentication; they never change notification_status. */
+const REJECTED_REQUESTS = obj({
+  last_24h: int("Requests without a valid signature in the last 24 hours. They never change notification_status."),
+  last: { type: ["object", "null"], properties: { at: int(), message: str() }, description: "The newest one, or null when there was none in 24 hours." },
+}, ["last_24h", "last"]);
 
 export const schemas = {
   // ---- SDK and REST v1 --------------------------------------------------------------------------------------------
@@ -319,7 +324,8 @@ export const schemas = {
       last_notification_at: nms("Last notification processed for a known purchase (or the store's test)."),
       last_notification_received_at: nms("Last notification received at all."),
       last_notification_error: { type: ["object", "null"], properties: { at: int(), type: nstr(), message: str() } },
-      notification_status: en(["ready", "failing", "received", "waiting"]), credentials_configured: bool(),
+      notification_status: en(["ready", "failing", "received", "waiting"]),
+      rejected_requests: REJECTED_REQUESTS, credentials_configured: bool(),
     })),
     webhooks: obj({
       total: int(), attempted_24h: int(), delivered_24h: int(), failed_24h: int(), pending: int(), delivered_percent_24h: { type: ["number", "null"] },
@@ -333,6 +339,7 @@ export const schemas = {
     notification_url: nstr("The store notification URL for this app (App Store, Google Play, Amazon, Stripe, Paddle, Roku or the Galaxy Store)."), notification_forward_url: nstr("Where notifications are copied during a dual run."),
     last_notification_at: nms("Last notification processed for a known purchase."), last_notification_error: nstr(), last_notification_received_at: nms("Last notification received."),
     notification_status: en(["ready", "failing", "received", "waiting"]),
+    rejected_requests: REJECTED_REQUESTS,
     last_forward: { type: ["object", "null"], properties: { status: int("HTTP status of the forward; 0 means no answer."), at: int() } },
     track_new_purchases: bool("Apply notifications about purchases this server has never seen."),
     allow_unsigned_receipts: bool("Accept StoreKit 1 receipts without the in-app purchase key. Development only."),

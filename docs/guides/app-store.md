@@ -57,7 +57,7 @@ Notifications tell RevenueDot about renewals, cancellations, billing problems an
 
 How RevenueDot answers Apple:
 - **200** for every verified notification, including ones about purchases it has not seen. Those are stored, and applied only when **Track new purchases from server-to-server notifications** is on (`track_new_purchases`).
-- **400** when the signature is invalid, or the notification is for another bundle ID (or another Apple app ID, when you set `app_apple_id`). App Store Connect shows these as failed.
+- **400** when the signature is invalid, or the notification is for another bundle ID (or another Apple app ID, when you set `app_apple_id`). App Store Connect shows these as failed. These are counted as rejected requests and never turn the app's status to failing, because anyone who knows the app ID can send one (any App Store payload Apple signed for another app included).
 - **500** when RevenueDot itself fails. Apple retries.
 
 Check the status any time: `GET /v2/projects/{project_id}/setup_health` lists each app's `notification_status` (`ready`, `failing`, `received` or `waiting`) and the last error. See [store notifications not arriving](../help/store-notifications-not-arriving.md).

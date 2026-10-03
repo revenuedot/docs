@@ -22,6 +22,7 @@ Each app in `apps` carries these fields. The dashboard shows the same on the app
 | `last_notification_at` | The last time a notification was processed for a purchase RevenueDot knows, or was the store's test message |
 | `last_notification_received_at` | The last time anything arrived |
 | `last_notification_error` | The newest failure: `at`, `type` and `message` |
+| `rejected_requests` | Requests that failed authentication in the last 24 hours: `last_24h` (a count) and `last` (`at` and `message`). They never change `notification_status` (below) |
 
 | `notification_status` | What it means | What to do |
 |---|---|---|
@@ -29,6 +30,16 @@ Each app in `apps` carries these fields. The dashboard shows the same on the app
 | `received` | Notifications arrive, but none was for a purchase RevenueDot knows | Normal before the first purchase. Send the store's test notification, or turn on `track_new_purchases` (below) |
 | `failing` | The newest notification failed, and no later one succeeded | Read `last_notification_error.message` |
 | `ready` | A notification was processed for a known purchase, or was the store's test message | Nothing |
+
+Only a notification the store really sent can turn the status `failing`: one with a valid signature (Apple's JWS, Stripe-Signature, Paddle-Signature, Roku's JWS, Samsung's JWT with the IAP public key saved, an SNS signature from the app's topic, or a Pub/Sub push token when `pubsub_audience` is set), or one RevenueDot itself failed to process. A request without a valid signature is a **rejected request**: RevenueDot answers 4xx, keeps it under `rejected_requests` and on the app page ("N rejected requests in the last 24 hours"), and leaves the status alone, because anyone who knows an app ID can post to its URL. Each app keeps at most 30 rejected requests per IP address (or IPv6 /64) and 300 in all per 10 minutes, and rejected requests are deleted after 7 days.
+
+Some setups cannot tell who sent a message, so there a message RevenueDot cannot use (unreadable data, another package, a purchase token, receipt, transaction or purchase the store does not know) is a rejected request too:
+- Google Play without both `pubsub_audience` and `pubsub_service_account` (anyone can get a Google-signed token for any audience from their own Google Cloud project, so only the service account ties a push to yours).
+- Amazon without `sns_topic_arn` saved (the topic RevenueDot pins from the first message could be anyone's).
+- Roku pushes for a channel that is not saved as `roku_channel_id` on one of the project's Roku apps (Roku signs every developer's pushes with one key).
+- Galaxy Store without the IAP public key.
+
+Save those settings to have such messages count as failures. An App Store payload Apple signed for another app (another bundle ID or Apple app ID) is a rejected request too.
 
 The logic is in [`notification-health.ts`](https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/routes/v2/notification-health.ts).
 
@@ -39,9 +50,9 @@ The logic is in [`notification-health.ts`](https://github.com/revenuedot/revenue
 ## Causes and fixes
 1. **The URL is wrong or unreachable.** Copy `notification_url` exactly. It must be the public HTTPS address of your server. Behind a proxy, RevenueDot builds it from `X-Forwarded-Host` and `X-Forwarded-Proto`.
 2. **App Store Connect only has the production URL.** Sandbox purchases need the same URL in the **Sandbox Server URL** field, and the version must be **Version 2** notifications. See [Connect the App Store](../guides/app-store.md).
-3. **The bundle ID does not match.** RevenueDot answers 400 and records "The notification is for bundle id X, not Y." Fix `bundle_id` on the app, or point this bundle's notifications at the right app ID.
+3. **The bundle ID does not match.** RevenueDot answers 400 and counts a rejected request: "The notification is for bundle id X, not Y." Fix `bundle_id` on the app, or point this bundle's notifications at the right app ID.
 4. **The Apple app ID does not match.** If the app has an `app_apple_id` credential, production notifications for another Apple app ID are refused with 400.
-5. **The package name does not match.** RevenueDot answers 200 so Pub/Sub stops redelivering, and records "package X does not match the app's Y". The status turns `failing`. Fix `package_name`, or use a separate topic per app.
+5. **The package name does not match.** RevenueDot answers 200 so Pub/Sub stops redelivering, and records "package X does not match the app's Y". With Pub/Sub push authentication on (`pubsub_audience` and `pubsub_service_account`), the status turns `failing`; otherwise the message is a rejected request. Fix `package_name`, or use a separate topic per app.
 6. **Pub/Sub push authentication fails.** If the app has the `pubsub_audience` credential, every push must carry a Google-signed token for that audience, and, when `pubsub_service_account` is set, from that service account. A missing or wrong token gets HTTP 401 with code 7224. Turn on authentication on the push subscription with the same audience and service account ([Google docs](https://cloud.google.com/pubsub/docs/authenticate-push-subscriptions)), or remove `pubsub_audience`.
 7. **The purchases are unknown to RevenueDot.** A notification for a purchase no app has posted to `/v1/receipts` is stored but not applied, and the status stays `received`. This is normal in a dual run until users open the app. To create those purchases from notifications, set `track_new_purchases`:
    ```bash
@@ -58,16 +69,17 @@ The stores redeliver anything that is not a 2xx. RevenueDot answers so that a st
 | Store | Answer | When |
 |---|---|---|
 | App Store | 200 `{"ok":true}` | The payload verified, including notifications for purchases RevenueDot does not track |
-| App Store | 400 | The payload cannot be verified or belongs to another app: not JSON, no `signedPayload`, a bad signature, another bundle ID or Apple app ID |
+| App Store | 400 | A rejected request: not JSON, no `signedPayload`, a bad signature, or a payload for another bundle ID or Apple app ID. Also a notification for this app whose transaction cannot be used (the status turns `failing`) |
 | App Store | 404 | No App Store app has this ID |
 | App Store | 500 | RevenueDot itself failed; Apple retries |
 | Google Play | 200 with `status` | `processed`, `unknown_purchase`, `ignored` (unreadable data or another package), `invalid_token` or `duplicate` |
 | Google Play | 400, code 7000 | The body is not a Pub/Sub push message |
-| Google Play | 401, code 7224 | The Pub/Sub push token is missing or invalid |
+| Google Play | 401, code 7224 | The Pub/Sub push token is missing or invalid (a rejected request) |
 | Google Play | 404 | No Google Play app has this ID |
 | Google Play | 500 or 503 | A temporary failure at RevenueDot or Google; Pub/Sub retries |
+| Any store but Google Play | 429 | More than 30 rejected requests from one IP address (or IPv6 /64) for this app in 10 minutes, or 300 for the app from all addresses. Past the limit they are not kept. Google Play gets its usual answer instead, so Pub/Sub does not redeliver |
 
-Every notification is stored before it is processed, so you can see it even when it failed. During a dual run, RevenueDot also copies the exact body to the app's `notification_forward_url`. `last_forward` in `GET /v2/projects/{project_id}/apps/{app_id}/store_settings` shows the last forward's HTTP status, where 0 means no answer within 10 seconds. See [Dual run](../migrate/dual-run.md).
+Every notification is stored before it is processed, so you can see it even when it failed. Rejected requests are stored apart, within the limit above. During a dual run, RevenueDot also copies the exact body to the app's `notification_forward_url`. `last_forward` in `GET /v2/projects/{project_id}/apps/{app_id}/store_settings` shows the last forward's HTTP status, where 0 means no answer within 10 seconds. See [Dual run](../migrate/dual-run.md).
 
 ## Related
 - [Connect the App Store](../guides/app-store.md)
