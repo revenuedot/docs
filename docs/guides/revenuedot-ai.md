@@ -85,15 +85,16 @@ RevenueDot AI is off until the server has a model. Set one of these in `.env` an
 
 | Variable | Model used |
 |---|---|
-| `AI_GATEWAY_API_KEY` | Claude Opus 5.5 through the Vercel AI Gateway (`anthropic/claude-opus-5.5`); tried first |
+| `AI_GATEWAY_API_KEY` | GPT-6 Luna through the Vercel AI Gateway (`openai/gpt-6-luna`, medium reasoning); tried first. Paywall and funnel generation use the same model |
 | `ANTHROPIC_API_KEY` | Claude Opus 5.5 (`claude-opus-5-5`) |
 | `OPENAI_API_KEY` | GPT-6 Astra (`gpt-6-astra`); `OPENAI_BASE_URL` for a compatible gateway |
 | `REVENUEDOT_ASSISTANT_MODEL` | Optional: another model id from the same provider (a gateway model id with `AI_GATEWAY_API_KEY`) |
+| `REVENUEDOT_AI_REASONING` | Optional: the reasoning effort with the gateway (`none`, `low`, `medium`, `high`) |
 | `REVENUEDOT_ASSISTANT_CAPS` | Optional JSON caps, for example `{"userTurnsPerDay": 500}` |
 
 Approval cards are signed with `REVENUEDOT_ENCRYPTION_KEY` (or the signing key) when one is set. Conversations and their answers are stored in your Postgres. If you reload while an answer is being written, the page picks it up where it was. If the server restarts mid-answer, the conversation says the answer was interrupted and offers **Retry**.
 
-On RevenueDot Cloud the assistant runs on Claude Opus 5.5 through the Vercel AI Gateway (Workers AI Kimi K2.6 when the gateway is not configured), and each conversation lives in its own Cloudflare Durable Object, so answers survive reloads and deploys.
+On RevenueDot Cloud the assistant runs on GPT-6 Luna through the Vercel AI Gateway, and each conversation lives in its own Cloudflare Durable Object, so answers survive reloads and deploys.
 
 ## The API
 Everything the page does is in the [API reference](../../api/extensions.md) under **RevenueDot AI**: `GET /v2/projects/{project_id}/ai` (status), conversations, `POST …/chat` (an AI SDK UI message stream over Server-Sent Events), `GET …/stream` (resume), files, mentions and the AI setting. To use RevenueDot from ChatGPT, Claude or Cursor instead, see [Connect AI assistants](connect-ai-assistants.md); those tools have the same names.

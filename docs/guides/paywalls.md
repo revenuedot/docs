@@ -116,11 +116,11 @@ Icon and timeline components use 55 built-in icons, served at `/assets/icons/{na
 
 RevenueDot Cloud generates paywalls with GPT-6 Luna through the [Vercel AI Gateway](https://vercel.com/docs/ai-gateway), so you need no key. On a self-hosted server, set one of these environment variables and restart. The server uses the first one it finds:
 
-- `AI_GATEWAY_API_KEY`: a Vercel AI Gateway key. The model is `openai/gpt-6-luna`.
+- `AI_GATEWAY_API_KEY`: a Vercel AI Gateway key. The model is `openai/gpt-6-luna` with medium reasoning, and RevenueDot AI uses the same model.
 - `OPENAI_API_KEY`: OpenAI directly. The model is `gpt-6-luna`, and `OPENAI_BASE_URL` points it at any OpenAI-compatible server.
 - `ANTHROPIC_API_KEY`: the model is `claude-sonnet-4-5`.
 
-`REVENUEDOT_PAYWALL_MODEL` picks another model. With the gateway, give a gateway model id, such as `anthropic/claude-opus-5.5`.
+`REVENUEDOT_PAYWALL_MODEL` picks another model. With the gateway, give a gateway model id, such as `openai/gpt-6-sol`. `REVENUEDOT_PAYWALL_REASONING` sets the reasoning effort (`none`, `low`, `medium`, `high`).
 
 Without a key, the dashboard hides "Generate with AI". Each project can generate one paywall every 5 seconds and 60 a day.
 
