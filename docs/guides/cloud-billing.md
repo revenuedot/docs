@@ -19,7 +19,7 @@ What each plan includes:
 
 - **Cloud Free:** the whole open-source core (projects, the SDK API, the dashboard, the REST API), the Admin, Developer and Viewer roles, and community and email support. The project audit log keeps 90 days.
 - **Cloud Standard:** everything in Cloud Free, plus organizations, custom roles and single sign-on (SAML 2.0 and OpenID Connect, verified domains, required SSO). The audit logs keep 90 days. Email support answers first within 2 business days; this is not an SLA.
-- **Enterprise:** everything in Cloud Standard, plus SCIM, audit retention from 30 days to 10 years (or forever, the default), signed compliance exports, data location settings, the licence for self-hosting, the [SLA](sla.md) and no revenue limit. RevenueDot marks your account as Enterprise when the contract is signed.
+- **Enterprise:** everything in Cloud Standard, plus SCIM, audit retention from 30 days to 10 years (or forever, the default), signed compliance exports, data location settings (Cloud runs in the US only today), the licence for self-hosting, the [SLA](sla.md) and no revenue limit. RevenueDot marks your account as Enterprise when the contract is signed.
 
 On Cloud Free and Cloud Standard, project and organization audit log entries older than 90 days are deleted every hour. An organization gets the features of the best plan among its owners. [Which plan has which feature](enterprise.md) has the full table and what happens when an organization loses a plan.
 

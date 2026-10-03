@@ -188,7 +188,7 @@ const orgPaths = {
     get: ee({ id: "listOrganizations", tag: "Organizations", summary: "Organizations you belong to", source: SRC.orgs,
       responses: { 200: list(ref("Organization"), "Every organization where you are an active member, oldest first.", { object: "list", items: [orgExample], next_page: null, url: "/v2/organizations" }), ...E() } }),
     post: ee({ id: "createOrganization", tag: "Organizations", summary: "Create an organization", source: SRC.orgs,
-      description: "You become its owner. On RevenueDot Cloud this needs Cloud Standard or Enterprise. `region` defaults to this deployment's region. A licence with an organization limit answers 403 once the server has that many organizations.",
+      description: "You become its owner. On RevenueDot Cloud this needs Cloud Standard or Enterprise. `region` defaults to this deployment's region; another region needs data location in the licence or plan and must be one of `selectable_regions` (403 or 400 otherwise). A licence with an organization limit answers 403 once the server has that many organizations.",
       requestBody: json(obj({ name: str(undefined, { minLength: 1, maxLength: 100 }), region: en(REGIONS) }, ["name"]), "", { name: "Acme Inc." }),
       responses: { 201: ok("The new organization.", ref("Organization"), orgExample), ...E(400) } }),
   },

@@ -24,7 +24,7 @@ The team features are the code in the `ee/` folder of the server. It is under th
 | SCIM provisioning | With an Enterprise licence key | No | No | Yes |
 | Audit retention from 30 days to 10 years, or forever | With an Enterprise licence key | No | No | Yes |
 | Signed compliance exports | With an Enterprise licence key | No | No | Yes |
-| Data location settings | With an Enterprise licence key | No | No | Yes |
+| Data location settings (US or EU) | With an Enterprise licence key | No | No | Yes; Cloud runs in the US only today |
 | Support | Community | Community and email | Email, first reply within 2 business days | The [SLA](sla.md) response times |
 | Uptime and support SLA | No | No | No | Yes ([SLA](sla.md)) |
 
@@ -39,7 +39,7 @@ Each feature has a name. A self-hosted licence key lists the names it covers, an
 | Custom roles | `custom_roles` | Roles built from API permissions, for every project or one | [Custom roles](#custom-roles) |
 | Single sign-on | `sso` | SAML 2.0 and OpenID Connect, verified email domains, required SSO | [Single sign-on](single-sign-on.md) |
 | SCIM | `scim` | Your identity provider creates, updates and deactivates people and groups | [SCIM](scim.md) |
-| Data location | `data_location` | A region (US or EU) recorded on each organization and project | [Data location](data-location.md) |
+| Data location | `data_location` | A region (US or EU) recorded on each organization and project. RevenueDot Cloud runs in the US only today, so on Cloud the region is always US | [Data location](data-location.md) |
 | Audit retention | `audit_retention` | Keep audit logs 30 days to 10 years, or forever | [Audit retention and exports](audit-retention-and-exports.md) |
 | Compliance exports | `compliance_exports` | Signed CSV or JSON files of the audit log and an access review | [Audit retention and exports](audit-retention-and-exports.md#compliance-exports) |
 
@@ -59,6 +59,7 @@ How it compares with RevenueCat:
 This happens when the last owner on Cloud Standard or Enterprise cancels, leaves or stops being an owner.
 
 - **Projects keep working.** Apps, purchases, webhooks and the API are not affected, and everyone with a built-in role keeps it.
+- **The organization becomes read-only.** Its people can still see it, move projects out and delete it, and admins can still delete custom roles, SSO connections, verified domains and SCIM tokens (so a domain can move to another organization). Every other change answers 403 until an owner is back on a plan that has organizations.
 - **People with a custom role get no access** until an organization admin gives them a built-in role (Admin, Developer or Viewer). The custom roles are kept.
 - **Required SSO is no longer enforced,** so people sign in with a password. People who only ever signed in with SSO have no password; they reset it from the sign-in page.
 - **Single sign-on and SCIM settings are kept but switched off.** They work again, unchanged, when an owner is back on a plan that has them.
@@ -89,7 +90,7 @@ Restart the server. The log prints `RevenueDot Enterprise: licensed`. Also set `
 On RevenueDot Cloud, `mode` is `cloud`, `plan` is your account's plan, and `features` are the features that plan has:
 
 ```json
-{ "object": "enterprise", "mode": "cloud", "plan": "standard", "features": ["organizations", "custom_roles", "sso"], "licensee": null, "expires_at": null, "message": null }
+{ "object": "enterprise", "mode": "cloud", "plan": "standard", "features": ["organizations", "custom_roles", "sso"], "locked": [{ "feature": "scim", "plan": "enterprise" }, { "feature": "data_location", "plan": "enterprise" }, { "feature": "audit_retention", "plan": "enterprise" }, { "feature": "compliance_exports", "plan": "enterprise" }], "licensee": null, "expires_at": null, "message": null }
 ```
 
 ### What the licence key is

@@ -4551,7 +4551,7 @@ What each plan includes:
 
 - **Cloud Free:** the whole open-source core (projects, the SDK API, the dashboard, the REST API), the Admin, Developer and Viewer roles, and community and email support. The project audit log keeps 90 days.
 - **Cloud Standard:** everything in Cloud Free, plus organizations, custom roles and single sign-on (SAML 2.0 and OpenID Connect, verified domains, required SSO). The audit logs keep 90 days. Email support answers first within 2 business days; this is not an SLA.
-- **Enterprise:** everything in Cloud Standard, plus SCIM, audit retention from 30 days to 10 years (or forever, the default), signed compliance exports, data location settings, the licence for self-hosting, the [SLA](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/sla.md) and no revenue limit. RevenueDot marks your account as Enterprise when the contract is signed.
+- **Enterprise:** everything in Cloud Standard, plus SCIM, audit retention from 30 days to 10 years (or forever, the default), signed compliance exports, data location settings (Cloud runs in the US only today), the licence for self-hosting, the [SLA](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/sla.md) and no revenue limit. RevenueDot marks your account as Enterprise when the contract is signed.
 
 On Cloud Free and Cloud Standard, project and organization audit log entries older than 90 days are deleted every hour. An organization gets the features of the best plan among its owners. [Which plan has which feature](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/enterprise.md) has the full table and what happens when an organization loses a plan.
 
@@ -7352,7 +7352,7 @@ The team features are the code in the `ee/` folder of the server. It is under th
 | SCIM provisioning | With an Enterprise licence key | No | No | Yes |
 | Audit retention from 30 days to 10 years, or forever | With an Enterprise licence key | No | No | Yes |
 | Signed compliance exports | With an Enterprise licence key | No | No | Yes |
-| Data location settings | With an Enterprise licence key | No | No | Yes |
+| Data location settings (US or EU) | With an Enterprise licence key | No | No | Yes; Cloud runs in the US only today |
 | Support | Community | Community and email | Email, first reply within 2 business days | The [SLA](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/sla.md) response times |
 | Uptime and support SLA | No | No | No | Yes ([SLA](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/sla.md)) |
 
@@ -7367,7 +7367,7 @@ Each feature has a name. A self-hosted licence key lists the names it covers, an
 | Custom roles | `custom_roles` | Roles built from API permissions, for every project or one | [Custom roles](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/enterprise.md#custom-roles) |
 | Single sign-on | `sso` | SAML 2.0 and OpenID Connect, verified email domains, required SSO | [Single sign-on](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/single-sign-on.md) |
 | SCIM | `scim` | Your identity provider creates, updates and deactivates people and groups | [SCIM](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/scim.md) |
-| Data location | `data_location` | A region (US or EU) recorded on each organization and project | [Data location](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/data-location.md) |
+| Data location | `data_location` | A region (US or EU) recorded on each organization and project. RevenueDot Cloud runs in the US only today, so on Cloud the region is always US | [Data location](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/data-location.md) |
 | Audit retention | `audit_retention` | Keep audit logs 30 days to 10 years, or forever | [Audit retention and exports](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/audit-retention-and-exports.md) |
 | Compliance exports | `compliance_exports` | Signed CSV or JSON files of the audit log and an access review | [Audit retention and exports](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/audit-retention-and-exports.md#compliance-exports) |
 
@@ -7387,6 +7387,7 @@ How it compares with RevenueCat:
 This happens when the last owner on Cloud Standard or Enterprise cancels, leaves or stops being an owner.
 
 - **Projects keep working.** Apps, purchases, webhooks and the API are not affected, and everyone with a built-in role keeps it.
+- **The organization becomes read-only.** Its people can still see it, move projects out and delete it, and admins can still delete custom roles, SSO connections, verified domains and SCIM tokens (so a domain can move to another organization). Every other change answers 403 until an owner is back on a plan that has organizations.
 - **People with a custom role get no access** until an organization admin gives them a built-in role (Admin, Developer or Viewer). The custom roles are kept.
 - **Required SSO is no longer enforced,** so people sign in with a password. People who only ever signed in with SSO have no password; they reset it from the sign-in page.
 - **Single sign-on and SCIM settings are kept but switched off.** They work again, unchanged, when an owner is back on a plan that has them.
@@ -7417,7 +7418,7 @@ Restart the server. The log prints `RevenueDot Enterprise: licensed`. Also set `
 On RevenueDot Cloud, `mode` is `cloud`, `plan` is your account's plan, and `features` are the features that plan has:
 
 ```json
-{ "object": "enterprise", "mode": "cloud", "plan": "standard", "features": ["organizations", "custom_roles", "sso"], "licensee": null, "expires_at": null, "message": null }
+{ "object": "enterprise", "mode": "cloud", "plan": "standard", "features": ["organizations", "custom_roles", "sso"], "locked": [{ "feature": "scim", "plan": "enterprise" }, { "feature": "data_location", "plan": "enterprise" }, { "feature": "audit_retention", "plan": "enterprise" }, { "feature": "compliance_exports", "plan": "enterprise" }], "licensee": null, "expires_at": null, "message": null }
 ```
 
 ### What the licence key is
@@ -33790,7 +33791,7 @@ Example 200 response:
 
 `POST /v2/organizations` · Auth: dashboard session · RevenueDot extension
 
-You become its owner. On RevenueDot Cloud this needs Cloud Standard or Enterprise. `region` defaults to this deployment's region. A licence with an organization limit answers 403 once the server has that many organizations.
+You become its owner. On RevenueDot Cloud this needs Cloud Standard or Enterprise. `region` defaults to this deployment's region; another region needs data location in the licence or plan and must be one of `selectable_regions` (403 or 400 otherwise). A licence with an organization limit answers 403 once the server has that many organizations.
 
 **Request body** (`application/json`)
 
