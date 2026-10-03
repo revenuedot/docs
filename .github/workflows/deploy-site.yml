@@ -50,6 +50,17 @@ jobs:
           path: revenuedot/apps/site/node_modules/.astro
           key: astro-${{ hashFiles('revenuedot/apps/site/src/**', 'revenuedot/apps/site/public/**', 'revenuedot/apps/site/astro.config.mjs', 'docs/blog/assets/**') }}
           restore-keys: astro-
+      # revenuedot/revenuedot deploys the same Worker, and GitHub's concurrency groups do not span repositories. A build
+      # from an older checkout would roll back a newer site deploy and drop the Worker secrets that newer code declares
+      # (this happened on 2026-10-03), so build from revenuedot's main as it is right before deploying.
+      - name: Build from revenuedot's newest main
+        working-directory: revenuedot
+        run: |
+          git fetch -q --depth=1 origin main
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse FETCH_HEAD)" ]; then
+            git checkout -q FETCH_HEAD && pnpm install --frozen-lockfile
+          fi
+          git log -1 --format='revenuedot %h %s'
       - run: pnpm --filter site run deploy
         working-directory: revenuedot
       - name: Live check
