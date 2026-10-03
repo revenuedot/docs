@@ -11,7 +11,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (288)
+## Operations on this page (289)
 
 - **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects), [Update account settings](#update-account-settings), [Email a password reset link](#email-a-password-reset-link), [Check a password reset link](#check-a-password-reset-link), [Set a new password from a reset link](#set-a-new-password-from-a-reset-link), [Confirm an email address](#confirm-an-email-address), [Send a new confirmation email](#send-a-new-confirmation-email), [Look up an invite](#look-up-an-invite), [Accept an invite](#accept-an-invite)
 - **Account settings**: [Finish a sign-in with a two-factor code](#finish-a-sign-in-with-a-two-factor-code), [Sign out of every session](#sign-out-of-every-session), [Change the account's email](#change-the-accounts-email), [Cancel a waiting email change](#cancel-a-waiting-email-change), [Confirm an email change](#confirm-an-email-change), [Change the password](#change-the-password), [List signed-in sessions](#list-signed-in-sessions), [Sign out one session](#sign-out-one-session), [Sign out every other session](#sign-out-every-other-session), [Start two-factor setup](#start-two-factor-setup), [Turn two-factor authentication on](#turn-two-factor-authentication-on), [Turn two-factor authentication off](#turn-two-factor-authentication-off), [Make new recovery codes](#make-new-recovery-codes), [List OAuth tokens you granted](#list-oauth-tokens-you-granted), [Revoke an OAuth token](#revoke-an-oauth-token), [List connected Stripe accounts](#list-connected-stripe-accounts), [List your projects with role and plan](#list-your-projects-with-role-and-plan), [What deleting the account would do](#what-deleting-the-account-would-do), [Delete the account](#delete-the-account), [Get notification choices](#get-notification-choices), [Open an email's unsubscribe link](#open-an-emails-unsubscribe-link), [Unsubscribe from one email](#unsubscribe-from-one-email), [Choose a project's emails](#choose-a-projects-emails), [The display currency's exchange rate](#the-display-currencys-exchange-rate)
@@ -21,7 +21,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Blocked customers**: [List blocked app user ids](#list-blocked-app-user-ids), [Block an app user id](#block-an-app-user-id), [Is this app user id blocked?](#is-this-app-user-id-blocked), [Unblock an app user id](#unblock-an-app-user-id)
 - **Verified Metrics**: [Verified Metrics page settings](#verified-metrics-page-settings), [Save Verified Metrics page settings](#save-verified-metrics-page-settings), [Whether a slug is free](#whether-a-slug-is-free), [Publish the page](#publish-the-page), [Unpublish the page](#unpublish-the-page), [The public Verified Metrics page](#the-public-verified-metrics-page), [The page's numbers as JSON](#the-pages-numbers-as-json), [The page's project icon](#the-pages-project-icon), [The page's 1200×630 link preview](#the-pages-1200630-link-preview)
 - **Auth**: [Auth on or off](#auth-on-or-off), [Turn Auth or anonymous sign-in on or off](#turn-auth-or-anonymous-sign-in-on-or-off), [List identity providers](#list-identity-providers), [Add a Firebase or OpenID Connect provider](#add-a-firebase-or-openid-connect-provider), [Get an identity provider](#get-an-identity-provider), [Update or turn off an identity provider](#update-or-turn-off-an-identity-provider), [Delete an identity provider](#delete-an-identity-provider), [Check an ID token without signing in](#check-an-id-token-without-signing-in), [List signed-in identities](#list-signed-in-identities), [Read a signed-in user's balances and entitlements by identity](#read-a-signed-in-users-balances-and-entitlements-by-identity), [Unlink an identity and sign it out](#unlink-an-identity-and-sign-it-out)
-- **Store setup**: [Store setup state of an app](#store-setup-state-of-an-app), [Download the sample app for this app](#download-the-sample-app-for-this-app), [Check store credentials with the store](#check-store-credentials-with-the-store), [Paddle: create the notification destination (Apply in Paddle)](#paddle-create-the-notification-destination-apply-in-paddle), [Extend every active App Store subscriber of a product](#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](#status-of-a-mass-extension), [Setup health](#setup-health)
+- **Store setup**: [Store setup state of an app](#store-setup-state-of-an-app), [Download the sample app for this app](#download-the-sample-app-for-this-app), [Check store credentials with the store](#check-store-credentials-with-the-store), [Check the App Store Connect API key with Apple](#check-the-app-store-connect-api-key-with-apple), [Paddle: create the notification destination (Apply in Paddle)](#paddle-create-the-notification-destination-apply-in-paddle), [Extend every active App Store subscriber of a product](#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](#status-of-a-mass-extension), [Setup health](#setup-health)
 - **Store prices and product editor**: [List store prices](#list-store-prices), [Read an app's store prices again](#read-an-apps-store-prices-again), [Download a product file](#download-a-product-file), [List product files](#list-product-files), [Upload a product file](#upload-a-product-file), [Get a product file](#get-a-product-file), [Change a product file's options](#change-a-product-files-options), [Discard a product file](#discard-a-product-file), [Commit a product file to the store](#commit-a-product-file-to-the-store), [Retry the failed rows of a product file](#retry-the-failed-rows-of-a-product-file)
 - **API keys**: [List secret keys](#list-secret-keys), [Create a secret key](#create-a-secret-key), [Delete a secret key](#delete-a-secret-key)
 - **Webhook deliveries**: [Send a TEST event to one webhook](#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](#whether-each-webhook-is-enabled), [Delivery log of a webhook](#delivery-log-of-a-webhook), [One delivery: what was sent and every attempt](#one-delivery-what-was-sent-and-every-attempt), [Retry a delivery now](#retry-a-delivery-now)
@@ -3107,6 +3107,62 @@ Example 200 response:
   "valid": false,
   "message": "No in-app purchase key yet. Add the .p8 file, the key ID and the issuer ID.",
   "checked_at": 1790801342700
+}
+```
+
+### Check the App Store Connect API key with Apple
+
+`POST /v2/projects/{project_id}/apps/{app_id}/actions/verify_app_store_connect_key` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:apps:read_write`
+
+Checks the App Store Connect API key that Import products and the product editor use: it signs a token, finds the app by its bundle ID and reads its products. Read-only at Apple; the result is not stored. Values in the body are checked before you save them; missing values fall back to the saved ones. Only for App Store and Mac App Store apps (400 otherwise). Needs write access because the saved key with another bundle ID could describe any app of the developer's Apple team.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `app_id` | string | yes | App id (app...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `bundle_id` | string or null | no |  |
+| `app_store_connect_api_key` | string or null | no | The .p8 file's contents. |
+| `app_store_connect_api_key_id` | string or null | no |  |
+| `app_store_connect_api_key_issuer` | string or null | no |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID/actions/verify_app_store_connect_key" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+**Responses**
+
+- **200**: The result. Returns [CredentialsCheck](#credentialscheck).
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "credentials_check",
+  "app_id": "appugfw01uy",
+  "store": "app_store",
+  "key": "app_store_connect_api_key",
+  "status": "valid",
+  "valid": true,
+  "message": "Key 2X9R4HXF34 works: it sees Scanner (Apple ID 6478123456) and can read its 1 subscription group and 3 in-app purchases.",
+  "checked_at": 1790801342700,
+  "app_store_app_id": "6478123456",
+  "app_name": "Scanner",
+  "subscription_groups": 1,
+  "in_app_purchases": 3
 }
 ```
 
