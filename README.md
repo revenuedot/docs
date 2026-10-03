@@ -71,6 +71,14 @@ npm run check      # OpenAPI validation, drift against the server code, page fro
 ## Writing rules
 Question-style titles, one topic per page, the answer first, code before prose, real responses, stable URLs. Every page starts with frontmatter (`title`, `description`). Plain English: active voice, one idea per sentence, no jargon. Say "works with the RevenueCat SDK"; never imply an affiliation. Every claim about RevenueCat or another vendor links to its source. Every blog post ends with the same "About RevenueDot" paragraph. API reference pages are generated: edit `scripts/openapi/*.mjs`, then run `npm run build`.
 
+## Use with your coding agent
+
+Coding agents can read this repository on demand, so they use the right package, imports and API:
+
+- **Context7:** https://context7.com/revenuedot/docs
+- **DeepWiki:** https://deepwiki.com/revenuedot/docs
+- **GitMCP:** https://gitmcp.io/revenuedot/docs
+
 ## License
 Text CC BY 4.0, code samples MIT. See [LICENSE](LICENSE).
 
