@@ -136,7 +136,7 @@ Notifications tell RevenueDot about renewals, cancellations, billing problems an
 
 How RevenueDot answers Apple:
 - **200** for every verified notification, including ones about purchases it has not seen. Those are stored, and applied only when **Track new purchases from server-to-server notifications** is on (`track_new_purchases`).
-- **400** when the signature is invalid, or the notification is for another bundle ID (or another Apple app ID, when you set `app_apple_id`). App Store Connect shows these as failed.
+- **400** when the signature is invalid, or the notification is for another bundle ID (or another Apple app ID, when you set `app_apple_id`). App Store Connect shows these as failed. A request with no valid Apple signature is counted as a rejected request and never turns the app's status to failing, because anyone who knows the app ID can send one.
 - **500** when RevenueDot itself fails. Apple retries.
 
 Check the status any time: `GET /v2/projects/{project_id}/setup_health` lists each app's `notification_status` (`ready`, `failing`, `received` or `waiting`) and the last error. See [store notifications not arriving](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/store-notifications-not-arriving.md).
@@ -3003,7 +3003,7 @@ RevenueDot emails a project's admins when one of three things breaks: **store no
 ## The three alerts
 | Alert | When it starts | When it ends |
 |---|---|---|
-| **Store notifications failing** | An App Store, Mac App Store or Google Play app's setup health says notifications are **failing**: the newest notification from the store could not be processed (for example a bad signature, another bundle ID or package name, or an invalid purchase token) | The next notification from the store is processed |
+| **Store notifications failing** | An App Store, Mac App Store or Google Play app's setup health says notifications are **failing**: the newest notification the store really sent could not be processed (for example another bundle ID or package name, or an invalid purchase token). Requests without a valid signature are rejected requests and never raise this alert | The next notification from the store is processed |
 | **Webhook failing** | The last 5 delivery attempts to one webhook all failed. Paused webhooks do not alert | A delivery succeeds, or you pause the webhook |
 | **Store credentials failing** | Apple answers 401 to the app's in-app purchase key, or Google answers 401 or 403 to the service account. This counts on any call: receipt checks, store notifications, the Google Play voided-purchases scan and the dashboard's **Check credentials** button | A check with the store succeeds |
 
