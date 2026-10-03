@@ -13614,7 +13614,7 @@ paths:
       tags:
         - Paywalls
       summary: Whether the AI generator is available
-      description: RevenueDot Cloud uses Workers AI. A self-hosted server needs OPENAI_API_KEY or ANTHROPIC_API_KEY; without either, `available` is false.
+      description: RevenueDot Cloud uses GPT-6 Luna through the Vercel AI Gateway. A self-hosted server needs AI_GATEWAY_API_KEY, OPENAI_API_KEY or ANTHROPIC_API_KEY; without one, `available` is false.
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -13666,7 +13666,7 @@ paths:
       tags:
         - Paywalls
       summary: Generate a paywall with AI
-      description: Asks the language model for a paywall, repairs its answer into components the SDKs decode and returns it without saving. Save it with `POST /paywalls`. One generation every 5 seconds and 60 a day per project.
+      description: Designs a paywall with the language model and returns it without saving. The model first reads the prompt into a brief (plans, trial, benefits, look), then designs the paywall; a checker holds the design to the brief and sends problems back for up to two fixes. The result always passes validation. Save it with `POST /paywalls`. One generation every 5 seconds and 60 a day per project.
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -13733,26 +13733,71 @@ paths:
                     type: array
                     items:
                       type: string
+                      description: What was changed automatically or in a fix round.
                   warnings:
                     type: array
                     items:
                       type: object
                       properties:
-                        path:
+                        code:
                           type: string
-                          description: JSON path, such as components_config.base.stack.components[2].font_weight.
+                        severity:
+                          type: string
+                          enum:
+                            - error
+                            - warning
                         message:
                           type: string
-                        component_id:
-                          type: string
-                          description: The component the problem is in.
                       required:
-                        - path
+                        - code
+                        - severity
                         - message
+                    description: What the checker still flags in the result.
+                  notes:
+                    type: array
+                    items:
+                      type: string
+                    description: Notes for the developer, such as setting up the free trial in the stores.
+                  preview_trials:
+                    type: object
+                    additionalProperties:
+                      type: string
+                    description: Packages that have the free trial the prompt asks for, with its ISO 8601 length (P7D).
+                  steps:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          enum:
+                            - brief
+                            - packages
+                            - draft
+                            - check
+                            - fix
+                            - translate
+                        status:
+                          type: string
+                          enum:
+                            - done
+                            - skipped
+                            - error
+                        detail:
+                          type:
+                            - string
+                            - "null"
+                      required:
+                        - id
+                        - status
+                        - detail
+                    description: The steps the designer ran.
                   provider:
                     type: string
+                    description: The provider that answered, e.g. Vercel AI Gateway.
                   model:
                     type: string
+                    description: The model that answered, e.g. openai/gpt-6-luna.
                 required:
                   - object
                   - components_config
@@ -13760,6 +13805,9 @@ paths:
                   - default_locale
                   - fixes
                   - warnings
+                  - notes
+                  - preview_trials
+                  - steps
                   - provider
                   - model
         "400":
@@ -33066,12 +33114,12 @@ paths:
                     type:
                       - string
                       - "null"
-                    description: Workers AI, Anthropic or OpenAI.
+                    description: Vercel AI Gateway, Workers AI, Anthropic or OpenAI.
                   model:
                     type:
                       - string
                       - "null"
-                    description: The model id, e.g. @cf/moonshotai/kimi-k2.6, claude-opus-5-5, gpt-6-astra.
+                    description: The model id, e.g. anthropic/claude-opus-5.5, @cf/moonshotai/kimi-k2.6, claude-opus-5-5, gpt-6-astra.
                   runtime:
                     type: string
                     enum:

@@ -110,16 +110,21 @@ Images and fonts are stored with your project. RevenueDot serves them from `/ass
 
 ### Icons
 
-Icon and timeline components use 44 built-in icons, served at `/assets/icons/{name}.png` (96 × 96, tinted by the SDK) and `/assets/icons/{name}.svg`. Their names: check, check_circle, x, star, sparkles, lock, unlock, bell, crown, shield, shield_check, zap, heart, gift, clock, calendar, calendar_check, cloud, infinity, chart, trending_up, users, user, download, camera, music, book, globe, moon, sun, flame, target, leaf, dumbbell, mic, image, wand, percent, tag, no_ads, sync, devices, headphones, trophy.
+Icon and timeline components use 55 built-in icons, served at `/assets/icons/{name}.png` (96 × 96, tinted by the SDK) and `/assets/icons/{name}.svg`. Their names: check, check_circle, x, star, sparkles, lock, unlock, bell, crown, shield, shield_check, zap, heart, gift, clock, calendar, calendar_check, cloud, infinity, chart, trending_up, users, user, download, camera, music, book, globe, moon, sun, flame, target, leaf, dumbbell, mic, image, wand, percent, tag, no_ads, sync, devices, headphones, trophy, credit_card, chat, pencil, search, wind, sliders, layers, smile, file_text, palette, rocket.
 
 ## AI on a self-hosted server
 
-RevenueDot Cloud generates paywalls with Cloudflare Workers AI, so you need no key. On a self-hosted server, set one of these environment variables and restart:
+RevenueDot Cloud generates paywalls with GPT-6 Luna through the [Vercel AI Gateway](https://vercel.com/docs/ai-gateway), so you need no key. On a self-hosted server, set one of these environment variables and restart. The server uses the first one it finds:
 
-- `OPENAI_API_KEY` (model `gpt-4.1-mini`, or set `REVENUEDOT_AI_MODEL`; `OPENAI_BASE_URL` points it at any OpenAI-compatible server)
-- `ANTHROPIC_API_KEY` (model `claude-sonnet-4-5`, or set `REVENUEDOT_AI_MODEL`)
+- `AI_GATEWAY_API_KEY`: a Vercel AI Gateway key. The model is `openai/gpt-6-luna`.
+- `OPENAI_API_KEY`: OpenAI directly. The model is `gpt-6-luna`, and `OPENAI_BASE_URL` points it at any OpenAI-compatible server.
+- `ANTHROPIC_API_KEY`: the model is `claude-sonnet-4-5`.
 
-Without either, the dashboard hides "Generate with AI". Each project can generate one paywall every 5 seconds and 60 a day. The answer is always checked and repaired before you see it, so it decodes in the SDK.
+`REVENUEDOT_PAYWALL_MODEL` picks another model. With the gateway, give a gateway model id, such as `anthropic/claude-opus-5.5`.
+
+Without a key, the dashboard hides "Generate with AI". Each project can generate one paywall every 5 seconds and 60 a day.
+
+The model works in two steps. It first reads your description into a brief: plan order, the highlighted plan, the trial, the benefits and the look. Then it designs the paywall. A checker holds the design to the brief: plan order, trial wording, typed prices and text contrast. Problems go back to the model for a fix before you see the result. The result always decodes in the SDK. The dialog names the model that answered and lists what you still need to set up, such as the free trial on the yearly product in the stores.
 
 ## Use the API
 

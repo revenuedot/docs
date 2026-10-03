@@ -9982,7 +9982,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/validate" -H "
 
 `GET /v2/projects/{project_id}/paywalls/ai` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`
 
-RevenueDot Cloud uses Workers AI. A self-hosted server needs OPENAI_API_KEY or ANTHROPIC_API_KEY; without either, `available` is false.
+RevenueDot Cloud uses GPT-6 Luna through the Vercel AI Gateway. A self-hosted server needs AI_GATEWAY_API_KEY, OPENAI_API_KEY or ANTHROPIC_API_KEY; without one, `available` is false.
 
 **Path parameters**
 
@@ -10007,7 +10007,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/ai" -H "Authorization:
 
 `POST /v2/projects/{project_id}/paywalls/generate` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
 
-Asks the language model for a paywall, repairs its answer into components the SDKs decode and returns it without saving. Save it with `POST /paywalls`. One generation every 5 seconds and 60 a day per project.
+Designs a paywall with the language model and returns it without saving. The model first reads the prompt into a brief (plans, trial, benefits, look), then designs the paywall; a checker holds the design to the brief and sends problems back for up to two fixes. The result always passes validation. Save it with `POST /paywalls`. One generation every 5 seconds and 60 a day per project.
 
 **Path parameters**
 
