@@ -368,7 +368,7 @@ export const schemas = {
   }, ["object", "app_id", "type", "api_origin", "notification_status", "credentials"]),
   CredentialsCheck: obj({
     object: { type: "string", const: "credentials_check" }, app_id: str(), store: str(), status: en(["valid", "invalid", "unreachable"]), valid: bool(),
-    message: str("What to do next, in plain words."), checked_at: ms("Checked at."), key_id: str(), client_email: nstr(), mode: en(["live", "test"], "Stripe: the key's mode."),
+    message: str("What to do next, in plain words."), checked_at: ms("Checked at."), key: str("App Store Connect key check only: which key was checked."), key_id: str(), client_email: nstr(), mode: en(["live", "test"], "Stripe: the key's mode."),
     environment: en(["live", "sandbox"], "Paddle: the environment that accepted the key."), service_account_id: str("Galaxy Store: the service account checked."),
   }, ["object", "app_id", "store", "status", "valid", "message", "checked_at"]),
   MassExtension: obj({

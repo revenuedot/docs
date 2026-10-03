@@ -514,6 +514,12 @@ On RevenueDot Cloud the admin needs a confirmed email address. A project can sen
         { object: "notification_settings", app_id: "app4f1x9k2m", store: "paddle", notification_setting_id: "ntfset_01h8d3a0kq7m2x9c4v6b1n5p3r", destination: "https://api.revenuedot.app/v1/notifications/paddle/app4f1x9k2m", subscribed_events: ["subscription.created", "subscription.updated", "transaction.completed", "adjustment.created"], secret_saved: true }),
         ...v2Errors(400, 401, 403, 404, 422) } }),
   },
+  [`${P}/apps/{app_id}/actions/verify_app_store_connect_key`]: {
+    post: op({ id: "verifyAppStoreConnectKey", tag: "Store setup", summary: "Check the App Store Connect API key with Apple", security: SECRET, source: R.setup, extension: true, scopes: ["project_configuration:apps:read_write"], parameters: [project, param("AppId")],
+      description: "For App Store and Mac App Store apps. Makes one read-only call to the App Store Connect API (used by Import products and the product editor) and does not store anything. Values in the body are checked before you save them; missing values fall back to the saved ones. Needs write access because the saved key with another `bundle_id` in the body would describe any app of the developer's Apple team. Other app types answer 400.",
+      requestBody: body(obj({ bundle_id: nstr(), app_store_connect_api_key: nstr(), app_store_connect_api_key_id: nstr(), app_store_connect_api_key_issuer: nstr() }), {}, false),
+      responses: { 200: ok("The result.", ref("CredentialsCheck"), { object: "credentials_check", app_id: "appugfw01uy", store: "app_store", key: "app_store_connect_api_key", status: "valid", valid: true, message: "App Store Connect accepted the key.", checked_at: 1790801342700 }), ...v2Errors(400, 401, 403, 404) } }),
+  },
   [`${P}/apps/{app_id}/actions/mass_extend`]: {
     post: op({ id: "massExtend", tag: "Store setup", summary: "Extend every active App Store subscriber of a product", security: SECRET, source: R.setup, extension: true, scopes: ["customer_information:subscriptions:read_write"], parameters: [project, param("AppId")],
       description: "Asks Apple to extend renewal dates for all active subscribers of `product_id`. Apple then sends one notification per subscription, which records SUBSCRIPTION_EXTENDED.",
