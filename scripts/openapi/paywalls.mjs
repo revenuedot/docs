@@ -124,14 +124,22 @@ export const paywallPaths = {
   },
   [`${P}/paywalls/ai`]: {
     get: op({ id: "getPaywallAi", tag: "Paywalls", summary: "Whether the AI generator is available", security: SECRET, source: R, extension: true, scopes: READ, parameters: [project],
-      description: "RevenueDot Cloud uses Workers AI. A self-hosted server needs OPENAI_API_KEY or ANTHROPIC_API_KEY; without either, `available` is false.",
+      description: "RevenueDot Cloud uses GPT-6 Luna through the Vercel AI Gateway. A self-hosted server needs AI_GATEWAY_API_KEY, OPENAI_API_KEY or ANTHROPIC_API_KEY; without one, `available` is false.",
       responses: { 200: ok("The generator.", obj({ object: en(["paywall_ai"]), available: bool(), provider: nstr(), model: nstr(), max_prompt_length: int() }, ["object", "available", "provider", "model", "max_prompt_length"])), ...E(404) } }),
   },
   [`${P}/paywalls/generate`]: {
     post: op({ id: "generatePaywall", tag: "Paywalls", summary: "Generate a paywall with AI", security: SECRET, source: R, extension: true, scopes: WRITE, parameters: [project],
-      description: "Asks the language model for a paywall, repairs its answer into components the SDKs decode and returns it without saving. Save it with `POST /paywalls`. One generation every 5 seconds and 60 a day per project.",
+      description: "Designs a paywall with the language model and returns it without saving. The model first reads the prompt into a brief (plans, trial, benefits, look), then designs the paywall; a checker holds the design to the brief and sends problems back for up to two fixes. The result always passes validation. Save it with `POST /paywalls`. One generation every 5 seconds and 60 a day per project.",
       requestBody: body(obj({ prompt: str(undefined, { minLength: 3, maxLength: 2000 }), app_name: str(), brand_colors: arr(str()), offering_id: nstr(), locale: str() }, ["prompt"]), { prompt: "A calm sleep app, explain the 7-day trial, yearly first", app_name: "Calm", brand_colors: ["#0f766e"], offering_id: "ofrngm2u3h89blc" }),
-      responses: { 200: ok("A paywall draft.", obj({ object: en(["paywall_generation"]), name: nstr(), ...docProps, fixes: arr(str()), warnings: arr(issue), provider: str(), model: str() }, ["object", "components_config", "components_localizations", "default_locale", "fixes", "warnings", "provider", "model"])), ...v2Errors(400, 401, 403, 404, 429, 502, 503) } }),
+      responses: { 200: ok("A paywall draft.", obj({
+        object: en(["paywall_generation"]), name: nstr(), ...docProps,
+        fixes: arr(str("What was changed automatically or in a fix round.")),
+        warnings: arr(obj({ code: str(), severity: en(["error", "warning"]), message: str() }, ["code", "severity", "message"]), { description: "What the checker still flags in the result." }),
+        notes: arr(str(), { description: "Notes for the developer, such as setting up the free trial in the stores." }),
+        preview_trials: { type: "object", additionalProperties: { type: "string" }, description: "Packages that have the free trial the prompt asks for, with its ISO 8601 length (P7D)." },
+        steps: arr(obj({ id: en(["brief", "packages", "draft", "check", "fix", "translate"]), status: en(["done", "skipped", "error"]), detail: nstr() }, ["id", "status", "detail"]), { description: "The steps the designer ran." }),
+        provider: str("The provider that answered, e.g. Vercel AI Gateway."), model: str("The model that answered, e.g. openai/gpt-6-luna."),
+      }, ["object", "components_config", "components_localizations", "default_locale", "fixes", "warnings", "notes", "preview_trials", "steps", "provider", "model"])), ...v2Errors(400, 401, 403, 404, 429, 502, 503) } }),
   },
   [`${P}/media_assets`]: {
     get: op({ id: "listMediaAssets", tag: "Paywalls", summary: "List images", security: SECRET, source: R, scopes: READ, parameters: [project, ...page], responses: { 200: ok("A page of images.", listOf(media)), ...E(400, 404) } }),

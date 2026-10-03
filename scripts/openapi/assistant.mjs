@@ -15,7 +15,7 @@ const usage = obj({ turns: int(), tokens: int() });
 
 const status = obj({
   object: en(["ai_status"]), configured: bool("A model is configured on this server."), available: bool("The model is configured and the project allows the assistant."),
-  provider: nstr("Workers AI, Anthropic or OpenAI."), model: nstr("The model id, e.g. @cf/moonshotai/kimi-k2.6, claude-opus-5-5, gpt-6-astra."),
+  provider: nstr("Vercel AI Gateway, Workers AI, Anthropic or OpenAI."), model: nstr("The model id, e.g. openai/gpt-6-luna (Vercel AI Gateway), @cf/moonshotai/kimi-k2.6, claude-opus-5-5, gpt-6-astra."),
   runtime: en(["durable_object", "sse"], "`durable_object` on RevenueDot Cloud (one Cloudflare Agents Durable Object per conversation, WebSocket); `sse` on self-host (Postgres, Server-Sent Events)."),
   access: en(["read_write", "read_only", "disabled"]), role: str("The caller's role (admin, developer, viewer) or `api_key`."), can_read: bool(), can_write: bool("Write tools are offered (they still ask for approval)."),
   reason: nstr("Why the assistant cannot read or write, in words the dashboard shows."), greeting_name: nstr("The first name the empty page greets."),
