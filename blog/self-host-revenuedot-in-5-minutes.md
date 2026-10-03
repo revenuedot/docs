@@ -16,14 +16,14 @@ Everything below uses the public [examples repository](https://github.com/revenu
 git clone https://github.com/revenuedot/examples.git
 cd examples/selfhost/docker-compose
 cp .env.example .env          # set POSTGRES_PASSWORD before the first start
-docker compose up -d          # builds RevenueDot from source the first time
+docker compose up -d          # pulls ghcr.io/revenuedot/revenuedot the first time
 curl http://localhost:8787/v1/health
 ```
 ```json
 {"status":"ok"}
 ```
 
-The Compose file runs two containers. `revenuedot` is one Node.js process that serves the SDK API under `/v1`, the REST API under `/v2`, store notifications, and the dashboard at `http://localhost:8787/login`. `db` is Postgres 16 with a named volume, so your data survives restarts. There is no published image yet, so Compose builds one from [the source on GitHub](https://github.com/revenuedot/revenuedot).
+The Compose file runs two containers. `revenuedot` is one Node.js process that serves the SDK API under `/v1`, the REST API under `/v2`, store notifications, and the dashboard at `http://localhost:8787/login`. `db` is Postgres 16 with a named volume, so your data survives restarts. Compose pulls the published image, [`ghcr.io/revenuedot/revenuedot`](https://github.com/revenuedot/revenuedot/pkgs/container/revenuedot), built for amd64 and arm64 on every change; `docker compose build` builds the same image from [the source on GitHub](https://github.com/revenuedot/revenuedot).
 
 Two details save time later:
 - **Migrations run on start.** Every time the server starts, it applies any new database migrations before it listens. An upgrade is a rebuild and a restart.

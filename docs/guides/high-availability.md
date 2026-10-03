@@ -15,7 +15,7 @@ The server repository has three reference setups, all checked in CI and none app
 | AWS | [Terraform: `deploy/terraform/aws`](https://github.com/revenuedot/revenuedot/tree/main/deploy/terraform/aws) | VPC over 3 zones, RDS PostgreSQL Multi-AZ, ECS on Fargate (2 to 10 tasks), Application Load Balancer, ACM certificate, Secrets Manager, KMS, 9 CloudWatch alarms |
 | Google Cloud | [Terraform: `deploy/terraform/gcp`](https://github.com/revenuedot/revenuedot/tree/main/deploy/terraform/gcp) | Cloud Run (2 to 10 instances), Cloud SQL for PostgreSQL with regional availability and point-in-time recovery, Secret Manager, an uptime check and alert policies |
 
-There is no published image yet. Build it from the repository's `Dockerfile` and push it to your registry (`docker build -t <registry>/revenuedot:<tag> .`), then point the chart's `image.repository` or Terraform's `image` at it.
+All three run the published image, [`ghcr.io/revenuedot/revenuedot`](https://github.com/revenuedot/revenuedot/pkgs/container/revenuedot), built for amd64 and arm64 on every change and tagged `latest`, by date (`2026.10.03`) and by commit. The chart and the AWS Terraform default to it; pin a date or commit tag in production (`image.tag` in the chart, `image` in Terraform) so every replica runs the same build. Cloud Run pulls from Artifact Registry only: copy the image there (`docker pull ghcr.io/revenuedot/revenuedot:<tag>`, `docker tag`, `docker push`) or make an Artifact Registry remote repository that proxies `ghcr.io`, and set the GCP Terraform's `image` to that path.
 
 ## What keeps replicas from stepping on each other
 | Work | How it runs once |

@@ -149,7 +149,7 @@ RevenueDot is open source, and the server on Cloud is the same code you can run.
 git clone https://github.com/revenuedot/revenuedot.git
 cd revenuedot
 cp .env.example .env          # sets POSTGRES_PASSWORD; change it before the first start
-docker compose up -d          # builds the image, starts the server and Postgres
+docker compose up -d          # pulls ghcr.io/revenuedot/revenuedot, starts the server and Postgres
 curl http://localhost:8787/v1/health
 ```
 ```json
@@ -4047,24 +4047,26 @@ Purchases made with a StoreKit configuration file in Xcode are signed by Xcode, 
 # How do I self-host RevenueDot?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md
-Description: Run one Docker image (API plus dashboard) next to Postgres with docker compose. Configure it with a .env file, put HTTPS in front, and set REVENUEDOT_SIGNING_KEY if you sign responses.
+Description: Run the published image ghcr.io/revenuedot/revenuedot (API plus dashboard) next to Postgres with docker compose. Configure it with a .env file, put HTTPS in front, and set REVENUEDOT_SIGNING_KEY if you sign responses.
 
-Clone the repository, copy `.env.example` to `.env`, and run `docker compose up -d`. You get one container that serves the SDK API, the REST API, store notifications and the dashboard on port 8787, next to Postgres 16 with a persistent volume. The server applies database migrations itself when it starts, so upgrades are a rebuild and a restart.
+Clone the repository, copy `.env.example` to `.env`, and run `docker compose up -d`. You get one container that serves the SDK API, the REST API, store notifications and the dashboard on port 8787, next to Postgres 16 with a persistent volume. The server applies database migrations itself when it starts, so upgrades are a pull and a restart.
 
 ```bash
 git clone https://github.com/revenuedot/revenuedot.git
 cd revenuedot
 cp .env.example .env          # set POSTGRES_PASSWORD before the first start
-docker compose up -d          # builds the image and starts RevenueDot and Postgres
+docker compose up -d          # pulls ghcr.io/revenuedot/revenuedot and starts RevenueDot and Postgres
 curl http://localhost:8787/v1/health        # {"status":"ok"}
 ```
 
-Open `http://localhost:8787/login` and sign up. **The first account is the owner.** After that, sign-up is closed to everyone except the addresses you [invite to a project](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/team.md), unless you set `REVENUEDOT_ALLOW_SIGNUP=true`. Set up [email](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#email) so password resets, invites and alerts reach people. There is no published image yet; Compose builds it from the source.
+Open `http://localhost:8787/login` and sign up. **The first account is the owner.** After that, sign-up is closed to everyone except the addresses you [invite to a project](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/team.md), unless you set `REVENUEDOT_ALLOW_SIGNUP=true`. Set up [email](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#email) so password resets, invites and alerts reach people.
+
+The image is [`ghcr.io/revenuedot/revenuedot`](https://github.com/revenuedot/revenuedot/pkgs/container/revenuedot), built for amd64 and arm64 on every change to `main` and tagged `latest`, by date (`2026.10.03`) and by commit. `docker pull ghcr.io/revenuedot/revenuedot:latest` needs no account. Compose pulls it; set `REVENUEDOT_IMAGE=ghcr.io/revenuedot/revenuedot:2026.10.03` in `.env` to pin a build, and run `docker compose build` to build the same image from the checkout instead.
 
 ## What runs
 | Piece | What it does |
 |---|---|
-| `revenuedot` container (Node.js 22) | One process: SDK API (`/v1`), REST API (`/v2`), dashboard sign-in (`/auth`), OAuth for MCP clients (`/oauth`), store notifications (`/v1/notifications/...`) and the dashboard's web app. A background job runs every 30 seconds: it records expirations, runs the daily Google Play voided-purchase check, re-checks store credentials, sends webhooks and sends [alert emails](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md) |
+| `revenuedot` container (Node.js 24) | One process: SDK API (`/v1`), REST API (`/v2`), dashboard sign-in (`/auth`), OAuth for MCP clients (`/oauth`), store notifications (`/v1/notifications/...`) and the dashboard's web app. A background job runs every 30 seconds: it records expirations, runs the daily Google Play voided-purchase check, re-checks store credentials, sends webhooks and sends [alert emails](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md) |
 | `db` container (Postgres 16) | Every customer, purchase, event and setting, in the `revenuedot-data` volume |
 
 One container is enough for most apps. To run two or more against the same database, behind a load balancer, see [High availability](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/high-availability.md): migrations and the background job take Postgres locks, so each webhook and email still goes out once. The server answers `GET /healthz` (process alive) and `GET /readyz` (database reachable, not shutting down) for health checks, and finishes requests in flight when it gets SIGTERM.
@@ -4076,6 +4078,7 @@ Edit `.env` next to `docker-compose.yml`. Store credentials (Apple keys, Google 
 |---|---|---|
 | `POSTGRES_PASSWORD` | `revenuedot` in Compose | Password of the bundled Postgres. Set it before the first start: it is written into the volume then, and changing it later also needs `ALTER USER` in Postgres |
 | `REVENUEDOT_PORT` | `8787` | Host port for everything |
+| `REVENUEDOT_IMAGE` | `ghcr.io/revenuedot/revenuedot:latest` | The server image. Pin a date tag (`2026.10.03`) or a commit tag so a restart never picks up a newer build than you tested |
 | `REVENUEDOT_ALLOW_SIGNUP` | `false` | `true` lets anyone who reaches the dashboard create an account. Invited addresses can always create one |
 | `REVENUEDOT_SMTP_URL`, `REVENUEDOT_MAIL_FROM`, `REVENUEDOT_MAIL_REPLY_TO`, `REVENUEDOT_PUBLIC_URL` | unset | Outgoing email. See [Email](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#email) |
 | `REVENUEDOT_SIGNING_KEY` | unset | Base64 Ed25519 seed. Turns on [response signing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md). Not passed through by the default `docker-compose.yml`; see below |
@@ -4208,7 +4211,7 @@ The server repository has three reference setups, all checked in CI and none app
 | AWS | [Terraform: `deploy/terraform/aws`](https://github.com/revenuedot/revenuedot/tree/main/deploy/terraform/aws) | VPC over 3 zones, RDS PostgreSQL Multi-AZ, ECS on Fargate (2 to 10 tasks), Application Load Balancer, ACM certificate, Secrets Manager, KMS, 9 CloudWatch alarms |
 | Google Cloud | [Terraform: `deploy/terraform/gcp`](https://github.com/revenuedot/revenuedot/tree/main/deploy/terraform/gcp) | Cloud Run (2 to 10 instances), Cloud SQL for PostgreSQL with regional availability and point-in-time recovery, Secret Manager, an uptime check and alert policies |
 
-There is no published image yet. Build it from the repository's `Dockerfile` and push it to your registry (`docker build -t <registry>/revenuedot:<tag> .`), then point the chart's `image.repository` or Terraform's `image` at it.
+All three run the published image, [`ghcr.io/revenuedot/revenuedot`](https://github.com/revenuedot/revenuedot/pkgs/container/revenuedot), built for amd64 and arm64 on every change and tagged `latest`, by date (`2026.10.03`) and by commit. The chart and the AWS Terraform default to it; pin a date or commit tag in production (`image.tag` in the chart, `image` in Terraform) so every replica runs the same build. Cloud Run pulls from Artifact Registry only: copy the image there (`docker pull ghcr.io/revenuedot/revenuedot:<tag>`, `docker tag`, `docker push`) or make an Artifact Registry remote repository that proxies `ghcr.io`, and set the GCP Terraform's `image` to that path.
 
 ## What keeps replicas from stepping on each other
 | Work | How it runs once |
@@ -4317,15 +4320,15 @@ Migrations run before the new version takes traffic, while the old version still
 # How do I upgrade a self-hosted RevenueDot?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/upgrades.md
-Description: Back up the database, pull the new source, rebuild and restart. The server applies new database migrations by itself when it starts; there is no separate migrate step.
+Description: Back up the database, pull the new image and restart. The server applies new database migrations by itself when it starts; there is no separate migrate step.
 
-Back up, pull, rebuild, restart. The server applies any new database migrations when it starts, before it accepts requests, so there is no separate migration command. Your `.env` stays as it is.
+Back up, pull, restart. The server applies any new database migrations when it starts, before it accepts requests, so there is no separate migration command. Your `.env` stays as it is.
 
 ```bash
 cd revenuedot
 docker compose exec -T db pg_dump -U revenuedot -Fc revenuedot > revenuedot-before-upgrade.dump   # 1. back up
-git pull                                                                                        # 2. new source
-docker compose up -d --build                                                                    # 3. rebuild and restart
+docker compose pull                                                                             # 2. the new image
+docker compose up -d                                                                            # 3. restart
 curl -s http://localhost:8787/v1/health                                                         # 4. {"status":"ok"}
 ```
 
@@ -4339,11 +4342,12 @@ For no downtime at all, run two or more replicas behind a load balancer and repl
 
 ## If the new version does not start
 1. Read the log: `docker compose logs revenuedot --tail 100`. A failed migration names the statement.
-2. Go back to the previous commit and rebuild: `git checkout <previous commit> && docker compose up -d --build`.
+2. Go back to the build that worked: set `REVENUEDOT_IMAGE=ghcr.io/revenuedot/revenuedot:<date or commit tag>` in `.env` and run `docker compose up -d`. The tags are listed on the [package page](https://github.com/revenuedot/revenuedot/pkgs/container/revenuedot).
 3. If a migration already ran, restore the backup as described in [Backups](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/backups.md#restore), then start the previous version.
 
 ## Keep up with changes
 - Watch the [server repository](https://github.com/revenuedot/revenuedot) for commits and, later, releases.
+- The image is built from `main` on every change (tagged `latest`, by date and by commit) and on every release tag. Pin a date or commit tag in `.env` to choose when you upgrade.
 - Migrations live in `packages/db/migrations`. Each upgrade applies the ones your database has not seen, in order.
 - Accounts made by builds from before 2026-09-30 used 210,000 password-hashing iterations; newer builds use 100,000. Both verify on a self-hosted server, so nobody needs to reset a password.
 
@@ -38805,8 +38809,6 @@ The list below is complete as of **2026-09-30**. The biggest gap: **no real App 
 ## Self-hosting
 16. **Run one server container per database.** Expirations and webhooks are sent by a background job inside each container.
     - Workaround: scale up one container rather than out. There is no high-availability setup yet.
-17. **There is no published Docker image.** Compose builds the image from source, which takes a few minutes on the first start.
-    - Workaround: none needed.
 
 ## Related
 - [Frequently asked questions](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/faq.md)
@@ -44368,14 +44370,14 @@ Everything below uses the public [examples repository](https://github.com/revenu
 git clone https://github.com/revenuedot/examples.git
 cd examples/selfhost/docker-compose
 cp .env.example .env          # set POSTGRES_PASSWORD before the first start
-docker compose up -d          # builds RevenueDot from source the first time
+docker compose up -d          # pulls ghcr.io/revenuedot/revenuedot the first time
 curl http://localhost:8787/v1/health
 ```
 ```json
 {"status":"ok"}
 ```
 
-The Compose file runs two containers. `revenuedot` is one Node.js process that serves the SDK API under `/v1`, the REST API under `/v2`, store notifications, and the dashboard at `http://localhost:8787/login`. `db` is Postgres 16 with a named volume, so your data survives restarts. There is no published image yet, so Compose builds one from [the source on GitHub](https://github.com/revenuedot/revenuedot).
+The Compose file runs two containers. `revenuedot` is one Node.js process that serves the SDK API under `/v1`, the REST API under `/v2`, store notifications, and the dashboard at `http://localhost:8787/login`. `db` is Postgres 16 with a named volume, so your data survives restarts. Compose pulls the published image, [`ghcr.io/revenuedot/revenuedot`](https://github.com/revenuedot/revenuedot/pkgs/container/revenuedot), built for amd64 and arm64 on every change; `docker compose build` builds the same image from [the source on GitHub](https://github.com/revenuedot/revenuedot).
 
 Two details save time later:
 - **Migrations run on start.** Every time the server starts, it applies any new database migrations before it listens. An upgrade is a rebuild and a restart.
@@ -44591,11 +44593,11 @@ You need Docker, Docker Compose, a server with a public IP and a domain name. Th
 git clone https://github.com/revenuedot/revenuedot.git
 cd revenuedot
 cp .env.example .env          # set POSTGRES_PASSWORD before the first start
-docker compose up -d          # builds the image and starts RevenueDot and Postgres
+docker compose up -d          # pulls ghcr.io/revenuedot/revenuedot and starts RevenueDot and Postgres
 curl http://localhost:8787/v1/health        # {"status":"ok"}
 ```
 
-There is no published image yet. Compose builds it from source, so the first start takes a few minutes. The server applies database migrations itself when it starts.
+Compose pulls the published image, `ghcr.io/revenuedot/revenuedot` (amd64 and arm64). The server applies database migrations itself when it starts.
 
 Open `http://localhost:8787/login` and sign up. **The first account is the owner.** After that, sign-up closes to everyone except the people you invite, unless you set `REVENUEDOT_ALLOW_SIGNUP=true`.
 
@@ -44679,7 +44681,6 @@ Long outages are another matter. New customers cannot finish a purchase in your 
 ## Honest limits
 
 - RevenueDot launched in 2026, so it has far less production history than RevenueCat. Run your own sandbox purchase before you depend on it.
-- There is no published Docker image, so Compose builds from source.
 - Run one server container per database for now.
 - You carry security patches, backups and on-call duty.
 - RevenueCat has years of production use and a [SOC 2 Type II](https://www.revenuecat.com/security-and-compliance) audit. If you need that paper today, check whether you can meet your own review another way.

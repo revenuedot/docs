@@ -48,8 +48,6 @@ The list below is complete as of **2026-09-30**. The biggest gap: **no real App 
 ## Self-hosting
 16. **Run one server container per database.** Expirations and webhooks are sent by a background job inside each container.
     - Workaround: scale up one container rather than out. There is no high-availability setup yet.
-17. **There is no published Docker image.** Compose builds the image from source, which takes a few minutes on the first start.
-    - Workaround: none needed.
 
 ## Related
 - [Frequently asked questions](faq.md)
