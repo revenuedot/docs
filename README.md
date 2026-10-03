@@ -1,4 +1,23 @@
+<div align="center">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/revenuedot/revenuedot/main/brand/kit/wordmark/revenuedot-lockup-white.svg">
+  <img alt="RevenueDot" src="https://raw.githubusercontent.com/revenuedot/revenuedot/main/brand/kit/wordmark/revenuedot-lockup-black.svg" height="44">
+</picture>
+
 # RevenueDot docs
+
+**Every docs page, the API reference, the help center, the blog and `llms.txt` for [RevenueDot](https://revenuedot.app), the open-source RevenueCat alternative.**<br>
+Published at [revenuedot.app/docs](https://revenuedot.app/docs); the source of truth is this repository.
+
+[Docs](https://revenuedot.app/docs) · [API reference](https://revenuedot.app/docs/api) · [Migrate from RevenueCat](https://revenuedot.app/docs/migrate) · [Self-host](https://revenuedot.app/docs/guides/self-hosting) · [Main repository](https://github.com/revenuedot/revenuedot)
+
+[![Text: CC BY 4.0](https://img.shields.io/badge/text-CC%20BY%204.0-0A0A0A)](LICENSE)
+[![Code: MIT](https://img.shields.io/badge/code-MIT-0A0A0A)](LICENSE)
+[![llms.txt](https://img.shields.io/badge/llms.txt-ready-0A0A0A)](https://revenuedot.app/llms.txt)
+[![Deploy](https://img.shields.io/github/actions/workflow/status/revenuedot/docs/deploy-site.yml?branch=main&label=deploy&color=0A0A0A)](https://github.com/revenuedot/docs/actions/workflows/deploy-site.yml)
+
+</div>
 
 **Open documentation for [RevenueDot](https://revenuedot.app), the open-source backend for in-app purchases that works with the RevenueCat SDK.** Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Everything here is public Markdown: getting started, concepts, SDK guides, store setup, webhooks, self-hosting, migration from RevenueCat, the API reference, a help center and a blog.
 
