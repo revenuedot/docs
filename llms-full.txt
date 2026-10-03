@@ -2369,7 +2369,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" \
 The app's public key starts with `strp_`. Create its products with `store_identifier` set to the **Stripe product ID** (`prod_…`). To sell several prices of one Stripe product as separate products, use the **price ID** (`price_…`) instead; a price ID wins over its product ID. See [Products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md).
 
 ## 2. Connect your Stripe account
-Select **Connect with Stripe** on the app's page and allow RevenueDot in Stripe: no key to copy and no webhook endpoint to add, so skip to step 4. See [Connect with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe-connect.md). If that button is greyed out, or you prefer a key, save a restricted key instead:
+Save a restricted key, then add the webhook endpoint in step 3. **On RevenueDot Cloud this is the only way today:** Connect with Stripe is not available there yet, so its button is greyed out. On a self-hosted server with a Stripe Connect platform, you can instead select **Connect with Stripe** on the app's page and skip to step 4. See [Connect with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe-connect.md).
 
 ### Save a restricted API key
 1. In the [Stripe Dashboard → Developers → API keys](https://dashboard.stripe.com/apikeys/create), click **Create restricted key**.
@@ -2849,7 +2849,7 @@ These products are created in RevenueDot's catalog, not in the stores. To create
 # How do I sell my app's subscriptions on the web with Stripe?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md
-Description: Connect your Stripe account with Connect with Stripe or a restricted key, add a web config, let RevenueDot create web products in Stripe, put them in an offering, then share a purchase link or publish a funnel. Buyers pay on Stripe Checkout and unlock the app with a redemption link.
+Description: Connect your Stripe account with a restricted key and a webhook, add a web config, let RevenueDot create web products in Stripe, put them in an offering, then share a purchase link or publish a funnel. Buyers pay on Stripe Checkout and unlock the app with a redemption link.
 
 RevenueDot hosts the checkout pages and runs every payment on **your own Stripe account**. Open **Web** in the dashboard and do four steps: connect Stripe, add a web config, create web products, and put them in an offering. Then share a [purchase link](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/purchase-links.md) or publish a [funnel](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md). Buyers pay on Stripe Checkout. RevenueDot records the purchase like any Stripe purchase, sends the usual webhooks, and gives the buyer a [redemption link](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/redemption-links.md) that unlocks the app.
 
@@ -2873,9 +2873,9 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" \
   -d '{"name":"Scanner Web","type":"stripe"}'
 ```
 
-Then select **Connect with Stripe** on the app's page and allow RevenueDot in Stripe: no keys and no webhook to set up, and RevenueDot takes no fee on your payments. See [Connect with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe-connect.md). Pick **Test** mode first to try everything with Stripe's test cards.
+Then give the app a **restricted key** and add the Stripe webhook (below). **On RevenueDot Cloud this is the only way today:** Connect with Stripe is not available there yet. On a self-hosted server whose operator has set up a Stripe Connect platform, you can instead select **Connect with Stripe** on the app's page and allow RevenueDot in Stripe: no keys and no webhook to set up. See [Connect with Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe-connect.md).
 
-Or create a **restricted key** in the [Stripe Dashboard → Developers → API keys](https://dashboard.stripe.com/apikeys/create). Web billing needs more than [tracking Stripe subscriptions](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md) does, because RevenueDot creates products, prices, Checkout Sessions, coupons and promotion codes in your account:
+Create a **restricted key** in the [Stripe Dashboard → Developers → API keys](https://dashboard.stripe.com/apikeys/create). Web billing needs more than [tracking Stripe subscriptions](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md) does, because RevenueDot creates products, prices, Checkout Sessions, coupons and promotion codes in your account:
 
 | Stripe resource | Permission |
 |---|---|
@@ -3010,7 +3010,7 @@ With `success_mode: redirect`, the page answers 303 to your `success_redirect_ur
 A RevenueCatUI paywall can have a purchase button that opens web checkout (see [Paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md)). The iOS SDK then calls `POST /rcbilling/v1/hosted-checkout` with the package. RevenueDot finds the Stripe app that sells that package and answers with a Stripe Checkout URL for the SDK's app user id. The SDK closes the page when it reaches the success or cancel URL, and the purchase is already on the customer. A package with no web product answers 400 with code 7000. Reference: [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md#start-a-hosted-web-checkout).
 
 ## Test before you go live
-Connect in **Test** mode, or use a test-mode key (`rk_test_…`). Purchases are then sandbox data, kept out of production charts, and webhooks carry `environment: SANDBOX`. Pay with [Stripe's test cards](https://docs.stripe.com/testing), such as `4242 4242 4242 4242`. For production, create a second Stripe app connected in **Live** mode (or with a live key and its own webhook endpoint) and its own web products: Stripe keeps test and live products apart.
+Use a test-mode key (`rk_test_…`), or on a server with Connect with Stripe, connect in **Test** mode. Purchases are then sandbox data, kept out of production charts, and webhooks carry `environment: SANDBOX`. Pay with [Stripe's test cards](https://docs.stripe.com/testing), such as `4242 4242 4242 4242`. For production, create a second Stripe app with a live key and its own webhook endpoint (or connected in **Live** mode) and its own web products: Stripe keeps test and live products apart.
 
 ## Not built yet
 - **Paddle** as a web provider.
@@ -8304,6 +8304,8 @@ Description: Connect with Stripe links your own Stripe account to RevenueDot thr
 
 Select **Connect with Stripe** on your Stripe app and allow RevenueDot in Stripe. RevenueDot then reads your purchases and creates checkouts in your Stripe account through Stripe Connect. You copy no keys and set up no webhook.
 
+**Connect with Stripe is not available on RevenueDot Cloud yet.** There, the button is greyed out: paste a [restricted key](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md#save-a-restricted-api-key) and add the [webhook endpoint with its signing secret](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md#3-add-the-webhook-endpoint) instead. It works on a self-hosted server whose operator has set up a Stripe Connect platform ([below](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe-connect.md#if-the-button-is-greyed-out)).
+
 ## What it means for your money
 - Your Stripe account stays yours. It is a Standard connected account: you keep your Stripe Dashboard, your payouts and your Stripe fees.
 - Web checkouts are charged on your account directly.
@@ -8330,7 +8332,7 @@ Your account's events (renewals, failed payments, cancellations, refunds) reach 
 After a disconnect, purchases already recorded stay. Checkouts stop until you connect again or add a restricted key.
 
 ## If the button is greyed out
-The server you use has no Stripe Connect platform. On RevenueDot Cloud this is the case until RevenueDot's platform account is live. On a self-hosted server, its operator needs a Stripe Connect platform of their own and these settings:
+The server you use has no Stripe Connect platform. RevenueDot Cloud has none yet. On a self-hosted server, its operator needs a Stripe Connect platform of their own and these settings:
 
 | Variable | What |
 |---|---|
@@ -9017,7 +9019,7 @@ Sources: [`apps/server/src/routes/sdk.ts`](https://github.com/revenuedot/revenue
 
 **Stores and receipts**
 - RevenueDot accepts purchases for App Store, Mac App Store, Google Play, Amazon Appstore, Stripe, Paddle, Roku, Samsung Galaxy Store and Test Store apps ([Amazon](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md), [Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md), [Paddle](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paddle.md), [Roku](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/roku.md), [Galaxy Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/galaxy-store.md)). Receipts for Web Billing (`rcb_`) apps answer HTTP 400 with code 7662. Paddle, Roku and Galaxy Store purchases are tested against copies of each store's API, not a real store account yet.
-- Like RevenueCat, RevenueDot does not detect refunds of Amazon subscriptions. Stripe Connect OAuth ("Connect with Stripe") is not available; save a restricted key instead. RevenueDot sells on the web through your own Stripe account ([web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md)), not through RevenueCat Billing.
+- Like RevenueCat, RevenueDot does not detect refunds of Amazon subscriptions. Stripe Connect OAuth ("Connect with Stripe") is not available on RevenueDot Cloud yet; save a restricted key and a webhook signing secret instead. RevenueDot sells on the web through your own Stripe account ([web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md)), not through RevenueCat Billing.
 - purchases-js therefore works only with Test Store (`test_`) keys.
 - StoreKit 1 receipts need the App Store in-app purchase key on the app. Without it RevenueDot answers code 7234 as HTTP 500, so the SDK retries after you add the key. For development, `allow_unsigned_receipts` skips this.
 - The app-specific shared secret is stored but not used.
@@ -9077,7 +9079,7 @@ Built since the first release: [paywalls](https://raw.githubusercontent.com/reve
 **Tier 3, still planned**
 - An EU region on RevenueDot Cloud. Organizations, custom roles and single sign-on are built and come with Cloud Standard; SCIM, data location settings, audit retention and compliance exports are built and come with Enterprise ([which plan has which feature](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/enterprise.md)).
 - High-availability self-host (Helm, Terraform, clustering).
-- Web billing: "Connect with Stripe" (OAuth), Paddle as a web provider, an embedded checkout inside purchases-js, funnel A/B tests and automatic TLS for custom domains on Cloud.
+- Web billing: "Connect with Stripe" (OAuth) on RevenueDot Cloud, Paddle as a web provider, an embedded checkout inside purchases-js, funnel A/B tests and automatic TLS for custom domains on Cloud.
 - Failed-payment recovery.
 - RevenueDot AI tools that write to App Store Connect and Google Play.
 - Paddle checkout inside purchases-js (Paddle purchases are posted from your backend instead); ad reward callbacks from AppLovin MAX, ironSource and Unity Ads; benchmarks.
@@ -46069,7 +46071,7 @@ A RevenueCatUI paywall's web checkout button also works on iOS. It opens a Strip
 
 Use a test-mode restricted key (`rk_test_...`). Purchases are then sandbox data, kept out of production charts, and webhooks carry `environment: SANDBOX`. Pay with [Stripe's test cards](https://docs.stripe.com/testing), such as `4242 4242 4242 4242`. For production, create a second Stripe app with a live key, its own webhook endpoint and its own web products, because Stripe keeps test and live products apart.
 
-**Before you send buyers,** run a purchase in Stripe test mode. Not built yet: "Connect with Stripe" OAuth (paste a restricted key for now), Paddle as a web provider, an embedded checkout on your own page, and Apple Pay domain registration for a custom domain.
+**Before you send buyers,** run a purchase in Stripe test mode. Not available yet: "Connect with Stripe" OAuth on RevenueDot Cloud (paste a restricted key and a webhook signing secret for now), Paddle as a web provider, an embedded checkout on your own page, and Apple Pay domain registration for a custom domain.
 
 ## Design rules that protect you
 

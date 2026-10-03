@@ -19,7 +19,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" \
 The app's public key starts with `strp_`. Create its products with `store_identifier` set to the **Stripe product ID** (`prod_…`). To sell several prices of one Stripe product as separate products, use the **price ID** (`price_…`) instead; a price ID wins over its product ID. See [Products and entitlements](../concepts/products-and-entitlements.md).
 
 ## 2. Connect your Stripe account
-Select **Connect with Stripe** on the app's page and allow RevenueDot in Stripe: no key to copy and no webhook endpoint to add, so skip to step 4. See [Connect with Stripe](stripe-connect.md). If that button is greyed out, or you prefer a key, save a restricted key instead:
+Save a restricted key, then add the webhook endpoint in step 3. **On RevenueDot Cloud this is the only way today:** Connect with Stripe is not available there yet, so its button is greyed out. On a self-hosted server with a Stripe Connect platform, you can instead select **Connect with Stripe** on the app's page and skip to step 4. See [Connect with Stripe](stripe-connect.md).
 
 ### Save a restricted API key
 1. In the [Stripe Dashboard → Developers → API keys](https://dashboard.stripe.com/apikeys/create), click **Create restricted key**.
