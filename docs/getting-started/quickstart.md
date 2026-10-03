@@ -5,7 +5,7 @@ description: Create a free RevenueDot Cloud account, add a Test Store app with a
 
 # How do I make a first purchase with RevenueDot in 5 minutes?
 
-Create a free account on **RevenueDot Cloud**, add a Test Store app with one product and one entitlement, make a test purchase from the dashboard, then point an SDK at `https://api.revenuedot.app`. You need no server, no App Store account and no Google Play account. Cloud is free up to $10,000 in monthly tracked revenue.
+Create a free account on **RevenueDot Cloud**, add a Test Store app with one product and one entitlement, make a test purchase from the dashboard, then point an SDK at `https://api.revenuedot.app`. You do not need a server, an App Store account or a Google Play account. Cloud is free up to $10,000 in monthly tracked revenue.
 
 To run the server on your own machine instead, skip to [Run it yourself](#run-it-yourself).
 
