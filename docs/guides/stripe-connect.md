@@ -7,6 +7,8 @@ description: Connect with Stripe links your own Stripe account to RevenueDot thr
 
 Select **Connect with Stripe** on your Stripe app and allow RevenueDot in Stripe. RevenueDot then reads your purchases and creates checkouts in your Stripe account through Stripe Connect. You copy no keys and set up no webhook.
 
+**Connect with Stripe is not available on RevenueDot Cloud yet.** There, the button is greyed out: paste a [restricted key](stripe.md#save-a-restricted-api-key) and add the [webhook endpoint with its signing secret](stripe.md#3-add-the-webhook-endpoint) instead. It works on a self-hosted server whose operator has set up a Stripe Connect platform ([below](#if-the-button-is-greyed-out)).
+
 ## What it means for your money
 - Your Stripe account stays yours. It is a Standard connected account: you keep your Stripe Dashboard, your payouts and your Stripe fees.
 - Web checkouts are charged on your account directly.
@@ -33,7 +35,7 @@ Your account's events (renewals, failed payments, cancellations, refunds) reach 
 After a disconnect, purchases already recorded stay. Checkouts stop until you connect again or add a restricted key.
 
 ## If the button is greyed out
-The server you use has no Stripe Connect platform. On RevenueDot Cloud this is the case until RevenueDot's platform account is live. On a self-hosted server, its operator needs a Stripe Connect platform of their own and these settings:
+The server you use has no Stripe Connect platform. RevenueDot Cloud has none yet. On a self-hosted server, its operator needs a Stripe Connect platform of their own and these settings:
 
 | Variable | What |
 |---|---|

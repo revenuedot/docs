@@ -1,6 +1,6 @@
 ---
 title: How do I sell my app's subscriptions on the web with Stripe?
-description: Connect your Stripe account with Connect with Stripe or a restricted key, add a web config, let RevenueDot create web products in Stripe, put them in an offering, then share a purchase link or publish a funnel. Buyers pay on Stripe Checkout and unlock the app with a redemption link.
+description: Connect your Stripe account with a restricted key and a webhook, add a web config, let RevenueDot create web products in Stripe, put them in an offering, then share a purchase link or publish a funnel. Buyers pay on Stripe Checkout and unlock the app with a redemption link.
 ---
 
 # How do I sell my app's subscriptions on the web with Stripe?
@@ -27,9 +27,9 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" \
   -d '{"name":"Scanner Web","type":"stripe"}'
 ```
 
-Then select **Connect with Stripe** on the app's page and allow RevenueDot in Stripe: no keys and no webhook to set up, and RevenueDot takes no fee on your payments. See [Connect with Stripe](stripe-connect.md). Pick **Test** mode first to try everything with Stripe's test cards.
+Then give the app a **restricted key** and add the Stripe webhook (below). **On RevenueDot Cloud this is the only way today:** Connect with Stripe is not available there yet. On a self-hosted server whose operator has set up a Stripe Connect platform, you can instead select **Connect with Stripe** on the app's page and allow RevenueDot in Stripe: no keys and no webhook to set up. See [Connect with Stripe](stripe-connect.md).
 
-Or create a **restricted key** in the [Stripe Dashboard → Developers → API keys](https://dashboard.stripe.com/apikeys/create). Web billing needs more than [tracking Stripe subscriptions](stripe.md) does, because RevenueDot creates products, prices, Checkout Sessions, coupons and promotion codes in your account:
+Create a **restricted key** in the [Stripe Dashboard → Developers → API keys](https://dashboard.stripe.com/apikeys/create). Web billing needs more than [tracking Stripe subscriptions](stripe.md) does, because RevenueDot creates products, prices, Checkout Sessions, coupons and promotion codes in your account:
 
 | Stripe resource | Permission |
 |---|---|
