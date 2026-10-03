@@ -1,5 +1,10 @@
 # On every push to main, checks the docs and redeploys revenuedot.app, which renders this repo at /docs and /blog.
 # The site's code lives in revenuedot/revenuedot (apps/site); this checks it out next to the docs.
+#
+# Speed: the npm and pnpm downloads and Astro's optimized images are cached between runs. The images are what made the
+# deploy slow: the build re-encodes about 840 AVIF and WebP files (about 4.5 minutes) unless the cache has them. The
+# same cache is used by revenuedot/revenuedot's deploy, but GitHub caches belong to one repository, so this one keeps
+# its own.
 name: Deploy site
 on:
   push:
@@ -9,6 +14,7 @@ concurrency: { group: deploy-production, cancel-in-progress: false }
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     environment: production
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -20,20 +26,46 @@ jobs:
         with: { path: docs }
       - uses: actions/checkout@v5
         with: { repository: revenuedot/revenuedot, path: revenuedot }
+      - uses: pnpm/action-setup@v4
+        with: { package_json_file: revenuedot/package.json }
       - uses: actions/setup-node@v5
-        with: { node-version: 24 }
+        with:
+          node-version-file: revenuedot/.nvmrc
+          cache: pnpm
+          cache-dependency-path: revenuedot/pnpm-lock.yaml
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ hashFiles('docs/package-lock.json') }}
+          restore-keys: npm-
       - name: Docs checks (drift against the server code, pages, links)
         working-directory: docs
-        run: npm ci --no-audit --no-fund && npm run all
-      - uses: pnpm/action-setup@v4
-        with: { version: 10 }
+        run: npm ci --no-audit --no-fund --prefer-offline && npm run all
       - run: pnpm install --frozen-lockfile
         working-directory: revenuedot
+      # Astro's optimized images, from the site's own images and this repo's blog images. Entries are keyed by source
+      # and settings, so an older cache is safe to start from; a new key saves the newest set.
+      - uses: actions/cache@v4
+        with:
+          path: revenuedot/apps/site/node_modules/.astro
+          key: astro-${{ hashFiles('revenuedot/apps/site/src/**', 'revenuedot/apps/site/public/**', 'revenuedot/apps/site/astro.config.mjs', 'docs/blog/assets/**') }}
+          restore-keys: astro-
+      # revenuedot/revenuedot deploys the same Worker, and GitHub's concurrency groups do not span repositories. A build
+      # from an older checkout would roll back a newer site deploy and drop the Worker secrets that newer code declares
+      # (this happened on 2026-10-03), so build from revenuedot's main as it is right before deploying.
+      - name: Build from revenuedot's newest main
+        working-directory: revenuedot
+        run: |
+          git fetch -q --depth=1 origin main
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse FETCH_HEAD)" ]; then
+            git checkout -q FETCH_HEAD && pnpm install --frozen-lockfile
+          fi
+          git log -1 --format='revenuedot %h %s'
       - run: pnpm --filter site run deploy
         working-directory: revenuedot
       - name: Live check
         run: |
-          for u in /docs /blog /llms.txt /docs/getting-started/quickstart; do
+          for u in /docs /blog /llms.txt /sitemap.xml /docs/getting-started/quickstart; do
             code=$(curl -s -o /dev/null -w '%{http_code}' "https://revenuedot.app$u"); echo "$u $code"; [ "$code" = 200 ]
           done
       - name: Tell search engines (IndexNow)

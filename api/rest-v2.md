@@ -13,23 +13,23 @@ RevenueDot-only endpoints are on [Extensions](extensions.md).
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (163)
+## Operations on this page (176)
 
 - **Projects**: [List projects](#list-projects), [Create a project](#create-a-project)
 - **Apps**: [List apps](#list-apps), [Create an app](#create-an-app), [Get an app](#get-an-app), [Update an app and its store credentials](#update-an-app-and-its-store-credentials), [Delete an app](#delete-an-app), [Get an app's public SDK key](#get-an-apps-public-sdk-key), [Get a StoreKit configuration file](#get-a-storekit-configuration-file), [Issue a subscriber access token](#issue-a-subscriber-access-token), [List the products in the app's store](#list-the-products-in-the-apps-store), [Import products from the app's store](#import-products-from-the-apps-store)
 - **Products**: [List products](#list-products), [Create a product](#create-a-product), [Get a product](#get-a-product), [Update a product](#update-a-product), [Delete a product](#delete-a-product), [Archive a product](#archive-a-product), [Unarchive a product](#unarchive-a-product), [Create the product in its store](#create-the-product-in-its-store)
 - **Entitlements**: [List entitlements](#list-entitlements), [Create an entitlement](#create-an-entitlement), [Get an entitlement](#get-an-entitlement), [Rename an entitlement](#rename-an-entitlement), [Delete an entitlement](#delete-an-entitlement), [Archive an entitlement](#archive-an-entitlement), [Unarchive an entitlement](#unarchive-an-entitlement), [List an entitlement's products](#list-an-entitlements-products), [Attach products to an entitlement](#attach-products-to-an-entitlement), [Detach products from an entitlement](#detach-products-from-an-entitlement)
-- **Offerings**: [List offerings](#list-offerings), [Create an offering](#create-an-offering), [Get an offering](#get-an-offering), [Update an offering or make it current](#update-an-offering-or-make-it-current), [Delete an offering](#delete-an-offering), [Archive an offering](#archive-an-offering), [Unarchive an offering](#unarchive-an-offering)
+- **Offerings**: [List offerings](#list-offerings), [Create an offering](#create-an-offering), [Get an offering](#get-an-offering), [Update an offering or make it current](#update-an-offering-or-make-it-current), [Delete an offering](#delete-an-offering), [Duplicate an offering](#duplicate-an-offering), [Archive an offering](#archive-an-offering), [Unarchive an offering](#unarchive-an-offering)
 - **Packages**: [List an offering's packages](#list-an-offerings-packages), [Create a package](#create-a-package), [Get a package](#get-a-package), [Update a package](#update-a-package), [Delete a package](#delete-a-package), [List a package's products](#list-a-packages-products), [Attach products to a package](#attach-products-to-a-package), [Detach products from a package](#detach-products-from-a-package)
 - **Customers**: [List or search customers](#list-or-search-customers), [Create a customer](#create-a-customer), [Get a customer](#get-a-customer), [Delete a customer](#delete-a-customer), [List a customer's app user ids](#list-a-customers-app-user-ids), [List a customer's attributes](#list-a-customers-attributes), [Set a customer's attributes](#set-a-customers-attributes), [List a customer's active entitlements](#list-a-customers-active-entitlements), [List a customer's subscriptions](#list-a-customers-subscriptions), [List a customer's one-time purchases](#list-a-customers-one-time-purchases), [List a customer's events](#list-a-customers-events), [Grant an entitlement](#grant-an-entitlement), [Revoke a granted entitlement](#revoke-a-granted-entitlement), [Assign an offering to a customer](#assign-an-offering-to-a-customer), [Transfer a customer's purchases to another customer](#transfer-a-customers-purchases-to-another-customer), [Get the Customer Center configuration](#get-the-customer-center-configuration), [Restore a purchase by its store order id](#restore-a-purchase-by-its-store-order-id), [List the win-back offers Apple lets a customer redeem](#list-the-win-back-offers-apple-lets-a-customer-redeem)
 - **Subscriptions**: [Find subscriptions by store id](#find-subscriptions-by-store-id), [Get a subscription](#get-a-subscription), [List the entitlements a subscription unlocks](#list-the-entitlements-a-subscription-unlocks), [List a subscription's payments](#list-a-subscriptions-payments), [Cancel a subscription (Google Play)](#cancel-a-subscription-google-play), [Refund and revoke a subscription (Google Play)](#refund-and-revoke-a-subscription-google-play), [Extend a subscription](#extend-a-subscription), [Refund one payment of a subscription (Google Play)](#refund-one-payment-of-a-subscription-google-play), [Get where the customer manages a subscription](#get-where-the-customer-manages-a-subscription)
 - **Purchases**: [Find one-time purchases by store id](#find-one-time-purchases-by-store-id), [Get a one-time purchase](#get-a-one-time-purchase), [List the entitlements a purchase unlocks](#list-the-entitlements-a-purchase-unlocks), [Refund a one-time purchase (Google Play)](#refund-a-one-time-purchase-google-play)
 - **Metrics**: [Overview metrics](#overview-metrics), [Revenue over a date range](#revenue-over-a-date-range)
-- **Charts**: [Get chart data](#get-chart-data), [Get available options for a chart](#get-available-options-for-a-chart), [List saved charts](#list-saved-charts), [Save a chart view](#save-a-chart-view), [Get a saved chart](#get-a-saved-chart), [Rename or update a saved chart](#rename-or-update-a-saved-chart), [Delete a saved chart](#delete-a-saved-chart)
+- **Charts**: [Get chart data](#get-chart-data), [Get available options for a chart](#get-available-options-for-a-chart), [List the customers behind a chart](#list-the-customers-behind-a-chart), [List chart annotations](#list-chart-annotations), [Create a chart annotation](#create-a-chart-annotation), [Get a chart annotation](#get-a-chart-annotation), [Update a chart annotation](#update-a-chart-annotation), [Delete a chart annotation](#delete-a-chart-annotation), [List active chart share links](#list-active-chart-share-links), [Create a public chart share link](#create-a-public-chart-share-link), [Revoke a chart share link](#revoke-a-chart-share-link), [List saved charts](#list-saved-charts), [Save a chart view](#save-a-chart-view), [Get a saved chart](#get-a-saved-chart), [Rename or update a saved chart](#rename-or-update-a-saved-chart), [Delete a saved chart](#delete-a-saved-chart)
 - **In-app currencies**: [List in-app currencies](#list-in-app-currencies), [Create an in-app currency](#create-an-in-app-currency), [Get an in-app currency](#get-an-in-app-currency), [Update an in-app currency](#update-an-in-app-currency), [Delete an in-app currency](#delete-an-in-app-currency), [Archive an in-app currency](#archive-an-in-app-currency), [Unarchive an in-app currency](#unarchive-an-in-app-currency), [List a customer's balances](#list-a-customers-balances), [Credit or spend in-app currency](#credit-or-spend-in-app-currency), [Change a balance without a ledger entry](#change-a-balance-without-a-ledger-entry)
 - **Audit log**: [List audit log entries](#list-audit-log-entries)
 - **Targeting**: [List audiences](#list-audiences), [Create an audience](#create-an-audience), [Preview who matches](#preview-who-matches), [Known values for attribution and custom-attribute fields](#known-values-for-attribution-and-custom-attribute-fields), [Get an audience](#get-an-audience), [Update an audience](#update-an-audience), [Delete an unused audience](#delete-an-unused-audience), [List targeting rules in order](#list-targeting-rules-in-order), [Create a targeting rule](#create-a-targeting-rule), [Set the evaluation order](#set-the-evaluation-order), [Get a targeting rule](#get-a-targeting-rule), [Update a targeting rule](#update-a-targeting-rule), [Delete a targeting rule](#delete-a-targeting-rule)
-- **Experiments**: [List experiments](#list-experiments), [Create an offering experiment](#create-an-offering-experiment), [Get an experiment](#get-an-experiment), [Update an experiment](#update-an-experiment), [Delete an experiment](#delete-an-experiment), [Start or resume](#start-or-resume), [Pause: enrolled customers keep their variant, nobody new joins](#pause-enrolled-customers-keep-their-variant-nobody-new-joins), [Stop for good](#stop-for-good), [Results per variant](#results-per-variant)
+- **Experiments**: [List experiments](#list-experiments), [Create an offering experiment](#create-an-offering-experiment), [Set the enrollment order](#set-the-enrollment-order), [Estimate how many customers would join](#estimate-how-many-customers-would-join), [Get an experiment](#get-an-experiment), [Update an experiment](#update-an-experiment), [Delete an experiment](#delete-an-experiment), [Start or resume](#start-or-resume), [Pause: enrolled customers keep their variant, nobody new joins](#pause-enrolled-customers-keep-their-variant-nobody-new-joins), [Stop for good](#stop-for-good), [Results per variant](#results-per-variant), [Export results as CSV](#export-results-as-csv)
 - **Paywalls**: [List paywalls](#list-paywalls), [Create a paywall](#create-a-paywall), [Get a paywall](#get-a-paywall), [Update a paywall's draft](#update-a-paywalls-draft), [Delete a paywall](#delete-a-paywall), [Publish a paywall](#publish-a-paywall), [Unpublish a paywall](#unpublish-a-paywall), [Attach an offering to a paywall](#attach-an-offering-to-a-paywall), [Detach the offering from a paywall](#detach-the-offering-from-a-paywall), [Duplicate a paywall](#duplicate-a-paywall), [List saved snapshots](#list-saved-snapshots), [Save a named snapshot](#save-a-named-snapshot), [Restore a snapshot into the draft](#restore-a-snapshot-into-the-draft), [Get a snapshot](#get-a-snapshot), [Get the template form of a paywall](#get-the-template-form-of-a-paywall), [Store the template form of a paywall](#store-the-template-form-of-a-paywall), [List the template gallery](#list-the-template-gallery), [Validate paywall components](#validate-paywall-components), [Whether the AI generator is available](#whether-the-ai-generator-is-available), [Generate a paywall with AI](#generate-a-paywall-with-ai), [List images](#list-images), [Upload an image](#upload-an-image), [List fonts](#list-fonts), [Upload a font](#upload-a-font), [Download a paywall image or font](#download-a-paywall-image-or-font), [Download a built-in paywall icon](#download-a-built-in-paywall-icon), [Delete an uploaded font](#delete-an-uploaded-font)
 - **Webhook integrations**: [List webhooks](#list-webhooks), [Create a webhook](#create-a-webhook), [Get a webhook](#get-a-webhook), [Update a webhook](#update-a-webhook), [Delete a webhook](#delete-a-webhook)
 - **Discounts**: [List discounts](#list-discounts), [Create a discount](#create-a-discount), [Get a discount](#get-a-discount), [Update a discount](#update-a-discount), [Delete a discount](#delete-a-discount), [Enable a discount](#enable-a-discount), [Disable a discount](#disable-a-discount), [List a discount's codes](#list-a-discounts-codes), [Create discount codes](#create-discount-codes), [Delete a discount code](#delete-a-discount-code)
@@ -129,8 +129,10 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps" -H "Authorization: Bearer
 
 `POST /v2/projects/{project_id}/apps` · Auth: secret key or dashboard session · Permissions: `project_configuration:apps:read_write`
 
-One app per store. `app_store` and `mac_app_store` need `bundle_id`; `play_store` and `amazon` need `package_name`. The app gets a public SDK key with the store's prefix.
-Other fields in the store object are saved as store credentials (for example `subscription_private_key`, `subscription_key_id`, `subscription_key_issuer`, `play_service_account_credentials_json`, Amazon's `shared_secret`, Stripe's `stripe_secret_key` and `stripe_webhook_secret`). They are never returned. A Stripe publishable key (`pk_…`) or a malformed signing secret is refused with 400.
+One app per store. `app_store` and `mac_app_store` need `bundle_id`; `play_store`, `amazon` and `galaxy` need `package_name`. The app gets a public SDK key with the store's prefix (`pdl_` for Paddle, `roku_` for Roku, `galx_` for the Galaxy Store).
+Other fields in the store object are saved as store credentials (for example `subscription_private_key`, `subscription_key_id`, `subscription_key_issuer`, `play_service_account_credentials_json`, Amazon's `shared_secret`, Stripe's `stripe_secret_key` and `stripe_webhook_secret`, Paddle's `paddle_api_key` and `paddle_webhook_secret`, Roku's `roku_api_key`, the Galaxy Store's `galaxy_service_account_id`, `galaxy_service_account_private_key` and `galaxy_iap_public_key`). Secrets are sealed and never returned. A Stripe publishable key (`pk_…`), a Paddle client-side token or a malformed signing secret is refused with 400.
+Store commission programs (RevenueDot extension, as RevenueCat's app settings): `app_store.small_business_program` and `mac_app_store.small_business_program` (Apple's Small Business Program, 15% instead of 30%) and `amazon.small_business_accelerator` (Amazon's Small Business Accelerator Program, 20% instead of 30%) take `{ "enrolled": true, "periods": [{ "entry_date": "2024-01-01", "exit_date": null }] }`: up to 10 periods, `YYYY-MM-DD`, an exit date after its entry date, no overlaps; `null` removes the program. Proceeds in charts, metrics, exports and the REST API are recomputed for the dates; webhooks and integration events already sent keep their values.
+`galaxy` is a RevenueDot extension: RevenueCat's v2 API has no Galaxy app object.
 
 **Path parameters**
 
@@ -143,15 +145,16 @@ Other fields in the store object are saved as store credentials (for example `su
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `name` | string | yes |  |
-| `type` | `amazon`, `app_store`, `mac_app_store`, `play_store`, `stripe`, `rc_billing`, `roku`, `paddle`, `test_store` | yes |  |
+| `type` | `amazon`, `app_store`, `mac_app_store`, `play_store`, `stripe`, `rc_billing`, `roku`, `paddle`, `test_store`, `galaxy` | yes |  |
 | `app_store` | object | no | `bundle_id` plus optional credentials. |
 | `mac_app_store` | object | no |  |
 | `play_store` | object | no | `package_name` plus optional credentials. |
 | `amazon` | object | no |  |
 | `stripe` | object | no |  |
 | `rc_billing` | object or null | no |  |
-| `roku` | object or null | no |  |
-| `paddle` | object or null | no |  |
+| `roku` | object or null | no | `roku_api_key` (sealed), `roku_channel_id`, `roku_channel_name`. |
+| `paddle` | object or null | no | `paddle_api_key` (sealed; `pdl_live_apikey_…` or `pdl_sdbx_apikey_…`), `paddle_is_sandbox` (only for keys made before May 2025), `paddle_webhook_secret` (sealed). |
+| `galaxy` | object | no | `package_name` plus `galaxy_service_account_id`, `galaxy_service_account_private_key` (sealed) and the optional `galaxy_iap_public_key`. |
 
 **Example request**
 
@@ -217,7 +220,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/apps/$APP_ID" -H "Authorization
 `POST /v2/projects/{project_id}/apps/{app_id}` · Auth: secret key or dashboard session · Permissions: `project_configuration:apps:read_write`
 
 Send only the store object of the app's own type. A field set to null removes that credential; other values replace it.
-RevenueDot extensions in the store object: `notification_forward_url` (copy store notifications to another URL, for example RevenueCat during a dual run; null or "" turns it off), `track_new_purchases`, `allow_unsigned_receipts`, `xcode_certificate`, `app_apple_id`, `pubsub_audience`, `pubsub_service_account`; Amazon `shared_secret`, `sns_topic_arn`; Stripe `stripe_secret_key`, `stripe_webhook_secret`, `stripe_account_id`, `app_user_id_source` (metadata, customer_id, anonymous), `app_user_id_metadata_key`, `register_on` (invoice_paid, invoice_created). See [App Store setup](../docs/guides/app-store.md), [Google Play setup](../docs/guides/google-play.md), [Amazon Appstore setup](../docs/guides/amazon-appstore.md) and [Stripe setup](../docs/guides/stripe.md).
+RevenueDot extensions in the store object: `notification_forward_url` (copy store notifications to another URL, for example RevenueCat during a dual run; null or "" turns it off), `track_new_purchases`, `allow_unsigned_receipts`, `xcode_certificate`, `app_apple_id`, `pubsub_audience`, `pubsub_service_account`; Amazon `shared_secret`, `sns_topic_arn`; Stripe `stripe_secret_key`, `stripe_webhook_secret`, `stripe_account_id`, `app_user_id_source` (metadata, customer_id, anonymous), `app_user_id_metadata_key`, `register_on` (invoice_paid, invoice_created); Paddle `paddle_webhook_secret`, `app_user_id_source` (custom_data, anonymous), `app_user_id_custom_data_key`; Galaxy Store `galaxy_iap_public_key`. See [App Store setup](../docs/guides/app-store.md), [Google Play setup](../docs/guides/google-play.md), [Amazon Appstore setup](../docs/guides/amazon-appstore.md), [Stripe setup](../docs/guides/stripe.md), [Paddle setup](../docs/guides/paddle.md), [Roku setup](../docs/guides/roku.md) and [Galaxy Store setup](../docs/guides/galaxy-store.md).
 
 **Path parameters**
 
@@ -239,6 +242,7 @@ RevenueDot extensions in the store object: `notification_forward_url` (copy stor
 | `rc_billing` | object | no |  |
 | `roku` | object | no |  |
 | `paddle` | object | no |  |
+| `galaxy` | object | no |  |
 
 **Example request**
 
@@ -560,7 +564,7 @@ Store products.
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `app_id` | string | no | Only this app's products. |
-| `expand` | array of `items.app`, `items.indicative_price` | no | `items.app` embeds each product's app. `items.indicative_price` adds each product's Test Store price. |
+| `expand` | array of `items.app`, `items.indicative_price`, `items.store_details` | no | `items.app` embeds each product's app. `items.indicative_price` adds each product's indicative price: the Test Store price, else the store price from the last price read (United States first), else the Stripe web product's price. `items.store_details` (RevenueDot extension) adds each product's store status and price; see [store prices](../docs/guides/product-editor.md#store-prices-and-status-on-the-products-page). |
 | `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
 | `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
 
@@ -593,7 +597,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products" -H "Authorization: Be
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `expand` | array of `indicative_price` | no | `indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price). |
+| `expand` | array of `indicative_price`, `store_details` | no | `indicative_price` adds RevenueCat's IndicativePrice: the Test Store price; else the App Store or Google Play price in the United States from the last store price read (or the in-app purchase's base territory, or the first territory with a price); else the Stripe web product's price; null when none is known. `store_details` (RevenueDot extension) adds the store's status, base price, number of priced territories and when they were read. |
 
 **Request body** (`application/json`)
 
@@ -662,7 +666,7 @@ Example 201 response:
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `expand` | array of `app`, `indicative_price` | no | `app` embeds the app. `indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price). |
+| `expand` | array of `app`, `indicative_price`, `store_details` | no | `app` embeds the app. `indicative_price` adds RevenueCat's IndicativePrice: the Test Store price; else the App Store or Google Play price in the United States from the last store price read (or the in-app purchase's base territory, or the first territory with a price); else the Stripe web product's price; null when none is known. `store_details` (RevenueDot extension) adds the store's status, base price, number of priced territories and when they were read. |
 
 **Example request**
 
@@ -714,7 +718,7 @@ RevenueDot also lets you correct `type` and `subscription.duration` (null clears
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `expand` | array of `app`, `indicative_price` | no | `indicative_price` adds the Test Store price in RevenueCat's IndicativePrice shape (null for other stores and for products without a price). |
+| `expand` | array of `app`, `indicative_price`, `store_details` | no | `indicative_price` adds RevenueCat's IndicativePrice: the Test Store price; else the App Store or Google Play price in the United States from the last store price read (or the in-app purchase's base territory, or the first territory with a price); else the Stripe web product's price; null when none is known. `store_details` (RevenueDot extension) adds the store's status, base price, number of priced territories and when they were read. |
 
 **Request body** (`application/json`)
 
@@ -1358,7 +1362,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/offerings/$OFFERING_ID"
 
 `DELETE /v2/projects/{project_id}/offerings/{offering_id}` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read_write`
 
-Deletes its packages and clears customer overrides that point to it.
+Deletes its packages and clears customer overrides that point to it. An offering that a draft, running or paused experiment uses (as a variant's offering or a placement offering) answers 409 and names the experiment: stop the experiment or pick another offering in it first. A stopped experiment keeps its results and shows the deleted offering's id.
 
 **Path parameters**
 
@@ -1379,6 +1383,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/offerings/$OFFERING_I
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
 
 Example 200 response:
 
@@ -1390,9 +1395,56 @@ Example 200 response:
 }
 ```
 
+### Duplicate an offering
+
+`POST /v2/projects/{project_id}/offerings/{offering_id}/actions/duplicate` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
+
+Copies an offering with its packages, for an experiment's treatment. The copy is never current. Without `packages` the copy is exact: every package in order, with the same products. With `packages`, the list sets which packages are copied and in what order, and a package's `products` replaces its products (to test another price, period, trial or introductory offer). `copy_paywall` copies the offering's paywall, draft and published content, onto the copy.
+
+Answers 400 when a `source_package_id` is not a package of this offering or repeats, a product is not in the project or repeats in a package, or `copy_paywall` is true and the offering has no paywall. Answers 409 when the `lookup_key` is taken, or two products of the same app in a package have overlapping `eligibility_criteria`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `offering_id` | string | yes | The offering to copy. |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `lookup_key` | string | yes |  |
+| `display_name` | string | yes |  |
+| `metadata` | object or null | no | Default: the source offering's metadata. |
+| `packages` | array of object | no | Packages to copy, in the new order. Omitted: every package, as it is. |
+| `packages[].source_package_id` | string | yes | A package of the source offering (pkge...). |
+| `packages[].products` | array of object | no | Replaces the package's products. Omitted: the source package's products. |
+| `packages[].products[].product_id` | string | yes |  |
+| `packages[].products[].eligibility_criteria` | `all`, `google_sdk_lt_6`, `google_sdk_ge_6` | yes |  |
+| `copy_paywall` | boolean | no | Also copy the offering's paywall onto the copy. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/offerings/$OFFERING_ID/actions/duplicate" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"lookup_key":"default_price","display_name":"Standard plans (price point)","packages":[{"source_package_id":"pkge1a2b3c4d5e","products":[{"product_id":"prod9k8j7h6g5f","eligibility_criteria":"all"}]},{"source_package_id":"pkge6f7g8h9i0j"}]}'
+```
+
+**Responses**
+
+- **201**: The copy, with its packages and their products expanded. Returns [Offering](#offering).
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
+
 ### Archive an offering
 
 `POST /v2/projects/{project_id}/offerings/{offering_id}/actions/archive` · Auth: secret key or dashboard session · Permissions: `project_configuration:offerings:read_write`
+
+An offering that a draft, running or paused experiment uses cannot be archived (409); the current offering cannot be archived (422).
 
 **Path parameters**
 
@@ -1413,6 +1465,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/offerings/$OFFERING_ID/
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
 
 ### Unarchive an offering
@@ -2997,6 +3050,7 @@ Sandbox purchases, granted access and Family Sharing are excluded; money is USD 
 | `limit_num_segments` | integer | no | Top N segments by the first measure; the rest become "Other". |
 | `aggregate` | string | no | `average`, `total` or both, comma separated: `values` is empty and `summary` holds only these. |
 | `currency` | `USD`, `EUR`, `GBP`, `AUD`, `CAD`, `JPY`, `BRL`, `KRW`, `CNY`, `MXN`, `SEK`, `PLN`, `NZD`, `CHF` | no |  |
+| `week_start` | string | no | RevenueDot extension: the first day of weekly buckets, 0 (Sunday) to 6 (Saturday) or a day's name. Default 1 (Monday). |
 | `include_annotations` | boolean | no |  |
 | `realtime` | boolean | no | Accepted for compatibility; every chart uses the real-time (v3) definitions. |
 | `environment` | `production`, `sandbox` | no | RevenueDot extension. `sandbox` shows only sandbox and Test Store purchases. Default `production`. |
@@ -3047,6 +3101,309 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/charts/$CHART_NAME/options" -H 
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
+### List the customers behind a chart
+
+`GET /v2/projects/{project_id}/charts/{chart_name}/customers` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`, `customer_information:customers:read`
+
+The customers whose purchases, subscriptions, trials or activity make up the chart for these parameters (the chart's own), most recent contribution first, each with their part of one of the chart's measures. The values plus `unattributed_value` add up to the chart: over the range (`sum: total`) or at the last period (`sum: last`). Which customers each chart lists: https://revenuedot.app/docs/guides/charts#customers-behind-a-chart.
+
+`format=csv` streams every contributor as CSV (at most 100,000 rows); the response has `X-RevenueDot-Total-Count`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `chart_name` | `actives`, `actives_movement`, `actives_new`, `arr`, `churn`, `cohort_explorer`, `conversion_to_paying`, `customers_new`, `initial_conversion`, `ltv_per_customer`, `ltv_per_paying_customer`, `mrr`, `mrr_movement`, `prediction_explorer`, `refund_rate`, `refund_request`, `refunds`, `revenue`, `subscription_retention`, `subscription_status`, `trials`, `trials_movement`, `trials_new`, `customers_active`, `trial_conversion`, `trial_conversion_rate`, `trial_cancellation`, `non-subscription_purchases`, `ad_revenue`, `ad_impressions`, `ad_clicks`, `ad_monetized_customers`, `ad_arpdau`, `ad_rpm`, `ad_fill_rate`, `ad_ctr`, `paywall_encounter`, `paywall_conversion`, `paywall_ltv`, `paywall_abandonment`, `app_store_save_outcomes`, `play_store_cancel_reasons`, `customer_center_survey_responses` | yes | The chart. `play_store_cancel_reasons` and `customer_center_survey_responses` are RevenueDot names for charts RevenueCat shows only in its dashboard. Definitions: https://revenuedot.app/docs/guides/charts |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `resolution` | string | no | As for chart data. |
+| `start_date` | string | no |  |
+| `end_date` | string | no |  |
+| `expand_periods` | boolean | no |  |
+| `filters` | string | no |  |
+| `selectors` | string | no |  |
+| `segment` | string | no |  |
+| `limit_num_segments` | integer | no |  |
+| `currency` | `USD`, `EUR`, `GBP`, `AUD`, `CAD`, `JPY`, `BRL`, `KRW`, `CNY`, `MXN`, `SEK`, `PLN`, `NZD`, `CHF` | no |  |
+| `environment` | `production`, `sandbox` | no | RevenueDot extension. `sandbox` shows only sandbox and Test Store purchases. Default `production`. |
+| `limit` | integer | no | Customers in `items`, 1–100. Default 100. |
+| `format` | `json`, `csv` | no | Default `json`. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/charts/$CHART_NAME/customers" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The customers, or the CSV export.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### List chart annotations
+
+`GET /v2/projects/{project_id}/chart_annotations` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`
+
+The project's annotations, oldest first, at most 1,000. With dates, only those that overlap them.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `start_date` | string | no |  |
+| `end_date` | string | no |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/chart_annotations" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The annotations.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Create a chart annotation
+
+`POST /v2/projects/{project_id}/chart_annotations` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read_write`
+
+A note on a UTC day or date range that every chart of the project shows. Viewers cannot create one. Audited as `chart_annotation_created`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `title` | string | yes |  |
+| `description` | string or null | no |  |
+| `start_date` | string | yes |  |
+| `end_date` | string or null | no | Default `start_date`; never before it. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/chart_annotations" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"title":"Launched the annual plan","description":"New paywall in 2.4","start_date":"2026-09-14"}'
+```
+
+**Responses**
+
+- **201**: The annotation.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### Get a chart annotation
+
+`GET /v2/projects/{project_id}/chart_annotations/{annotation_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `annotation_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/chart_annotations/$ANNOTATION_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The annotation.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Update a chart annotation
+
+`PATCH /v2/projects/{project_id}/chart_annotations/{annotation_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read_write`
+
+Changes any field. A single-day annotation moved with `start_date` stays a single day; `end_date: null` makes any annotation a single day. Audited as `chart_annotation_updated`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `annotation_id` | string | yes |  |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `title` | string | no |  |
+| `description` | string or null | no |  |
+| `start_date` | string | no |  |
+| `end_date` | string or null | no |  |
+
+**Example request**
+
+```bash
+curl -s -X PATCH "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/chart_annotations/$ANNOTATION_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The annotation.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Delete a chart annotation
+
+`DELETE /v2/projects/{project_id}/chart_annotations/{annotation_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read_write`
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `annotation_id` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/chart_annotations/$ANNOTATION_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Deleted.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### List active chart share links
+
+`GET /v2/projects/{project_id}/chart_shares` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`
+
+The project's links that are not revoked, newest first, at most 200.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `chart_name` | `actives`, `actives_movement`, `actives_new`, `arr`, `churn`, `cohort_explorer`, `conversion_to_paying`, `customers_new`, `initial_conversion`, `ltv_per_customer`, `ltv_per_paying_customer`, `mrr`, `mrr_movement`, `prediction_explorer`, `refund_rate`, `refund_request`, `refunds`, `revenue`, `subscription_retention`, `subscription_status`, `trials`, `trials_movement`, `trials_new`, `customers_active`, `trial_conversion`, `trial_conversion_rate`, `trial_cancellation`, `non-subscription_purchases`, `ad_revenue`, `ad_impressions`, `ad_clicks`, `ad_monetized_customers`, `ad_arpdau`, `ad_rpm`, `ad_fill_rate`, `ad_ctr`, `paywall_encounter`, `paywall_conversion`, `paywall_ltv`, `paywall_abandonment`, `app_store_save_outcomes`, `play_store_cancel_reasons`, `customer_center_survey_responses` | no | Only this chart's links. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/chart_shares" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The links.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Create a public chart share link
+
+`POST /v2/projects/{project_id}/chart_shares` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read_write`
+
+Computes the chart for the view now and keeps that snapshot (series, labels, summary values; no customer data) behind an unguessable public link with a PNG preview. Owners, admins and developers can create one; at most 200 active per project. Audited as `chart_share_created`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `chart_name` | `actives`, `actives_movement`, `actives_new`, `arr`, `churn`, `cohort_explorer`, `conversion_to_paying`, `customers_new`, `initial_conversion`, `ltv_per_customer`, `ltv_per_paying_customer`, `mrr`, `mrr_movement`, `prediction_explorer`, `refund_rate`, `refund_request`, `refunds`, `revenue`, `subscription_retention`, `subscription_status`, `trials`, `trials_movement`, `trials_new`, `customers_active`, `trial_conversion`, `trial_conversion_rate`, `trial_cancellation`, `non-subscription_purchases`, `ad_revenue`, `ad_impressions`, `ad_clicks`, `ad_monetized_customers`, `ad_arpdau`, `ad_rpm`, `ad_fill_rate`, `ad_ctr`, `paywall_encounter`, `paywall_conversion`, `paywall_ltv`, `paywall_abandonment`, `app_store_save_outcomes`, `play_store_cancel_reasons`, `customer_center_survey_responses` | yes |  |
+| `view` | object | no |  |
+| `view.range` | string | no | 7d, 30d, 90d, 12m or custom. |
+| `view.start` | string | no | Custom range start, YYYY-MM-DD. |
+| `view.end` | string | no | Custom range end. |
+| `view.res` | string | no | day, week, month, quarter or year. |
+| `view.segment` | string | no |  |
+| `view.filters` | string | no | The filters parameter's JSON. |
+| `view.sel` | string | no | The selectors parameter's JSON. |
+| `view.env` | `production`, `sandbox` | no |  |
+| `view.compare` | boolean | no | Compare to the previous period. |
+| `view.type` | `line`, `stacked_area`, `column`, `stacked_column`, `percent_column` | no | The chart type. Stacked types need two or more series; with one they draw as `line` or `column`. |
+| `view.m` | string | no | The plotted measure group, `0` first. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/chart_shares" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"chart_name":"revenue","view":{"range":"90d","res":"week","segment":"product","type":"stacked_column"}}'
+```
+
+**Responses**
+
+- **201**: The link.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
+
+### Revoke a chart share link
+
+`DELETE /v2/projects/{project_id}/chart_shares/{share_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read_write`
+
+The public page and images answer 410 from now on. Audited as `chart_share_deleted`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `share_id` | string | yes | The link's `id` (`chartshare…`), not its token. |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/chart_shares/$SHARE_ID" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Revoked.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
 ### List saved charts
 
 `GET /v2/projects/{project_id}/saved_charts` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read`
@@ -3082,7 +3439,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/saved_charts" -H "Authorization
 
 `POST /v2/projects/{project_id}/saved_charts` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `charts_metrics:charts:read_write`
 
-A named chart with the dashboard view that produced it (range, dates, resolution, segment, filters, selectors, environment, compare). Up to 200 per project.
+A named chart with the dashboard view that produced it (range, dates, resolution, segment, filters, selectors, environment, compare, chart type, measure group). Up to 200 per project.
 
 **Path parameters**
 
@@ -3106,6 +3463,8 @@ A named chart with the dashboard view that produced it (range, dates, resolution
 | `view.sel` | string | no | The selectors parameter's JSON. |
 | `view.env` | `production`, `sandbox` | no |  |
 | `view.compare` | boolean | no | Compare to the previous period. |
+| `view.type` | `line`, `stacked_area`, `column`, `stacked_column`, `percent_column` | no | The chart type. Stacked types need two or more series; with one they draw as `line` or `column`. |
+| `view.m` | string | no | The plotted measure group, `0` first. |
 
 **Example request**
 
@@ -3173,6 +3532,8 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/saved_charts/$SAVED_CHART_ID" -
 | `view.sel` | string | no | The selectors parameter's JSON. |
 | `view.env` | `production`, `sandbox` | no |  |
 | `view.compare` | boolean | no | Compare to the previous period. |
+| `view.type` | `line`, `stacked_area`, `column`, `stacked_column`, `percent_column` | no | The chart type. Stacked types need two or more series; with one they draw as `line` or `column`. |
+| `view.m` | string | no | The plotted measure group, `0` first. |
 
 **Example request**
 
@@ -4227,11 +4588,13 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/targeting_rules/$RULE
 
 ## Experiments
 
-Offering A/B tests and their results.
+Offering experiments: a control and up to three treatments, each with an offering and placement offerings; enrollment of new or new and existing customers, a saved or custom audience, a share, and a priority order between experiments; results with 95% intervals, lift and the chance to beat the control for 18 metrics, a daily series, CSV export and a 7-day audience estimate. See [Experiments](../docs/guides/experiments.md).
 
 ### List experiments
 
 `GET /v2/projects/{project_id}/experiments` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`
+
+Oldest first. `priority` gives the enrollment order.
 
 **Path parameters**
 
@@ -4254,7 +4617,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments" -H "Authorization:
 
 **Responses**
 
-- **200**: A page of experiments.
+- **200**: A page of experiments. Returns a list of [Experiment](#experiment).
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
@@ -4264,7 +4627,11 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments" -H "Authorization:
 
 `POST /v2/projects/{project_id}/experiments` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
 
-A draft until started. Running experiments enroll customers who match the audience, in the given percentage, into variant a or b (each customer always gets the same variant), and serve that variant's offering as the current offering. Enrolling records an `EXPERIMENT_ENROLLMENT` event, and enrolled customers' lifecycle events carry `experiments`.
+Creates a **draft** at the bottom of the enrollment order (the highest `priority`). Send `variants` (a control and 1 to 3 treatments), or the older `offering_a` and `offering_b` for two variants. Defaults: `type` `other`, the type's metrics, `enrollment` `new`, everyone, 100%.
+
+Once started, a customer who asks for offerings and is admitted (enrollment mode, then audience, then the share) joins one variant for good and gets its offering as `current_offering_id` and its placements. Enrolling records one `EXPERIMENT_ENROLLMENT` event, and the customer's lifecycle events carry `experiments`.
+
+Answers 400 when: both `variants` and `offering_a`/`offering_b` are sent, or neither; `audience_id` and `audience_rules` are both sent; the audience, an offering or a placement offering is not in the project, or the offering is archived; a condition's field or operator is unknown; a placement id has other characters; a variant's `id` does not match its position; two variants serve the same offering and the same placement offerings; or `enrollment` is `new_and_existing` with `track_paywall_views: false`.
 
 **Path parameters**
 
@@ -4276,26 +4643,183 @@ A draft until started. Running experiments enroll customers who match the audien
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `name` | string | yes |  |
-| `audience_id` | string or null | no |  |
-| `enrollment_percent` | integer | no |  |
-| `offering_a` | string | yes | Control offering. |
-| `offering_b` | string | yes | Treatment offering. |
+| `name` | string | yes | 1 to 256 characters. |
+| `type` | `introductory_offer`, `free_trial_offer`, `paywall_design`, `price_point`, `subscription_duration`, `subscription_ordering`, `other` | no | What is tested. It sets the default metrics: see [Experiments](../docs/guides/experiments.md#the-six-starter-types). |
+| `primary_metric` | `initial_conversion_rate`, `trial_conversion_rate`, `conversion_to_paying`, `refund_rate`, `realized_ltv_per_customer`, `realized_ltv_per_paying_customer`, `mrr_per_customer`, `mrr_per_paying_customer` | no | The metric that decides the winner: a rate or a per-customer mean, because those have an interval. |
+| `secondary_metrics` | array of `initial_conversion_rate`, `initial_conversions`, `trials_started`, `trials_completed`, `trials_converted`, `trial_conversion_rate`, `paid_customers`, `conversion_to_paying`, `active_subscribers`, `churned_subscribers`, `refunded_customers`, `refund_rate`, `realized_ltv`, `realized_ltv_per_customer`, `realized_ltv_per_paying_customer`, `mrr`, `mrr_per_customer`, `mrr_per_paying_customer` | no | Up to 12 more metrics shown first in the results. |
+| `notes` | string | no | The hypothesis, in Markdown. |
+| `enrollment` | `new`, `new_and_existing` | no | `new`: only customers first seen at or after the experiment's first start. `new_and_existing`: anyone who asks for offerings while it runs. |
+| `track_paywall_views` | boolean | no | Default false. Set to true with `new_and_existing`; false there answers 400. |
+| `audience_id` | string or null | no | A saved audience. Send it or `audience_rules`, not both; setting one clears the other. |
+| `audience_rules` | object or null | no | Conditions written for this experiment only, in the audience condition format. Null when it uses a saved audience or everyone. |
+| `audience_rules.groups` | array of object | yes | Groups are OR-ed; conditions in a group are AND-ed. |
+| `audience_rules.groups[].conditions` | array of object | yes |  |
+| `enrollment_percent` | integer | no | Share of matching customers to enroll. Default 100. |
+| `variants` | array of object | no | The control first, then 1 to 3 treatments. |
+| `variants[].id` | `a`, `b`, `c`, `d` | no | Optional; must match the position (a, b, c, d). |
+| `variants[].name` | string | no | Default: Control, Treatment B ... |
+| `variants[].offering_id` | string | yes | Offering id in this project. |
+| `variants[].placements` | object | no | Placement id (letters, digits, `_`, `.`, `-`, up to 100) → offering id, or null for no paywall. |
+| `offering_a` | string | no | Older form: the control offering. Send it with `offering_b` instead of `variants`. |
+| `offering_b` | string | no | Older form: the treatment offering. |
 
 **Example request**
 
 ```bash
 curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments" -H "Authorization: Bearer $SECRET_KEY" \
-  -H "Content-Type: application/json" -d '{"name":"Annual first","offering_a":"ofrngm2u3h89blc","offering_b":"ofrng9x8y7z6w5","enrollment_percent":50}'
+  -H "Content-Type: application/json" -d '{"name":"Price point test","type":"price_point","notes":"## Hypothesis\n$14.99 a month earns more per customer than $9.99.","variants":[{"offering_id":"ofrngm2u3h89blc"},{"name":"Higher price","offering_id":"ofrng9x8y7z6w5a"}],"audience_rules":{"groups":[{"conditions":[{"field":"country","operator":"isAnyOf","value":"US"}]}]},"enrollment_percent":50}'
 ```
 
 **Responses**
 
-- **201**: The experiment.
+- **201**: The draft. Returns [Experiment](#experiment).
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 201 response:
+
+```json
+{
+  "object": "experiment",
+  "id": "prexp4k2m9q8z1x",
+  "project_id": "proj18pzzkao",
+  "name": "Price point test",
+  "type": "price_point",
+  "status": "draft",
+  "primary_metric": "realized_ltv_per_customer",
+  "secondary_metrics": [
+    "conversion_to_paying",
+    "initial_conversion_rate",
+    "refund_rate"
+  ],
+  "notes": "## Hypothesis\n$14.99 a month earns more per customer than $9.99.",
+  "enrollment": "new",
+  "track_paywall_views": false,
+  "audience_id": null,
+  "audience_rules": {
+    "groups": [
+      {
+        "conditions": [
+          {
+            "field": "country",
+            "operator": "isAnyOf",
+            "value": "US"
+          }
+        ]
+      }
+    ]
+  },
+  "enrollment_percent": 50,
+  "priority": 3,
+  "variants": [
+    {
+      "id": "a",
+      "name": "Control",
+      "offering_id": "ofrngm2u3h89blc",
+      "placements": {}
+    },
+    {
+      "id": "b",
+      "name": "Higher price",
+      "offering_id": "ofrng9x8y7z6w5a",
+      "placements": {}
+    }
+  ],
+  "started_at": null,
+  "paused_at": null,
+  "stopped_at": null,
+  "created_at": 1790800914012,
+  "updated_at": null,
+  "enrolled_customers": 0
+}
+```
+
+### Set the enrollment order
+
+`POST /v2/projects/{project_id}/experiments/actions/reorder` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
+
+When several running experiments could take the same customer, the one with the lowest `priority` enrolls them. Stopped experiments keep their relative order after these.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `experiment_ids` | array of string | yes | Every draft, running and paused experiment of the project, once, first enrolling first. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/actions/reorder" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"experiment_ids":["prexp7h3k1m0p2q","prexp4k2m9q8z1x"]}'
+```
+
+**Responses**
+
+- **200**: Every experiment of the project in priority order, stopped ones last. Returns a list of [Experiment](#experiment).
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Estimate how many customers would join
+
+`POST /v2/projects/{project_id}/experiments/actions/estimate` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`, `audiences:audiences:read`
+
+What the dashboard's create form shows: customers of the last 7 days who match the audience, times the percentage, split between the variants. Changes nothing.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `audience_id` | string or null | no | A saved audience. Send it or `audience_rules`, not both. |
+| `audience_rules` | object or null | no | Conditions written for this experiment only, in the audience condition format. Null when it uses a saved audience or everyone. |
+| `audience_rules.groups` | array of object | yes | Groups are OR-ed; conditions in a group are AND-ed. |
+| `audience_rules.groups[].conditions` | array of object | yes |  |
+| `enrollment` | `new`, `new_and_existing` | no | `new` (default) counts customers first seen in the last 7 days; `new_and_existing` counts customers seen in them. |
+| `enrollment_percent` | integer | no | Default 100. |
+| `variant_count` | integer | no | Default 2. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/actions/estimate" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"enrollment":"new","audience_rules":{"groups":[{"conditions":[{"field":"country","operator":"isAnyOf","value":"US"}]}]},"enrollment_percent":50,"variant_count":2}'
+```
+
+**Responses**
+
+- **200**: The estimate. Returns [ExperimentEstimate](#experimentestimate).
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "experiment_estimate",
+  "period_days": 7,
+  "matching_customers": 1840,
+  "enrolled_customers": 920,
+  "customers_per_variant": 460,
+  "is_approximate": false
+}
+```
 
 ### Get an experiment
 
@@ -4306,7 +4830,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments" -H "Author
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
-| `experiment_id` | string | yes |  |
+| `experiment_id` | string | yes | Experiment id (prexp...). |
 
 **Example request**
 
@@ -4316,7 +4840,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT_ID" -H 
 
 **Responses**
 
-- **200**: The experiment.
+- **200**: The experiment. Returns [Experiment](#experiment).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
@@ -4325,35 +4849,49 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT_ID" -H 
 
 `POST /v2/projects/{project_id}/experiments/{experiment_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
 
-Variants and audience change only while it is a draft.
+A draft takes every field, with the same checks as create. `offering_a` and `offering_b` replace the first two variants' offerings and keep their names and placements. Once an experiment has started (running, paused or stopped), only `name`, `type`, `primary_metric`, `secondary_metrics`, `notes` and `enrollment_percent` can change; any other field answers 422 and names it.
 
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
-| `experiment_id` | string | yes |  |
+| `experiment_id` | string | yes | Experiment id (prexp...). |
 
 **Request body** (`application/json`)
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `name` | string | no |  |
-| `audience_id` | string or null | no |  |
-| `enrollment_percent` | integer | no |  |
-| `offering_a` | string | no | Control offering. |
-| `offering_b` | string | no | Treatment offering. |
+| `name` | string | no | 1 to 256 characters. |
+| `type` | `introductory_offer`, `free_trial_offer`, `paywall_design`, `price_point`, `subscription_duration`, `subscription_ordering`, `other` | no | What is tested. It sets the default metrics: see [Experiments](../docs/guides/experiments.md#the-six-starter-types). |
+| `primary_metric` | `initial_conversion_rate`, `trial_conversion_rate`, `conversion_to_paying`, `refund_rate`, `realized_ltv_per_customer`, `realized_ltv_per_paying_customer`, `mrr_per_customer`, `mrr_per_paying_customer` | no | The metric that decides the winner: a rate or a per-customer mean, because those have an interval. |
+| `secondary_metrics` | array of `initial_conversion_rate`, `initial_conversions`, `trials_started`, `trials_completed`, `trials_converted`, `trial_conversion_rate`, `paid_customers`, `conversion_to_paying`, `active_subscribers`, `churned_subscribers`, `refunded_customers`, `refund_rate`, `realized_ltv`, `realized_ltv_per_customer`, `realized_ltv_per_paying_customer`, `mrr`, `mrr_per_customer`, `mrr_per_paying_customer` | no | Up to 12 more metrics shown first in the results. |
+| `notes` | string | no | The hypothesis, in Markdown. |
+| `enrollment` | `new`, `new_and_existing` | no | `new`: only customers first seen at or after the experiment's first start. `new_and_existing`: anyone who asks for offerings while it runs. |
+| `track_paywall_views` | boolean | no | Default false. Set to true with `new_and_existing`; false there answers 400. |
+| `audience_id` | string or null | no | A saved audience. Send it or `audience_rules`, not both; setting one clears the other. |
+| `audience_rules` | object or null | no | Conditions written for this experiment only, in the audience condition format. Null when it uses a saved audience or everyone. |
+| `audience_rules.groups` | array of object | yes | Groups are OR-ed; conditions in a group are AND-ed. |
+| `audience_rules.groups[].conditions` | array of object | yes |  |
+| `enrollment_percent` | integer | no | Share of matching customers to enroll. Default 100. |
+| `variants` | array of object | no | The control first, then 1 to 3 treatments. |
+| `variants[].id` | `a`, `b`, `c`, `d` | no | Optional; must match the position (a, b, c, d). |
+| `variants[].name` | string | no | Default: Control, Treatment B ... |
+| `variants[].offering_id` | string | yes | Offering id in this project. |
+| `variants[].placements` | object | no | Placement id (letters, digits, `_`, `.`, `-`, up to 100) → offering id, or null for no paywall. |
+| `offering_a` | string | no | Older form: the control offering. Send it with `offering_b` instead of `variants`. |
+| `offering_b` | string | no | Older form: the treatment offering. |
 
 **Example request**
 
 ```bash
 curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT_ID" -H "Authorization: Bearer $SECRET_KEY" \
-  -H "Content-Type: application/json" -d '{"enrollment_percent":100}'
+  -H "Content-Type: application/json" -d '{"enrollment_percent":100,"notes":"Raised to 100% after a week."}'
 ```
 
 **Responses**
 
-- **200**: The experiment.
+- **200**: The experiment. Returns [Experiment](#experiment).
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
@@ -4364,12 +4902,14 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT
 
 `DELETE /v2/projects/{project_id}/experiments/{experiment_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
 
+Deletes its enrollments and results. On their next request its customers get what targeting gives them, or join another running experiment that admits them. A running experiment answers 422: stop or pause it first.
+
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
-| `experiment_id` | string | yes |  |
+| `experiment_id` | string | yes | Experiment id (prexp...). |
 
 **Example request**
 
@@ -4389,12 +4929,14 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIME
 
 `POST /v2/projects/{project_id}/experiments/{experiment_id}/actions/start` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
 
+A draft or paused experiment runs. The first start sets `started_at`; a resume clears `paused_at` and keeps `started_at`. Answers 422 for a running or stopped experiment, when one of its offerings was deleted or archived, or when it has fewer than two variants; 409 (`resource_locked_error`) when another request changed its status at the same time.
+
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
-| `experiment_id` | string | yes |  |
+| `experiment_id` | string | yes | Experiment id (prexp...). |
 
 **Example request**
 
@@ -4404,22 +4946,25 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT
 
 **Responses**
 
-- **200**: The experiment.
+- **200**: The experiment. Returns [Experiment](#experiment).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
 
 ### Pause: enrolled customers keep their variant, nobody new joins
 
 `POST /v2/projects/{project_id}/experiments/{experiment_id}/actions/pause` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
 
+Only a running experiment can pause (422 otherwise; 409 when another request changed its status at the same time). Results keep counting what enrolled customers do.
+
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
-| `experiment_id` | string | yes |  |
+| `experiment_id` | string | yes | Experiment id (prexp...). |
 
 **Example request**
 
@@ -4429,22 +4974,25 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT
 
 **Responses**
 
-- **200**: The experiment.
+- **200**: The experiment. Returns [Experiment](#experiment).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
 
 ### Stop for good
 
 `POST /v2/projects/{project_id}/experiments/{experiment_id}/actions/stop` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
 
+A running or paused experiment stops (422 otherwise; 409 when another request changed its status at the same time). On their next request its customers get what targeting gives them, or join another running experiment that admits them. Results stay and keep updating as renewals and refunds arrive. A stopped experiment never enrolls anyone again; duplicate it instead.
+
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
-| `experiment_id` | string | yes |  |
+| `experiment_id` | string | yes | Experiment id (prexp...). |
 
 **Example request**
 
@@ -4454,30 +5002,36 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT
 
 **Responses**
 
-- **200**: The experiment.
+- **200**: The experiment. Returns [Experiment](#experiment).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
 
 ### Results per variant
 
 `GET /v2/projects/{project_id}/experiments/{experiment_id}/results` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`
 
-Customers, conversions, trials and revenue after enrolling, and the chance that b converts better than a (normal approximation). `enough_data` is false until both variants have 100 customers.
+Every metric per variant, computed now from the enrolled customers' purchases made after they joined (and the renewals, refunds and trial conversions that follow), in USD. Production results leave out customers who joined from a test device (a Test Store app or an iOS sandbox build); `environment=sandbox` counts every enrolled customer with their test purchases. Above 25,000 enrolled customers the numbers come from a fixed random sample of 25,000, and `sample` says so. Rates have a Wilson interval; per-customer means a normal interval; treatments also have the lift over the control with its interval and the chance to beat the control. `guidance` says whether there is enough data and how many customers a 20% lift needs. `series` holds every metric by day.
+
+The first release's fields stay: `conversions`, `conversion_rate`, `trials`, `paying_customers`, `revenue` and `revenue_per_customer` on each variant, and `chance_b_beats_a` and `enough_data` at the top. See [Experiments](../docs/guides/experiments.md#read-the-results) for every definition and the statistics.
 
 **Path parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `project_id` | string | yes | Project id (proj...). |
-| `experiment_id` | string | yes |  |
+| `experiment_id` | string | yes | Experiment id (prexp...). |
 
 **Query parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `environment` | `production`, `sandbox` | no |  |
+| `environment` | `production`, `sandbox` | no | Default `production`. `sandbox` counts test purchases instead. |
+| `platform` | string | no | Only customers whose last request came from this platform (any case), such as `ios` or `android`. |
+| `country` | string | no | Only customers whose last request came from this country (ISO 3166-1 alpha-2, any case). |
+| `paywall` | `all`, `viewed`, `not_viewed` | no | Customers with or without a paywall view after joining. Default `viewed` when the experiment tracks paywall views, else `all`. |
 
 **Example request**
 
@@ -4487,7 +5041,44 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT_ID/resu
 
 **Responses**
 
-- **200**: Results.
+- **200**: Results. Returns [ExperimentResults](#experimentresults).
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Export results as CSV
+
+`GET /v2/projects/{project_id}/experiments/{experiment_id}/results/export` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`
+
+The same numbers as the results, as an RFC 4180 CSV with CRLF line ends, named `experiment-<id>-<kind>-<environment>-<YYYY-MM-DD>.csv`. Summary columns: `variant_id`, `variant_name`, `offering_id`, `customers`, `metric`, `metric_name`, `value`, `numerator`, `denominator`, `lower_95`, `upper_95`, `lift`, `lift_lower_95`, `lift_upper_95`, `chance_to_beat_control`. Daily columns: `date` (UTC), `variant_id`, `variant_name`, then each metric id. Empty cells are values that do not apply; text that a spreadsheet would run as a formula starts with an apostrophe.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `experiment_id` | string | yes | Experiment id (prexp...). |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `kind` | `summary`, `daily` | no | `summary` (default): one row per variant and metric. `daily`: one row per day and variant, one column per metric id. |
+| `environment` | `production`, `sandbox` | no | Default `production`. `sandbox` counts test purchases instead. |
+| `platform` | string | no | Only customers whose last request came from this platform (any case), such as `ios` or `android`. |
+| `country` | string | no | Only customers whose last request came from this country (ISO 3166-1 alpha-2, any case). |
+| `paywall` | `all`, `viewed`, `not_viewed` | no | Customers with or without a paywall view after joining. Default `viewed` when the experiment tracks paywall views, else `all`. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT_ID/results/export" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The CSV file, as an attachment.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
@@ -5164,7 +5755,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/validate" -H "
 
 `GET /v2/projects/{project_id}/paywalls/ai` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read`
 
-RevenueDot Cloud uses Workers AI. A self-hosted server needs OPENAI_API_KEY or ANTHROPIC_API_KEY; without either, `available` is false.
+RevenueDot Cloud uses GPT-6 Luna through the Vercel AI Gateway. A self-hosted server needs AI_GATEWAY_API_KEY, OPENAI_API_KEY or ANTHROPIC_API_KEY; without one, `available` is false.
 
 **Path parameters**
 
@@ -5189,7 +5780,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/ai" -H "Authorization:
 
 `POST /v2/projects/{project_id}/paywalls/generate` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:offerings:read_write`
 
-Asks the language model for a paywall, repairs its answer into components the SDKs decode and returns it without saving. Save it with `POST /paywalls`. One generation every 5 seconds and 60 a day per project.
+Designs a paywall with the language model and returns it without saving. The model first reads the prompt into a brief (plans, trial, benefits, look), then designs the paywall; a checker holds the design to the brief and sends problems back for up to two fixes. The result always passes validation. Save it with `POST /paywalls`. One generation every 5 seconds and 60 a day per project.
 
 **Path parameters**
 
@@ -6251,7 +6842,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `id` | string | yes | App id (app...). |
 | `name` | string | yes |  |
 | `created_at` | integer | yes | Creation time. Epoch milliseconds. |
-| `type` | `amazon`, `app_store`, `mac_app_store`, `play_store`, `stripe`, `rc_billing`, `roku`, `paddle`, `test_store` | yes |  |
+| `type` | `amazon`, `app_store`, `mac_app_store`, `play_store`, `stripe`, `rc_billing`, `roku`, `paddle`, `test_store`, `galaxy` | yes |  |
 | `project_id` | string | yes |  |
 | `custom_url_scheme` | string | no | Derived from the public key. |
 | `app_store` | object | no |  |
@@ -6278,8 +6869,10 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `roku.roku_channel_id` | string or null | no |  |
 | `roku.roku_channel_name` | string or null | no |  |
 | `paddle` | object | no |  |
-| `paddle.paddle_is_sandbox` | boolean | no |  |
-| `paddle.paddle_api_key` | null | no |  |
+| `paddle.paddle_is_sandbox` | boolean | no | True for a sandbox key (pdl_sdbx_apikey_…), or for an older key marked sandbox. |
+| `paddle.paddle_api_key` | null | no | Always null: the key is never returned (RevenueCat's field). |
+| `galaxy` | object | no | RevenueDot extension. |
+| `galaxy.package_name` | string | no |  |
 
 ### Collaborator
 
@@ -6313,7 +6906,7 @@ Only the object for the app's own `type` is present. Store secrets are never ret
 | `active_entitlements.items` | array of ActiveEntitlement | yes |  |
 | `active_entitlements.next_page` | string or null | yes | Path of the next page, or null on the last page. |
 | `active_entitlements.url` | string | yes | Path of this list. |
-| `experiment` | null | no |  |
+| `experiment` | ExperimentEnrollment or null | no | The experiment the customer is in (running or paused), else the last one they joined, or null. |
 | `attributes` | object | no |  |
 | `attributes.object` | `"list"` | yes |  |
 | `attributes.items` | array of CustomerAttribute | yes |  |
@@ -6440,13 +7033,159 @@ A percentage discount (RevenueCat's shape).
 | `products.next_page` | string or null | yes | Path of the next page, or null on the last page. |
 | `products.url` | string | yes | Path of this list. |
 
+### Experiment
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"experiment"` | yes |  |
+| `id` | string | yes | Experiment id (prexp...). |
+| `project_id` | string | yes |  |
+| `name` | string | yes |  |
+| `type` | `introductory_offer`, `free_trial_offer`, `paywall_design`, `price_point`, `subscription_duration`, `subscription_ordering`, `other` | yes | What is tested. It sets the default metrics: see [Experiments](../docs/guides/experiments.md#the-six-starter-types). |
+| `status` | `draft`, `running`, `paused`, `stopped` | yes | `draft` → `running` ⇄ `paused` → `stopped`. A stopped experiment cannot run again. |
+| `primary_metric` | `initial_conversion_rate`, `trial_conversion_rate`, `conversion_to_paying`, `refund_rate`, `realized_ltv_per_customer`, `realized_ltv_per_paying_customer`, `mrr_per_customer`, `mrr_per_paying_customer` | yes | The metric that decides the winner: a rate or a per-customer mean, because those have an interval. |
+| `secondary_metrics` | array of `initial_conversion_rate`, `initial_conversions`, `trials_started`, `trials_completed`, `trials_converted`, `trial_conversion_rate`, `paid_customers`, `conversion_to_paying`, `active_subscribers`, `churned_subscribers`, `refunded_customers`, `refund_rate`, `realized_ltv`, `realized_ltv_per_customer`, `realized_ltv_per_paying_customer`, `mrr`, `mrr_per_customer`, `mrr_per_paying_customer` | yes | Up to 12 more metrics shown first in the results. |
+| `notes` | string | yes | The hypothesis, in Markdown (up to 20,000 characters). |
+| `enrollment` | `new`, `new_and_existing` | yes | `new`: only customers first seen at or after the experiment's first start. `new_and_existing`: anyone who asks for offerings while it runs. |
+| `track_paywall_views` | boolean | yes | Results count paywall views (SDK `paywall_impression` and `custom_paywall_impression` events) and default to customers who saw a paywall. Turned on for every experiment made or changed to `new_and_existing`; A/B experiments converted from the first release keep `false`. |
+| `audience_id` | string or null | yes | A saved audience (aud...). Null with `audience_rules` or for everyone. |
+| `audience_rules` | object or null | yes | Conditions written for this experiment only, in the audience condition format. Null when it uses a saved audience or everyone. |
+| `audience_rules.groups` | array of object | yes | Groups are OR-ed; conditions in a group are AND-ed. |
+| `audience_rules.groups[].conditions` | array of object | yes |  |
+| `enrollment_percent` | integer | yes | Share of matching customers enrolled, 1 to 100. |
+| `priority` | integer | yes | Enrollment order among the project's experiments, 1 first. New experiments go last; change it with the reorder action. |
+| `variants` | array of ExperimentVariant | yes | The control first, then 1 to 3 treatments. Customers are split evenly. |
+| `started_at` | integer or null | yes | First start. A resume keeps it, so `new` keeps counting from the first start. Epoch milliseconds, or null. |
+| `paused_at` | integer or null | yes | Last pause; cleared on resume. Epoch milliseconds, or null. |
+| `stopped_at` | integer or null | yes | Stopped. Epoch milliseconds, or null. |
+| `created_at` | integer | yes | Created. Epoch milliseconds. |
+| `updated_at` | integer or null | yes | Last change. Epoch milliseconds, or null. |
+| `enrolled_customers` | integer | yes | Customers enrolled so far, sandbox included. |
+
+### ExperimentEnrollment
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"experiment_enrollment"` | yes |  |
+| `id` | string | yes | Experiment id (prexp...). |
+| `name` | string | yes | The experiment's name. |
+| `variant` | `a`, `b`, `c`, `d` | yes | The customer's variant: `a` is the control. |
+
+### ExperimentEstimate
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"experiment_estimate"` | yes |  |
+| `period_days` | integer | yes | Always 7. |
+| `matching_customers` | integer | yes | Customers first seen (`new`) or seen (`new_and_existing`) in the last 7 days who match the audience. |
+| `enrolled_customers` | integer | yes | `matching_customers` × `enrollment_percent`, rounded. |
+| `customers_per_variant` | integer | yes | `enrolled_customers` ÷ `variant_count`, rounded down. |
+| `is_approximate` | boolean | yes | True when more than 5,000 customers were seen: the audience share of the 5,000 most recent is scaled to all of them. |
+
+### ExperimentMetric
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `id` | `initial_conversion_rate`, `initial_conversions`, `trials_started`, `trials_completed`, `trials_converted`, `trial_conversion_rate`, `paid_customers`, `conversion_to_paying`, `active_subscribers`, `churned_subscribers`, `refunded_customers`, `refund_rate`, `realized_ltv`, `realized_ltv_per_customer`, `realized_ltv_per_paying_customer`, `mrr`, `mrr_per_customer`, `mrr_per_paying_customer` | yes |  |
+| `display_name` | string | yes |  |
+| `kind` | `rate`, `mean`, `count`, `total` | yes | `rate`: numerator ÷ denominator with a Wilson interval. `mean`: per-customer average with a normal interval. `count` and `total`: no interval. |
+| `unit` | `%`, `$`, `#` | yes | Rates are fractions (0.12 is 12%); money is USD. |
+| `better` | `higher`, `lower` | yes | Which direction wins. Churned subscribers, refunded customers and refund rate are better when lower. |
+| `description` | string | yes |  |
+
+### ExperimentMetricValue
+
+Counts and totals carry only `value`. The control has no `lift` or `chance_to_beat_control` fields.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `value` | number or null | yes | The metric now. Null for a rate or mean with no customers in its denominator. |
+| `numerator` | integer | no | Rates: the customers or trials counted. |
+| `denominator` | integer | no | Rates: the customers, trials or paid customers it divides by. Means: the customers averaged. |
+| `lower` | number or null | no | Rates and means: the 95% interval's lower bound. |
+| `upper` | number or null | no | Rates and means: the 95% interval's upper bound. |
+| `lift` | number or null | no | Treatments, rates and means: value ÷ control value − 1 (0.12 is 12% above the control). Null when the control's value is 0. |
+| `lift_lower` | number or null | no | The lift's 95% interval, by the delta method on the log of the ratio (Katz's interval for rates, with half counts added when a rate is 0% or 100%). Null for a mean with fewer than two customers on a side, or a mean of 0. |
+| `lift_upper` | number or null | no | Upper bound of the lift's 95% interval. |
+| `chance_to_beat_control` | number or null | no | Treatments, rates and means: the probability this variant beats the control in the metric's `better` direction. Null for a mean with fewer than two customers on a side. |
+
+### ExperimentResults
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"experiment_results"` | yes |  |
+| `experiment_id` | string | yes |  |
+| `environment` | `production`, `sandbox` | yes |  |
+| `currency` | `"USD"` | yes |  |
+| `computed_at` | integer | yes | Computed. Epoch milliseconds. |
+| `primary_metric` | `initial_conversion_rate`, `trial_conversion_rate`, `conversion_to_paying`, `refund_rate`, `realized_ltv_per_customer`, `realized_ltv_per_paying_customer`, `mrr_per_customer`, `mrr_per_paying_customer` | yes |  |
+| `secondary_metrics` | array of `initial_conversion_rate`, `initial_conversions`, `trials_started`, `trials_completed`, `trials_converted`, `trial_conversion_rate`, `paid_customers`, `conversion_to_paying`, `active_subscribers`, `churned_subscribers`, `refunded_customers`, `refund_rate`, `realized_ltv`, `realized_ltv_per_customer`, `realized_ltv_per_paying_customer`, `mrr`, `mrr_per_customer`, `mrr_per_paying_customer` | yes |  |
+| `control_variant_id` | string | yes | Always `a`. |
+| `filters` | object | yes |  |
+| `filters.platform` | string or null | yes | The `platform` filter, or null. |
+| `filters.country` | string or null | yes | The `country` filter, or null. |
+| `filters.paywall` | `all`, `viewed`, `not_viewed` | yes | The paywall filter in effect, after the default. |
+| `filter_options` | object | yes |  |
+| `filter_options.platforms` | array of string | yes | Platforms of the enrolled customers' last requests. |
+| `filter_options.countries` | array of string | yes | Countries of the enrolled customers' last requests. |
+| `sample` | object or null | no | Null when every enrolled customer is counted. Above 25,000 enrolled customers the results come from a fixed random sample of 25,000 (the same customers on every request): rates, means, intervals and chances are estimates from it, and counts and totals are the sample's. |
+| `sample.customers` | integer | yes | Customers in the sample: 25,000. |
+| `sample.enrolled_customers` | integer | yes | Every enrolled customer in this environment. |
+| `sample.enrolled_by_variant` | object | yes | Variant id → its enrolled customers. |
+| `metrics` | array of ExperimentMetric | yes | Every metric's definition, in the order the dashboard lists them. |
+| `variants` | object | yes | One entry per variant, the control first. |
+| `variants.object` | `"list"` | yes |  |
+| `variants.items` | array of ExperimentVariantResult | yes |  |
+| `variants.next_page` | string or null | yes | Path of the next page, or null on the last page. |
+| `variants.url` | string | yes | Path of this list. |
+| `guidance` | object | yes |  |
+| `guidance.enough_data` | boolean | yes | Every variant has at least `min_customers` customers and `min_events` events of the primary metric. |
+| `guidance.min_customers` | integer | yes | 100. |
+| `guidance.min_events` | integer | yes | 10 events per variant: conversions for initial conversion rate, paid customers for conversion to paying, completed trials for trial conversion rate, and paid customers for refund rate and the per-customer means. |
+| `guidance.customers_needed_per_variant` | integer or null | yes | Customers per variant to detect a 20% relative lift on the primary metric at 95% confidence and 80% power, from the control's current value. Null until the control has data. |
+| `guidance.leader` | object or null | yes | The treatment most likely to beat the control on the primary metric. |
+| `guidance.leader.variant_id` | string | yes |  |
+| `guidance.leader.chance_to_beat_control` | number | yes |  |
+| `guidance.message` | string | yes | One sentence for people, such as "Too early to call ...". |
+| `series` | object | yes |  |
+| `series.days` | array of integer | yes | Start of each UTC day from the first start to now (at most the last 400 days). Epoch milliseconds. |
+| `series.values` | object | yes | `values[metric_id][variant_id][i]`: the metric as of the end of `days[i]`, cumulative. |
+| `chance_b_beats_a` | number | yes | Kept from the first release: variant b's chance to beat the control on `initial_conversion_rate` (0.5 when unknown). |
+| `enough_data` | boolean | yes | Kept: `guidance.enough_data`. |
+
+### ExperimentVariant
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `id` | `a`, `b`, `c`, `d` | yes | Set by position: `a` is the control, then `b`, `c`, `d`. |
+| `name` | string | yes | Defaults to Control, Treatment B, Treatment C, Treatment D. |
+| `offering_id` | string | yes | The offering `Offerings.current` returns to customers in this variant (ofrng...). A deleted offering keeps its id here. |
+| `placements` | object | yes | Placement id → offering id for customers in this variant; null shows no paywall there. It overlays the placements of the targeting rule that matches the customer. |
+
+### ExperimentVariantResult
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `id` | `a`, `b`, `c`, `d` | yes |  |
+| `name` | string | yes |  |
+| `offering_id` | string or null | yes | The variant's offering id. |
+| `customers` | integer | yes | Enrolled customers who pass the filters (in the sample, when `sample` is set). Production results leave out customers who joined from a test device. |
+| `paywall_viewers` | integer | yes | Of those, customers with a paywall view after joining. |
+| `metrics` | object | yes | Every metric id → its value, interval, lift and chance to beat the control. |
+| `conversions` | integer | yes | Kept from the first results release: `initial_conversions`. |
+| `conversion_rate` | number | yes | Kept: `initial_conversion_rate`, 4 decimals (0 when there are no customers). |
+| `trials` | integer | yes | Kept: `trials_started`. |
+| `paying_customers` | integer | yes | Kept: `paid_customers`. |
+| `revenue` | number | yes | Kept: `realized_ltv`, USD. |
+| `revenue_per_customer` | number | yes | Kept: `realized_ltv_per_customer`, USD (0 when there are no customers). |
+
 ### IndicativePrice
 
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `object` | `"indicative_price"` | yes |  |
 | `currency` | string | yes | ISO 4217 code. |
-| `country` | null | yes |  |
+| `country` | string or null | yes | `US` for a United States store price, the region code for another Google Play region, else null (Test Store and Stripe prices, other App Store territories). |
 | `amount_micros` | integer | yes | Price in micros: 9.99 is 9990000. |
 
 ### MonetaryAmount
@@ -6471,7 +7210,7 @@ A percentage discount (RevenueCat's shape).
 | `created_at` | integer | yes | Creation time. Epoch milliseconds. |
 | `project_id` | string | yes |  |
 | `state` | `active`, `inactive` | yes |  |
-| `paywall_id` | null | no |  |
+| `paywall_id` | string or null | no | The paywall attached to this offering, or null. |
 | `metadata` | object or null | yes |  |
 | `packages` | object | no |  |
 | `packages.object` | `"list"` | yes |  |
@@ -6538,7 +7277,8 @@ A percentage discount (RevenueCat's shape).
 | `app_id` | string | yes |  |
 | `display_name` | string or null | yes |  |
 | `app` | App | no | Only the object for the app's own `type` is present. Store secrets are never returned. |
-| `indicative_price` | IndicativePrice or null | no | With `expand=indicative_price`: the Test Store price, or null. |
+| `indicative_price` | IndicativePrice or null | no | With `expand=indicative_price`: the Test Store price; else the App Store or Google Play price in the United States from the last store price read (or the in-app purchase's base territory, or the first territory with a price); else the Stripe web product's price. Null when none is known. |
+| `store_details` | StoreDetails or null | no | RevenueDot extension, with `expand=store_details`: the store's status and price from the last store price read. Null when the product was never read from App Store Connect or Google Play (other stores, or no read yet). |
 
 ### Project
 
@@ -6586,6 +7326,21 @@ A percentage discount (RevenueCat's shape).
 | `store_purchase_identifier` | string | no |  |
 | `ownership` | `purchased` | no |  |
 | `country` | string | no |  |
+
+### StoreDetails
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `object` | `"store_details"` | yes |  |
+| `status` | string or null | yes | The store's state in lower case: `approved`, `ready_to_submit`, `waiting_for_review`, `in_review`, `rejected`, `developer_action_needed`, `missing_metadata`, `removed_from_sale` (App Store), `active`, `draft`, `inactive` (Google Play). |
+| `store_state` | string or null | yes | The state as the store spells it, such as `APPROVED` or `ACTIVE`. |
+| `price` | object or null | yes | The United States price when the product has one, else the in-app purchase's base territory or the first territory with a price. Null when the store has no price for it. |
+| `territories` | integer | yes | How many territories have a price. |
+| `duration` | string or null | yes | The store's period for a subscription (`P1M` ...). |
+| `display_name` | string or null | yes | The name in the store. |
+| `editable` | boolean | yes | Whether the product editor can change its prices. |
+| `refreshed_at` | integer | yes | When the prices were read from the store. Epoch milliseconds. |
+| `refresh_status` | `ok`, `failing`, null | yes | The app's last read: `failing` means it failed and these values are from the read before. |
 
 ### StoreProductImport
 

@@ -201,7 +201,7 @@ REST API v2 follows RevenueCat's v2 paths, objects, list envelope and error form
 Authenticate with a **secret key** (\`Authorization: Bearer sk_...\`) or the dashboard session cookie. Lists return \`{ "object": "list", "items": [...], "next_page": ..., "url": ... }\`; follow \`next_page\` to page. \`limit\` is 1 to 100 (default 20).
 RevenueDot-only endpoints are on [Extensions](extensions.md).`);
 counts.extensions = operationsPage("extensions", "Which API endpoints are RevenueDot extensions?",
-  "RevenueDot-only endpoints: dashboard sign-in, OAuth for MCP clients, project settings, store setup, API keys, webhook deliveries, event log, Test Store, web billing, purchase links, funnels, hosted pages, dashboard data and migration import.", `
+  "RevenueDot-only endpoints: dashboard sign-in, OAuth for MCP clients, project settings, store setup, store prices and the product editor, API keys, webhook deliveries, event log, Test Store, web billing, purchase links, funnels, hosted pages, dashboard data and migration import.", `
 These endpoints exist only in RevenueDot. They use the same auth, errors and list envelope as [REST API v2](rest-v2.md). The dashboard is built on them, so everything the dashboard does, a script or an AI agent can do too.`);
 counts.enterprise = operationsPage("enterprise", "Which API endpoints does RevenueDot Enterprise add?",
   "RevenueDot Enterprise endpoints: licence status, organizations, custom roles and group role mappings, SAML and OpenID Connect single sign-on, SCIM 2.0 provisioning and signed compliance exports.", `

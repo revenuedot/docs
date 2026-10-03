@@ -82,6 +82,9 @@ Webhooks report `store: AMAZON`. Amazon has no subscription pause, and like Reve
 ## Prices
 RVS has no price. The price and currency the SDK posts (the marketplace's local price) are saved with the purchase and converted to USD at the purchase date's rate. Renewals that arrive by notification keep the last known price.
 
+## Small Business Accelerator Program
+Amazon keeps 20% instead of 30% while your app is in its [Small Business Accelerator Program](https://developer.amazon.com/apps-and-games/blogs/2021/06/small-business-accelerator-program). In the dashboard, open the app and use **More settings → Amazon Small Business Accelerator Program**: turn on **Enrolled** and set the entry and exit dates. With the API, send `{"amazon":{"small_business_accelerator":{"enrolled":true,"periods":[{"entry_date":"2024-01-01","exit_date":null}]}}}` to `POST /v2/projects/{project_id}/apps/{app_id}`. Proceeds for purchases inside the dates use 20%, in charts, metrics, exports and new webhook events.
+
 ## Related
 - [Android SDK guide](../sdks/android.md)
 - [Store notifications not arriving](../help/store-notifications-not-arriving.md)

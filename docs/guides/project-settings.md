@@ -5,7 +5,7 @@ description: Rename the project, limit who can test with sandbox purchases, hand
 
 # Which project settings does RevenueDot have?
 
-Open **Project settings** in the sidebar. The tabs are **General**, **AI features**, **Brand**, **Audit logs**, **Blocked customers**, **Collaborators**, **Verified Metrics** and **Domains**. Everything on them also has an API v2 endpoint, so you can script it with a secret key. This guide covers General, Brand, Blocked customers and Verified Metrics; see [Invite your team](team.md) for Collaborators and [Custom domains](custom-domains.md) for Domains.
+Open **Project settings** in the sidebar. The tabs are **General**, **AI features**, **Benchmarks** (RevenueDot Cloud; see [Benchmarks](benchmarks.md)), **Brand**, **Audit logs**, **Blocked customers**, **Collaborators**, **Verified Metrics** and **Domains**. Everything on them also has an API v2 endpoint, so you can script it with a secret key. This guide covers General, Brand, Blocked customers and Verified Metrics; see [Invite your team](team.md) for Collaborators and [Custom domains](custom-domains.md) for Domains.
 
 ## General
 

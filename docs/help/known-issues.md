@@ -10,7 +10,7 @@ The list below is complete as of **2026-09-30**. The biggest gap: **no real App 
 ## Stores and purchases
 1. **Real store purchases are untested end to end.** The App Store and Google Play code passes tests against mocked Apple and Google APIs.
    - Workaround: test with App Store sandbox and Google Play license testers, report what you find, and keep live customers on your current backend. See [Test purchases](test-sandbox-purchases.md).
-2. **Six app types accept receipts:** `app_store`, `mac_app_store`, `play_store`, `amazon`, `stripe` and `test_store`. RevenueCat Billing (`rcb_`), Paddle and Roku receipts answer HTTP 400, code 7662. Amazon and Stripe are tested against mocked store APIs only; no real Amazon or Stripe purchase has run yet. That includes [web billing](../guides/web-billing.md): the hosted checkout, purchase links and funnels run against an in-memory copy of Stripe's API in the tests.
+2. **Nine app types accept receipts:** `app_store`, `mac_app_store`, `play_store`, `amazon`, `stripe`, `paddle`, `roku`, `galaxy` and `test_store`. RevenueCat Billing (`rcb_`) receipts answer HTTP 400, code 7662. Amazon, Stripe, Paddle, Roku and the Galaxy Store are tested against copies of the stores' APIs only; no real purchase in those stores has run yet. That includes [web billing](../guides/web-billing.md): the hosted checkout, purchase links and funnels run against an in-memory copy of Stripe's API in the tests.
    - Workaround: none yet.
 3. **StoreKit 1 receipts need the App Store in-app purchase key.** Without it, RevenueDot answers HTTP 500, code 7234, so the SDK keeps retrying.
    - Workaround: add the key. For local development only, set the `allow_unsigned_receipts` credential. See [Connect the App Store](../guides/app-store.md).
@@ -20,8 +20,8 @@ The list below is complete as of **2026-09-30**. The biggest gap: **no real App 
    - Workaround: after upgrading, run `pnpm tsx scripts/backfill-usd.ts` (a dry run), then again with `--apply`, to recompute those rows.
 
 ## SDK features
-6. **Paywalls, Customer Center, virtual currencies, targeting and experiments are not implemented.** The SDK endpoints answer empty results or 404, so the SDK hides these features instead of crashing. Paywalls built in RevenueCat do not render.
-   - Workaround: build the paywall in your own UI code from the offerings.
+6. **Paywalls built in RevenueCat are not imported.** Paywalls, Customer Center, virtual currencies, targeting and experiments work with the stock SDKs, but the importer does not copy RevenueCat paywalls, targeting rules or experiments (item 14).
+   - Workaround: rebuild the paywall in the [paywall editor](../guides/paywalls.md), and recreate rules and experiments on the [Targeting and Experiments](../guides/experiments.md) pages.
 7. **The stock Android SDK sends some traffic to RevenueCat.** Diagnostics, paywall events and ad events ignore the proxy URL.
    - Workaround: the RevenueDot Android fork fixes it, but it is not published yet. You can build it from the `revenuedot/main-patches` branch of [revenuedot/purchases-android](https://github.com/revenuedot/purchases-android).
 8. **The stock web SDK sends analytics events to RevenueCat.**

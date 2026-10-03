@@ -13,7 +13,7 @@ Responses under `/v1` and `/rcbilling` are signed when the server has a signing 
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (71)
+## Operations on this page (74)
 
 - **Server**: [Server name and docs link](#server-name-and-docs-link), [Health check](#health-check), [Connectivity probe](#connectivity-probe)
 - **Customer info**: [Get customer info](#get-customer-info)
@@ -25,7 +25,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Web Billing**: [Web offering products](#web-offering-products), [Start a hosted web checkout](#start-a-hosted-web-checkout), [Web Billing purchase (not available)](#web-billing-purchase-not-available), [Prepare a Web Billing checkout (not available)](#prepare-a-web-billing-checkout-not-available), [Start a Web Billing checkout (not available)](#start-a-web-billing-checkout-not-available), [Web Billing checkout status](#web-billing-checkout-status), [Refresh Web Billing checkout pricing](#refresh-web-billing-checkout-pricing), [Complete a Web Billing checkout](#complete-a-web-billing-checkout), [Web checkout branding](#web-checkout-branding)
 - **Subscriber tokens**: [Get customer info (subscriber token)](#get-customer-info-subscriber-token), [Get offerings (subscriber token)](#get-offerings-subscriber-token), [Intro offer eligibility (StoreKit 1) (subscriber token)](#intro-offer-eligibility-storekit-1-subscriber-token), [Attribution data (deprecated iOS call) (subscriber token)](#attribution-data-deprecated-ios-call-subscriber-token), [Read customer attributes (subscriber token)](#read-customer-attributes-subscriber-token), [Set customer attributes (subscriber token)](#set-customer-attributes-subscriber-token), [Apple AdServices token (subscriber token)](#apple-adservices-token-subscriber-token), [SDK health report (subscriber token)](#sdk-health-report-subscriber-token), [Customer Center configuration (subscriber token)](#customer-center-configuration-subscriber-token), [Customer Center support ticket (subscriber token)](#customer-center-support-ticket-subscriber-token), [Virtual currency balances (subscriber token)](#virtual-currency-balances-subscriber-token), [Restore eligibility (StoreKit 2) (subscriber token)](#restore-eligibility-storekit-2-subscriber-token), [Rewarded ad verification status (subscriber token)](#rewarded-ad-verification-status-subscriber-token), [Web offering products (subscriber token)](#web-offering-products-subscriber-token), [Test Store product details (subscriber token)](#test-store-product-details-subscriber-token), [Spend in-app currency as the subscriber](#spend-in-app-currency-as-the-subscriber)
 - **Auth sign-in**: [Sign in with an identity provider's ID token](#sign-in-with-an-identity-providers-id-token), [Refresh the access token](#refresh-the-access-token), [Sign out](#sign-out), [Refresh the access token](#refresh-the-access-token), [Sign out](#sign-out), [Public key of RevenueDot's ID and access tokens](#public-key-of-revenuedots-id-and-access-tokens)
-- **Store notifications**: [App Store Server Notifications v2](#app-store-server-notifications-v2), [Google Play real-time developer notifications (Pub/Sub push)](#google-play-real-time-developer-notifications-pubsub-push), [Amazon Appstore Real-time Notifications (SNS)](#amazon-appstore-real-time-notifications-sns), [Stripe webhooks](#stripe-webhooks), [Stripe Connect webhooks (RevenueDot's platform)](#stripe-connect-webhooks-revenuedots-platform)
+- **Store notifications**: [App Store Server Notifications v2](#app-store-server-notifications-v2), [Google Play real-time developer notifications (Pub/Sub push)](#google-play-real-time-developer-notifications-pubsub-push), [Amazon Appstore Real-time Notifications (SNS)](#amazon-appstore-real-time-notifications-sns), [Stripe webhooks](#stripe-webhooks), [Paddle notifications](#paddle-notifications), [Roku Pay push notifications](#roku-pay-push-notifications), [Galaxy Store server notifications](#galaxy-store-server-notifications), [Stripe Connect webhooks (RevenueDot's platform)](#stripe-connect-webhooks-revenuedots-platform)
 - **Response signing**: [Public key for response signatures](#public-key-for-response-signatures)
 
 ## Server
@@ -205,6 +205,9 @@ Every purchase, restore and `syncPurchases()` ends here. RevenueDot verifies the
 - **Google Play:** `fetch_token` is the purchase token. RevenueDot checks it with the Play Developer API and acknowledges it.
 - **Amazon Appstore:** `fetch_token` is the receipt id and `store_user_id` the Amazon user id (`X-Platform: amazon`). RevenueDot checks both with Amazon's Receipt Verification Service.
 - **Stripe:** from your backend, with `X-Platform: stripe` and the Stripe app's public key (`strp_`): `fetch_token` is a subscription id (`sub_…`) or a Checkout Session id (`cs_…`). RevenueDot reads it from Stripe with the app's restricted key. An unpaid first invoice or an open session answers 503, so post it again later.
+- **Paddle:** from your backend, with `X-Platform: paddle` and the Paddle app's public key (`pdl_`): `fetch_token` is a subscription id (`sub_…`) or a transaction id (`txn_…`). RevenueDot reads it from Paddle with the app's API key; a checkout that is not finished answers 503. Products are Paddle price ids (`pri_…`).
+- **Roku:** the Roku SDK posts `fetch_token` = the Roku transaction id (`X-Platform: roku`). RevenueDot validates it with Roku Pay's web services, which also supply the price and currency; `X-Is-Sandbox: true` (a sideloaded channel) records sandbox.
+- **Galaxy Store:** the Android SDK built with `purchases-store-galaxy` posts `fetch_token` = Samsung's purchase id with `X-Platform: android` and the Galaxy app's `galx_` key. RevenueDot reads the receipt from Samsung, and a subscription's state with the app's service account; `purchased_products` tells the SDK which items to consume.
 - **Test Store:** `fetch_token` is `test_<purchase time in ms>_<id>`. Any such token is accepted.
 
 **4xx or 5xx matters.** A 4xx tells the SDK the purchase can never be accepted, so it finishes the transaction. RevenueDot answers 5xx for its own and the store's temporary failures so the SDK keeps the purchase and retries.
@@ -319,7 +322,7 @@ What the paywall shows.
 
 `GET /v1/subscribers/{app_user_id}/offerings` · Auth: public app key or secret key
 
-What `Purchases.getOfferings()` calls. Lists active offerings with the packages whose product belongs to the calling app. `current_offering_id` is the customer's override when one is set.
+What `Purchases.getOfferings()` calls. Lists active offerings with the packages whose product belongs to the calling app. A new app user id makes the customer here, as `GET /v1/subscribers/{app_user_id}` does (the SDK sends both at once on a first launch), so the first answer already includes an experiment variant. `current_offering_id` is the customer's override when one is set. Otherwise RevenueDot resolves, in order: the experiment the customer is in (running or paused), a running experiment that enrolls them now (by priority), the first live targeting rule that matches, the project's current offering. A variant's placements overlay the rule's in `placements.offering_ids_by_placement`. See [Experiments](../docs/guides/experiments.md#what-the-sdk-receives).
 
 **Path parameters**
 
@@ -638,7 +641,7 @@ Example 200 response:
 
 `POST /v1/subscribers/{app_user_id}/attributes` · Auth: public app key or secret key
 
-Saves attributes such as `$email`, `$displayName` or your own keys. A null value deletes the attribute. An invalid `$email` is refused with 7263; the other attributes are saved. `collectDeviceIdentifiers()` sends `$ip` and `$deviceVersion` as `"true"`: RevenueDot stores the request's IP address and the device and OS from the SDK's headers instead.
+Saves attributes such as `$email`, `$displayName` or your own keys. A null value deletes the attribute, except attribution attributes (`$mediaSource`, `$campaign`, `$adGroup`, `$ad`, `$keyword`, `$creative`, `$appleAds*`, `$claimType`, `$conversionType`): they are write-once, so a stored value is kept and a different value or a null is ignored. Correct them with the REST API v2. An invalid `$email` is refused with 7263; the other attributes are saved. `collectDeviceIdentifiers()` sends `$ip` and `$deviceVersion` as `"true"`: RevenueDot stores the request's IP address and the device and OS from the SDK's headers instead.
 
 **Path parameters**
 
@@ -2742,6 +2745,132 @@ Example 200 response:
 }
 ```
 
+### Paddle notifications
+
+`POST /v1/notifications/paddle/{app_id}` · Auth: none
+
+A notification destination in your Paddle account (Apply in Paddle creates it: `POST /v2/projects/{project_id}/apps/{app_id}/actions/apply_notification_settings`) with the subscription, transaction and adjustment events.
+Each event is stored once (by `event_id`), forwarded when `notification_forward_url` is set, and applied by reading the subscription or transaction from Paddle, so delivery order does not matter. Approved full refunds and chargebacks (`adjustment.created`, `adjustment.updated`) mark the paid period refunded. Simulated events (`ntfsimevt_…`) count as received and change nothing. Paddle counts only 200 as delivered.
+
+- **200:** handled, a duplicate, simulated, ignored, an unknown purchase (applied only with `track_new_purchases`) or an object Paddle no longer has.
+- **400:** no secret key saved, a missing or wrong `Paddle-Signature`, or not a Paddle event. **404:** no Paddle app with this id.
+- **500:** a temporary failure; Paddle retries. See [Paddle setup](../docs/guides/paddle.md).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `app_id` | string | yes | App id (app...). |
+
+**Headers**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `Paddle-Signature` | string | yes | `ts=<unix seconds>;h1=<hex HMAC-SHA256 of "<ts>:<body>">`, checked with the destination's secret key (`paddle_webhook_secret`) within 5 minutes. Several `h1` values are accepted while a key rotates. |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `event_id` | string | yes | evt_… |
+| `event_type` | string | yes |  |
+| `occurred_at` | string | no |  |
+| `notification_id` | string | no | ntf_… |
+| `data` | object | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/notifications/paddle/$APP_ID"
+```
+
+**Responses**
+
+- **200**: Handled.
+- **400**: Not accepted. Returns [V1Error](#v1error).
+- **404**: Unknown app. Returns [V1Error](#v1error).
+- **500**: Temporary failure; Paddle retries. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "status": "processed"
+}
+```
+
+### Roku Pay push notifications
+
+`POST /v1/notifications/roku/{app_id}` · Auth: none
+
+Set this URL as the push notification URL under Roku Pay web services in the Roku developer dashboard. Roku has one URL per developer account: a push for another channel goes to the project's Roku app with that `roku_channel_id`.
+The body is a JWS (RS256) signed with a key from Roku's published key set (the test key set for Roku's test endpoint), with issuer `Roku, Inc. urn:roku:apps:partner-service.roku.com` and `x-Roku-message-type: roku.rpay.push`; the message is base64 JSON in `x-Roku-message`. Each push is stored once (by `x-Roku-message-key`), forwarded when `notification_forward_url` is set, and applied by validating its transaction with Roku again.
+
+- **200:** handled; the body is the push's `responseKey`.
+- **400:** not a signed Roku push (bad signature, unknown key, another issuer or message type). **404:** no Roku app with this id.
+- **500:** a temporary failure; Roku retries for 36 hours. See [Roku setup](../docs/guides/roku.md).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `app_id` | string | yes | App id (app...). |
+
+**Request body** (`text/plain`)
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/notifications/roku/$APP_ID"
+```
+
+**Responses**
+
+- **200**: Handled: the push's responseKey.
+- **400**: Not accepted. Returns [V1Error](#v1error).
+- **404**: Unknown app. Returns [V1Error](#v1error).
+- **500**: Temporary failure; Roku retries. Returns [V1Error](#v1error).
+
+### Galaxy Store server notifications
+
+`POST /v1/notifications/galaxy/{app_id}` · Auth: none
+
+Set this URL as the Instant Server Notification URL in Samsung Seller Portal. The body is a JWT (RS256) from `iap.samsungapps.com` whose `aud` names the app's package. With the app's `galaxy_iap_public_key` saved its signature must match; without it nothing in the body is trusted. Either way the purchase it names is read again from Samsung (receipt and subscription APIs) and applied. `TEST` counts as received.
+
+- **200:** handled, a duplicate, ignored or an unknown purchase (applied only with `track_new_purchases`). `verified` says whether the signature was checked.
+- **400:** not a Samsung notification, a signature that does not match, or another package. **404:** no Galaxy Store app with this id.
+- **500:** a temporary failure. See [Galaxy Store setup](../docs/guides/galaxy-store.md).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `app_id` | string | yes | App id (app...). |
+
+**Request body** (`text/plain`)
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v1/notifications/galaxy/$APP_ID"
+```
+
+**Responses**
+
+- **200**: Handled.
+- **400**: Not accepted. Returns [V1Error](#v1error).
+- **404**: Unknown app. Returns [V1Error](#v1error).
+- **500**: Temporary failure. Returns [V1Error](#v1error).
+
+Example 200 response:
+
+```json
+{
+  "status": "processed",
+  "verified": true
+}
+```
+
 ### Stripe Connect webhooks (RevenueDot's platform)
 
 `POST /v1/notifications/stripe-connect` · Auth: none · RevenueDot extension
@@ -2874,7 +3003,7 @@ The shapes the operations above send and return.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `current_offering_id` | string or null | yes | Lookup key of the current offering, or the customer's override. |
+| `current_offering_id` | string or null | yes | Lookup key of the customer's current offering: their override, else their experiment variant's offering, else the first live targeting rule's, else the project's current offering. |
 | `offerings` | array of object | yes |  |
 | `offerings[].description` | string | yes | Offering display name. |
 | `offerings[].identifier` | string | yes | Offering lookup key. |
@@ -2883,6 +3012,12 @@ The shapes the operations above send and return.
 | `offerings[].packages[].identifier` | string | yes | Package lookup key, for example $rc_monthly. |
 | `offerings[].packages[].platform_product_identifier` | string | yes | Store product id for the calling app. |
 | `offerings[].packages[].platform_product_plan_identifier` | string | no | Google Play base plan id, when the product is `subscription:base-plan`. |
+| `placements` | object | no | What `currentOffering(forPlacement:)` reads. |
+| `placements.fallback_offering_id` | string or null | no | Lookup key of the offering for placements not listed below: the current offering. |
+| `placements.offering_ids_by_placement` | object | no | Placement id → offering lookup key, or null for no paywall there: the matching targeting rule's placements, overlaid with the customer's experiment variant's. |
+| `targeting` | object | no | Present when a targeting rule matched the customer. |
+| `targeting.revision` | integer | yes | The rule's revision. |
+| `targeting.rule_id` | string | yes | The targeting rule that matched. |
 
 ### ReceiptResponse
 

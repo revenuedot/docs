@@ -52,8 +52,14 @@ for (const src of text.values()) {
   }
 }
 
-// Loop variables that expand a template (the archive/unarchive loops).
+// Loop variables that expand a template: the archive/unarchive loops, and a file's own `for (const name of ["a", "b"])`
+// loops over string literals (the product editor's commit and retry actions).
 const LOOP_VALUES = { action: ["archive", "unarchive"] };
+const loopValuesOf = (src) => {
+  const out = { ...LOOP_VALUES };
+  for (const m of src.matchAll(/for\s*\(\s*const\s+(\w+)\s+of\s+\[((?:\s*"[^"]*"\s*,?)+)\]/g)) out[m[1]] = [...m[2].matchAll(/"([^"]*)"/g)].map((x) => x[1]);
+  return out;
+};
 
 const norm = (p) => p.replace(/:[A-Za-z_]+/g, "{}").replace(/\{[^}]+\}/g, "{}");
 const codeRoutes = new Map(); // "METHOD /path" -> Set(files)
@@ -70,7 +76,7 @@ for (const [file, src] of text) {
     if (arg.startsWith('"')) paths = [arg.slice(1, -1)];
     else if (arg.startsWith("`")) {
       paths = [arg.slice(1, -1)];
-      for (const [name, values] of Object.entries(LOOP_VALUES)) {
+      for (const [name, values] of Object.entries(loopValuesOf(src))) {
         if (paths[0].includes(`\${${name}}`)) paths = values.map((v) => paths[0].replaceAll(`\${${name}}`, v));
       }
       paths = paths.map((p) => p.replace(/\$\{(\w+)\}/g, (_, n) => {

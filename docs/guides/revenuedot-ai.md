@@ -16,6 +16,7 @@ Every answer comes from tools that read your project through the same API the da
    - "Which offering converts trials best over the last 90 days?"
    - "Why did customer wren@example.com lose access?"
    - "Are any webhooks failing?"
+   - "Which variant of my price test is winning?"
 3. Each tool the assistant runs shows as a card (for example **Revenue metrics** or **Chart · trial conversion rate**). Open a card to see what it asked for and what came back.
 4. Links in the answer open the chart, customer or page the number comes from.
 
@@ -26,6 +27,8 @@ Select **Attach image** (or drop a file on the box) to add a PNG, JPEG, WebP or 
 
 ### Mention a customer, offering or chart
 Type `@` and pick from the list: customers (by app user ID), offerings and charts. The assistant gets that item's details with your question, so "Why did @wren_ios cancel?" needs no lookup.
+
+On any chart, **Ask AI** opens a new conversation with the chart already mentioned and a question ready to edit or send. The mention carries what you were looking at (range, resolution, segment, filters and the Sandbox switch), so the assistant reads the same numbers. See [Charts](charts.md#refresh-and-ask-ai).
 
 ### Import products from a StoreKit configuration file
 Attach the `.storekit` file Xcode uses for local StoreKit testing. The chat shows its products (IDs, types, prices, periods, introductory offers). Select **Import into catalog** and approve: RevenueDot creates the products on your App Store app and skips the ones that already exist. Prices and offers stay in App Store Connect.
@@ -38,13 +41,17 @@ These tools change your project. Each one stops and asks first:
 | Grant entitlement | Gives a customer promotional access until a date, for example "Grant pro to wjqx8kd2rn1 for 7 days" |
 | Revoke entitlement | Ends promotional access that was granted |
 | Create product | Adds a product to an app |
+| Create products | Adds up to 50 products in one approval, optionally attached to one entitlement (created when new). Used by **Create with AI** on the Products page |
+| Create offering | Adds an offering with its packages and their products, and can make it current. Used by **Create with AI** on the Offerings page |
 | Attach products to entitlement / package | Makes products unlock an entitlement, or puts them in a package |
 | Set current offering | Changes the offering apps show by default |
-| Start experiment / Pause experiment | Starts or pauses an offering A/B test |
+| Create experiment draft | Saves a draft experiment: a control offering, 1 to 3 treatment offerings, its type, metrics, hypothesis and audience. Nobody joins until you start it ([Experiments](experiments.md#create-an-experiment-with-revenuedot-ai)) |
+| Start experiment / Pause experiment / Stop experiment | Starts or resumes an experiment, pauses it, or stops it for good |
+| Create targeting rule | Adds a targeting rule that gives an audience an offering and placement offerings, optionally between two dates. It is created turned off ([Targeting](targeting-and-experiments.md#create-a-rule)) |
 | Retry webhook delivery / Replay failed deliveries | Sends failed webhook deliveries again |
 | Import StoreKit products | Creates products from an attached `.storekit` file |
 
-The card says what will change and lists every value the change will use. **Approve** runs it once and shows the result; **Deny** changes nothing and the assistant says so. Approving the same card again, or from a second tab, does not repeat the change. RevenueDot AI cannot create API keys, webhooks, apps or store credentials, cannot delete customers, and never reads or shows secrets.
+The card says what will change and lists every value the change will use. **Create with AI** in the **New product** and **New offering** menus starts a conversation that drafts everything in one Create products or Create offering card; see [Create products and offerings with AI](product-editor.md#create-products-and-offerings-with-ai). **Approve** runs it once and shows the result; **Deny** changes nothing and the assistant says so. Approving the same card again, or from a second tab, does not repeat the change. RevenueDot AI cannot create API keys, webhooks, apps or store credentials, cannot delete customers, and never reads or shows secrets.
 
 Customer attributes, product names and attached files are data the assistant reads, and anyone who can write them could put instructions in them. The approval card is what stops such text from changing your project: nothing changes until you approve. Answers never load images, so a reply cannot send your data to another site without a click.
 
@@ -65,6 +72,11 @@ A person's role limits it further: a **Viewer** can only read, whatever the sett
 - One answer runs at most 8 model steps, and stops early once a token cap is used up.
 - You can attach 60 files an hour.
 
+## Weekly growth insights
+Under the Ask bar, the Overview shows 3 to 5 recommendations RevenueDot AI writes each week from your charts, campaigns and benchmarks, with the numbers behind each one, and admins get them by email. They only read. See [Growth insights](growth-insights.md).
+
+Two read tools help with growth questions: **get-attribution-report** (new customers and revenue by media source, campaign, ad group or keyword; see [Attribution](attribution.md)) and **get-benchmarks** (your metrics against similar apps on RevenueDot Cloud; see [Benchmarks](benchmarks.md)). **get-chart** also segments by the attribution dimensions.
+
 ## The first-sale card
 When your project's first paid production purchase arrives, the Overview shows **First sale** with the price and product. **Share** copies a public link to a card made for social posts (`/share/first-sale/<token>`, with a 1200×630 image). The card shows your project name, the product, price, store, country and date, and nothing about the customer. Admins and developers can dismiss it for the project when you are done.
 
@@ -73,14 +85,16 @@ RevenueDot AI is off until the server has a model. Set one of these in `.env` an
 
 | Variable | Model used |
 |---|---|
+| `AI_GATEWAY_API_KEY` | GPT-6 Luna through the Vercel AI Gateway (`openai/gpt-6-luna`, medium reasoning); tried first. Paywall and funnel generation use the same model |
 | `ANTHROPIC_API_KEY` | Claude Opus 5.5 (`claude-opus-5-5`) |
 | `OPENAI_API_KEY` | GPT-6 Astra (`gpt-6-astra`); `OPENAI_BASE_URL` for a compatible gateway |
-| `REVENUEDOT_ASSISTANT_MODEL` | Optional: another model id from the same provider |
+| `REVENUEDOT_ASSISTANT_MODEL` | Optional: another model id from the same provider (a gateway model id with `AI_GATEWAY_API_KEY`) |
+| `REVENUEDOT_AI_REASONING` | Optional: the reasoning effort with the gateway (`none`, `low`, `medium`, `high`) |
 | `REVENUEDOT_ASSISTANT_CAPS` | Optional JSON caps, for example `{"userTurnsPerDay": 500}` |
 
 Approval cards are signed with `REVENUEDOT_ENCRYPTION_KEY` (or the signing key) when one is set. Conversations and their answers are stored in your Postgres. If you reload while an answer is being written, the page picks it up where it was. If the server restarts mid-answer, the conversation says the answer was interrupted and offers **Retry**.
 
-On RevenueDot Cloud the assistant runs on Workers AI (Kimi K2.6), and each conversation lives in its own Cloudflare Durable Object, so answers survive reloads and deploys.
+On RevenueDot Cloud the assistant runs on GPT-6 Luna through the Vercel AI Gateway, and each conversation lives in its own Cloudflare Durable Object, so answers survive reloads and deploys.
 
 ## The API
 Everything the page does is in the [API reference](../../api/extensions.md) under **RevenueDot AI**: `GET /v2/projects/{project_id}/ai` (status), conversations, `POST …/chat` (an AI SDK UI message stream over Server-Sent Events), `GET …/stream` (resume), files, mentions and the AI setting. To use RevenueDot from ChatGPT, Claude or Cursor instead, see [Connect AI assistants](connect-ai-assistants.md); those tools have the same names.

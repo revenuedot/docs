@@ -26,6 +26,9 @@ Configure the SDK with the `test_` key and your server as the proxy URL, then ca
 
 The Test Store works with purchases-js, React Native (including Expo Go and the web) and the native SDKs. Use `test_` keys only in development builds; ship your store keys (`appl_`, `goog_`) in releases. Servers built before 2026-09-30 sent product details the native iOS SDK could not read ("No base price found for product"); update the server if you see that.
 
+## Test your setup with the sample app
+The app page has **Test your setup with the sample app**: pick iOS (SwiftUI), Android (Jetpack Compose), Flutter, React Native (Expo) or web, and you get a zip of that app from [revenuedot/examples](https://github.com/revenuedot/examples) with this app's key, your server's URL and your first entitlement already filled in. Unzip it, follow its README, buy in a debug build, and the purchase shows up under **Customers**. App Store, Google Play and Web Billing apps offer the samples that can buy with their key. The same zip comes from `GET /v2/projects/{project_id}/apps/{app_id}/sample_app?platform=ios`. Only public values go in the zip.
+
 ## Buy with curl
 ```bash
 curl -s "$REVENUEDOT_URL/v1/receipts" -H "Authorization: Bearer $TEST_KEY" -H "Content-Type: application/json" \
