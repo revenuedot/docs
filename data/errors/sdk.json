@@ -1,0 +1,852 @@
+{
+ "set": "sdk",
+ "pages": [
+  {
+   "slug": "sdk-unknown-error",
+   "label": "SDK: unknownError",
+   "title": "What does unknownError (code 0) mean in the purchases SDK?",
+   "description": "unknownError (code 0) is the purchases SDK's catch-all for a failure it cannot classify. Read the underlying error, turn on debug logs and update the SDK.",
+   "answer": "The purchases SDK raises unknownError (code 0) when a failure matches none of its named errors.",
+   "symbol": "`ErrorCode.unknownError` (iOS), `PurchasesErrorCode.UnknownError` (Android), code 0",
+   "api": "Purchases SDK (iOS, Android and the hybrid SDKs built on them)",
+   "definition": "Unknown error. Check the underlying error for more details.",
+   "causes": [
+    "A StoreKit or Play Billing error that the SDK has no mapping for. On iOS, `StoreKitError` cases that are newer than the SDK fall through to this error, and so does any other unmapped error.",
+    "On Android, an exception that is not a network, security or signature failure becomes `UnknownError`, and so does any Play Billing response code outside the known list ([errors.kt](https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt)).",
+    "The backend answered with code 0, which the SDK reads as \"we do not know what happened\"."
+   ],
+   "fixes": [
+    "Read the underlying error: on iOS `NSUnderlyingErrorKey` and `readable_error_code` in `userInfo`, on Android `error.underlyingErrorMessage`.",
+    "Turn on debug logs (`Purchases.logLevel = .debug`) and read the lines before the error.",
+    "Update the SDK. A StoreKit or Play error that is new to the operating system can be unmapped in an old release.",
+    "Do not unlock content and do not retry automatically; let the customer try again."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift-sdk",
+    "code": "// The purchases SDK throws `ErrorCode` values; match the one you handle and let the rest fall through.\nfunc handle(_ error: Error) {\n    guard let code = error as? ErrorCode else {\n        print(\"Not a purchases SDK error: \\(error)\")\n        return\n    }\n    switch code {\n    case .unknownError:\n        print(\"Unknown failure: read the underlying error and the debug log\")\n    default:\n        print(\"Other purchases error: \\(code.description)\")\n    }\n}"
+   },
+   "sdk": "RevenueDot answers server failures with a numeric `code`, so a server problem reaches the SDK as a backend error and not as `unknownError`. The full deep dive is on [revenuedot.app/errors/unknown-error](https://revenuedot.app/errors/unknown-error).",
+   "related": [
+    "sdk-store-problem-error",
+    "storekit-error-unknown",
+    "sdk-network-error"
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot purchases-ios: ErrorCode.swift (the iOS ErrorCode enum)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Generated/ErrorCode.swift"
+    },
+    {
+     "label": "RevenueDot purchases-android: PurchasesErrorCode.kt (the Android enum)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/generated/com/revenuecat/purchases/PurchasesErrorCode.kt"
+    },
+    {
+     "label": "RevenueDot purchases-android: google/errors.kt (Play Billing mapping)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt"
+    }
+   ],
+   "checked": "2026-10-03",
+   "links": [
+    {
+     "label": "What RevenueDot's API errors mean (server codes)",
+     "url": "../../api/errors.md"
+    }
+   ]
+  },
+  {
+   "slug": "sdk-purchase-cancelled-error",
+   "label": "SDK: purchaseCancelledError",
+   "title": "What does purchaseCancelledError (code 1) mean in the purchases SDK?",
+   "description": "purchaseCancelledError (code 1) means the customer closed the purchase sheet. Nothing was bought and nothing is broken: show no error and keep the paywall open.",
+   "answer": "The purchases SDK raises purchaseCancelledError (code 1) when the customer closes the purchase sheet without buying.",
+   "symbol": "`ErrorCode.purchaseCancelledError` (iOS), `PurchasesErrorCode.PurchaseCancelledError` (Android), code 1",
+   "api": "Purchases SDK (iOS, Android and the hybrid SDKs built on them)",
+   "definition": "Purchase was cancelled.",
+   "causes": [
+    "StoreKit 2 reports `StoreKitError.userCancelled` and StoreKit 1 reports `SKError.paymentCancelled`; the SDK maps both to this error.",
+    "On Android, Play Billing returns `USER_CANCELED` when the customer leaves the billing flow, and the SDK maps it here ([Google docs](https://developer.android.com/google/play/billing/errors)).",
+    "The Cancel button in the Test Store purchase dialog raises it too, so a tester can see it without leaving the app."
+   ],
+   "fixes": [
+    "Treat it as an outcome, not an error. In the Swift async API read `userCancelled` on the result; in callbacks read the `userCancelled` flag.",
+    "Leave the paywall open with its products loaded so the customer can choose again.",
+    "Count cancels apart from failures in analytics.",
+    "Turn on debug logs if a tester says they did not cancel; the underlying error shows who reported the cancel."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift-sdk",
+    "code": "// The purchases SDK throws `ErrorCode` values; match the one you handle and let the rest fall through.\nfunc handle(_ error: Error) {\n    guard let code = error as? ErrorCode else {\n        print(\"Not a purchases SDK error: \\(error)\")\n        return\n    }\n    switch code {\n    case .purchaseCancelledError:\n        // A cancel is the customer's choice: no dialog, no retry, nothing to unlock.\n        print(\"Purchase cancelled\")\n    default:\n        print(\"Other purchases error: \\(code.description)\")\n    }\n}"
+   },
+   "sdk": "RevenueDot never sees a cancelled purchase, because the SDK stops before it posts a receipt to `POST /v1/receipts`. Deep dive: [revenuedot.app/errors/purchase-cancelled-error](https://revenuedot.app/errors/purchase-cancelled-error).",
+   "related": [
+    "storekit-error-user-cancelled",
+    "play-billing-user-canceled",
+    "sdk-payment-pending-error"
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot purchases-ios: ErrorCode.swift (the iOS ErrorCode enum)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Generated/ErrorCode.swift"
+    },
+    {
+     "label": "RevenueDot purchases-android: PurchasesErrorCode.kt (the Android enum)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/generated/com/revenuecat/purchases/PurchasesErrorCode.kt"
+    },
+    {
+     "label": "RevenueDot purchases-ios: StoreKitError+Extensions.swift",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift"
+    },
+    {
+     "label": "RevenueDot purchases-android: google/errors.kt (Play Billing mapping)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt"
+    }
+   ],
+   "checked": "2026-10-03",
+   "links": [
+    {
+     "label": "What RevenueDot's API errors mean (server codes)",
+     "url": "../../api/errors.md"
+    }
+   ]
+  },
+  {
+   "slug": "sdk-store-problem-error",
+   "label": "SDK: storeProblemError",
+   "title": "What does storeProblemError (code 2) mean in the purchases SDK?",
+   "description": "storeProblemError (code 2) means the App Store, Google Play or the payment system failed the request. It is usually temporary: retry once and read the underlying error.",
+   "answer": "The purchases SDK raises storeProblemError (code 2) when the App Store or Google Play fails a request or the backend reports a store problem.",
+   "symbol": "`ErrorCode.storeProblemError` (iOS), `PurchasesErrorCode.StoreProblemError` (Android), code 2",
+   "api": "Purchases SDK (iOS, Android and the hybrid SDKs built on them)",
+   "definition": "There was a problem with the store.",
+   "causes": [
+    "StoreKit 2: `StoreKitError.systemError`, `.notEntitled` and `.unknown`, and `Product.PurchaseError.invalidQuantity` all map here.",
+    "Android: Play Billing `ERROR`, `SERVICE_UNAVAILABLE`, `SERVICE_DISCONNECTED` and `SERVICE_TIMEOUT` map here. Google describes `ERROR` as an internal Play problem and `SERVICE_DISCONNECTED` as a severed connection ([Google docs](https://developer.android.com/google/play/billing/errors)).",
+    "The backend answered 7101 (store problem), or on Android 7229 (Play quota exceeded) or 7231 (Play generic error)."
+   ],
+   "fixes": [
+    "Read the underlying error: `NSUnderlyingErrorKey` and `rc_backend_error_code` on iOS, `underlyingErrorMessage` on Android. They tell a StoreKit failure from a backend 7101.",
+    "Retry once after a short pause. Google recommends retries with backoff for `ERROR` and service disconnects.",
+    "Check that the store account on the device works: open the App Store or Google Play once and try again.",
+    "If the backend sent 7101, fix the store key or service account the message names, using Verify credentials on the app page."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift-sdk",
+    "code": "// The purchases SDK throws `ErrorCode` values; match the one you handle and let the rest fall through.\nfunc handle(_ error: Error) {\n    guard let code = error as? ErrorCode else {\n        print(\"Not a purchases SDK error: \\(error)\")\n        return\n    }\n    switch code {\n    case .storeProblemError:\n        // Retrying once is reasonable; never unlock until customer info shows the entitlement.\n        print(\"The store had a problem; read the underlying error\")\n    default:\n        print(\"Other purchases error: \\(code.description)\")\n    }\n}"
+   },
+   "sdk": "A burst of storeProblemError usually means a store outage or a broken store credential on the server. See the [server error codes](../../api/errors.md) for 7101. Deep dive: [revenuedot.app/errors/store-problem-error](https://revenuedot.app/errors/store-problem-error).",
+   "related": [
+    "storekit-error-system-error",
+    "play-billing-service-disconnected",
+    "play-billing-error"
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot purchases-ios: ErrorCode.swift (the iOS ErrorCode enum)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Generated/ErrorCode.swift"
+    },
+    {
+     "label": "RevenueDot purchases-android: PurchasesErrorCode.kt (the Android enum)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/generated/com/revenuecat/purchases/PurchasesErrorCode.kt"
+    },
+    {
+     "label": "RevenueDot purchases-ios: StoreKitError+Extensions.swift",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift"
+    },
+    {
+     "label": "RevenueDot purchases-android: google/errors.kt (Play Billing mapping)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt"
+    },
+    {
+     "label": "RevenueDot purchases-ios: BackendErrorCode.swift (backend code mapping)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/BackendErrorCode.swift"
+    }
+   ],
+   "checked": "2026-10-03",
+   "links": [
+    {
+     "label": "What RevenueDot's API errors mean (server codes)",
+     "url": "../../api/errors.md"
+    }
+   ]
+  },
+  {
+   "slug": "sdk-purchase-not-allowed-error",
+   "label": "SDK: purchaseNotAllowedError",
+   "title": "What does purchaseNotAllowedError (code 3) mean in the purchases SDK?",
+   "description": "purchaseNotAllowedError (code 3) means this device or account may not buy: purchases are restricted, or Google Play billing is unavailable. Retrying does not help.",
+   "answer": "The purchases SDK raises purchaseNotAllowedError (code 3) when the device or account is not allowed to make the purchase.",
+   "symbol": "`ErrorCode.purchaseNotAllowedError` (iOS), `PurchasesErrorCode.PurchaseNotAllowedError` (Android), code 3",
+   "api": "Purchases SDK (iOS, Android and the hybrid SDKs built on them)",
+   "definition": "The device or user is not allowed to make the purchase.",
+   "causes": [
+    "StoreKit 2: `Product.PurchaseError.purchaseNotAllowed`, which Apple documents as the user not being allowed to make purchases. StoreKit 1: `SKError.paymentNotAllowed` and several related codes.",
+    "Android: Play Billing `BILLING_UNAVAILABLE`, `ITEM_NOT_OWNED` and `FEATURE_NOT_SUPPORTED` map here. Google lists an outdated Play Store, an unsupported country and a declined payment method as reasons for `BILLING_UNAVAILABLE`.",
+    "A product change (upgrade or downgrade) requested for a product that is not a subscription."
+   ],
+   "fixes": [
+    "Check before you show the paywall: `Purchases.canMakePayments()` on iOS, or the Android equivalent with a callback.",
+    "Ask the customer to check restrictions: Screen Time or a device management profile on iOS, an up-to-date Play Store, a supported country and a valid payment method on Android.",
+    "Test on a real store account. Simulators and emulators without one return this error.",
+    "Do not retry. The block stays until the customer changes a setting."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift-sdk",
+    "code": "// The purchases SDK throws `ErrorCode` values; match the one you handle and let the rest fall through.\nfunc handle(_ error: Error) {\n    guard let code = error as? ErrorCode else {\n        print(\"Not a purchases SDK error: \\(error)\")\n        return\n    }\n    switch code {\n    case .purchaseNotAllowedError:\n        // Retrying cannot help: explain the block and show the paywall again on the next launch.\n        print(\"Purchases are not allowed on this device or account\")\n    default:\n        print(\"Other purchases error: \\(code.description)\")\n    }\n}"
+   },
+   "sdk": "Deep dive: [revenuedot.app/errors/purchase-not-allowed-error](https://revenuedot.app/errors/purchase-not-allowed-error).",
+   "related": [
+    "storekit-purchase-error-purchase-not-allowed",
+    "play-billing-billing-unavailable",
+    "play-billing-item-not-owned"
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot purchases-ios: ErrorCode.swift (the iOS ErrorCode enum)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Generated/ErrorCode.swift"
+    },
+    {
+     "label": "RevenueDot purchases-android: PurchasesErrorCode.kt (the Android enum)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/generated/com/revenuecat/purchases/PurchasesErrorCode.kt"
+    },
+    {
+     "label": "RevenueDot purchases-ios: StoreKitError+Extensions.swift",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift"
+    },
+    {
+     "label": "RevenueDot purchases-android: google/errors.kt (Play Billing mapping)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt"
+    }
+   ],
+   "checked": "2026-10-03",
+   "links": [
+    {
+     "label": "What RevenueDot's API errors mean (server codes)",
+     "url": "../../api/errors.md"
+    }
+   ]
+  },
+  {
+   "slug": "sdk-purchase-invalid-error",
+   "label": "SDK: purchaseInvalidError",
+   "title": "What does purchaseInvalidError (code 4) mean in the purchases SDK?",
+   "description": "purchaseInvalidError (code 4) means one or more arguments of the purchase are not valid. Check the product, offer and options you pass, and read the underlying error.",
+   "answer": "The purchases SDK raises purchaseInvalidError (code 4) when the store or the backend says an argument of the purchase is not valid.",
+   "symbol": "`ErrorCode.purchaseInvalidError` (iOS), `PurchasesErrorCode.PurchaseInvalidError` (Android), code 4",
+   "api": "Purchases SDK (iOS, Android and the hybrid SDKs built on them)",
+   "definition": "One or more of the arguments provided are invalid.",
+   "causes": [
+    "Android: Play Billing `DEVELOPER_ERROR`, the code Google uses for incorrect use of the API, maps here.",
+    "StoreKit 2: `StoreKitError.unsupported` maps here when the SDK is built with Swift 6.1 or later.",
+    "The backend answered a code the SDK treats as an invalid purchase request, such as 7105 (invalid payment mode) or 7106 (missing Google product ID), or an invalid web redemption token."
+   ],
+   "fixes": [
+    "Read the underlying error and the debug message; they name the invalid argument.",
+    "Check the product, offer and options you pass against what is configured in the store and on the server.",
+    "On Android, check for a signed build and a non-empty product list, as Google lists for `DEVELOPER_ERROR`.",
+    "Do not retry with the same arguments; the result will not change."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift-sdk",
+    "code": "// The purchases SDK throws `ErrorCode` values; match the one you handle and let the rest fall through.\nfunc handle(_ error: Error) {\n    guard let code = error as? ErrorCode else {\n        print(\"Not a purchases SDK error: \\(error)\")\n        return\n    }\n    switch code {\n    case .purchaseInvalidError:\n        // A bug in the arguments: log the underlying error and fix the call, do not retry.\n        print(\"The purchase arguments are invalid\")\n    default:\n        print(\"Other purchases error: \\(code.description)\")\n    }\n}"
+   },
+   "sdk": "Deep dive: [revenuedot.app/errors/purchase-invalid-error](https://revenuedot.app/errors/purchase-invalid-error).",
+   "related": [
+    "play-billing-developer-error",
+    "storekit-error-unsupported",
+    "sdk-configuration-error"
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot purchases-ios: ErrorCode.swift (the iOS ErrorCode enum)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Generated/ErrorCode.swift"
+    },
+    {
+     "label": "RevenueDot purchases-android: PurchasesErrorCode.kt (the Android enum)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/generated/com/revenuecat/purchases/PurchasesErrorCode.kt"
+    },
+    {
+     "label": "RevenueDot purchases-ios: StoreKitError+Extensions.swift",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift"
+    },
+    {
+     "label": "RevenueDot purchases-android: google/errors.kt (Play Billing mapping)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt"
+    },
+    {
+     "label": "RevenueDot purchases-ios: BackendErrorCode.swift (backend code mapping)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/BackendErrorCode.swift"
+    }
+   ],
+   "checked": "2026-10-03",
+   "links": [
+    {
+     "label": "What RevenueDot's API errors mean (server codes)",
+     "url": "../../api/errors.md"
+    }
+   ]
+  },
+  {
+   "slug": "sdk-product-not-available-for-purchase-error",
+   "label": "SDK: productNotAvailableForPurchaseError",
+   "title": "What does productNotAvailableForPurchaseError (code 5) mean in the purchases SDK?",
+   "description": "productNotAvailableForPurchaseError (code 5) means the store has no purchasable product for this customer. Check the product ID, its state and its regions.",
+   "answer": "The purchases SDK raises productNotAvailableForPurchaseError (code 5) when the store reports the product as unavailable for this customer.",
+   "symbol": "`ErrorCode.productNotAvailableForPurchaseError` (iOS), `PurchasesErrorCode.ProductNotAvailableForPurchaseError` (Android), code 5",
+   "api": "Purchases SDK (iOS, Android and the hybrid SDKs built on them)",
+   "definition": "The product is not available for purchase.",
+   "causes": [
+    "StoreKit 1: `SKError.storeProductNotAvailable`. StoreKit 2: `StoreKitError.notAvailableInStorefront` and `Product.PurchaseError.productUnavailable`.",
+    "Android: Play Billing `ITEM_UNAVAILABLE`. Google says to refresh product details and check the product's configuration and country availability.",
+    "In the RevenueDot Android SDK's Test Store, a product with no price also raises this error."
+   ],
+   "fixes": [
+    "Check the product in App Store Connect or Play Console: it must exist, be approved or active and be sold in the customer's country.",
+    "Match the product ID exactly. The ID in your offering must equal the store's product ID.",
+    "Wait after you create a product, then test again with a fresh install.",
+    "Hide the package so the customer is not stuck on a button that cannot work."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift-sdk",
+    "code": "// The purchases SDK throws `ErrorCode` values; match the one you handle and let the rest fall through.\nfunc handle(_ error: Error) {\n    guard let code = error as? ErrorCode else {\n        print(\"Not a purchases SDK error: \\(error)\")\n        return\n    }\n    switch code {\n    case .productNotAvailableForPurchaseError:\n        // Do not retry the same call: hide the package and log the product ID.\n        print(\"The product is not available for purchase\")\n    default:\n        print(\"Other purchases error: \\(code.description)\")\n    }\n}"
+   },
+   "sdk": "In RevenueDot, a product whose `store_identifier` differs from the store's ID returns no product from the store. See [why an entitlement is not active](../help/entitlement-not-active.md). Deep dive: [revenuedot.app/errors/product-not-available-for-purchase-error](https://revenuedot.app/errors/product-not-available-for-purchase-error).",
+   "related": [
+    "storekit-error-not-available-in-storefront",
+    "storekit-purchase-error-product-unavailable",
+    "play-billing-item-unavailable"
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot purchases-ios: ErrorCode.swift (the iOS ErrorCode enum)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Generated/ErrorCode.swift"
+    },
+    {
+     "label": "RevenueDot purchases-android: PurchasesErrorCode.kt (the Android enum)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/generated/com/revenuecat/purchases/PurchasesErrorCode.kt"
+    },
+    {
+     "label": "RevenueDot purchases-ios: StoreKitError+Extensions.swift",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift"
+    },
+    {
+     "label": "RevenueDot purchases-android: google/errors.kt (Play Billing mapping)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt"
+    }
+   ],
+   "checked": "2026-10-03",
+   "links": [
+    {
+     "label": "What RevenueDot's API errors mean (server codes)",
+     "url": "../../api/errors.md"
+    }
+   ]
+  },
+  {
+   "slug": "sdk-product-already-purchased-error",
+   "label": "SDK: productAlreadyPurchasedError",
+   "title": "What does productAlreadyPurchasedError (code 6) mean in the purchases SDK?",
+   "description": "productAlreadyPurchasedError (code 6) means the customer already owns the product. Refresh customer info or restore purchases instead of selling it again.",
+   "answer": "The purchases SDK raises productAlreadyPurchasedError (code 6) when the store refuses to sell a product the customer already owns.",
+   "symbol": "`ErrorCode.productAlreadyPurchasedError` (iOS), `PurchasesErrorCode.ProductAlreadyPurchasedError` (Android), code 6",
+   "api": "Purchases SDK (iOS, Android and the hybrid SDKs built on them)",
+   "definition": "This product is already active for the user.",
+   "causes": [
+    "Android: Play Billing `ITEM_ALREADY_OWNED`. Google says it is usually permanent but can be stale cache, and recommends `queryPurchasesAsync()`.",
+    "StoreKit 1: an `unknown` `SKError` whose underlying error says the customer is currently subscribed.",
+    "On Android, the backend answered 7852 (a web purchase that belongs to another user); iOS reports that as `purchaseBelongsToOtherUser` instead."
+   ],
+   "fixes": [
+    "Call `getCustomerInfo` and check the entitlement. If it is active, close the paywall.",
+    "If it is not active, call `restorePurchases()` so the SDK posts the owned purchase.",
+    "On Android, acknowledge or consume purchases so they do not stay owned and block a second purchase.",
+    "Hide the buy button for owners by checking the entitlement before you show the paywall."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift-sdk",
+    "code": "// The purchases SDK throws `ErrorCode` values; match the one you handle and let the rest fall through.\nfunc handle(_ error: Error) {\n    guard let code = error as? ErrorCode else {\n        print(\"Not a purchases SDK error: \\(error)\")\n        return\n    }\n    switch code {\n    case .productAlreadyPurchasedError:\n        // Good news: the customer already owns it. Refresh customer info or restore, then close the paywall.\n        print(\"Already purchased; restore or refresh customer info\")\n    default:\n        print(\"Other purchases error: \\(code.description)\")\n    }\n}"
+   },
+   "sdk": "Deep dive: [revenuedot.app/errors/product-already-purchased-error](https://revenuedot.app/errors/product-already-purchased-error). See also [how to restore purchases](../help/restore-purchases.md).",
+   "related": [
+    "play-billing-item-already-owned",
+    "sdk-receipt-already-in-use-error",
+    "sdk-payment-pending-error"
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot purchases-ios: ErrorCode.swift (the iOS ErrorCode enum)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Generated/ErrorCode.swift"
+    },
+    {
+     "label": "RevenueDot purchases-android: PurchasesErrorCode.kt (the Android enum)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/generated/com/revenuecat/purchases/PurchasesErrorCode.kt"
+    },
+    {
+     "label": "RevenueDot purchases-android: google/errors.kt (Play Billing mapping)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt"
+    },
+    {
+     "label": "RevenueDot purchases-android: common/errors.kt (backend code mapping)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/common/errors.kt"
+    }
+   ],
+   "checked": "2026-10-03",
+   "links": [
+    {
+     "label": "What RevenueDot's API errors mean (server codes)",
+     "url": "../../api/errors.md"
+    }
+   ]
+  },
+  {
+   "slug": "sdk-receipt-already-in-use-error",
+   "label": "SDK: receiptAlreadyInUseError",
+   "title": "What does receiptAlreadyInUseError (code 7) mean in the purchases SDK?",
+   "description": "receiptAlreadyInUseError (code 7) means the purchase belongs to another app user and the project's transfer setting forbids moving it. Backend code 7102.",
+   "answer": "The purchases SDK raises receiptAlreadyInUseError (code 7) when the backend refuses to move a purchase that already belongs to another app user.",
+   "symbol": "`ErrorCode.receiptAlreadyInUseError` (iOS), `PurchasesErrorCode.ReceiptAlreadyInUseError` (Android), code 7",
+   "api": "Purchases SDK (iOS, Android and the hybrid SDKs built on them)",
+   "definition": "There is already another active subscriber using the same receipt.",
+   "causes": [
+    "The backend answered 7102 (cannot transfer purchase), and both SDKs map it to this error.",
+    "A customer restored or re-posted a store purchase while signed in as a different app user than the one who bought it.",
+    "The project's restore behavior forbids moving the purchase. A shared device, or a new app user ID after logging out, leaves the old account as the owner."
+   ],
+   "fixes": [
+    "Find the current owner: open the customer in the dashboard or call `GET /v1/subscribers/{app_user_id}` for the suspected owner.",
+    "Ask the customer to sign in with the account that bought; entitlements appear without a restore.",
+    "Pick the right `transfer_behavior`: `transfer`, `transfer_if_no_active`, `keep` or `share`.",
+    "Use one app user ID per person with `logIn`, so purchases stay on one customer across devices."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift-sdk",
+    "code": "// The purchases SDK throws `ErrorCode` values; match the one you handle and let the rest fall through.\nfunc handle(_ error: Error) {\n    guard let code = error as? ErrorCode else {\n        print(\"Not a purchases SDK error: \\(error)\")\n        return\n    }\n    switch code {\n    case .receiptAlreadyInUseError:\n        // Same request, same answer: tell the customer which account bought, never whose account it is.\n        print(\"This purchase is linked to another account\")\n    default:\n        print(\"Other purchases error: \\(code.description)\")\n    }\n}"
+   },
+   "sdk": "RevenueDot answers HTTP 400 with code 7102 when the project's `transfer_behavior` is `keep`, or `transfer_if_no_active` and the owner is still active. See [how to restore purchases](../help/restore-purchases.md) and [the server error codes](../../api/errors.md). Deep dive: [revenuedot.app/errors/receipt-already-in-use-error](https://revenuedot.app/errors/receipt-already-in-use-error).",
+   "related": [
+    "sdk-product-already-purchased-error",
+    "sdk-invalid-receipt-error",
+    "play-billing-item-already-owned"
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot purchases-ios: ErrorCode.swift (the iOS ErrorCode enum)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Generated/ErrorCode.swift"
+    },
+    {
+     "label": "RevenueDot purchases-android: PurchasesErrorCode.kt (the Android enum)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/generated/com/revenuecat/purchases/PurchasesErrorCode.kt"
+    },
+    {
+     "label": "RevenueDot purchases-ios: BackendErrorCode.swift (backend code mapping)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/BackendErrorCode.swift"
+    },
+    {
+     "label": "RevenueDot purchases-android: common/errors.kt (backend code mapping)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/common/errors.kt"
+    }
+   ],
+   "checked": "2026-10-03",
+   "links": [
+    {
+     "label": "What RevenueDot's API errors mean (server codes)",
+     "url": "../../api/errors.md"
+    }
+   ]
+  },
+  {
+   "slug": "sdk-invalid-receipt-error",
+   "label": "SDK: invalidReceiptError",
+   "title": "What does invalidReceiptError (code 8) mean in the purchases SDK?",
+   "description": "invalidReceiptError (code 8) means the backend said the receipt or purchase token is not valid, usually code 7103. Check the bundle ID or package name and the store credentials.",
+   "answer": "The purchases SDK raises invalidReceiptError (code 8) when the backend rejects the receipt, signed transaction or purchase token.",
+   "symbol": "`ErrorCode.invalidReceiptError` (iOS), `PurchasesErrorCode.InvalidReceiptError` (Android), code 8",
+   "api": "Purchases SDK (iOS, Android and the hybrid SDKs built on them)",
+   "definition": "The receipt is not valid.",
+   "causes": [
+    "The backend answered 7103 (invalid receipt token) or, on iOS, 7712 (the purchased product is missing from the Apple receipt).",
+    "The receipt came from a build with a different bundle ID or package name than the app configured on the server.",
+    "A StoreKit testing receipt signed by Xcode's local certificate reached a server that does not know that certificate, or Google Play says the purchase token is invalid."
+   ],
+   "fixes": [
+    "Compare the app's `bundle_id` or `package_name` on the server with the build you test.",
+    "For StoreKit testing in Xcode, add the public certificate from your `.storekit` file as the app's `xcode_certificate` credential.",
+    "Read the server message in the underlying error; the 7103 message names the cause.",
+    "Run the credential check on the app page: a wrong App Store key or Google service account is a server setup problem, not a bad receipt."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift-sdk",
+    "code": "// The purchases SDK throws `ErrorCode` values; match the one you handle and let the rest fall through.\nfunc handle(_ error: Error) {\n    guard let code = error as? ErrorCode else {\n        print(\"Not a purchases SDK error: \\(error)\")\n        return\n    }\n    switch code {\n    case .invalidReceiptError:\n        // A 4xx answer means the receipt can never be accepted: do not retry, point the customer to support.\n        print(\"The receipt could not be verified\")\n    default:\n        print(\"Other purchases error: \\(code.description)\")\n    }\n}"
+   },
+   "sdk": "RevenueDot's server answers 400 with code 7103, and the SDK then finishes the transaction for good. See [4xx or 5xx on a receipt](../help/receipt-errors-4xx-vs-5xx.md). Deep dive: [revenuedot.app/errors/invalid-receipt-error](https://revenuedot.app/errors/invalid-receipt-error).",
+   "related": [
+    "storekit-verification-error-invalid-signature",
+    "sdk-receipt-already-in-use-error",
+    "sdk-invalid-credentials-error"
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot purchases-ios: ErrorCode.swift (the iOS ErrorCode enum)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Generated/ErrorCode.swift"
+    },
+    {
+     "label": "RevenueDot purchases-android: PurchasesErrorCode.kt (the Android enum)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/generated/com/revenuecat/purchases/PurchasesErrorCode.kt"
+    },
+    {
+     "label": "RevenueDot purchases-ios: BackendErrorCode.swift (backend code mapping)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/BackendErrorCode.swift"
+    },
+    {
+     "label": "RevenueDot purchases-android: common/errors.kt (backend code mapping)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/common/errors.kt"
+    }
+   ],
+   "checked": "2026-10-03",
+   "links": [
+    {
+     "label": "What RevenueDot's API errors mean (server codes)",
+     "url": "../../api/errors.md"
+    }
+   ]
+  },
+  {
+   "slug": "sdk-network-error",
+   "label": "SDK: networkError",
+   "title": "What does networkError (code 10) mean in the purchases SDK?",
+   "description": "networkError (code 10) means a request could not finish on the network: a timeout, a dropped connection or an unreachable host. It is temporary, so retry after a pause.",
+   "answer": "The purchases SDK raises networkError (code 10) when a request fails at the network layer.",
+   "symbol": "`ErrorCode.networkError` (iOS), `PurchasesErrorCode.NetworkError` (Android), code 10",
+   "api": "Purchases SDK (iOS, Android and the hybrid SDKs built on them)",
+   "definition": "A network error has occurred.",
+   "causes": [
+    "iOS: any `URLSession` failure other than \"not connected to the Internet\" (which becomes `offlineConnectionError`) maps here.",
+    "Android: an `IOException` or `JSONException` while performing the request, and Play Billing `NETWORK_ERROR`.",
+    "A wrong proxy URL: a typo, `http` instead of `https`, a missing port, or `localhost` on an Android emulator, where `localhost` is the emulator itself."
+   ],
+   "fixes": [
+    "Retry after a short wait and back off if it fails again.",
+    "Set the proxy URL before `configure`. On an Android emulator use `http://10.0.2.2:8787` for a server on your computer, or HTTPS.",
+    "On iOS, call `PurchasesDiagnostics.default.testSDKHealth()` to see whether the SDK can reach the server.",
+    "Read the underlying error: on iOS `NSUnderlyingErrorKey` holds the `URLError` with the real reason."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift-sdk",
+    "code": "// The purchases SDK throws `ErrorCode` values; match the one you handle and let the rest fall through.\nfunc handle(_ error: Error) {\n    guard let code = error as? ErrorCode else {\n        print(\"Not a purchases SDK error: \\(error)\")\n        return\n    }\n    switch code {\n    case .networkError:\n        // Retrying is safe: the SDK keeps unposted purchases and sends them again later.\n        print(\"Network problem; try again soon\")\n    default:\n        print(\"Other purchases error: \\(code.description)\")\n    }\n}"
+   },
+   "sdk": "If RevenueDot is unreachable the SDK sees a connection error; if it answers 5xx the SDK keeps the transaction and retries. Deep dive: [revenuedot.app/errors/network-error](https://revenuedot.app/errors/network-error).",
+   "related": [
+    "play-billing-network-error",
+    "storekit-error-network-error",
+    "sdk-offline-connection-error"
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot purchases-ios: ErrorCode.swift (the iOS ErrorCode enum)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Generated/ErrorCode.swift"
+    },
+    {
+     "label": "RevenueDot purchases-android: PurchasesErrorCode.kt (the Android enum)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/generated/com/revenuecat/purchases/PurchasesErrorCode.kt"
+    },
+    {
+     "label": "RevenueDot purchases-android: common/errors.kt (backend code mapping)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/common/errors.kt"
+    },
+    {
+     "label": "RevenueDot purchases-android: google/errors.kt (Play Billing mapping)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt"
+    }
+   ],
+   "checked": "2026-10-03",
+   "links": [
+    {
+     "label": "What RevenueDot's API errors mean (server codes)",
+     "url": "../../api/errors.md"
+    }
+   ]
+  },
+  {
+   "slug": "sdk-invalid-credentials-error",
+   "label": "SDK: invalidCredentialsError",
+   "title": "What does invalidCredentialsError (code 11) mean in the purchases SDK?",
+   "description": "invalidCredentialsError (code 11) means the backend rejected the SDK's API key or an auth token, usually code 7225. Copy the app's public SDK key again.",
+   "answer": "The purchases SDK raises invalidCredentialsError (code 11) when the backend rejects the API key or an auth token.",
+   "symbol": "`ErrorCode.invalidCredentialsError` (iOS), `PurchasesErrorCode.InvalidCredentialsError` (Android), code 11",
+   "api": "Purchases SDK (iOS, Android and the hybrid SDKs built on them)",
+   "definition": "There was a credentials issue. Check the underlying error for more details.",
+   "causes": [
+    "The backend answered 7225 (invalid API key) or 7224 (invalid auth token). iOS also maps 7104 (invalid App Store shared secret) and 7981, and Android maps 7107 (invalid Play Store credentials).",
+    "The key has a typo, or it belongs to another project or another server; a RevenueCat key sent to RevenueDot is unknown, and the reverse.",
+    "The proxy URL was set after `configure`, or the key is of the wrong kind, such as a `test_` Test Store key in a release build."
+   ],
+   "fixes": [
+    "Copy the app's public SDK key again from the app page and check each character.",
+    "Set `Purchases.proxyURL` before `Purchases.configure`.",
+    "Use the iOS app's key in the iOS build and the Android app's key in the Android build.",
+    "On iOS, `PurchasesDiagnostics.default.testSDKHealth()` reports an invalid API key as such."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift-sdk",
+    "code": "// The purchases SDK throws `ErrorCode` values; match the one you handle and let the rest fall through.\nfunc handle(_ error: Error) {\n    guard let code = error as? ErrorCode else {\n        print(\"Not a purchases SDK error: \\(error)\")\n        return\n    }\n    switch code {\n    case .invalidCredentialsError:\n        // The key stays wrong until you fix it: alert yourself, show customers a generic message.\n        print(\"The API key was rejected\")\n    default:\n        print(\"Other purchases error: \\(code.description)\")\n    }\n}"
+   },
+   "sdk": "RevenueDot answers 401 with code 7225 for an unknown key. See [the server error codes](../../api/errors.md). Deep dive: [revenuedot.app/errors/invalid-credentials-error](https://revenuedot.app/errors/invalid-credentials-error).",
+   "related": [
+    "sdk-configuration-error",
+    "sdk-invalid-receipt-error",
+    "sdk-network-error"
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot purchases-ios: ErrorCode.swift (the iOS ErrorCode enum)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Generated/ErrorCode.swift"
+    },
+    {
+     "label": "RevenueDot purchases-android: PurchasesErrorCode.kt (the Android enum)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/generated/com/revenuecat/purchases/PurchasesErrorCode.kt"
+    },
+    {
+     "label": "RevenueDot purchases-ios: BackendErrorCode.swift (backend code mapping)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/BackendErrorCode.swift"
+    },
+    {
+     "label": "RevenueDot purchases-android: common/errors.kt (backend code mapping)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/common/errors.kt"
+    }
+   ],
+   "checked": "2026-10-03",
+   "links": [
+    {
+     "label": "What RevenueDot's API errors mean (server codes)",
+     "url": "../../api/errors.md"
+    }
+   ]
+  },
+  {
+   "slug": "sdk-payment-pending-error",
+   "label": "SDK: paymentPendingError",
+   "title": "What does paymentPendingError (code 20) mean in the purchases SDK?",
+   "description": "paymentPendingError (code 20) means the purchase started but is not paid yet: Ask to Buy approval, a bank check or a delayed Google Play payment. It is not a failure.",
+   "answer": "The purchases SDK raises paymentPendingError (code 20) when a purchase is pending and not yet paid.",
+   "symbol": "`ErrorCode.paymentPendingError` (iOS), `PurchasesErrorCode.PaymentPendingError` (Android), code 20",
+   "api": "Purchases SDK (iOS, Android and the hybrid SDKs built on them)",
+   "definition": "The payment is pending.",
+   "causes": [
+    "StoreKit 2: the purchase result is `.pending`, which Apple describes as a purchase that requires action from the customer.",
+    "StoreKit 1: a transaction in the `deferred` state, for example Ask to Buy.",
+    "Android: the Play purchase state is `PENDING`. Google says to grant the entitlement only when the state is `PURCHASED`."
+   ],
+   "fixes": [
+    "Show a pending message such as \"Your purchase is waiting for approval\" and close the paywall.",
+    "Listen for updates: `PurchasesDelegate` on iOS, `UpdatedCustomerInfoListener` on Android.",
+    "Call `getCustomerInfo` when the app comes back to the foreground; a pending purchase can complete while the app is closed.",
+    "On Android, acknowledge only after the state is `PURCHASED`."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift-sdk",
+    "code": "// The purchases SDK throws `ErrorCode` values; match the one you handle and let the rest fall through.\nfunc handle(_ error: Error) {\n    guard let code = error as? ErrorCode else {\n        print(\"Not a purchases SDK error: \\(error)\")\n        return\n    }\n    switch code {\n    case .paymentPendingError:\n        // Not a failure: show a pending message and wait for the customer info update.\n        print(\"Payment pending; do not unlock yet\")\n    default:\n        print(\"Other purchases error: \\(code.description)\")\n    }\n}"
+   },
+   "sdk": "Do not retry the purchase, or the customer starts a second one. Deep dive: [revenuedot.app/errors/payment-pending-error](https://revenuedot.app/errors/payment-pending-error).",
+   "related": [
+    "sdk-purchase-cancelled-error",
+    "sdk-product-already-purchased-error",
+    "play-billing-item-already-owned"
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot purchases-ios: ErrorCode.swift (the iOS ErrorCode enum)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Generated/ErrorCode.swift"
+    },
+    {
+     "label": "RevenueDot purchases-android: PurchasesErrorCode.kt (the Android enum)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/generated/com/revenuecat/purchases/PurchasesErrorCode.kt"
+    },
+    {
+     "label": "RevenueDot purchases-android: common/errors.kt (backend code mapping)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/common/errors.kt"
+    }
+   ],
+   "checked": "2026-10-03",
+   "links": [
+    {
+     "label": "What RevenueDot's API errors mean (server codes)",
+     "url": "../../api/errors.md"
+    }
+   ]
+  },
+  {
+   "slug": "sdk-configuration-error",
+   "label": "SDK: configurationError",
+   "title": "What does configurationError (code 23) mean in the purchases SDK?",
+   "description": "configurationError (code 23) means your setup does not line up: no offering product could be fetched from the store, or the backend said the platform is invalid (7000).",
+   "answer": "The purchases SDK raises configurationError (code 23) when its setup does not match the store or the server.",
+   "symbol": "`ErrorCode.configurationError` (iOS), `PurchasesErrorCode.ConfigurationError` (Android), code 23",
+   "api": "Purchases SDK (iOS, Android and the hybrid SDKs built on them)",
+   "definition": "There is an issue with your configuration. Check the underlying error for more details.",
+   "causes": [
+    "iOS: none of the products in your offerings could be fetched from App Store Connect, or from the StoreKit configuration file when one is in use.",
+    "An offering exists but has no products for this app's store, or the API key belongs to a store with no products registered.",
+    "The backend answered 7000 (invalid platform), 7255 (could not create alias) or 8077; Android also maps 7230 (invalid package name) here."
+   ],
+   "fixes": [
+    "Compare product IDs: the ID in the offering must equal the store's product ID exactly, and each product must be approved and ready to sell.",
+    "Use the iOS app's key in the iOS build and the Android app's key in the Android build.",
+    "Mark an offering as current and add this app's products to its packages.",
+    "Read the SDK's message with debug logs; it says which case applies."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift-sdk",
+    "code": "// The purchases SDK throws `ErrorCode` values; match the one you handle and let the rest fall through.\nfunc handle(_ error: Error) {\n    guard let code = error as? ErrorCode else {\n        print(\"Not a purchases SDK error: \\(error)\")\n        return\n    }\n    switch code {\n    case .configurationError:\n        // A setup problem: do not retry. Alert yourself and show a neutral message.\n        print(\"The SDK configuration does not match the store\")\n    default:\n        print(\"Other purchases error: \\(code.description)\")\n    }\n}"
+   },
+   "sdk": "Deep dive: [revenuedot.app/errors/configuration-error](https://revenuedot.app/errors/configuration-error). See [common problems](../help/troubleshooting.md).",
+   "related": [
+    "sdk-invalid-credentials-error",
+    "sdk-product-not-available-for-purchase-error",
+    "play-billing-developer-error"
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot purchases-ios: ErrorCode.swift (the iOS ErrorCode enum)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Generated/ErrorCode.swift"
+    },
+    {
+     "label": "RevenueDot purchases-android: PurchasesErrorCode.kt (the Android enum)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/generated/com/revenuecat/purchases/PurchasesErrorCode.kt"
+    },
+    {
+     "label": "RevenueDot purchases-ios: BackendErrorCode.swift (backend code mapping)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/BackendErrorCode.swift"
+    },
+    {
+     "label": "RevenueDot purchases-android: common/errors.kt (backend code mapping)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/common/errors.kt"
+    }
+   ],
+   "checked": "2026-10-03",
+   "links": [
+    {
+     "label": "What RevenueDot's API errors mean (server codes)",
+     "url": "../../api/errors.md"
+    }
+   ]
+  },
+  {
+   "slug": "sdk-offline-connection-error",
+   "label": "SDK: offlineConnectionError",
+   "title": "What does offlineConnectionError (code 35) mean in the purchases SDK?",
+   "description": "offlineConnectionError (code 35) means the device is offline. Show an offline message, retry when the connection returns and rely on cached customer info.",
+   "answer": "The purchases SDK raises offlineConnectionError (code 35) on iOS when a request fails because the device is not connected to the internet.",
+   "symbol": "`ErrorCode.offlineConnectionError` (iOS), no Android member, code 35",
+   "api": "Purchases SDK (iOS, Android and the hybrid SDKs built on them)",
+   "definition": "Error performing request because the internet connection appears to be offline.",
+   "causes": [
+    "A request failed with the system's \"not connected to the Internet\" error, which the SDK maps to this error. It differs from `networkError`, which covers every other network failure.",
+    "Airplane mode, no signal, Wi-Fi without internet, or cellular data blocked for the app.",
+    "Android has no member for this code; the same situation raises an `IOException`, which becomes `NetworkError`."
+   ],
+   "fixes": [
+    "Show an offline state and keep the app usable with cached data.",
+    "Retry offerings or customer info when your platform's reachability callback says the network is back.",
+    "Keep gating features on the cached entitlement state the SDK already holds.",
+    "On iOS, check that cellular data is allowed for the app in Settings."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift-sdk",
+    "code": "// The purchases SDK throws `ErrorCode` values; match the one you handle and let the rest fall through.\nfunc handle(_ error: Error) {\n    guard let code = error as? ErrorCode else {\n        print(\"Not a purchases SDK error: \\(error)\")\n        return\n    }\n    switch code {\n    case .offlineConnectionError:\n        // Offline is not a purchase failure: keep cached access and retry when the network returns.\n        print(\"You appear to be offline\")\n    default:\n        print(\"Other purchases error: \\(code.description)\")\n    }\n}"
+   },
+   "sdk": "Customers who already paid keep the access the SDK cached, and a device that is offline never reaches RevenueDot. Deep dive: [revenuedot.app/errors/offline-connection-error](https://revenuedot.app/errors/offline-connection-error).",
+   "related": [
+    "sdk-network-error",
+    "storekit-error-network-error",
+    "play-billing-network-error"
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot purchases-ios: ErrorCode.swift (the iOS ErrorCode enum)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Generated/ErrorCode.swift"
+    },
+    {
+     "label": "RevenueDot purchases-android: PurchasesErrorCode.kt (the Android enum)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/generated/com/revenuecat/purchases/PurchasesErrorCode.kt"
+    },
+    {
+     "label": "RevenueDot purchases-android: common/errors.kt (backend code mapping)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/common/errors.kt"
+    }
+   ],
+   "checked": "2026-10-03",
+   "links": [
+    {
+     "label": "What RevenueDot's API errors mean (server codes)",
+     "url": "../../api/errors.md"
+    }
+   ]
+  },
+  {
+   "slug": "sdk-signature-verification-failed",
+   "label": "SDK: signatureVerificationFailed",
+   "title": "What does signatureVerificationFailed (code 37) mean in the purchases SDK?",
+   "description": "signatureVerificationFailed (code 37 on iOS, 36 on Android) means a response failed the SDK's signature check. It is thrown only when verification is enforced.",
+   "answer": "The purchases SDK raises signatureVerificationFailed (code 37 on iOS, 36 on Android) when a response fails the signature check and verification is enforced.",
+   "symbol": "`ErrorCode.signatureVerificationFailed` (iOS), `PurchasesErrorCode.SignatureVerificationError` (Android), code 37",
+   "api": "Purchases SDK (iOS, Android and the hybrid SDKs built on them)",
+   "definition": "Request failed signature verification.",
+   "causes": [
+    "iOS: a response failed verification while the SDK was in enforced mode. In any other mode the SDK logs the failure and carries on.",
+    "Android: a `SignatureVerificationException` becomes `SignatureVerificationError`, numbered 36 on Android and 37 on iOS.",
+    "A server that does not sign with the key the SDK trusts. The stock SDK trusts only RevenueCat's key, and a proxy that rewrites responses breaks the signature too."
+   ],
+   "fixes": [
+    "Turn verification off in the SDK configuration (disabled mode). Native iOS and Android default to informational mode, which only logs a failure.",
+    "Never use enforced mode with the stock SDK against RevenueDot: it would reject every response.",
+    "Or build the RevenueDot forks with your server's public signing key to get verified responses.",
+    "Compare the key at `GET /.well-known/revenuedot-signing-key` with the key in your SDK build."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift-sdk",
+    "code": "// The purchases SDK throws `ErrorCode` values; match the one you handle and let the rest fall through.\nfunc handle(_ error: Error) {\n    guard let code = error as? ErrorCode else {\n        print(\"Not a purchases SDK error: \\(error)\")\n        return\n    }\n    switch code {\n    case .signatureVerificationFailed:\n        // In informational mode nothing is thrown; with enforcement on, never unlock from this response.\n        print(\"Signature verification failed\")\n    default:\n        print(\"Other purchases error: \\(code.description)\")\n    }\n}"
+   },
+   "sdk": "RevenueDot signs 2xx and 3xx responses under `/v1` when `REVENUEDOT_SIGNING_KEY` is set. See [signature verification failed in proxy mode](../help/signature-verification-failed.md). Deep dive: [revenuedot.app/errors/signature-verification-failed](https://revenuedot.app/errors/signature-verification-failed).",
+   "related": [
+    "sdk-invalid-credentials-error",
+    "sdk-invalid-receipt-error",
+    "storekit-verification-error-invalid-signature"
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot purchases-ios: ErrorCode.swift (the iOS ErrorCode enum)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Generated/ErrorCode.swift"
+    },
+    {
+     "label": "RevenueDot purchases-android: PurchasesErrorCode.kt (the Android enum)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/generated/com/revenuecat/purchases/PurchasesErrorCode.kt"
+    },
+    {
+     "label": "RevenueDot purchases-android: common/errors.kt (backend code mapping)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/common/errors.kt"
+    }
+   ],
+   "checked": "2026-10-03",
+   "links": [
+    {
+     "label": "What RevenueDot's API errors mean (server codes)",
+     "url": "../../api/errors.md"
+    }
+   ]
+  }
+ ]
+}
