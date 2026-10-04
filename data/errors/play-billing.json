@@ -470,6 +470,104 @@
     }
    ],
    "checked": "2026-10-03"
+  },
+  {
+   "slug": "play-billing-feature-not-supported",
+   "label": "Play: FEATURE_NOT_SUPPORTED",
+   "title": "What does Play Billing FEATURE_NOT_SUPPORTED (-2) mean?",
+   "description": "FEATURE_NOT_SUPPORTED (-2) means the Play Store on the device does not support the Billing feature you called. It cannot be retried; check isFeatureSupported() first.",
+   "answer": "Play Billing FEATURE_NOT_SUPPORTED (-2) means the Google Play Billing feature you called is not supported on this device.",
+   "symbol": "`BillingClient.BillingResponseCode.FEATURE_NOT_SUPPORTED` (-2)",
+   "api": "Google Play Billing Library (`BillingResult.responseCode`)",
+   "definition": "The requested feature is not supported by the Play Store on the current device.",
+   "causes": [
+    "Google says the cause is likely an old Play Store version on the user's device. Its example is a device that does not support in-app messaging.",
+    "Google lists it among the non-retriable responses: trying again on the same device gives the same answer.",
+    "It is a property of the device and Play Store version, not of your app's configuration."
+   ],
+   "fixes": [
+    "Call `billingClient.isFeatureSupported(FeatureType)` before you use an optional feature, and only use the feature when the response is `OK`.",
+    "Do not retry the call. Hide the feature or use a fallback for that device.",
+    "Do not show a purchase error to the person: the product itself may still be sellable without the optional feature.",
+    "Keep the Billing Library current, because newer versions know more feature types."
+   ],
+   "snippet": {
+    "lang": "kotlin",
+    "check": "none",
+    "code": "import com.android.billingclient.api.BillingClient\n\n// Ask before you use an optional feature. FEATURE_NOT_SUPPORTED cannot be fixed by retrying.\nfun supportsInAppMessaging(billingClient: BillingClient): Boolean {\n    if (!billingClient.isReady) return false\n    val result = billingClient.isFeatureSupported(BillingClient.FeatureType.IN_APP_MESSAGING)\n    return result.responseCode == BillingClient.BillingResponseCode.OK\n}"
+   },
+   "sdk": "The RevenueDot `purchases-android` fork maps `FEATURE_NOT_SUPPORTED` to `PurchasesErrorCode.PurchaseNotAllowedError` (code 3), the same code it uses for `BILLING_UNAVAILABLE` and `ITEM_NOT_OWNED`. See [what purchaseNotAllowedError means](sdk-purchase-not-allowed-error.md).",
+   "related": [
+    "play-billing-billing-unavailable",
+    "play-billing-developer-error",
+    "sdk-purchase-not-allowed-error"
+   ],
+   "sources": [
+    {
+     "label": "Google: BillingResponseCode.FEATURE_NOT_SUPPORTED",
+     "url": "https://developer.android.com/reference/com/android/billingclient/api/BillingClient.BillingResponseCode"
+    },
+    {
+     "label": "Google: Handle BillingResult response codes",
+     "url": "https://developer.android.com/google/play/billing/errors"
+    },
+    {
+     "label": "RevenueDot purchases-android: google/errors.kt (how the SDK maps response codes)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "play-billing-service-timeout",
+   "label": "Play: SERVICE_TIMEOUT",
+   "title": "What does Play Billing SERVICE_TIMEOUT (-3) mean?",
+   "description": "SERVICE_TIMEOUT (-3) means Google Play did not answer before the request timed out. Only Billing Library 5.2.0 and earlier return it; retry the same call, with backoff in the background.",
+   "answer": "Play Billing SERVICE_TIMEOUT (-3) means a request reached its maximum timeout before Google Play could answer.",
+   "symbol": "`BillingClient.BillingResponseCode.SERVICE_TIMEOUT` (-3)",
+   "api": "Google Play Billing Library (`BillingResult.responseCode`)",
+   "definition": "The request has reached the maximum timeout before Google Play responds.",
+   "causes": [
+    "Google gives an example: a delay in executing the action that the Billing Library call asked for.",
+    "Only Billing Library 5.2.0 and earlier return it. From 6.0.0 `SERVICE_UNAVAILABLE` is returned for the same problem and `SERVICE_TIMEOUT` is deprecated.",
+    "Unlike `SERVICE_DISCONNECTED`, the connection to the billing service is still up."
+   ],
+   "fixes": [
+    "Retry the same Billing Library call. Use a simple retry for something the person waits on, and exponential backoff for background work.",
+    "Do not call `startConnection()` again, because the connection is not severed.",
+    "Upgrade the Billing Library. Version 8 is required for new apps and updates from 2026-08-31, and it never returns this code.",
+    "Treat `SERVICE_UNAVAILABLE` the same way, so one handler covers both."
+   ],
+   "snippet": {
+    "lang": "kotlin",
+    "check": "none",
+    "code": "import com.android.billingclient.api.BillingClient\nimport com.android.billingclient.api.BillingResult\nimport kotlinx.coroutines.delay\n\n// Retry the same call on a timeout; the connection is fine (Google's guidance for code -3).\nsuspend fun <T> retryOnTimeout(maxTries: Int = 3, call: suspend () -> Pair<BillingResult, T>): Pair<BillingResult, T> {\n    var result = call()\n    var tries = 1\n    while (result.first.responseCode == BillingClient.BillingResponseCode.SERVICE_TIMEOUT && tries < maxTries) {\n        delay(2_000L * tries)\n        result = call()\n        tries++\n    }\n    return result\n}"
+   },
+   "sdk": "The RevenueDot `purchases-android` fork maps `SERVICE_TIMEOUT` to `PurchasesErrorCode.StoreProblemError` (code 2) and, inside its own billing code, treats it as `ServiceUnavailable`. See [what storeProblemError means](sdk-store-problem-error.md).",
+   "related": [
+    "play-billing-service-unavailable",
+    "play-billing-service-disconnected",
+    "sdk-store-problem-error"
+   ],
+   "sources": [
+    {
+     "label": "Google: BillingResponseCode.SERVICE_TIMEOUT",
+     "url": "https://developer.android.com/reference/com/android/billingclient/api/BillingClient.BillingResponseCode"
+    },
+    {
+     "label": "Google: Handle BillingResult response codes",
+     "url": "https://developer.android.com/google/play/billing/errors"
+    },
+    {
+     "label": "RevenueDot purchases-android: google/errors.kt (how the SDK maps response codes)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt"
+    },
+    {
+     "label": "RevenueDot purchases-android: google/BillingResponse.kt",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/BillingResponse.kt"
+    }
+   ],
+   "checked": "2026-10-03"
   }
  ]
 }

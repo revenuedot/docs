@@ -1,0 +1,1252 @@
+{
+ "set": "google",
+ "pages": [
+  {
+   "slug": "google-subscription-purchased",
+   "label": "Google: SUBSCRIPTION_PURCHASED",
+   "title": "What does the Google Play notification SUBSCRIPTION_PURCHASED mean?",
+   "description": "SUBSCRIPTION_PURCHASED (4) means a new subscription was purchased. Fetch its state, grant access and acknowledge it within three days or Google refunds it.",
+   "answer": "The Google Play notification SUBSCRIPTION_PURCHASED means a new subscription was purchased and has a new purchase token.",
+   "symbol": "`subscriptionNotification.notificationType` 4, `SUBSCRIPTION_PURCHASED`",
+   "api": "Google Play real-time developer notifications (Pub/Sub, `DeveloperNotification`)",
+   "facts": [
+    [
+     "Sent by",
+     "Google Play, as a Cloud Pub/Sub push to your endpoint"
+    ]
+   ],
+   "definitionLabel": "What Google says",
+   "definition": "A new subscription was purchased.",
+   "causes": [
+    "A customer bought a subscription in your app or in the Play Store.",
+    "A resubscribe after the old subscription expired is a new purchase with a brand new purchase token and no `linkedPurchaseToken`.",
+    "An upgrade, downgrade or signup after cancelling from your app creates a new token with `linkedPurchaseToken` pointing to the old one."
+   ],
+   "fixes": [
+    "Do not trust the message for the state. Google says a notification only tells you the purchase state changed; call the Google Play Developer API (`purchases.subscriptionsv2.get`) with the purchase token to get the full state.",
+    "Call `purchases.subscriptionsv2.get`, check `subscriptionState` is `SUBSCRIPTION_STATE_ACTIVE`, and grant access.",
+    "Acknowledge the purchase within three days. Google says an unacknowledged purchase is refunded and revoked automatically.",
+    "Use `linkedPurchaseToken` or `outOfAppPurchaseContext` to connect the new token to the right customer.",
+    "Answer 2xx once you have handled the message, and skip a `messageId` you have seen: Google recommends checking the uniqueness of message IDs so a redelivery does not make a second API call."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "acknowledge within three days",
+    "code": "// A Pub/Sub push body: the notification is base64 JSON in message.data.\nconst body = { message: { messageId: \"136969346945\", data: Buffer.from(JSON.stringify({\"version\":\"1.0\",\"packageName\":\"com.example.app\",\"eventTimeMillis\":\"1790800914000\",\"subscriptionNotification\":{\"version\":\"1.0\",\"notificationType\":4,\"purchaseToken\":\"PURCHASE_TOKEN\"}})).toString(\"base64\") } };\n\nfunction decide(body) {\n  const n = JSON.parse(Buffer.from(body.message.data, \"base64\").toString(\"utf8\"));\n  if (!(n.subscriptionNotification?.notificationType === 4)) return \"ignore\";\n  return \"fetch the subscription, grant access, acknowledge within three days\";\n}\n\nconsole.log(decide(body));"
+   },
+   "mapping": "RevenueDot answers every handled message with 2xx and every temporary failure with 5xx so Pub/Sub redelivers it. For subscription types it re-reads the subscription from Google with `purchases.subscriptionsv2.get` and applies that state, and it acknowledges a new purchase if the app has not. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. A token RevenueDot has not stored gives an `INITIAL_PURCHASE` event; a replacement token joins the customer of its `linkedPurchaseToken`, and the old chain ends with a `PRODUCT_CHANGE` event instead of a `CANCELLATION` or `EXPIRATION`. RevenueDot acknowledges the purchase itself, and if that fails it answers 5xx so Pub/Sub retries.",
+   "related": [
+    "google-subscription-renewed",
+    "google-subscription-restarted",
+    "google-subscription-canceled"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up Google Play notifications in RevenueDot",
+     "url": "../guides/google-play.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Google: Real-time developer notifications reference guide",
+     "url": "https://developer.android.com/google/play/billing/rtdn-reference"
+    },
+    {
+     "label": "Google: Subscription lifecycle",
+     "url": "https://developer.android.com/google/play/billing/lifecycle/subscriptions"
+    },
+    {
+     "label": "RevenueDot server: stores/google/notifications.ts (how the message is received)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/sync.ts (how the purchase is re-read and applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/sync.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/map.ts (how Google's state becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "google-subscription-renewed",
+   "label": "Google: SUBSCRIPTION_RENEWED",
+   "title": "What does the Google Play notification SUBSCRIPTION_RENEWED mean?",
+   "description": "SUBSCRIPTION_RENEWED (2) means an active subscription renewed. Fetch the new expiry time and extend access. Renewals need no acknowledgement.",
+   "answer": "The Google Play notification SUBSCRIPTION_RENEWED means an active subscription renewed for another period.",
+   "symbol": "`subscriptionNotification.notificationType` 2, `SUBSCRIPTION_RENEWED`",
+   "api": "Google Play real-time developer notifications (Pub/Sub, `DeveloperNotification`)",
+   "facts": [
+    [
+     "Sent by",
+     "Google Play, as a Cloud Pub/Sub push to your endpoint"
+    ]
+   ],
+   "definitionLabel": "What Google says",
+   "definition": "An active subscription was renewed.",
+   "causes": [
+    "The renewal charge succeeded on the billing date.",
+    "For installment subscriptions, Google sends it each time a payment is charged on its billing date.",
+    "Renewals do not need to be acknowledged."
+   ],
+   "fixes": [
+    "Do not trust the message for the state. Google says a notification only tells you the purchase state changed; call the Google Play Developer API (`purchases.subscriptionsv2.get`) with the purchase token to get the full state.",
+    "Check the customer is still entitled, then store the new `expiryTime` from the subscription resource.",
+    "Do not acknowledge a renewal: Google says it is not needed.",
+    "Keep the order ID (`latestOrderId`), which is new for every renewal.",
+    "Answer 2xx once you have handled the message, and skip a `messageId` you have seen: Google recommends checking the uniqueness of message IDs so a redelivery does not make a second API call."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "extend access",
+    "code": "// A Pub/Sub push body: the notification is base64 JSON in message.data.\nconst body = { message: { messageId: \"136969346945\", data: Buffer.from(JSON.stringify({\"version\":\"1.0\",\"packageName\":\"com.example.app\",\"eventTimeMillis\":\"1790800914000\",\"subscriptionNotification\":{\"version\":\"1.0\",\"notificationType\":2,\"purchaseToken\":\"PURCHASE_TOKEN\"}})).toString(\"base64\") } };\n\nfunction decide(body) {\n  const n = JSON.parse(Buffer.from(body.message.data, \"base64\").toString(\"utf8\"));\n  if (!(n.subscriptionNotification?.notificationType === 2)) return \"ignore\";\n  return \"extend access to the new expiryTime\";\n}\n\nconsole.log(decide(body));"
+   },
+   "mapping": "RevenueDot answers every handled message with 2xx and every temporary failure with 5xx so Pub/Sub redelivers it. For subscription types it re-reads the subscription from Google with `purchases.subscriptionsv2.get` and applies that state, and it acknowledges a new purchase if the app has not. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. A new order on the token gives a `RENEWAL` event, with `is_trial_conversion: true` when the previous period was a free trial. Renewal order IDs carry a `..N` suffix, which is how RevenueDot tells a renewal order from the first.",
+   "related": [
+    "google-subscription-purchased",
+    "google-subscription-recovered",
+    "google-subscription-in-grace-period"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up Google Play notifications in RevenueDot",
+     "url": "../guides/google-play.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Google: Real-time developer notifications reference guide",
+     "url": "https://developer.android.com/google/play/billing/rtdn-reference"
+    },
+    {
+     "label": "Google: Subscription lifecycle",
+     "url": "https://developer.android.com/google/play/billing/lifecycle/subscriptions"
+    },
+    {
+     "label": "RevenueDot server: stores/google/notifications.ts (how the message is received)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/sync.ts (how the purchase is re-read and applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/sync.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/map.ts (how Google's state becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "google-subscription-canceled",
+   "label": "Google: SUBSCRIPTION_CANCELED",
+   "title": "What does the Google Play notification SUBSCRIPTION_CANCELED mean?",
+   "description": "SUBSCRIPTION_CANCELED (3) means a subscription was cancelled by the customer, you or the system. Access continues to the expiry time; do not remove it early.",
+   "answer": "The Google Play notification SUBSCRIPTION_CANCELED means a subscription was cancelled, but the customer keeps access until the paid period ends.",
+   "symbol": "`subscriptionNotification.notificationType` 3, `SUBSCRIPTION_CANCELED`",
+   "api": "Google Play real-time developer notifications (Pub/Sub, `DeveloperNotification`)",
+   "facts": [
+    [
+     "Sent by",
+     "Google Play, as a Cloud Pub/Sub push to your endpoint"
+    ]
+   ],
+   "definitionLabel": "What Google says",
+   "definition": "A subscription was cancelled, voluntarily or involuntarily. For a voluntary cancellation, it is sent when the user cancels.",
+   "causes": [
+    "The customer cancelled in the Play subscriptions center, you cancelled with `purchases.subscriptionsv2.cancel`, or the subscription was cancelled after account hold ran out.",
+    "The subscription resource then has `subscriptionState` `SUBSCRIPTION_STATE_CANCELED`, and `expiryTime` says when access ends. If that time is already past, for example after a cancel during account hold, access ends now.",
+    "`canceledStateContext` says who cancelled and `userInitiatedCancellation` can say why."
+   ],
+   "fixes": [
+    "Do not trust the message for the state. Google says a notification only tells you the purchase state changed; call the Google Play Developer API (`purchases.subscriptionsv2.get`) with the purchase token to get the full state.",
+    "Keep access until `expiryTime`. Google warns that removing access a customer is still entitled to violates its subscriptions policy.",
+    "Show a message with the end date and a way to resubscribe.",
+    "Read `canceledStateContext` to choose your win-back message.",
+    "Answer 2xx once you have handled the message, and skip a `messageId` you have seen: Google recommends checking the uniqueness of message IDs so a redelivery does not make a second API call."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "keep access until expiryTime",
+    "code": "// A Pub/Sub push body: the notification is base64 JSON in message.data.\nconst body = { message: { messageId: \"136969346945\", data: Buffer.from(JSON.stringify({\"version\":\"1.0\",\"packageName\":\"com.example.app\",\"eventTimeMillis\":\"1790800914000\",\"subscriptionNotification\":{\"version\":\"1.0\",\"notificationType\":3,\"purchaseToken\":\"PURCHASE_TOKEN\"}})).toString(\"base64\") } };\n\nfunction decide(body) {\n  const n = JSON.parse(Buffer.from(body.message.data, \"base64\").toString(\"utf8\"));\n  if (!(n.subscriptionNotification?.notificationType === 3)) return \"ignore\";\n  return \"keep access until expiryTime, show the end date\";\n}\n\nconsole.log(decide(body));"
+   },
+   "mapping": "RevenueDot answers every handled message with 2xx and every temporary failure with 5xx so Pub/Sub redelivers it. For subscription types it re-reads the subscription from Google with `purchases.subscriptionsv2.get` and applies that state, and it acknowledges a new purchase if the app has not. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. RevenueDot stores the purchase as unsubscribed and sends `CANCELLATION`. The `cancel_reason` is `DEVELOPER_INITIATED` when Google says you cancelled it, `BILLING_ERROR` or `PRICE_INCREASE` when the system did, and `UNSUBSCRIBE` otherwise. A cancellation caused by an upgrade or downgrade is not a customer cancellation and is skipped. The `EXPIRATION` event comes later.",
+   "related": [
+    "google-subscription-restarted",
+    "google-subscription-expired",
+    "google-subscription-revoked"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up Google Play notifications in RevenueDot",
+     "url": "../guides/google-play.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Google: Real-time developer notifications reference guide",
+     "url": "https://developer.android.com/google/play/billing/rtdn-reference"
+    },
+    {
+     "label": "Google: Subscription lifecycle",
+     "url": "https://developer.android.com/google/play/billing/lifecycle/subscriptions"
+    },
+    {
+     "label": "RevenueDot server: stores/google/notifications.ts (how the message is received)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/sync.ts (how the purchase is re-read and applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/sync.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/map.ts (how Google's state becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "google-subscription-on-hold",
+   "label": "Google: SUBSCRIPTION_ON_HOLD",
+   "title": "What does the Google Play notification SUBSCRIPTION_ON_HOLD mean?",
+   "description": "SUBSCRIPTION_ON_HOLD (5) means a subscription entered account hold after a payment failure. Block access and ask the customer to fix their payment method.",
+   "answer": "The Google Play notification SUBSCRIPTION_ON_HOLD means a renewal payment failed and the subscription is now in account hold, so access should stop.",
+   "symbol": "`subscriptionNotification.notificationType` 5, `SUBSCRIPTION_ON_HOLD`",
+   "api": "Google Play real-time developer notifications (Pub/Sub, `DeveloperNotification`)",
+   "facts": [
+    [
+     "Sent by",
+     "Google Play, as a Cloud Pub/Sub push to your endpoint"
+    ]
+   ],
+   "definitionLabel": "What Google says",
+   "definition": "A subscription has entered account hold, if account hold is enabled.",
+   "causes": [
+    "A renewal payment failed and any grace period has ended. Account hold then begins. Google's default is 60 days minus the grace period.",
+    "A subscription resuming from a pause with a failed payment goes straight into account hold.",
+    "During hold the `expiryTime` stays in the past and the customer should not have access."
+   ],
+   "fixes": [
+    "Do not trust the message for the state. Google says a notification only tells you the purchase state changed; call the Google Play Developer API (`purchases.subscriptionsv2.get`) with the purchase token to get the full state.",
+    "Block access to the subscription while it is on hold.",
+    "Ask the customer to fix their payment method. Google tells customers too.",
+    "When they do, you get `SUBSCRIPTION_RECOVERED` with the same purchase token. If they do not, the subscription is cancelled and expires.",
+    "Answer 2xx once you have handled the message, and skip a `messageId` you have seen: Google recommends checking the uniqueness of message IDs so a redelivery does not make a second API call."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "block access",
+    "code": "// A Pub/Sub push body: the notification is base64 JSON in message.data.\nconst body = { message: { messageId: \"136969346945\", data: Buffer.from(JSON.stringify({\"version\":\"1.0\",\"packageName\":\"com.example.app\",\"eventTimeMillis\":\"1790800914000\",\"subscriptionNotification\":{\"version\":\"1.0\",\"notificationType\":5,\"purchaseToken\":\"PURCHASE_TOKEN\"}})).toString(\"base64\") } };\n\nfunction decide(body) {\n  const n = JSON.parse(Buffer.from(body.message.data, \"base64\").toString(\"utf8\"));\n  if (!(n.subscriptionNotification?.notificationType === 5)) return \"ignore\";\n  return \"block access, ask the customer to fix their payment method\";\n}\n\nconsole.log(decide(body));"
+   },
+   "mapping": "RevenueDot answers every handled message with 2xx and every temporary failure with 5xx so Pub/Sub redelivers it. For subscription types it re-reads the subscription from Google with `purchases.subscriptionsv2.get` and applies that state, and it acknowledges a new purchase if the app has not. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. RevenueDot stores a billing issue and ends access now. It sends `BILLING_ISSUE` and a `CANCELLATION` with `cancel_reason: BILLING_ERROR`, and the scheduler sends `EXPIRATION` with `expiration_reason: BILLING_ERROR`. A recovery later comes out as `RENEWAL`.",
+   "related": [
+    "google-subscription-in-grace-period",
+    "google-subscription-recovered",
+    "google-subscription-expired"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up Google Play notifications in RevenueDot",
+     "url": "../guides/google-play.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Google: Real-time developer notifications reference guide",
+     "url": "https://developer.android.com/google/play/billing/rtdn-reference"
+    },
+    {
+     "label": "Google: Subscription lifecycle",
+     "url": "https://developer.android.com/google/play/billing/lifecycle/subscriptions"
+    },
+    {
+     "label": "RevenueDot server: stores/google/notifications.ts (how the message is received)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/sync.ts (how the purchase is re-read and applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/sync.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/map.ts (how Google's state becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/tick.ts (the scheduled EXPIRATION)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/tick.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "google-subscription-in-grace-period",
+   "label": "Google: SUBSCRIPTION_IN_GRACE_PERIOD",
+   "title": "What does the Google Play notification SUBSCRIPTION_IN_GRACE_PERIOD mean?",
+   "description": "SUBSCRIPTION_IN_GRACE_PERIOD (6) means a renewal payment failed and the subscription entered its grace period. Keep access and prompt the customer to fix payment.",
+   "answer": "The Google Play notification SUBSCRIPTION_IN_GRACE_PERIOD means a renewal payment failed, but the customer keeps access during the grace period.",
+   "symbol": "`subscriptionNotification.notificationType` 6, `SUBSCRIPTION_IN_GRACE_PERIOD`",
+   "api": "Google Play real-time developer notifications (Pub/Sub, `DeveloperNotification`)",
+   "facts": [
+    [
+     "Sent by",
+     "Google Play, as a Cloud Pub/Sub push to your endpoint"
+    ]
+   ],
+   "definitionLabel": "What Google says",
+   "definition": "A subscription has entered the grace period, if the grace period is enabled.",
+   "causes": [
+    "A renewal payment failed and the base plan has a grace period. Google enables it by default on auto-renewing base plans.",
+    "Google waits at least one day before the notification even with a grace period of zero days, to leave time for payment retries.",
+    "The subscription resource has state `SUBSCRIPTION_STATE_IN_GRACE_PERIOD` and `expiryTime` stays in the past until the grace period ends, but entitlement should last."
+   ],
+   "fixes": [
+    "Do not trust the message for the state. Google says a notification only tells you the purchase state changed; call the Google Play Developer API (`purchases.subscriptionsv2.get`) with the purchase token to get the full state.",
+    "Keep access while the grace period runs.",
+    "Encourage the customer to fix their payment method, with a message in your app.",
+    "Expect `SUBSCRIPTION_RECOVERED` or `SUBSCRIPTION_RENEWED` on success, or `SUBSCRIPTION_ON_HOLD` when the grace period ends.",
+    "Answer 2xx once you have handled the message, and skip a `messageId` you have seen: Google recommends checking the uniqueness of message IDs so a redelivery does not make a second API call."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "keep access",
+    "code": "// A Pub/Sub push body: the notification is base64 JSON in message.data.\nconst body = { message: { messageId: \"136969346945\", data: Buffer.from(JSON.stringify({\"version\":\"1.0\",\"packageName\":\"com.example.app\",\"eventTimeMillis\":\"1790800914000\",\"subscriptionNotification\":{\"version\":\"1.0\",\"notificationType\":6,\"purchaseToken\":\"PURCHASE_TOKEN\"}})).toString(\"base64\") } };\n\nfunction decide(body) {\n  const n = JSON.parse(Buffer.from(body.message.data, \"base64\").toString(\"utf8\"));\n  if (!(n.subscriptionNotification?.notificationType === 6)) return \"ignore\";\n  return \"keep access, show a fix-payment message\";\n}\n\nconsole.log(decide(body));"
+   },
+   "mapping": "RevenueDot answers every handled message with 2xx and every temporary failure with 5xx so Pub/Sub redelivers it. For subscription types it re-reads the subscription from Google with `purchases.subscriptionsv2.get` and applies that state, and it acknowledges a new purchase if the app has not. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. RevenueDot stores a billing issue with the grace period end set to the line item's expiry, so access continues. It sends `BILLING_ISSUE` with `grace_period_expiration_at_ms` and a `CANCELLATION` with `cancel_reason: BILLING_ERROR`. If access later ends, `EXPIRATION` follows.",
+   "related": [
+    "google-subscription-on-hold",
+    "google-subscription-recovered",
+    "google-subscription-renewed"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up Google Play notifications in RevenueDot",
+     "url": "../guides/google-play.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Google: Real-time developer notifications reference guide",
+     "url": "https://developer.android.com/google/play/billing/rtdn-reference"
+    },
+    {
+     "label": "Google: Subscription lifecycle",
+     "url": "https://developer.android.com/google/play/billing/lifecycle/subscriptions"
+    },
+    {
+     "label": "RevenueDot server: stores/google/notifications.ts (how the message is received)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/sync.ts (how the purchase is re-read and applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/sync.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/map.ts (how Google's state becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/tick.ts (the scheduled EXPIRATION)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/tick.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "google-subscription-restarted",
+   "label": "Google: SUBSCRIPTION_RESTARTED",
+   "title": "What does the Google Play notification SUBSCRIPTION_RESTARTED mean?",
+   "description": "SUBSCRIPTION_RESTARTED (7) means the customer restored a cancelled subscription from Play before it expired. It keeps its purchase token and renews again.",
+   "answer": "The Google Play notification SUBSCRIPTION_RESTARTED means a customer undid a cancellation before the subscription expired.",
+   "symbol": "`subscriptionNotification.notificationType` 7, `SUBSCRIPTION_RESTARTED`",
+   "api": "Google Play real-time developer notifications (Pub/Sub, `DeveloperNotification`)",
+   "facts": [
+    [
+     "Sent by",
+     "Google Play, as a Cloud Pub/Sub push to your endpoint"
+    ]
+   ],
+   "definitionLabel": "What Google says",
+   "definition": "The user restored their subscription from Play, Account, Subscriptions. The subscription was cancelled but had not expired when the user restored it.",
+   "causes": [
+    "The customer tapped Resubscribe on a cancelled subscription that was still running. Google calls this a restore.",
+    "The same purchase token continues and all cancellation fields are cleared.",
+    "After expiry the same action is a new purchase and arrives as `SUBSCRIPTION_PURCHASED`."
+   ],
+   "fixes": [
+    "Do not trust the message for the state. Google says a notification only tells you the purchase state changed; call the Google Play Developer API (`purchases.subscriptionsv2.get`) with the purchase token to get the full state.",
+    "Record that the subscription is set to renew again and stop showing restore messages.",
+    "Do not grant anything new: the customer already has access until `expiryTime`.",
+    "Stop your win-back flow for this customer.",
+    "Answer 2xx once you have handled the message, and skip a `messageId` you have seen: Google recommends checking the uniqueness of message IDs so a redelivery does not make a second API call."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "mark as renewing",
+    "code": "// A Pub/Sub push body: the notification is base64 JSON in message.data.\nconst body = { message: { messageId: \"136969346945\", data: Buffer.from(JSON.stringify({\"version\":\"1.0\",\"packageName\":\"com.example.app\",\"eventTimeMillis\":\"1790800914000\",\"subscriptionNotification\":{\"version\":\"1.0\",\"notificationType\":7,\"purchaseToken\":\"PURCHASE_TOKEN\"}})).toString(\"base64\") } };\n\nfunction decide(body) {\n  const n = JSON.parse(Buffer.from(body.message.data, \"base64\").toString(\"utf8\"));\n  if (!(n.subscriptionNotification?.notificationType === 7)) return \"ignore\";\n  return \"mark as renewing, stop restore messages\";\n}\n\nconsole.log(decide(body));"
+   },
+   "mapping": "RevenueDot answers every handled message with 2xx and every temporary failure with 5xx so Pub/Sub redelivers it. For subscription types it re-reads the subscription from Google with `purchases.subscriptionsv2.get` and applies that state, and it acknowledges a new purchase if the app has not. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. The cancellation is cleared on the stored purchase and RevenueDot sends `UNCANCELLATION`.",
+   "related": [
+    "google-subscription-canceled",
+    "google-subscription-purchased",
+    "google-subscription-renewed"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up Google Play notifications in RevenueDot",
+     "url": "../guides/google-play.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Google: Real-time developer notifications reference guide",
+     "url": "https://developer.android.com/google/play/billing/rtdn-reference"
+    },
+    {
+     "label": "Google: Subscription lifecycle",
+     "url": "https://developer.android.com/google/play/billing/lifecycle/subscriptions"
+    },
+    {
+     "label": "RevenueDot server: stores/google/notifications.ts (how the message is received)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/sync.ts (how the purchase is re-read and applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/sync.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/map.ts (how Google's state becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "google-subscription-recovered",
+   "label": "Google: SUBSCRIPTION_RECOVERED",
+   "title": "What does the Google Play notification SUBSCRIPTION_RECOVERED mean?",
+   "description": "SUBSCRIPTION_RECOVERED (1) means a subscription recovered from account hold or resumed from a pause. Restore access and extend it to the new expiry time.",
+   "answer": "The Google Play notification SUBSCRIPTION_RECOVERED means a subscription came back from account hold or from a pause.",
+   "symbol": "`subscriptionNotification.notificationType` 1, `SUBSCRIPTION_RECOVERED`",
+   "api": "Google Play real-time developer notifications (Pub/Sub, `DeveloperNotification`)",
+   "facts": [
+    [
+     "Sent by",
+     "Google Play, as a Cloud Pub/Sub push to your endpoint"
+    ]
+   ],
+   "definitionLabel": "What Google says",
+   "definition": "A subscription was recovered from account hold or resumed from a pause.",
+   "causes": [
+    "The customer fixed their payment method during account hold, and the retried payment worked. The purchase token stays the same.",
+    "A paused subscription resumed, at the end of the pause or because the customer resumed it by hand.",
+    "The billing date moves to the recovery date."
+   ],
+   "fixes": [
+    "Do not trust the message for the state. Google says a notification only tells you the purchase state changed; call the Google Play Developer API (`purchases.subscriptionsv2.get`) with the purchase token to get the full state.",
+    "Restore access and extend it to the new `expiryTime`.",
+    "Remove any fix-payment or paused message in your app.",
+    "Do not count it as a new subscriber.",
+    "Answer 2xx once you have handled the message, and skip a `messageId` you have seen: Google recommends checking the uniqueness of message IDs so a redelivery does not make a second API call."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "restore access",
+    "code": "// A Pub/Sub push body: the notification is base64 JSON in message.data.\nconst body = { message: { messageId: \"136969346945\", data: Buffer.from(JSON.stringify({\"version\":\"1.0\",\"packageName\":\"com.example.app\",\"eventTimeMillis\":\"1790800914000\",\"subscriptionNotification\":{\"version\":\"1.0\",\"notificationType\":1,\"purchaseToken\":\"PURCHASE_TOKEN\"}})).toString(\"base64\") } };\n\nfunction decide(body) {\n  const n = JSON.parse(Buffer.from(body.message.data, \"base64\").toString(\"utf8\"));\n  if (!(n.subscriptionNotification?.notificationType === 1)) return \"ignore\";\n  return \"restore access, extend to the new expiryTime\";\n}\n\nconsole.log(decide(body));"
+   },
+   "mapping": "RevenueDot answers every handled message with 2xx and every temporary failure with 5xx so Pub/Sub redelivers it. For subscription types it re-reads the subscription from Google with `purchases.subscriptionsv2.get` and applies that state, and it acknowledges a new purchase if the app has not. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. A new order on a token whose access had ended is Google renewing it, so RevenueDot moves the stored end to now and sends `RENEWAL`, not a new purchase and not `UNCANCELLATION`.",
+   "related": [
+    "google-subscription-on-hold",
+    "google-subscription-paused",
+    "google-subscription-renewed"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up Google Play notifications in RevenueDot",
+     "url": "../guides/google-play.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Google: Real-time developer notifications reference guide",
+     "url": "https://developer.android.com/google/play/billing/rtdn-reference"
+    },
+    {
+     "label": "Google: Subscription lifecycle",
+     "url": "https://developer.android.com/google/play/billing/lifecycle/subscriptions"
+    },
+    {
+     "label": "RevenueDot server: stores/google/notifications.ts (how the message is received)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/sync.ts (how the purchase is re-read and applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/sync.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/map.ts (how Google's state becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "google-subscription-deferred",
+   "label": "Google: SUBSCRIPTION_DEFERRED",
+   "title": "What does the Google Play notification SUBSCRIPTION_DEFERRED mean?",
+   "description": "SUBSCRIPTION_DEFERRED (9) means a subscription's billing date was pushed later with the defer API. The customer keeps full access and is not charged during the deferral.",
+   "answer": "The Google Play notification SUBSCRIPTION_DEFERRED means the billing date of a subscription was moved later, so the customer gets more time without a charge.",
+   "symbol": "`subscriptionNotification.notificationType` 9, `SUBSCRIPTION_DEFERRED`",
+   "api": "Google Play real-time developer notifications (Pub/Sub, `DeveloperNotification`)",
+   "facts": [
+    [
+     "Sent by",
+     "Google Play, as a Cloud Pub/Sub push to your endpoint"
+    ]
+   ],
+   "definitionLabel": "What Google says",
+   "definition": "A subscription's recurrence time has been extended.",
+   "causes": [
+    "Your backend called `purchases.subscriptionsv2.defer`, for example for a free week as a promotion or a goodwill gesture.",
+    "During the deferral the customer has full access and is not charged. The renewal date is updated.",
+    "For prepaid plans the defer API moves the expiration time."
+   ],
+   "fixes": [
+    "Do not trust the message for the state. Google says a notification only tells you the purchase state changed; call the Google Play Developer API (`purchases.subscriptionsv2.get`) with the purchase token to get the full state.",
+    "Store the new `expiryTime` and extend access to it.",
+    "Record why the deferral was given, so support can explain it.",
+    "Do not treat it as a payment.",
+    "Answer 2xx once you have handled the message, and skip a `messageId` you have seen: Google recommends checking the uniqueness of message IDs so a redelivery does not make a second API call."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "no payment",
+    "code": "// A Pub/Sub push body: the notification is base64 JSON in message.data.\nconst body = { message: { messageId: \"136969346945\", data: Buffer.from(JSON.stringify({\"version\":\"1.0\",\"packageName\":\"com.example.app\",\"eventTimeMillis\":\"1790800914000\",\"subscriptionNotification\":{\"version\":\"1.0\",\"notificationType\":9,\"purchaseToken\":\"PURCHASE_TOKEN\"}})).toString(\"base64\") } };\n\nfunction decide(body) {\n  const n = JSON.parse(Buffer.from(body.message.data, \"base64\").toString(\"utf8\"));\n  if (!(n.subscriptionNotification?.notificationType === 9)) return \"ignore\";\n  return \"extend access to the new expiryTime, no payment\";\n}\n\nconsole.log(decide(body));"
+   },
+   "mapping": "RevenueDot answers every handled message with 2xx and every temporary failure with 5xx so Pub/Sub redelivers it. For subscription types it re-reads the subscription from Google with `purchases.subscriptionsv2.get` and applies that state, and it acknowledges a new purchase if the app has not. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. The period start is unchanged and the end moves later, so RevenueDot sends `SUBSCRIPTION_EXTENDED`. No money moves on it: its `price` is 0.",
+   "related": [
+    "google-subscription-renewed",
+    "google-subscription-paused",
+    "google-subscription-purchased"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up Google Play notifications in RevenueDot",
+     "url": "../guides/google-play.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Google: Real-time developer notifications reference guide",
+     "url": "https://developer.android.com/google/play/billing/rtdn-reference"
+    },
+    {
+     "label": "Google: Subscription lifecycle",
+     "url": "https://developer.android.com/google/play/billing/lifecycle/subscriptions"
+    },
+    {
+     "label": "RevenueDot server: stores/google/notifications.ts (how the message is received)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/sync.ts (how the purchase is re-read and applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/sync.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/map.ts (how Google's state becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "google-subscription-pause-schedule-changed",
+   "label": "Google: SUBSCRIPTION_PAUSE_SCHEDULE_CHANGED",
+   "title": "What does the Google Play notification SUBSCRIPTION_PAUSE_SCHEDULE_CHANGED mean?",
+   "description": "SUBSCRIPTION_PAUSE_SCHEDULE_CHANGED (11) means a customer scheduled or changed a pause. Access continues until the next renewal date; the pause starts then.",
+   "answer": "The Google Play notification SUBSCRIPTION_PAUSE_SCHEDULE_CHANGED means a customer set or changed a pause that starts at the end of the current period.",
+   "symbol": "`subscriptionNotification.notificationType` 11, `SUBSCRIPTION_PAUSE_SCHEDULE_CHANGED`",
+   "api": "Google Play real-time developer notifications (Pub/Sub, `DeveloperNotification`)",
+   "facts": [
+    [
+     "Sent by",
+     "Google Play, as a Cloud Pub/Sub push to your endpoint"
+    ]
+   ],
+   "definitionLabel": "What Google says",
+   "definition": "A subscription pause schedule has been changed.",
+   "causes": [
+    "The customer chose to pause in Play. A pause takes effect only after the current billing period ends.",
+    "The subscription is still `SUBSCRIPTION_STATE_ACTIVE` and `autoRenewEnabled` is true. The customer keeps access until the next renewal date.",
+    "Pause lengths run from one week to three months depending on the recurrence."
+   ],
+   "fixes": [
+    "Do not trust the message for the state. Google says a notification only tells you the purchase state changed; call the Google Play Developer API (`purchases.subscriptionsv2.get`) with the purchase token to get the full state.",
+    "Keep access until the renewal date and show that a pause is coming.",
+    "When the pause starts, you get `SUBSCRIPTION_PAUSED`.",
+    "Offer a way to resume by deep link to Google Play.",
+    "Answer 2xx once you have handled the message, and skip a `messageId` you have seen: Google recommends checking the uniqueness of message IDs so a redelivery does not make a second API call."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "keep access until the renewal date",
+    "code": "// A Pub/Sub push body: the notification is base64 JSON in message.data.\nconst body = { message: { messageId: \"136969346945\", data: Buffer.from(JSON.stringify({\"version\":\"1.0\",\"packageName\":\"com.example.app\",\"eventTimeMillis\":\"1790800914000\",\"subscriptionNotification\":{\"version\":\"1.0\",\"notificationType\":11,\"purchaseToken\":\"PURCHASE_TOKEN\"}})).toString(\"base64\") } };\n\nfunction decide(body) {\n  const n = JSON.parse(Buffer.from(body.message.data, \"base64\").toString(\"utf8\"));\n  if (!(n.subscriptionNotification?.notificationType === 11)) return \"ignore\";\n  return \"keep access until the renewal date, show the coming pause\";\n}\n\nconsole.log(decide(body));"
+   },
+   "mapping": "RevenueDot answers every handled message with 2xx and every temporary failure with 5xx so Pub/Sub redelivers it. For subscription types it re-reads the subscription from Google with `purchases.subscriptionsv2.get` and applies that state, and it acknowledges a new purchase if the app has not. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. RevenueDot reads the scheduled resume time from the version 1 subscription API and stores it as the auto-resume date while the subscription is still active. A newly set resume date gives `SUBSCRIPTION_PAUSED` with `auto_resume_at_ms`, at scheduling time, while access continues.",
+   "related": [
+    "google-subscription-paused",
+    "google-subscription-recovered",
+    "google-subscription-canceled"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up Google Play notifications in RevenueDot",
+     "url": "../guides/google-play.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Google: Real-time developer notifications reference guide",
+     "url": "https://developer.android.com/google/play/billing/rtdn-reference"
+    },
+    {
+     "label": "Google: Subscription lifecycle",
+     "url": "https://developer.android.com/google/play/billing/lifecycle/subscriptions"
+    },
+    {
+     "label": "RevenueDot server: stores/google/notifications.ts (how the message is received)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/sync.ts (how the purchase is re-read and applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/sync.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/map.ts (how Google's state becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "google-subscription-paused",
+   "label": "Google: SUBSCRIPTION_PAUSED",
+   "title": "What does the Google Play notification SUBSCRIPTION_PAUSED mean?",
+   "description": "SUBSCRIPTION_PAUSED (10) means a subscription's pause took effect. Remove access until it resumes; the resume time is in the paused state context.",
+   "answer": "The Google Play notification SUBSCRIPTION_PAUSED means a subscription's pause has started, so the customer should have no access until it resumes.",
+   "symbol": "`subscriptionNotification.notificationType` 10, `SUBSCRIPTION_PAUSED`",
+   "api": "Google Play real-time developer notifications (Pub/Sub, `DeveloperNotification`)",
+   "facts": [
+    [
+     "Sent by",
+     "Google Play, as a Cloud Pub/Sub push to your endpoint"
+    ]
+   ],
+   "definitionLabel": "What Google says",
+   "definition": "A subscription has been paused.",
+   "causes": [
+    "The pause the customer scheduled has reached the end of the paid period and now takes effect.",
+    "The subscription resource has state `SUBSCRIPTION_STATE_PAUSED`, with `autoRenewEnabled` true. The `pausedStateContext` says when it renews again.",
+    "While paused the customer has no access and pays nothing."
+   ],
+   "fixes": [
+    "Do not trust the message for the state. Google says a notification only tells you the purchase state changed; call the Google Play Developer API (`purchases.subscriptionsv2.get`) with the purchase token to get the full state.",
+    "Remove access until the subscription resumes.",
+    "Show the expected resume date from `pausedStateContext`.",
+    "Wait for `SUBSCRIPTION_RECOVERED` when it resumes, or `SUBSCRIPTION_ON_HOLD` if the payment fails on resume.",
+    "Answer 2xx once you have handled the message, and skip a `messageId` you have seen: Google recommends checking the uniqueness of message IDs so a redelivery does not make a second API call."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "remove access until it resumes",
+    "code": "// A Pub/Sub push body: the notification is base64 JSON in message.data.\nconst body = { message: { messageId: \"136969346945\", data: Buffer.from(JSON.stringify({\"version\":\"1.0\",\"packageName\":\"com.example.app\",\"eventTimeMillis\":\"1790800914000\",\"subscriptionNotification\":{\"version\":\"1.0\",\"notificationType\":10,\"purchaseToken\":\"PURCHASE_TOKEN\"}})).toString(\"base64\") } };\n\nfunction decide(body) {\n  const n = JSON.parse(Buffer.from(body.message.data, \"base64\").toString(\"utf8\"));\n  if (!(n.subscriptionNotification?.notificationType === 10)) return \"ignore\";\n  return \"remove access until it resumes, show the resume date\";\n}\n\nconsole.log(decide(body));"
+   },
+   "mapping": "RevenueDot answers every handled message with 2xx and every temporary failure with 5xx so Pub/Sub redelivers it. For subscription types it re-reads the subscription from Google with `purchases.subscriptionsv2.get` and applies that state, and it acknowledges a new purchase if the app has not. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. RevenueDot ends access now, stores the auto-resume date from the paused state and keeps the scheduled date. The scheduler then sends `EXPIRATION` with `expiration_reason: SUBSCRIPTION_PAUSED`.",
+   "related": [
+    "google-subscription-pause-schedule-changed",
+    "google-subscription-recovered",
+    "google-subscription-on-hold"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up Google Play notifications in RevenueDot",
+     "url": "../guides/google-play.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Google: Real-time developer notifications reference guide",
+     "url": "https://developer.android.com/google/play/billing/rtdn-reference"
+    },
+    {
+     "label": "Google: Subscription lifecycle",
+     "url": "https://developer.android.com/google/play/billing/lifecycle/subscriptions"
+    },
+    {
+     "label": "RevenueDot server: stores/google/notifications.ts (how the message is received)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/sync.ts (how the purchase is re-read and applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/sync.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/map.ts (how Google's state becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/tick.ts (the scheduled EXPIRATION)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/tick.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "google-subscription-revoked",
+   "label": "Google: SUBSCRIPTION_REVOKED",
+   "title": "What does the Google Play notification SUBSCRIPTION_REVOKED mean?",
+   "description": "SUBSCRIPTION_REVOKED (12) means a subscription was revoked before its expiry, for example by you or by a chargeback. Remove access at once.",
+   "answer": "The Google Play notification SUBSCRIPTION_REVOKED means a subscription was taken away before its expiration time, so access must end now.",
+   "symbol": "`subscriptionNotification.notificationType` 12, `SUBSCRIPTION_REVOKED`",
+   "api": "Google Play real-time developer notifications (Pub/Sub, `DeveloperNotification`)",
+   "facts": [
+    [
+     "Sent by",
+     "Google Play, as a Cloud Pub/Sub push to your endpoint"
+    ]
+   ],
+   "definitionLabel": "What Google says",
+   "definition": "A subscription has been revoked from the user before the expiration time.",
+   "causes": [
+    "Your backend revoked it with `purchases.subscriptionsv2.revoke`, or the purchase was charged back.",
+    "The subscription resource has `subscriptionState` set to `SUBSCRIPTION_STATE_EXPIRED`.",
+    "Unlike a cancellation, the customer does not keep access to the period end."
+   ],
+   "fixes": [
+    "Do not trust the message for the state. Google says a notification only tells you the purchase state changed; call the Google Play Developer API (`purchases.subscriptionsv2.get`) with the purchase token to get the full state.",
+    "Revoke the customer's entitlement immediately.",
+    "Record the revocation for support and refund reports.",
+    "Offer a new subscription if the revocation was in error.",
+    "Answer 2xx once you have handled the message, and skip a `messageId` you have seen: Google recommends checking the uniqueness of message IDs so a redelivery does not make a second API call."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "revoke access immediately",
+    "code": "// A Pub/Sub push body: the notification is base64 JSON in message.data.\nconst body = { message: { messageId: \"136969346945\", data: Buffer.from(JSON.stringify({\"version\":\"1.0\",\"packageName\":\"com.example.app\",\"eventTimeMillis\":\"1790800914000\",\"subscriptionNotification\":{\"version\":\"1.0\",\"notificationType\":12,\"purchaseToken\":\"PURCHASE_TOKEN\"}})).toString(\"base64\") } };\n\nfunction decide(body) {\n  const n = JSON.parse(Buffer.from(body.message.data, \"base64\").toString(\"utf8\"));\n  if (!(n.subscriptionNotification?.notificationType === 12)) return \"ignore\";\n  return \"revoke access immediately\";\n}\n\nconsole.log(decide(body));"
+   },
+   "mapping": "RevenueDot answers every handled message with 2xx and every temporary failure with 5xx so Pub/Sub redelivers it. For subscription types it re-reads the subscription from Google with `purchases.subscriptionsv2.get` and applies that state, and it acknowledges a new purchase if the app has not. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. RevenueDot marks the current period refunded at the event time and cuts its expiry to that time. It sends `CANCELLATION` with `cancel_reason: CUSTOMER_SUPPORT` and a negative price, the same as a refund. If Google no longer knows the token, it refunds from what it stored.",
+   "related": [
+    "google-voided-purchase",
+    "google-subscription-canceled",
+    "google-subscription-expired"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up Google Play notifications in RevenueDot",
+     "url": "../guides/google-play.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Google: Real-time developer notifications reference guide",
+     "url": "https://developer.android.com/google/play/billing/rtdn-reference"
+    },
+    {
+     "label": "Google: Subscription lifecycle",
+     "url": "https://developer.android.com/google/play/billing/lifecycle/subscriptions"
+    },
+    {
+     "label": "RevenueDot server: stores/google/notifications.ts (how the message is received)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/sync.ts (how the purchase is re-read and applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/sync.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/map.ts (how Google's state becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "google-subscription-expired",
+   "label": "Google: SUBSCRIPTION_EXPIRED",
+   "title": "What does the Google Play notification SUBSCRIPTION_EXPIRED mean?",
+   "description": "SUBSCRIPTION_EXPIRED (13) means a subscription has expired. Confirm the state is expired, then remove the entitlement.",
+   "answer": "The Google Play notification SUBSCRIPTION_EXPIRED means a subscription has run out and the customer should lose access.",
+   "symbol": "`subscriptionNotification.notificationType` 13, `SUBSCRIPTION_EXPIRED`",
+   "api": "Google Play real-time developer notifications (Pub/Sub, `DeveloperNotification`)",
+   "facts": [
+    [
+     "Sent by",
+     "Google Play, as a Cloud Pub/Sub push to your endpoint"
+    ]
+   ],
+   "definitionLabel": "What Google says",
+   "definition": "A subscription has expired.",
+   "causes": [
+    "The paid period ended after a cancellation, or account hold ran out.",
+    "The subscription resource has `subscriptionState` `SUBSCRIPTION_STATE_EXPIRED` and `expiryTime` in the past.",
+    "A revoked subscription also reads as expired."
+   ],
+   "fixes": [
+    "Do not trust the message for the state. Google says a notification only tells you the purchase state changed; call the Google Play Developer API (`purchases.subscriptionsv2.get`) with the purchase token to get the full state.",
+    "Confirm `subscriptionState` is `SUBSCRIPTION_STATE_EXPIRED`, then remove the entitlement.",
+    "Mark the purchase as no longer valid in your backend.",
+    "Keep the customer's data, since they can resubscribe, which is a new purchase.",
+    "Answer 2xx once you have handled the message, and skip a `messageId` you have seen: Google recommends checking the uniqueness of message IDs so a redelivery does not make a second API call."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "remove the entitlement",
+    "code": "// A Pub/Sub push body: the notification is base64 JSON in message.data.\nconst body = { message: { messageId: \"136969346945\", data: Buffer.from(JSON.stringify({\"version\":\"1.0\",\"packageName\":\"com.example.app\",\"eventTimeMillis\":\"1790800914000\",\"subscriptionNotification\":{\"version\":\"1.0\",\"notificationType\":13,\"purchaseToken\":\"PURCHASE_TOKEN\"}})).toString(\"base64\") } };\n\nfunction decide(body) {\n  const n = JSON.parse(Buffer.from(body.message.data, \"base64\").toString(\"utf8\"));\n  if (!(n.subscriptionNotification?.notificationType === 13)) return \"ignore\";\n  return \"confirm the state, remove the entitlement\";\n}\n\nconsole.log(decide(body));"
+   },
+   "mapping": "RevenueDot answers every handled message with 2xx and every temporary failure with 5xx so Pub/Sub redelivers it. For subscription types it re-reads the subscription from Google with `purchases.subscriptionsv2.get` and applies that state, and it acknowledges a new purchase if the app has not. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. RevenueDot stores the purchase as ended and as unsubscribed (a `CANCELLATION` if none had been sent). The `EXPIRATION` event is recorded once by the scheduler when access, grace included, has ended, with the reason from the stored state.",
+   "related": [
+    "google-subscription-canceled",
+    "google-subscription-on-hold",
+    "google-subscription-purchased"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up Google Play notifications in RevenueDot",
+     "url": "../guides/google-play.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Google: Real-time developer notifications reference guide",
+     "url": "https://developer.android.com/google/play/billing/rtdn-reference"
+    },
+    {
+     "label": "Google: Subscription lifecycle",
+     "url": "https://developer.android.com/google/play/billing/lifecycle/subscriptions"
+    },
+    {
+     "label": "RevenueDot server: stores/google/notifications.ts (how the message is received)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/sync.ts (how the purchase is re-read and applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/sync.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/map.ts (how Google's state becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/tick.ts (the scheduled EXPIRATION)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/tick.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "google-subscription-pending-purchase-canceled",
+   "label": "Google: SUBSCRIPTION_PENDING_PURCHASE_CANCELED",
+   "title": "What does the Google Play notification SUBSCRIPTION_PENDING_PURCHASE_CANCELED mean?",
+   "description": "SUBSCRIPTION_PENDING_PURCHASE_CANCELED (20) means a pending subscription purchase was cancelled before it completed. Nothing was granted, so remove any pending state.",
+   "answer": "The Google Play notification SUBSCRIPTION_PENDING_PURCHASE_CANCELED means a purchase that was still pending was cancelled before it went through.",
+   "symbol": "`subscriptionNotification.notificationType` 20, `SUBSCRIPTION_PENDING_PURCHASE_CANCELED`",
+   "api": "Google Play real-time developer notifications (Pub/Sub, `DeveloperNotification`)",
+   "facts": [
+    [
+     "Sent by",
+     "Google Play, as a Cloud Pub/Sub push to your endpoint"
+    ]
+   ],
+   "definitionLabel": "What Google says",
+   "definition": "A pending transaction of a subscription has been canceled.",
+   "causes": [
+    "The customer started a purchase with a slow payment method, and it was cancelled before completing.",
+    "The subscription never became active, so no access was ever due.",
+    "Pending purchases are shown by Google as `SUBSCRIPTION_STATE_PENDING` until they finish."
+   ],
+   "fixes": [
+    "Do not trust the message for the state. Google says a notification only tells you the purchase state changed; call the Google Play Developer API (`purchases.subscriptionsv2.get`) with the purchase token to get the full state.",
+    "Remove any pending marker you kept for this purchase token.",
+    "Do not grant access and do not acknowledge the purchase.",
+    "Let the customer try again.",
+    "Answer 2xx once you have handled the message, and skip a `messageId` you have seen: Google recommends checking the uniqueness of message IDs so a redelivery does not make a second API call."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "grant nothing",
+    "code": "// A Pub/Sub push body: the notification is base64 JSON in message.data.\nconst body = { message: { messageId: \"136969346945\", data: Buffer.from(JSON.stringify({\"version\":\"1.0\",\"packageName\":\"com.example.app\",\"eventTimeMillis\":\"1790800914000\",\"subscriptionNotification\":{\"version\":\"1.0\",\"notificationType\":20,\"purchaseToken\":\"PURCHASE_TOKEN\"}})).toString(\"base64\") } };\n\nfunction decide(body) {\n  const n = JSON.parse(Buffer.from(body.message.data, \"base64\").toString(\"utf8\"));\n  if (!(n.subscriptionNotification?.notificationType === 20)) return \"ignore\";\n  return \"drop the pending purchase, grant nothing\";\n}\n\nconsole.log(decide(body));"
+   },
+   "mapping": "RevenueDot answers every handled message with 2xx and every temporary failure with 5xx so Pub/Sub redelivers it. For subscription types it re-reads the subscription from Google with `purchases.subscriptionsv2.get` and applies that state, and it acknowledges a new purchase if the app has not. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. RevenueDot ignores it: the message is stored, answered 2xx with status `ignored`, and no purchase or event is created. Pending subscription states are ignored the same way.",
+   "related": [
+    "google-subscription-purchased",
+    "google-one-time-product-canceled",
+    "google-subscription-expired"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up Google Play notifications in RevenueDot",
+     "url": "../guides/google-play.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Google: Real-time developer notifications reference guide",
+     "url": "https://developer.android.com/google/play/billing/rtdn-reference"
+    },
+    {
+     "label": "Google: Subscription lifecycle",
+     "url": "https://developer.android.com/google/play/billing/lifecycle/subscriptions"
+    },
+    {
+     "label": "RevenueDot server: stores/google/notifications.ts (how the message is received)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/notifications.ts (how the message is received)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/sync.ts (how the purchase is re-read and applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/sync.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "google-one-time-product-purchased",
+   "label": "Google: ONE_TIME_PRODUCT_PURCHASED",
+   "title": "What does the Google Play notification ONE_TIME_PRODUCT_PURCHASED mean?",
+   "description": "ONE_TIME_PRODUCT_PURCHASED (1) means a one-time product was bought. Fetch the purchase, deliver the item once and acknowledge or consume it.",
+   "answer": "The Google Play notification ONE_TIME_PRODUCT_PURCHASED means a customer bought a one-time product.",
+   "symbol": "`oneTimeProductNotification.notificationType` 1, `ONE_TIME_PRODUCT_PURCHASED`",
+   "api": "Google Play real-time developer notifications (Pub/Sub, `DeveloperNotification`)",
+   "facts": [
+    [
+     "Sent by",
+     "Google Play, as a Cloud Pub/Sub push to your endpoint"
+    ]
+   ],
+   "definitionLabel": "What Google says",
+   "definition": "A one-time product was successfully purchased by a user.",
+   "causes": [
+    "A customer completed the purchase of an in-app product.",
+    "Google sends it only if you chose to receive one-time product purchase events when you set up notifications.",
+    "The message carries the `sku` and the `purchaseToken`."
+   ],
+   "fixes": [
+    "Do not trust the message for the state. Google says a notification only tells you the purchase state changed; call the Google Play Developer API (`purchases.subscriptionsv2.get`) with the purchase token to get the full state.",
+    "Call the products API with the `sku` and token, check the purchase state, and deliver the item once.",
+    "Acknowledge or consume the purchase so Google does not refund it.",
+    "Key delivery on the order so a repeat message does not give the item twice.",
+    "Answer 2xx once you have handled the message, and skip a `messageId` you have seen: Google recommends checking the uniqueness of message IDs so a redelivery does not make a second API call."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "deliver once",
+    "code": "// A Pub/Sub push body: the notification is base64 JSON in message.data.\nconst body = { message: { messageId: \"136969346945\", data: Buffer.from(JSON.stringify({\"version\":\"1.0\",\"packageName\":\"com.example.app\",\"eventTimeMillis\":\"1790800914000\",\"oneTimeProductNotification\":{\"version\":\"1.0\",\"notificationType\":1,\"purchaseToken\":\"PURCHASE_TOKEN\",\"sku\":\"coins_100\"}})).toString(\"base64\") } };\n\nfunction decide(body) {\n  const n = JSON.parse(Buffer.from(body.message.data, \"base64\").toString(\"utf8\"));\n  if (!(n.oneTimeProductNotification?.notificationType === 1)) return \"ignore\";\n  return \"verify, deliver once, acknowledge\";\n}\n\nconsole.log(decide(body));"
+   },
+   "mapping": "RevenueDot answers every handled message with 2xx and every temporary failure with 5xx so Pub/Sub redelivers it. For subscription types it re-reads the subscription from Google with `purchases.subscriptionsv2.get` and applies that state, and it acknowledges a new purchase if the app has not. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. RevenueDot fetches the product purchase for the `sku` and token, skips a purchase that is still pending, stores it under its order ID and acknowledges it. A new purchase gives `NON_RENEWING_PURCHASE`. The consumable flag comes from the product's type in your catalog.",
+   "related": [
+    "google-one-time-product-canceled",
+    "google-voided-purchase",
+    "google-subscription-purchased"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up Google Play notifications in RevenueDot",
+     "url": "../guides/google-play.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Google: Real-time developer notifications reference guide",
+     "url": "https://developer.android.com/google/play/billing/rtdn-reference"
+    },
+    {
+     "label": "RevenueDot server: stores/google/notifications.ts (how the message is received)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/sync.ts (how the purchase is re-read and applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/sync.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/map.ts (how Google's state becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "google-one-time-product-canceled",
+   "label": "Google: ONE_TIME_PRODUCT_CANCELED",
+   "title": "What does the Google Play notification ONE_TIME_PRODUCT_CANCELED mean?",
+   "description": "ONE_TIME_PRODUCT_CANCELED (2) means a pending one-time purchase was cancelled by the customer. Nothing was delivered, so drop any pending record.",
+   "answer": "The Google Play notification ONE_TIME_PRODUCT_CANCELED means a customer cancelled a one-time purchase that was still pending.",
+   "symbol": "`oneTimeProductNotification.notificationType` 2, `ONE_TIME_PRODUCT_CANCELED`",
+   "api": "Google Play real-time developer notifications (Pub/Sub, `DeveloperNotification`)",
+   "facts": [
+    [
+     "Sent by",
+     "Google Play, as a Cloud Pub/Sub push to your endpoint"
+    ]
+   ],
+   "definitionLabel": "What Google says",
+   "definition": "A pending one-time product purchase has been canceled by the user.",
+   "causes": [
+    "The customer started a purchase with a delayed payment method and cancelled before it finished.",
+    "It is about a pending purchase only. A refund of a completed purchase arrives as a voided purchase notification.",
+    "Like the purchase type, it is sent only when you enabled one-time product events."
+   ],
+   "fixes": [
+    "Do not trust the message for the state. Google says a notification only tells you the purchase state changed; call the Google Play Developer API (`purchases.subscriptionsv2.get`) with the purchase token to get the full state.",
+    "Drop any pending record for that token and `sku`.",
+    "Do not deliver the item.",
+    "Do not confuse it with a refund: use the voided purchase notification for those.",
+    "Answer 2xx once you have handled the message, and skip a `messageId` you have seen: Google recommends checking the uniqueness of message IDs so a redelivery does not make a second API call."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "deliver nothing",
+    "code": "// A Pub/Sub push body: the notification is base64 JSON in message.data.\nconst body = { message: { messageId: \"136969346945\", data: Buffer.from(JSON.stringify({\"version\":\"1.0\",\"packageName\":\"com.example.app\",\"eventTimeMillis\":\"1790800914000\",\"oneTimeProductNotification\":{\"version\":\"1.0\",\"notificationType\":2,\"purchaseToken\":\"PURCHASE_TOKEN\",\"sku\":\"coins_100\"}})).toString(\"base64\") } };\n\nfunction decide(body) {\n  const n = JSON.parse(Buffer.from(body.message.data, \"base64\").toString(\"utf8\"));\n  if (!(n.oneTimeProductNotification?.notificationType === 2)) return \"ignore\";\n  return \"drop the pending purchase, deliver nothing\";\n}\n\nconsole.log(decide(body));"
+   },
+   "mapping": "RevenueDot answers every handled message with 2xx and every temporary failure with 5xx so Pub/Sub redelivers it. For subscription types it re-reads the subscription from Google with `purchases.subscriptionsv2.get` and applies that state, and it acknowledges a new purchase if the app has not. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. RevenueDot ignores it: the message is stored and answered 2xx with status `ignored`, and only type 1 (purchased) is applied. Refunds come through the voided purchase notification.",
+   "related": [
+    "google-one-time-product-purchased",
+    "google-voided-purchase",
+    "google-subscription-pending-purchase-canceled"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up Google Play notifications in RevenueDot",
+     "url": "../guides/google-play.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Google: Real-time developer notifications reference guide",
+     "url": "https://developer.android.com/google/play/billing/rtdn-reference"
+    },
+    {
+     "label": "RevenueDot server: stores/google/notifications.ts (how the message is received)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/notifications.ts (how the message is received)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/sync.ts (how the purchase is re-read and applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/sync.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "google-voided-purchase",
+   "label": "Google: VOIDED_PURCHASE",
+   "title": "What does the Google Play notification VOIDED_PURCHASE mean?",
+   "description": "A voidedPurchaseNotification means Google voided a purchase: a refund, chargeback or revocation. Revoke the item or access using the order ID and refund type.",
+   "answer": "A Google Play voidedPurchaseNotification means a purchase was voided, usually by a refund or a chargeback, so what it granted should be taken back.",
+   "symbol": "`voidedPurchaseNotification`",
+   "api": "Google Play real-time developer notifications (Pub/Sub, `DeveloperNotification`)",
+   "facts": [
+    [
+     "Sent by",
+     "Google Play, as a Cloud Pub/Sub push to your endpoint"
+    ]
+   ],
+   "definitionLabel": "What Google says",
+   "definition": "A purchase has been voided. The message gives the purchase token, the order ID, the product type (subscription or one-time) and the refund type (full or quantity-based partial).",
+   "causes": [
+    "The customer was refunded, charged back, or you revoked the purchase.",
+    "`productType` 1 is a subscription and 2 a one-time product. `refundType` 1 is a full refund and 2 a quantity-based partial refund of a multi-quantity purchase.",
+    "For subscriptions, a new order ID is created for each renewal, so the order ID says which period was voided."
+   ],
+   "fixes": [
+    "Find the purchase by `purchaseToken` and `orderId` and revoke what that order granted.",
+    "For a partial refund, adjust the quantity instead of revoking everything. `refundableQuantity` in the products API gives what is left.",
+    "For more data, use Google's Voided Purchases API, a pull model over a time range.",
+    "Answer 2xx once you have handled the message, and skip a `messageId` you have seen: Google recommends checking the uniqueness of message IDs so a redelivery does not make a second API call."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "revoke the subscription period",
+    "code": "// A Pub/Sub push body: the notification is base64 JSON in message.data.\nconst body = { message: { messageId: \"136969346945\", data: Buffer.from(JSON.stringify({\"version\":\"1.0\",\"packageName\":\"com.example.app\",\"eventTimeMillis\":\"1790800914000\",\"voidedPurchaseNotification\":{\"purchaseToken\":\"PURCHASE_TOKEN\",\"orderId\":\"GPA.1234-5678-9012-34567\",\"productType\":1,\"refundType\":1}})).toString(\"base64\") } };\n\nfunction decide(body) {\n  const n = JSON.parse(Buffer.from(body.message.data, \"base64\").toString(\"utf8\"));\n  if (!(n.voidedPurchaseNotification)) return \"ignore\";\n  const v = n.voidedPurchaseNotification;\n  if (v.refundType === 2) return \"reduce the quantity, keep the purchase\";\n  return v.productType === 1 ? \"revoke the subscription period of this order\" : \"revoke the one-time item\";\n}\n\nconsole.log(decide(body));"
+   },
+   "mapping": "RevenueDot answers every handled message with 2xx and every temporary failure with 5xx so Pub/Sub redelivers it. For subscription types it re-reads the subscription from Google with `purchases.subscriptionsv2.get` and applies that state, and it acknowledges a new purchase if the app has not. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. For a subscription RevenueDot marks the voided period refunded (only if the order is the current one) and sends `CANCELLATION` with `cancel_reason: CUSTOMER_SUPPORT` and a negative price. A one-time purchase is marked refunded the same way. A partial quantity refund (`refundType` 2) of a one-time product is ignored. A daily scan of Google's voided purchases catches refunds whose message never arrived.",
+   "related": [
+    "google-subscription-revoked",
+    "google-one-time-product-purchased",
+    "google-subscription-canceled"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up Google Play notifications in RevenueDot",
+     "url": "../guides/google-play.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Google: Real-time developer notifications reference guide",
+     "url": "https://developer.android.com/google/play/billing/rtdn-reference"
+    },
+    {
+     "label": "RevenueDot server: stores/google/notifications.ts (how the message is received)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/sync.ts (how the purchase is re-read and applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/sync.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/tick.ts (the scheduled EXPIRATION)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/tick.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/google/notifications.ts (how the message is received)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/notifications.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  }
+ ]
+}

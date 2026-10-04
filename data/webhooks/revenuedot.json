@@ -1,0 +1,1613 @@
+{
+ "set": "revenuedot",
+ "pages": [
+  {
+   "slug": "webhook-initial-purchase",
+   "label": "Webhook: INITIAL_PURCHASE",
+   "event": "INITIAL_PURCHASE",
+   "title": "What does the RevenueDot webhook event INITIAL_PURCHASE mean?",
+   "description": "INITIAL_PURCHASE is sent when a customer first buys a subscription, including a free trial start. Grant access to the entitlements and record the customer.",
+   "answer": "The RevenueDot webhook event INITIAL_PURCHASE means a customer bought a subscription for the first time, including the start of a free trial.",
+   "symbol": "`INITIAL_PURCHASE`",
+   "api": "RevenueDot webhook (`event.type`), RevenueCat's webhook format",
+   "facts": [
+    [
+     "Sent to",
+     "Every enabled webhook whose filters match"
+    ],
+    [
+     "Fields that are specific to it",
+     "none beyond the common subscription fields"
+    ]
+   ],
+   "definitionLabel": "What it means",
+   "definition": "The first purchase of a subscription, including a free trial start.",
+   "causes": [
+    "A subscription chain that RevenueDot has not seen before is recorded, from the SDK, a store notification (when new purchases are tracked), an import or a web checkout.",
+    "`period_type` is `TRIAL` for a free trial and `INTRO` for a paid introductory offer; `NORMAL` otherwise.",
+    "It is sent once per chain. A lapsed customer who comes back gets `RENEWAL`, not a second `INITIAL_PURCHASE`."
+   ],
+   "fixes": [
+    "Grant the entitlements in `entitlement_ids` until `expiration_at_ms`.",
+    "Record `original_transaction_id` as the key for the whole subscription.",
+    "In a trial, do not count revenue yet: `price` is the money that moved, and is 0 for a free trial.",
+    "Deduplicate on `event.id`: deliveries can repeat, because anything but HTTP 200 is retried after 5, 10, 20, 40 and 80 minutes."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "grant pro_monthly",
+    "code": "import { createHmac, timingSafeEqual } from \"node:crypto\";\n\n// X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\">\nfunction verify(rawBody, header, secret, toleranceSeconds = 300) {\n  const m = /^t=(\\d+),v1=([0-9a-f]{64})$/.exec(header ?? \"\");\n  if (!m || Math.abs(Date.now() / 1000 - Number(m[1])) > toleranceSeconds) return false;\n  const expected = createHmac(\"sha256\", secret).update(`${m[1]}.${rawBody}`).digest();\n  return timingSafeEqual(expected, Buffer.from(m[2], \"hex\"));\n}\n\n// Sign a sample delivery the way RevenueDot does, then handle it.\nconst secret = \"whsec_test_secret\";\nconst rawBody = JSON.stringify({ api_version: \"1.0\", event: {\"id\":\"66339910-3BFF-49F4-B873-D1283D673DE2\",\"type\":\"INITIAL_PURCHASE\",\"app_user_id\":\"user_1\",\"product_id\":\"pro_monthly\",\"period_type\":\"NORMAL\",\"entitlement_ids\":[\"pro\"]} });\nconst t = Math.floor(Date.now() / 1000);\nconst header = `t=${t},v1=${createHmac(\"sha256\", secret).update(`${t}.${rawBody}`).digest(\"hex\")}`;\n\nconst seen = new Set(); // use a database table in production\n\nfunction handle(rawBody, header) {\n  if (!verify(rawBody, header, secret)) return \"401 bad signature\";\n  const { event } = JSON.parse(rawBody);\n  if (seen.has(event.id)) return \"200 duplicate\";\n  seen.add(event.id);\n  if (event.type !== \"INITIAL_PURCHASE\") return \"200 ignored\";\n  return \"grant \" + event.product_id + \" until expiration_at_ms, record the customer\";\n}\n\nconsole.log(handle(rawBody, header));"
+   },
+   "mapping": "When a store change arrives for a chain RevenueDot has no stored purchase for, the diff in `diffSubscription` returns `INITIAL_PURCHASE` first. A refunded or already cancelled first purchase also gets a `CANCELLATION` right after it, and an outstanding price increase gets its consent event.",
+   "related": [
+    "webhook-renewal",
+    "webhook-cancellation",
+    "webhook-non-renewing-purchase"
+   ],
+   "links": [
+    {
+     "label": "INITIAL_PURCHASE fields and a recorded example payload",
+     "url": "../../api/webhook-events.md#initial_purchase"
+    },
+    {
+     "label": "Webhooks guide: set up, verify and test",
+     "url": "../guides/webhooks.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot docs: which webhook events RevenueDot sends",
+     "url": "https://revenuedot.app/docs/api/webhook-events"
+    },
+    {
+     "label": "RevenueCat: webhook event types and fields (the format RevenueDot follows)",
+     "url": "https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields"
+    },
+    {
+     "label": "RevenueDot core: events.ts (the event types and the rules that derive them)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/events.ts (how an event is recorded and delivered)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/purchases.ts (where store changes become events)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/purchases.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "webhook-renewal",
+   "label": "Webhook: RENEWAL",
+   "event": "RENEWAL",
+   "title": "What does the RevenueDot webhook event RENEWAL mean?",
+   "description": "RENEWAL is sent for a new paid period: a renewal, a trial converting, a lapsed customer resubscribing, or a recovered billing issue. Extend access to the new expiry.",
+   "answer": "The RevenueDot webhook event RENEWAL means a subscription started a new paid period, whether by renewing, converting from a trial or coming back.",
+   "symbol": "`RENEWAL`",
+   "api": "RevenueDot webhook (`event.type`), RevenueCat's webhook format",
+   "facts": [
+    [
+     "Sent to",
+     "Every enabled webhook whose filters match"
+    ],
+    [
+     "Fields that are specific to it",
+     "`is_trial_conversion`"
+    ]
+   ],
+   "definitionLabel": "What it means",
+   "definition": "A new paid period: a renewal, a trial converting (`is_trial_conversion: true`), a lapsed customer resubscribing, or a recovered billing issue.",
+   "causes": [
+    "The store reports a new transaction on a chain RevenueDot already holds, with a later period start.",
+    "`is_trial_conversion` is true for the first paid period after a free trial.",
+    "A recovered billing issue and a resubscribe after expiry also come out as `RENEWAL`, as in RevenueCat."
+   ],
+   "fixes": [
+    "Extend the entitlements to the new `expiration_at_ms`.",
+    "Count the revenue from `price`, which is the money that moved on this period.",
+    "Use `is_trial_conversion` to measure trial conversion.",
+    "Deduplicate on `event.id`: deliveries can repeat, because anything but HTTP 200 is retried after 5, 10, 20, 40 and 80 minutes."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "extend access",
+    "code": "import { createHmac, timingSafeEqual } from \"node:crypto\";\n\n// X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\">\nfunction verify(rawBody, header, secret, toleranceSeconds = 300) {\n  const m = /^t=(\\d+),v1=([0-9a-f]{64})$/.exec(header ?? \"\");\n  if (!m || Math.abs(Date.now() / 1000 - Number(m[1])) > toleranceSeconds) return false;\n  const expected = createHmac(\"sha256\", secret).update(`${m[1]}.${rawBody}`).digest();\n  return timingSafeEqual(expected, Buffer.from(m[2], \"hex\"));\n}\n\n// Sign a sample delivery the way RevenueDot does, then handle it.\nconst secret = \"whsec_test_secret\";\nconst rawBody = JSON.stringify({ api_version: \"1.0\", event: {\"id\":\"66339910-3BFF-49F4-B873-D1283D673DE2\",\"type\":\"RENEWAL\",\"app_user_id\":\"user_1\",\"product_id\":\"pro_monthly\",\"is_trial_conversion\":false,\"price\":9.99} });\nconst t = Math.floor(Date.now() / 1000);\nconst header = `t=${t},v1=${createHmac(\"sha256\", secret).update(`${t}.${rawBody}`).digest(\"hex\")}`;\n\nconst seen = new Set(); // use a database table in production\n\nfunction handle(rawBody, header) {\n  if (!verify(rawBody, header, secret)) return \"401 bad signature\";\n  const { event } = JSON.parse(rawBody);\n  if (seen.has(event.id)) return \"200 duplicate\";\n  seen.add(event.id);\n  if (event.type !== \"RENEWAL\") return \"200 ignored\";\n  return event.is_trial_conversion ? \"extend access, count a trial conversion\" : \"extend access to the new expiration_at_ms\";\n}\n\nconsole.log(handle(rawBody, header));"
+   },
+   "mapping": "`diffSubscription` returns `RENEWAL` when the new state has a later period start and a different store transaction ID than the stored one. `isTrialConversion` is set when the stored period was a trial and the new one is not. An upgrade that starts a new period also adds `RENEWAL` after its `PRODUCT_CHANGE`.",
+   "related": [
+    "webhook-initial-purchase",
+    "webhook-billing-issue",
+    "webhook-expiration"
+   ],
+   "links": [
+    {
+     "label": "RENEWAL fields and a recorded example payload",
+     "url": "../../api/webhook-events.md#renewal"
+    },
+    {
+     "label": "Webhooks guide: set up, verify and test",
+     "url": "../guides/webhooks.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot docs: which webhook events RevenueDot sends",
+     "url": "https://revenuedot.app/docs/api/webhook-events"
+    },
+    {
+     "label": "RevenueCat: webhook event types and fields (the format RevenueDot follows)",
+     "url": "https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields"
+    },
+    {
+     "label": "RevenueDot core: events.ts (the event types and the rules that derive them)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/events.ts (how an event is recorded and delivered)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/purchases.ts (where store changes become events)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/purchases.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "webhook-cancellation",
+   "label": "Webhook: CANCELLATION",
+   "event": "CANCELLATION",
+   "title": "What does the RevenueDot webhook event CANCELLATION mean?",
+   "description": "CANCELLATION is sent when auto-renew is turned off or a purchase is refunded. Access continues to the expiry time unless it was a refund. Check cancel_reason.",
+   "answer": "The RevenueDot webhook event CANCELLATION means a subscription will not renew, or a purchase was refunded.",
+   "symbol": "`CANCELLATION`",
+   "api": "RevenueDot webhook (`event.type`), RevenueCat's webhook format",
+   "facts": [
+    [
+     "Sent to",
+     "Every enabled webhook whose filters match"
+    ],
+    [
+     "Fields that are specific to it",
+     "`cancel_reason`"
+    ]
+   ],
+   "definitionLabel": "What it means",
+   "definition": "Auto-renew was turned off, or the purchase was refunded. Access continues to `expiration_at_ms` unless it was a refund. A refund has `cancel_reason: CUSTOMER_SUPPORT` and a negative price.",
+   "causes": [
+    "The customer turned auto-renew off (`cancel_reason: UNSUBSCRIBE`), the store gave a reason such as `DEVELOPER_INITIATED` or `PRICE_INCREASE`, or a billing failure counted as a cancellation (`BILLING_ERROR`).",
+    "A refund gives `cancel_reason: CUSTOMER_SUPPORT` and a negative `price`.",
+    "It is not the end of access. `EXPIRATION` follows when the paid period ends."
+   ],
+   "fixes": [
+    "For an unsubscribe, keep access until `expiration_at_ms` and start your win-back flow.",
+    "For `CUSTOMER_SUPPORT` with a negative price, revoke access now.",
+    "Use `cancel_reason` to separate voluntary from billing-related churn.",
+    "Deduplicate on `event.id`: deliveries can repeat, because anything but HTTP 200 is retried after 5, 10, 20, 40 and 80 minutes."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "keep access until expiration_at_ms",
+    "code": "import { createHmac, timingSafeEqual } from \"node:crypto\";\n\n// X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\">\nfunction verify(rawBody, header, secret, toleranceSeconds = 300) {\n  const m = /^t=(\\d+),v1=([0-9a-f]{64})$/.exec(header ?? \"\");\n  if (!m || Math.abs(Date.now() / 1000 - Number(m[1])) > toleranceSeconds) return false;\n  const expected = createHmac(\"sha256\", secret).update(`${m[1]}.${rawBody}`).digest();\n  return timingSafeEqual(expected, Buffer.from(m[2], \"hex\"));\n}\n\n// Sign a sample delivery the way RevenueDot does, then handle it.\nconst secret = \"whsec_test_secret\";\nconst rawBody = JSON.stringify({ api_version: \"1.0\", event: {\"id\":\"66339910-3BFF-49F4-B873-D1283D673DE2\",\"type\":\"CANCELLATION\",\"app_user_id\":\"user_1\",\"product_id\":\"pro_monthly\",\"cancel_reason\":\"UNSUBSCRIBE\"} });\nconst t = Math.floor(Date.now() / 1000);\nconst header = `t=${t},v1=${createHmac(\"sha256\", secret).update(`${t}.${rawBody}`).digest(\"hex\")}`;\n\nconst seen = new Set(); // use a database table in production\n\nfunction handle(rawBody, header) {\n  if (!verify(rawBody, header, secret)) return \"401 bad signature\";\n  const { event } = JSON.parse(rawBody);\n  if (seen.has(event.id)) return \"200 duplicate\";\n  seen.add(event.id);\n  if (event.type !== \"CANCELLATION\") return \"200 ignored\";\n  if (event.cancel_reason === \"CUSTOMER_SUPPORT\") return \"revoke access now, book the refund\";\n  return \"keep access until expiration_at_ms, start win-back\";\n}\n\nconsole.log(handle(rawBody, header));"
+   },
+   "mapping": "`diffSubscription` returns `CANCELLATION` when auto-renew goes off (with the reason from the store, or `BILLING_ERROR` when a billing issue is stored, else `UNSUBSCRIBE`) and, with `isRefund`, when a refund time appears (reason `CUSTOMER_SUPPORT`). One-time purchases get the refund form too.",
+   "related": [
+    "webhook-uncancellation",
+    "webhook-expiration",
+    "webhook-refund-reversed"
+   ],
+   "links": [
+    {
+     "label": "CANCELLATION fields and a recorded example payload",
+     "url": "../../api/webhook-events.md#cancellation"
+    },
+    {
+     "label": "Webhooks guide: set up, verify and test",
+     "url": "../guides/webhooks.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot docs: which webhook events RevenueDot sends",
+     "url": "https://revenuedot.app/docs/api/webhook-events"
+    },
+    {
+     "label": "RevenueCat: webhook event types and fields (the format RevenueDot follows)",
+     "url": "https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields"
+    },
+    {
+     "label": "RevenueDot core: events.ts (the event types and the rules that derive them)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/events.ts (how an event is recorded and delivered)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/purchases.ts (where store changes become events)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/purchases.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "webhook-uncancellation",
+   "label": "Webhook: UNCANCELLATION",
+   "event": "UNCANCELLATION",
+   "title": "What does the RevenueDot webhook event UNCANCELLATION mean?",
+   "description": "UNCANCELLATION is sent when a customer turns auto-renew back on before the subscription expires. Stop the win-back flow; access never stopped.",
+   "answer": "The RevenueDot webhook event UNCANCELLATION means a customer turned auto-renew back on before their subscription ended.",
+   "symbol": "`UNCANCELLATION`",
+   "api": "RevenueDot webhook (`event.type`), RevenueCat's webhook format",
+   "facts": [
+    [
+     "Sent to",
+     "Every enabled webhook whose filters match"
+    ]
+   ],
+   "definitionLabel": "What it means",
+   "definition": "Auto-renew was turned back on before the subscription expired.",
+   "causes": [
+    "The customer resubscribed in the store settings after cancelling, while the paid period was still running.",
+    "On Google Play this is a restore (`SUBSCRIPTION_RESTARTED`); on the App Store it is `DID_CHANGE_RENEWAL_STATUS` with `AUTO_RENEW_ENABLED`.",
+    "Recovering a failed payment is a `RENEWAL`, not this event."
+   ],
+   "fixes": [
+    "Stop any win-back message or offer for this customer.",
+    "Mark the subscription as renewing again.",
+    "Do not change access: it never stopped.",
+    "Deduplicate on `event.id`: deliveries can repeat, because anything but HTTP 200 is retried after 5, 10, 20, 40 and 80 minutes."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "stop win-back",
+    "code": "import { createHmac, timingSafeEqual } from \"node:crypto\";\n\n// X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\">\nfunction verify(rawBody, header, secret, toleranceSeconds = 300) {\n  const m = /^t=(\\d+),v1=([0-9a-f]{64})$/.exec(header ?? \"\");\n  if (!m || Math.abs(Date.now() / 1000 - Number(m[1])) > toleranceSeconds) return false;\n  const expected = createHmac(\"sha256\", secret).update(`${m[1]}.${rawBody}`).digest();\n  return timingSafeEqual(expected, Buffer.from(m[2], \"hex\"));\n}\n\n// Sign a sample delivery the way RevenueDot does, then handle it.\nconst secret = \"whsec_test_secret\";\nconst rawBody = JSON.stringify({ api_version: \"1.0\", event: {\"id\":\"66339910-3BFF-49F4-B873-D1283D673DE2\",\"type\":\"UNCANCELLATION\",\"app_user_id\":\"user_1\",\"product_id\":\"pro_monthly\"} });\nconst t = Math.floor(Date.now() / 1000);\nconst header = `t=${t},v1=${createHmac(\"sha256\", secret).update(`${t}.${rawBody}`).digest(\"hex\")}`;\n\nconst seen = new Set(); // use a database table in production\n\nfunction handle(rawBody, header) {\n  if (!verify(rawBody, header, secret)) return \"401 bad signature\";\n  const { event } = JSON.parse(rawBody);\n  if (seen.has(event.id)) return \"200 duplicate\";\n  seen.add(event.id);\n  if (event.type !== \"UNCANCELLATION\") return \"200 ignored\";\n  return \"stop win-back, mark \" + event.app_user_id + \" as renewing\";\n}\n\nconsole.log(handle(rawBody, header));"
+   },
+   "mapping": "`diffSubscription` returns `UNCANCELLATION` when the stored purchase was unsubscribed and the new state is not, unless the change is a renewal that recovered a billing issue.",
+   "related": [
+    "webhook-cancellation",
+    "webhook-renewal",
+    "webhook-billing-issue"
+   ],
+   "links": [
+    {
+     "label": "UNCANCELLATION fields and a recorded example payload",
+     "url": "../../api/webhook-events.md#uncancellation"
+    },
+    {
+     "label": "Webhooks guide: set up, verify and test",
+     "url": "../guides/webhooks.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot docs: which webhook events RevenueDot sends",
+     "url": "https://revenuedot.app/docs/api/webhook-events"
+    },
+    {
+     "label": "RevenueCat: webhook event types and fields (the format RevenueDot follows)",
+     "url": "https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields"
+    },
+    {
+     "label": "RevenueDot core: events.ts (the event types and the rules that derive them)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/events.ts (how an event is recorded and delivered)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/purchases.ts (where store changes become events)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/purchases.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "webhook-non-renewing-purchase",
+   "label": "Webhook: NON_RENEWING_PURCHASE",
+   "event": "NON_RENEWING_PURCHASE",
+   "title": "What does the RevenueDot webhook event NON_RENEWING_PURCHASE mean?",
+   "description": "NON_RENEWING_PURCHASE is sent for a one-time purchase: a consumable, non-consumable or lifetime product. Deliver the item once.",
+   "answer": "The RevenueDot webhook event NON_RENEWING_PURCHASE means a customer made a one-time purchase that does not renew.",
+   "symbol": "`NON_RENEWING_PURCHASE`",
+   "api": "RevenueDot webhook (`event.type`), RevenueCat's webhook format",
+   "facts": [
+    [
+     "Sent to",
+     "Every enabled webhook whose filters match"
+    ]
+   ],
+   "definitionLabel": "What it means",
+   "definition": "A one-time purchase: consumable, non-consumable or lifetime.",
+   "causes": [
+    "A one-time transaction is recorded for the first time.",
+    "Consumables, non-consumables, non-renewing subscriptions and lifetime products all use this type.",
+    "A refund of it is a `CANCELLATION` with `cancel_reason: CUSTOMER_SUPPORT`."
+   ],
+   "fixes": [
+    "Deliver the item or grant the entitlement. For a consumable, credit it once, keyed on `transaction_id`.",
+    "Count the revenue from `price`.",
+    "If `expiration_at_ms` is null the entitlement is for life.",
+    "Deduplicate on `event.id`: deliveries can repeat, because anything but HTTP 200 is retried after 5, 10, 20, 40 and 80 minutes."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "deliver coins_100 once",
+    "code": "import { createHmac, timingSafeEqual } from \"node:crypto\";\n\n// X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\">\nfunction verify(rawBody, header, secret, toleranceSeconds = 300) {\n  const m = /^t=(\\d+),v1=([0-9a-f]{64})$/.exec(header ?? \"\");\n  if (!m || Math.abs(Date.now() / 1000 - Number(m[1])) > toleranceSeconds) return false;\n  const expected = createHmac(\"sha256\", secret).update(`${m[1]}.${rawBody}`).digest();\n  return timingSafeEqual(expected, Buffer.from(m[2], \"hex\"));\n}\n\n// Sign a sample delivery the way RevenueDot does, then handle it.\nconst secret = \"whsec_test_secret\";\nconst rawBody = JSON.stringify({ api_version: \"1.0\", event: {\"id\":\"66339910-3BFF-49F4-B873-D1283D673DE2\",\"type\":\"NON_RENEWING_PURCHASE\",\"app_user_id\":\"user_1\",\"product_id\":\"coins_100\",\"transaction_id\":\"2000000123456789\",\"expiration_at_ms\":null} });\nconst t = Math.floor(Date.now() / 1000);\nconst header = `t=${t},v1=${createHmac(\"sha256\", secret).update(`${t}.${rawBody}`).digest(\"hex\")}`;\n\nconst seen = new Set(); // use a database table in production\n\nfunction handle(rawBody, header) {\n  if (!verify(rawBody, header, secret)) return \"401 bad signature\";\n  const { event } = JSON.parse(rawBody);\n  if (seen.has(event.id)) return \"200 duplicate\";\n  seen.add(event.id);\n  if (event.type !== \"NON_RENEWING_PURCHASE\") return \"200 ignored\";\n  return \"deliver \" + event.product_id + \" once for transaction \" + event.transaction_id;\n}\n\nconsole.log(handle(rawBody, header));"
+   },
+   "mapping": "`diffNonSubscription` returns `NON_RENEWING_PURCHASE` for a transaction it has not stored, and adds a `CANCELLATION` when that first sighting is already refunded.",
+   "related": [
+    "webhook-cancellation",
+    "webhook-refund-reversed",
+    "webhook-initial-purchase"
+   ],
+   "links": [
+    {
+     "label": "NON_RENEWING_PURCHASE fields and a recorded example payload",
+     "url": "../../api/webhook-events.md#non_renewing_purchase"
+    },
+    {
+     "label": "Webhooks guide: set up, verify and test",
+     "url": "../guides/webhooks.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot docs: which webhook events RevenueDot sends",
+     "url": "https://revenuedot.app/docs/api/webhook-events"
+    },
+    {
+     "label": "RevenueCat: webhook event types and fields (the format RevenueDot follows)",
+     "url": "https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields"
+    },
+    {
+     "label": "RevenueDot core: events.ts (the event types and the rules that derive them)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/events.ts (how an event is recorded and delivered)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/purchases.ts (where store changes become events)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/purchases.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "webhook-subscription-paused",
+   "label": "Webhook: SUBSCRIPTION_PAUSED",
+   "event": "SUBSCRIPTION_PAUSED",
+   "title": "What does the RevenueDot webhook event SUBSCRIPTION_PAUSED mean?",
+   "description": "SUBSCRIPTION_PAUSED is sent when a Google Play subscription is scheduled to pause. It will not renew at the end of the period. auto_resume_at_ms says when it resumes.",
+   "answer": "The RevenueDot webhook event SUBSCRIPTION_PAUSED means a Google Play subscription is set to pause and will not renew at the end of the current period.",
+   "symbol": "`SUBSCRIPTION_PAUSED`",
+   "api": "RevenueDot webhook (`event.type`), RevenueCat's webhook format",
+   "facts": [
+    [
+     "Sent to",
+     "Every enabled webhook whose filters match"
+    ],
+    [
+     "Fields that are specific to it",
+     "`auto_resume_at_ms`"
+    ]
+   ],
+   "definitionLabel": "What it means",
+   "definition": "A Google Play subscription is scheduled to pause. It will not renew at the end of the period.",
+   "causes": [
+    "The customer chose to pause in Google Play. It happens only on Google Play.",
+    "`auto_resume_at_ms` holds when the subscription resumes.",
+    "The customer still has access until the period ends. `EXPIRATION` with `expiration_reason: SUBSCRIPTION_PAUSED` follows."
+   ],
+   "fixes": [
+    "Keep access until `expiration_at_ms`.",
+    "Show the resume date from `auto_resume_at_ms`.",
+    "Expect a `RENEWAL` when it resumes.",
+    "Deduplicate on `event.id`: deliveries can repeat, because anything but HTTP 200 is retried after 5, 10, 20, 40 and 80 minutes."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "show resume date 2026-",
+    "code": "import { createHmac, timingSafeEqual } from \"node:crypto\";\n\n// X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\">\nfunction verify(rawBody, header, secret, toleranceSeconds = 300) {\n  const m = /^t=(\\d+),v1=([0-9a-f]{64})$/.exec(header ?? \"\");\n  if (!m || Math.abs(Date.now() / 1000 - Number(m[1])) > toleranceSeconds) return false;\n  const expected = createHmac(\"sha256\", secret).update(`${m[1]}.${rawBody}`).digest();\n  return timingSafeEqual(expected, Buffer.from(m[2], \"hex\"));\n}\n\n// Sign a sample delivery the way RevenueDot does, then handle it.\nconst secret = \"whsec_test_secret\";\nconst rawBody = JSON.stringify({ api_version: \"1.0\", event: {\"id\":\"66339910-3BFF-49F4-B873-D1283D673DE2\",\"type\":\"SUBSCRIPTION_PAUSED\",\"app_user_id\":\"user_1\",\"product_id\":\"pro_monthly\",\"auto_resume_at_ms\":1793392914000} });\nconst t = Math.floor(Date.now() / 1000);\nconst header = `t=${t},v1=${createHmac(\"sha256\", secret).update(`${t}.${rawBody}`).digest(\"hex\")}`;\n\nconst seen = new Set(); // use a database table in production\n\nfunction handle(rawBody, header) {\n  if (!verify(rawBody, header, secret)) return \"401 bad signature\";\n  const { event } = JSON.parse(rawBody);\n  if (seen.has(event.id)) return \"200 duplicate\";\n  seen.add(event.id);\n  if (event.type !== \"SUBSCRIPTION_PAUSED\") return \"200 ignored\";\n  return \"keep access until the period ends, show resume date \" + new Date(event.auto_resume_at_ms).toISOString().slice(0, 10);\n}\n\nconsole.log(handle(rawBody, header));"
+   },
+   "mapping": "`diffSubscription` returns `SUBSCRIPTION_PAUSED` when an auto-resume date appears on the stored purchase. For Google Play it is set from the pause schedule notification, while the subscription is still active, and again from the paused state.",
+   "related": [
+    "webhook-expiration",
+    "webhook-renewal",
+    "webhook-cancellation"
+   ],
+   "links": [
+    {
+     "label": "SUBSCRIPTION_PAUSED fields and a recorded example payload",
+     "url": "../../api/webhook-events.md#subscription_paused"
+    },
+    {
+     "label": "Webhooks guide: set up, verify and test",
+     "url": "../guides/webhooks.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot docs: which webhook events RevenueDot sends",
+     "url": "https://revenuedot.app/docs/api/webhook-events"
+    },
+    {
+     "label": "RevenueCat: webhook event types and fields (the format RevenueDot follows)",
+     "url": "https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields"
+    },
+    {
+     "label": "RevenueDot core: events.ts (the event types and the rules that derive them)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/events.ts (how an event is recorded and delivered)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/purchases.ts (where store changes become events)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/purchases.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "webhook-expiration",
+   "label": "Webhook: EXPIRATION",
+   "event": "EXPIRATION",
+   "title": "What does the RevenueDot webhook event EXPIRATION mean?",
+   "description": "EXPIRATION is sent when access ended: the period ran out, billing retry gave up, or the subscription paused. Remove access and read expiration_reason.",
+   "answer": "The RevenueDot webhook event EXPIRATION means a customer's access has ended.",
+   "symbol": "`EXPIRATION`",
+   "api": "RevenueDot webhook (`event.type`), RevenueCat's webhook format",
+   "facts": [
+    [
+     "Sent to",
+     "Every enabled webhook whose filters match"
+    ],
+    [
+     "Fields that are specific to it",
+     "`expiration_reason`"
+    ]
+   ],
+   "definitionLabel": "What it means",
+   "definition": "Access ended: the period ran out, billing retry gave up or the subscription paused.",
+   "causes": [
+    "The paid period, and any grace period, passed with no renewal.",
+    "`expiration_reason` says why: `UNSUBSCRIBE`, `BILLING_ERROR`, `DEVELOPER_INITIATED`, `PRICE_INCREASE`, `CUSTOMER_SUPPORT`, `UNKNOWN` or `SUBSCRIPTION_PAUSED`.",
+    "It is recorded once per period by a scheduled job that runs every minute, so it can arrive up to a minute after the expiry time."
+   ],
+   "fixes": [
+    "Remove the entitlements of the subscription.",
+    "Use `expiration_reason` to choose the win-back message: a billing error needs a payment prompt.",
+    "Keep the customer's data.",
+    "Deduplicate on `event.id`: deliveries can repeat, because anything but HTTP 200 is retried after 5, 10, 20, 40 and 80 minutes."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "ask for a new payment method",
+    "code": "import { createHmac, timingSafeEqual } from \"node:crypto\";\n\n// X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\">\nfunction verify(rawBody, header, secret, toleranceSeconds = 300) {\n  const m = /^t=(\\d+),v1=([0-9a-f]{64})$/.exec(header ?? \"\");\n  if (!m || Math.abs(Date.now() / 1000 - Number(m[1])) > toleranceSeconds) return false;\n  const expected = createHmac(\"sha256\", secret).update(`${m[1]}.${rawBody}`).digest();\n  return timingSafeEqual(expected, Buffer.from(m[2], \"hex\"));\n}\n\n// Sign a sample delivery the way RevenueDot does, then handle it.\nconst secret = \"whsec_test_secret\";\nconst rawBody = JSON.stringify({ api_version: \"1.0\", event: {\"id\":\"66339910-3BFF-49F4-B873-D1283D673DE2\",\"type\":\"EXPIRATION\",\"app_user_id\":\"user_1\",\"product_id\":\"pro_monthly\",\"expiration_reason\":\"BILLING_ERROR\"} });\nconst t = Math.floor(Date.now() / 1000);\nconst header = `t=${t},v1=${createHmac(\"sha256\", secret).update(`${t}.${rawBody}`).digest(\"hex\")}`;\n\nconst seen = new Set(); // use a database table in production\n\nfunction handle(rawBody, header) {\n  if (!verify(rawBody, header, secret)) return \"401 bad signature\";\n  const { event } = JSON.parse(rawBody);\n  if (seen.has(event.id)) return \"200 duplicate\";\n  seen.add(event.id);\n  if (event.type !== \"EXPIRATION\") return \"200 ignored\";\n  return event.expiration_reason === \"BILLING_ERROR\" ? \"remove access, ask for a new payment method\" : \"remove access, start win-back\";\n}\n\nconsole.log(handle(rawBody, header));"
+   },
+   "mapping": "A scheduled job (`services/tick.ts`) records `EXPIRATION` for every subscription whose access, grace period included, has ended, and claims each one once so replicas do not send it twice. The reason comes from the stored state: paused, then a billing issue, then the stored cancel reason, else `UNSUBSCRIBE`.",
+   "related": [
+    "webhook-cancellation",
+    "webhook-billing-issue",
+    "webhook-subscription-paused"
+   ],
+   "links": [
+    {
+     "label": "EXPIRATION fields and a recorded example payload",
+     "url": "../../api/webhook-events.md#expiration"
+    },
+    {
+     "label": "Webhooks guide: set up, verify and test",
+     "url": "../guides/webhooks.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot docs: which webhook events RevenueDot sends",
+     "url": "https://revenuedot.app/docs/api/webhook-events"
+    },
+    {
+     "label": "RevenueCat: webhook event types and fields (the format RevenueDot follows)",
+     "url": "https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields"
+    },
+    {
+     "label": "RevenueDot core: events.ts (the event types and the rules that derive them)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/tick.ts (the scheduled EXPIRATION)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/tick.ts"
+    },
+    {
+     "label": "RevenueDot server: services/events.ts (how an event is recorded and delivered)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "webhook-billing-issue",
+   "label": "Webhook: BILLING_ISSUE",
+   "event": "BILLING_ISSUE",
+   "title": "What does the RevenueDot webhook event BILLING_ISSUE mean?",
+   "description": "BILLING_ISSUE is sent when a renewal charge fails. The store retries and access may continue in a grace period. Prompt the customer to fix their payment method.",
+   "answer": "The RevenueDot webhook event BILLING_ISSUE means a subscription's renewal payment failed and the store is retrying it.",
+   "symbol": "`BILLING_ISSUE`",
+   "api": "RevenueDot webhook (`event.type`), RevenueCat's webhook format",
+   "facts": [
+    [
+     "Sent to",
+     "Every enabled webhook whose filters match"
+    ],
+    [
+     "Fields that are specific to it",
+     "`grace_period_expiration_at_ms`"
+    ]
+   ],
+   "definitionLabel": "What it means",
+   "definition": "A renewal charge failed. The store retries; access may continue in a grace period.",
+   "causes": [
+    "The store could not charge the customer's payment method at renewal.",
+    "`grace_period_expiration_at_ms` is always present and is null when there is no grace period.",
+    "RevenueDot also sends a `CANCELLATION` with `cancel_reason: BILLING_ERROR`, as RevenueCat does."
+   ],
+   "fixes": [
+    "Keep access until `grace_period_expiration_at_ms` when it is set, otherwise follow the store's guidance for your app.",
+    "Ask the customer to update their payment method.",
+    "Expect `RENEWAL` if billing recovers, or `EXPIRATION` with `BILLING_ERROR` if the store gives up.",
+    "Deduplicate on `event.id`: deliveries can repeat, because anything but HTTP 200 is retried after 5, 10, 20, 40 and 80 minutes."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "ask to fix payment",
+    "code": "import { createHmac, timingSafeEqual } from \"node:crypto\";\n\n// X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\">\nfunction verify(rawBody, header, secret, toleranceSeconds = 300) {\n  const m = /^t=(\\d+),v1=([0-9a-f]{64})$/.exec(header ?? \"\");\n  if (!m || Math.abs(Date.now() / 1000 - Number(m[1])) > toleranceSeconds) return false;\n  const expected = createHmac(\"sha256\", secret).update(`${m[1]}.${rawBody}`).digest();\n  return timingSafeEqual(expected, Buffer.from(m[2], \"hex\"));\n}\n\n// Sign a sample delivery the way RevenueDot does, then handle it.\nconst secret = \"whsec_test_secret\";\nconst rawBody = JSON.stringify({ api_version: \"1.0\", event: {\"id\":\"66339910-3BFF-49F4-B873-D1283D673DE2\",\"type\":\"BILLING_ISSUE\",\"app_user_id\":\"user_1\",\"product_id\":\"pro_monthly\",\"grace_period_expiration_at_ms\":1790900000000} });\nconst t = Math.floor(Date.now() / 1000);\nconst header = `t=${t},v1=${createHmac(\"sha256\", secret).update(`${t}.${rawBody}`).digest(\"hex\")}`;\n\nconst seen = new Set(); // use a database table in production\n\nfunction handle(rawBody, header) {\n  if (!verify(rawBody, header, secret)) return \"401 bad signature\";\n  const { event } = JSON.parse(rawBody);\n  if (seen.has(event.id)) return \"200 duplicate\";\n  seen.add(event.id);\n  if (event.type !== \"BILLING_ISSUE\") return \"200 ignored\";\n  const grace = event.grace_period_expiration_at_ms;\n  return grace ? \"keep access until \" + new Date(grace).toISOString().slice(0, 10) + \", ask to fix payment\" : \"ask to fix payment\";\n}\n\nconsole.log(handle(rawBody, header));"
+   },
+   "mapping": "`diffSubscription` returns `BILLING_ISSUE` when a billing issue time appears on the stored purchase. Apple's `DID_FAIL_TO_RENEW` and Google's `SUBSCRIPTION_IN_GRACE_PERIOD` and `SUBSCRIPTION_ON_HOLD` all set it.",
+   "related": [
+    "webhook-renewal",
+    "webhook-expiration",
+    "webhook-cancellation"
+   ],
+   "links": [
+    {
+     "label": "BILLING_ISSUE fields and a recorded example payload",
+     "url": "../../api/webhook-events.md#billing_issue"
+    },
+    {
+     "label": "Webhooks guide: set up, verify and test",
+     "url": "../guides/webhooks.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot docs: which webhook events RevenueDot sends",
+     "url": "https://revenuedot.app/docs/api/webhook-events"
+    },
+    {
+     "label": "RevenueCat: webhook event types and fields (the format RevenueDot follows)",
+     "url": "https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields"
+    },
+    {
+     "label": "RevenueDot core: events.ts (the event types and the rules that derive them)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/events.ts (how an event is recorded and delivered)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/purchases.ts (where store changes become events)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/purchases.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "webhook-product-change",
+   "label": "Webhook: PRODUCT_CHANGE",
+   "event": "PRODUCT_CHANGE",
+   "title": "What does the RevenueDot webhook event PRODUCT_CHANGE mean?",
+   "description": "PRODUCT_CHANGE is sent when a customer changes product: an upgrade now, or a downgrade or crossgrade scheduled for the next renewal. product_id is the old product.",
+   "answer": "The RevenueDot webhook event PRODUCT_CHANGE means a customer switched a subscription to another product, now or at the next renewal.",
+   "symbol": "`PRODUCT_CHANGE`",
+   "api": "RevenueDot webhook (`event.type`), RevenueCat's webhook format",
+   "facts": [
+    [
+     "Sent to",
+     "Every enabled webhook whose filters match"
+    ],
+    [
+     "Fields that are specific to it",
+     "`new_product_id`"
+    ]
+   ],
+   "definitionLabel": "What it means",
+   "definition": "The customer changed product: an upgrade now, or a downgrade or crossgrade scheduled for the next renewal. `product_id` is the old product.",
+   "causes": [
+    "An upgrade takes effect at once. The event names the old product in `product_id` and the new one in `new_product_id`.",
+    "A downgrade or crossgrade is announced when it is scheduled, and takes effect at the next renewal.",
+    "A scheduled switch reaching its renewal is only a `RENEWAL`, because it was announced before."
+   ],
+   "fixes": [
+    "For an upgrade, switch the entitlement to `new_product_id` now.",
+    "For a scheduled change, keep the current product and plan the switch for the renewal.",
+    "Do not treat the old product's end as a cancellation: no `CANCELLATION` or `EXPIRATION` is sent for it.",
+    "Deduplicate on `event.id`: deliveries can repeat, because anything but HTTP 200 is retried after 5, 10, 20, 40 and 80 minutes."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "from pro_monthly to pro_annual",
+    "code": "import { createHmac, timingSafeEqual } from \"node:crypto\";\n\n// X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\">\nfunction verify(rawBody, header, secret, toleranceSeconds = 300) {\n  const m = /^t=(\\d+),v1=([0-9a-f]{64})$/.exec(header ?? \"\");\n  if (!m || Math.abs(Date.now() / 1000 - Number(m[1])) > toleranceSeconds) return false;\n  const expected = createHmac(\"sha256\", secret).update(`${m[1]}.${rawBody}`).digest();\n  return timingSafeEqual(expected, Buffer.from(m[2], \"hex\"));\n}\n\n// Sign a sample delivery the way RevenueDot does, then handle it.\nconst secret = \"whsec_test_secret\";\nconst rawBody = JSON.stringify({ api_version: \"1.0\", event: {\"id\":\"66339910-3BFF-49F4-B873-D1283D673DE2\",\"type\":\"PRODUCT_CHANGE\",\"app_user_id\":\"user_1\",\"product_id\":\"pro_monthly\",\"new_product_id\":\"pro_annual\"} });\nconst t = Math.floor(Date.now() / 1000);\nconst header = `t=${t},v1=${createHmac(\"sha256\", secret).update(`${t}.${rawBody}`).digest(\"hex\")}`;\n\nconst seen = new Set(); // use a database table in production\n\nfunction handle(rawBody, header) {\n  if (!verify(rawBody, header, secret)) return \"401 bad signature\";\n  const { event } = JSON.parse(rawBody);\n  if (seen.has(event.id)) return \"200 duplicate\";\n  seen.add(event.id);\n  if (event.type !== \"PRODUCT_CHANGE\") return \"200 ignored\";\n  return \"move \" + event.app_user_id + \" from \" + event.product_id + \" to \" + event.new_product_id;\n}\n\nconsole.log(handle(rawBody, header));"
+   },
+   "mapping": "`diffSubscription` returns `PRODUCT_CHANGE` when the product on the chain changes without having been announced (`fromProduct` becomes `product_id`), and when a different `autoRenewProductId` appears for the next renewal.",
+   "related": [
+    "webhook-renewal",
+    "webhook-initial-purchase",
+    "webhook-cancellation"
+   ],
+   "links": [
+    {
+     "label": "PRODUCT_CHANGE fields and a recorded example payload",
+     "url": "../../api/webhook-events.md#product_change"
+    },
+    {
+     "label": "Webhooks guide: set up, verify and test",
+     "url": "../guides/webhooks.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot docs: which webhook events RevenueDot sends",
+     "url": "https://revenuedot.app/docs/api/webhook-events"
+    },
+    {
+     "label": "RevenueCat: webhook event types and fields (the format RevenueDot follows)",
+     "url": "https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields"
+    },
+    {
+     "label": "RevenueDot core: events.ts (the event types and the rules that derive them)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/events.ts (how an event is recorded and delivered)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/purchases.ts (where store changes become events)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/purchases.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "webhook-subscription-extended",
+   "label": "Webhook: SUBSCRIPTION_EXTENDED",
+   "event": "SUBSCRIPTION_EXTENDED",
+   "title": "What does the RevenueDot webhook event SUBSCRIPTION_EXTENDED mean?",
+   "description": "SUBSCRIPTION_EXTENDED is sent when a period got longer without a new payment: an App Store renewal extension or a Google Play deferral. Extend access to the new date.",
+   "answer": "The RevenueDot webhook event SUBSCRIPTION_EXTENDED means a subscription's current period was made longer without a payment.",
+   "symbol": "`SUBSCRIPTION_EXTENDED`",
+   "api": "RevenueDot webhook (`event.type`), RevenueCat's webhook format",
+   "facts": [
+    [
+     "Sent to",
+     "Every enabled webhook whose filters match"
+    ]
+   ],
+   "definitionLabel": "What it means",
+   "definition": "The current period got longer without a new payment: an App Store renewal extension or a Google Play deferral.",
+   "causes": [
+    "On the App Store, your server extended the renewal date (`RENEWAL_EXTENDED`).",
+    "On Google Play, your server deferred billing (`SUBSCRIPTION_DEFERRED`).",
+    "The period start does not change, only `expiration_at_ms` moves later. `price` is 0."
+   ],
+   "fixes": [
+    "Extend access to the new `expiration_at_ms`.",
+    "Do not count revenue: no money moved.",
+    "Record why the extension was given.",
+    "Deduplicate on `event.id`: deliveries can repeat, because anything but HTTP 200 is retried after 5, 10, 20, 40 and 80 minutes."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "no revenue",
+    "code": "import { createHmac, timingSafeEqual } from \"node:crypto\";\n\n// X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\">\nfunction verify(rawBody, header, secret, toleranceSeconds = 300) {\n  const m = /^t=(\\d+),v1=([0-9a-f]{64})$/.exec(header ?? \"\");\n  if (!m || Math.abs(Date.now() / 1000 - Number(m[1])) > toleranceSeconds) return false;\n  const expected = createHmac(\"sha256\", secret).update(`${m[1]}.${rawBody}`).digest();\n  return timingSafeEqual(expected, Buffer.from(m[2], \"hex\"));\n}\n\n// Sign a sample delivery the way RevenueDot does, then handle it.\nconst secret = \"whsec_test_secret\";\nconst rawBody = JSON.stringify({ api_version: \"1.0\", event: {\"id\":\"66339910-3BFF-49F4-B873-D1283D673DE2\",\"type\":\"SUBSCRIPTION_EXTENDED\",\"app_user_id\":\"user_1\",\"product_id\":\"pro_monthly\",\"expiration_at_ms\":1793392914000,\"price\":0} });\nconst t = Math.floor(Date.now() / 1000);\nconst header = `t=${t},v1=${createHmac(\"sha256\", secret).update(`${t}.${rawBody}`).digest(\"hex\")}`;\n\nconst seen = new Set(); // use a database table in production\n\nfunction handle(rawBody, header) {\n  if (!verify(rawBody, header, secret)) return \"401 bad signature\";\n  const { event } = JSON.parse(rawBody);\n  if (seen.has(event.id)) return \"200 duplicate\";\n  seen.add(event.id);\n  if (event.type !== \"SUBSCRIPTION_EXTENDED\") return \"200 ignored\";\n  return \"extend access to \" + new Date(event.expiration_at_ms).toISOString().slice(0, 10) + \", no revenue\";\n}\n\nconsole.log(handle(rawBody, header));"
+   },
+   "mapping": "`diffSubscription` returns `SUBSCRIPTION_EXTENDED` when the end date moves later while the period start is unchanged. A refund taken back is excluded, because that is `REFUND_REVERSED`.",
+   "related": [
+    "webhook-renewal",
+    "webhook-subscription-paused",
+    "webhook-initial-purchase"
+   ],
+   "links": [
+    {
+     "label": "SUBSCRIPTION_EXTENDED fields and a recorded example payload",
+     "url": "../../api/webhook-events.md#subscription_extended"
+    },
+    {
+     "label": "Webhooks guide: set up, verify and test",
+     "url": "../guides/webhooks.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot docs: which webhook events RevenueDot sends",
+     "url": "https://revenuedot.app/docs/api/webhook-events"
+    },
+    {
+     "label": "RevenueCat: webhook event types and fields (the format RevenueDot follows)",
+     "url": "https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields"
+    },
+    {
+     "label": "RevenueDot core: events.ts (the event types and the rules that derive them)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/events.ts (how an event is recorded and delivered)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/purchases.ts (where store changes become events)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/purchases.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "webhook-refund-reversed",
+   "label": "Webhook: REFUND_REVERSED",
+   "event": "REFUND_REVERSED",
+   "title": "What does the RevenueDot webhook event REFUND_REVERSED mean?",
+   "description": "REFUND_REVERSED is sent when a refund was reversed and access is back. Reinstate what the refund removed. renewal_number counts the renewals so far.",
+   "answer": "The RevenueDot webhook event REFUND_REVERSED means the store took back a refund, so the customer has the purchase again.",
+   "symbol": "`REFUND_REVERSED`",
+   "api": "RevenueDot webhook (`event.type`), RevenueCat's webhook format",
+   "facts": [
+    [
+     "Sent to",
+     "Every enabled webhook whose filters match"
+    ],
+    [
+     "Fields that are specific to it",
+     "`renewal_number`"
+    ]
+   ],
+   "definitionLabel": "What it means",
+   "definition": "A refund was reversed and access is back.",
+   "causes": [
+    "The store reversed a refund, for example after a customer dispute (Apple's `REFUND_REVERSED`).",
+    "The purchase had a `CANCELLATION` with `cancel_reason: CUSTOMER_SUPPORT` before.",
+    "`renewal_number` gives the number of renewals the subscription had gone through."
+   ],
+   "fixes": [
+    "Restore the access or item that the refund removed.",
+    "Undo the refund in your revenue records: `price` is the money that moved back.",
+    "Match it to the earlier refund by `transaction_id`.",
+    "Deduplicate on `event.id`: deliveries can repeat, because anything but HTTP 200 is retried after 5, 10, 20, 40 and 80 minutes."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "undo the refund for",
+    "code": "import { createHmac, timingSafeEqual } from \"node:crypto\";\n\n// X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\">\nfunction verify(rawBody, header, secret, toleranceSeconds = 300) {\n  const m = /^t=(\\d+),v1=([0-9a-f]{64})$/.exec(header ?? \"\");\n  if (!m || Math.abs(Date.now() / 1000 - Number(m[1])) > toleranceSeconds) return false;\n  const expected = createHmac(\"sha256\", secret).update(`${m[1]}.${rawBody}`).digest();\n  return timingSafeEqual(expected, Buffer.from(m[2], \"hex\"));\n}\n\n// Sign a sample delivery the way RevenueDot does, then handle it.\nconst secret = \"whsec_test_secret\";\nconst rawBody = JSON.stringify({ api_version: \"1.0\", event: {\"id\":\"66339910-3BFF-49F4-B873-D1283D673DE2\",\"type\":\"REFUND_REVERSED\",\"app_user_id\":\"user_1\",\"product_id\":\"pro_monthly\",\"transaction_id\":\"2000000123456789\",\"renewal_number\":3} });\nconst t = Math.floor(Date.now() / 1000);\nconst header = `t=${t},v1=${createHmac(\"sha256\", secret).update(`${t}.${rawBody}`).digest(\"hex\")}`;\n\nconst seen = new Set(); // use a database table in production\n\nfunction handle(rawBody, header) {\n  if (!verify(rawBody, header, secret)) return \"401 bad signature\";\n  const { event } = JSON.parse(rawBody);\n  if (seen.has(event.id)) return \"200 duplicate\";\n  seen.add(event.id);\n  if (event.type !== \"REFUND_REVERSED\") return \"200 ignored\";\n  return \"restore access, undo the refund for \" + event.transaction_id;\n}\n\nconsole.log(handle(rawBody, header));"
+   },
+   "mapping": "`diffSubscription` and `diffNonSubscription` return `REFUND_REVERSED` when a stored refund time is cleared and the change is not a new period. `recordEvent` adds `renewal_number`, a count of the customer's renewal transactions for that product.",
+   "related": [
+    "webhook-cancellation",
+    "webhook-renewal",
+    "webhook-non-renewing-purchase"
+   ],
+   "links": [
+    {
+     "label": "REFUND_REVERSED fields and a recorded example payload",
+     "url": "../../api/webhook-events.md#refund_reversed"
+    },
+    {
+     "label": "Webhooks guide: set up, verify and test",
+     "url": "../guides/webhooks.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot docs: which webhook events RevenueDot sends",
+     "url": "https://revenuedot.app/docs/api/webhook-events"
+    },
+    {
+     "label": "RevenueCat: webhook event types and fields (the format RevenueDot follows)",
+     "url": "https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields"
+    },
+    {
+     "label": "RevenueDot core: events.ts (the event types and the rules that derive them)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/events.ts (how an event is recorded and delivered)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/purchases.ts (where store changes become events)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/purchases.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "webhook-transfer",
+   "label": "Webhook: TRANSFER",
+   "event": "TRANSFER",
+   "title": "What does the RevenueDot webhook event TRANSFER mean?",
+   "description": "TRANSFER is sent when a purchase moved to another customer because that customer restored it. transferred_from and transferred_to list the app user ids. Move the entitlement.",
+   "answer": "The RevenueDot webhook event TRANSFER means a purchase moved from one customer to another because the second customer restored it.",
+   "symbol": "`TRANSFER`",
+   "api": "RevenueDot webhook (`event.type`), RevenueCat's webhook format",
+   "facts": [
+    [
+     "Sent to",
+     "Every enabled webhook whose filters match"
+    ],
+    [
+     "Fields that are specific to it",
+     "`transferred_from`, `transferred_to`"
+    ]
+   ],
+   "definitionLabel": "What it means",
+   "definition": "A purchase moved to another customer because that customer restored it (transfer behaviour `transfer` or `transfer_if_no_active`).",
+   "causes": [
+    "A customer restored purchases on a new app user id, and the project's transfer behaviour moves the purchase to that id.",
+    "`transferred_from` and `transferred_to` list the app user ids of both customers.",
+    "Besides these, the event has only `store` and `environment` and the subscriber attributes."
+   ],
+   "fixes": [
+    "Move the entitlement in your own database from the `transferred_from` ids to the `transferred_to` ids.",
+    "Do not treat it as a purchase: no money moves.",
+    "Check the project's transfer behaviour if transfers surprise you.",
+    "Deduplicate on `event.id`: deliveries can repeat, because anything but HTTP 200 is retried after 5, 10, 20, 40 and 80 minutes."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "from $RCAnonymousID:a to user_1",
+    "code": "import { createHmac, timingSafeEqual } from \"node:crypto\";\n\n// X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\">\nfunction verify(rawBody, header, secret, toleranceSeconds = 300) {\n  const m = /^t=(\\d+),v1=([0-9a-f]{64})$/.exec(header ?? \"\");\n  if (!m || Math.abs(Date.now() / 1000 - Number(m[1])) > toleranceSeconds) return false;\n  const expected = createHmac(\"sha256\", secret).update(`${m[1]}.${rawBody}`).digest();\n  return timingSafeEqual(expected, Buffer.from(m[2], \"hex\"));\n}\n\n// Sign a sample delivery the way RevenueDot does, then handle it.\nconst secret = \"whsec_test_secret\";\nconst rawBody = JSON.stringify({ api_version: \"1.0\", event: {\"id\":\"66339910-3BFF-49F4-B873-D1283D673DE2\",\"type\":\"TRANSFER\",\"app_user_id\":\"user_1\",\"product_id\":\"pro_monthly\",\"transferred_from\":[\"$RCAnonymousID:a\"],\"transferred_to\":[\"user_1\"]} });\nconst t = Math.floor(Date.now() / 1000);\nconst header = `t=${t},v1=${createHmac(\"sha256\", secret).update(`${t}.${rawBody}`).digest(\"hex\")}`;\n\nconst seen = new Set(); // use a database table in production\n\nfunction handle(rawBody, header) {\n  if (!verify(rawBody, header, secret)) return \"401 bad signature\";\n  const { event } = JSON.parse(rawBody);\n  if (seen.has(event.id)) return \"200 duplicate\";\n  seen.add(event.id);\n  if (event.type !== \"TRANSFER\") return \"200 ignored\";\n  return \"move the entitlement from \" + event.transferred_from.join(\",\") + \" to \" + event.transferred_to.join(\",\");\n}\n\nconsole.log(handle(rawBody, header));"
+   },
+   "mapping": "When a purchase's owner changes, `recordTransfer` in `services/purchases.ts` records `TRANSFER` with the app user ids of both customers. A transfer made through the customer-extras API records it too.",
+   "related": [
+    "webhook-subscriber-alias",
+    "webhook-purchase-redeemed",
+    "webhook-initial-purchase"
+   ],
+   "links": [
+    {
+     "label": "TRANSFER fields and a recorded example payload",
+     "url": "../../api/webhook-events.md#transfer"
+    },
+    {
+     "label": "Webhooks guide: set up, verify and test",
+     "url": "../guides/webhooks.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot docs: which webhook events RevenueDot sends",
+     "url": "https://revenuedot.app/docs/api/webhook-events"
+    },
+    {
+     "label": "RevenueCat: webhook event types and fields (the format RevenueDot follows)",
+     "url": "https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields"
+    },
+    {
+     "label": "RevenueDot core: events.ts (the event types and the rules that derive them)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/purchases.ts (where store changes become events)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/purchases.ts"
+    },
+    {
+     "label": "RevenueDot server: services/events.ts (how an event is recorded and delivered)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "webhook-test",
+   "label": "Webhook: TEST",
+   "event": "TEST",
+   "title": "What does the RevenueDot webhook event TEST mean?",
+   "description": "TEST is sent by the dashboard's Send test event or the webhook test API. It is shaped like a purchase, for no real customer. Use it to check your endpoint and signature check.",
+   "answer": "The RevenueDot webhook event TEST is a sample event that RevenueDot sends only when you ask for a test delivery.",
+   "symbol": "`TEST`",
+   "api": "RevenueDot webhook (`event.type`), RevenueCat's webhook format",
+   "facts": [
+    [
+     "Sent to",
+     "Every enabled webhook whose filters match"
+    ]
+   ],
+   "definitionLabel": "What it means",
+   "definition": "Sent by the dashboard's \"Send test event\" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase, for no real customer, so it never carries `experiments`.",
+   "causes": [
+    "You pressed Send test event in the dashboard, or called the test endpoint of the webhook.",
+    "It is shaped like a purchase so that your parser meets every field.",
+    "It is for no real customer."
+   ],
+   "fixes": [
+    "Answer HTTP 200 and do not grant anything.",
+    "Use it to check your signature verification against the real header.",
+    "Look in the dashboard's delivery log if it does not arrive.",
+    "Deduplicate on `event.id`: deliveries can repeat, because anything but HTTP 200 is retried after 5, 10, 20, 40 and 80 minutes."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "check the signature works",
+    "code": "import { createHmac, timingSafeEqual } from \"node:crypto\";\n\n// X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\">\nfunction verify(rawBody, header, secret, toleranceSeconds = 300) {\n  const m = /^t=(\\d+),v1=([0-9a-f]{64})$/.exec(header ?? \"\");\n  if (!m || Math.abs(Date.now() / 1000 - Number(m[1])) > toleranceSeconds) return false;\n  const expected = createHmac(\"sha256\", secret).update(`${m[1]}.${rawBody}`).digest();\n  return timingSafeEqual(expected, Buffer.from(m[2], \"hex\"));\n}\n\n// Sign a sample delivery the way RevenueDot does, then handle it.\nconst secret = \"whsec_test_secret\";\nconst rawBody = JSON.stringify({ api_version: \"1.0\", event: {\"id\":\"66339910-3BFF-49F4-B873-D1283D673DE2\",\"type\":\"TEST\",\"app_user_id\":\"user_1\",\"product_id\":\"pro_monthly\",\"period_type\":\"NORMAL\"} });\nconst t = Math.floor(Date.now() / 1000);\nconst header = `t=${t},v1=${createHmac(\"sha256\", secret).update(`${t}.${rawBody}`).digest(\"hex\")}`;\n\nconst seen = new Set(); // use a database table in production\n\nfunction handle(rawBody, header) {\n  if (!verify(rawBody, header, secret)) return \"401 bad signature\";\n  const { event } = JSON.parse(rawBody);\n  if (seen.has(event.id)) return \"200 duplicate\";\n  seen.add(event.id);\n  if (event.type !== \"TEST\") return \"200 ignored\";\n  return \"200, check the signature works, change nothing\";\n}\n\nconsole.log(handle(rawBody, header));"
+   },
+   "mapping": "The webhook test route (`routes/v2/partner-integrations.ts`) builds a `TEST` event shaped like a purchase for no real customer, stores it and queues it to the webhook you tested, where it is signed like any delivery. It never carries `experiments`.",
+   "related": [
+    "webhook-initial-purchase",
+    "webhook-renewal",
+    "webhook-cancellation"
+   ],
+   "links": [
+    {
+     "label": "TEST fields and a recorded example payload",
+     "url": "../../api/webhook-events.md#test"
+    },
+    {
+     "label": "Webhooks guide: set up, verify and test",
+     "url": "../guides/webhooks.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot docs: which webhook events RevenueDot sends",
+     "url": "https://revenuedot.app/docs/api/webhook-events"
+    },
+    {
+     "label": "RevenueCat: webhook event types and fields (the format RevenueDot follows)",
+     "url": "https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields"
+    },
+    {
+     "label": "RevenueDot core: events.ts (the event types and the rules that derive them)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: routes/v2/partner-integrations.ts (the test event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/routes/v2/partner-integrations.ts"
+    },
+    {
+     "label": "RevenueDot server: services/webhooks.ts (signing and delivery)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/webhooks.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "webhook-virtual-currency-transaction",
+   "label": "Webhook: VIRTUAL_CURRENCY_TRANSACTION",
+   "event": "VIRTUAL_CURRENCY_TRANSACTION",
+   "title": "What does the RevenueDot webhook event VIRTUAL_CURRENCY_TRANSACTION mean?",
+   "description": "VIRTUAL_CURRENCY_TRANSACTION is sent when an in-app currency was credited because a purchase was recorded or a rewarded ad was verified. Credit it in your game once.",
+   "answer": "The RevenueDot webhook event VIRTUAL_CURRENCY_TRANSACTION means a customer was credited with an in-app currency.",
+   "symbol": "`VIRTUAL_CURRENCY_TRANSACTION`",
+   "api": "RevenueDot webhook (`event.type`), RevenueCat's webhook format",
+   "facts": [
+    [
+     "Sent to",
+     "Every enabled webhook whose filters match"
+    ],
+    [
+     "Fields that are specific to it",
+     "`source`"
+    ]
+   ],
+   "definitionLabel": "What it means",
+   "definition": "An in-app currency was credited because a purchase of a granting product was recorded (`source: in_app_purchase`), or because a rewarded ad was verified and a reward rule granted currency (`source: ad_reward`, a RevenueDot extension). Not sent for adjustments made through the API.",
+   "causes": [
+    "A purchase of a product that grants currency was recorded (`source: in_app_purchase`).",
+    "A rewarded ad was verified and a reward rule granted currency (`source: ad_reward`). For that source, `product_id` and `store` are null.",
+    "Adjustments you make through the API do not send it."
+   ],
+   "fixes": [
+    "Credit the currency once, keyed on `event.id` or the transaction ID.",
+    "Branch on `source` if you treat ad rewards differently from purchases.",
+    "Do not treat it as revenue: the purchase has its own event.",
+    "Deduplicate on `event.id`: deliveries can repeat, because anything but HTTP 200 is retried after 5, 10, 20, 40 and 80 minutes."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "source in_app_purchase",
+    "code": "import { createHmac, timingSafeEqual } from \"node:crypto\";\n\n// X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\">\nfunction verify(rawBody, header, secret, toleranceSeconds = 300) {\n  const m = /^t=(\\d+),v1=([0-9a-f]{64})$/.exec(header ?? \"\");\n  if (!m || Math.abs(Date.now() / 1000 - Number(m[1])) > toleranceSeconds) return false;\n  const expected = createHmac(\"sha256\", secret).update(`${m[1]}.${rawBody}`).digest();\n  return timingSafeEqual(expected, Buffer.from(m[2], \"hex\"));\n}\n\n// Sign a sample delivery the way RevenueDot does, then handle it.\nconst secret = \"whsec_test_secret\";\nconst rawBody = JSON.stringify({ api_version: \"1.0\", event: {\"id\":\"66339910-3BFF-49F4-B873-D1283D673DE2\",\"type\":\"VIRTUAL_CURRENCY_TRANSACTION\",\"app_user_id\":\"user_1\",\"product_id\":\"pro_monthly\",\"source\":\"in_app_purchase\"} });\nconst t = Math.floor(Date.now() / 1000);\nconst header = `t=${t},v1=${createHmac(\"sha256\", secret).update(`${t}.${rawBody}`).digest(\"hex\")}`;\n\nconst seen = new Set(); // use a database table in production\n\nfunction handle(rawBody, header) {\n  if (!verify(rawBody, header, secret)) return \"401 bad signature\";\n  const { event } = JSON.parse(rawBody);\n  if (seen.has(event.id)) return \"200 duplicate\";\n  seen.add(event.id);\n  if (event.type !== \"VIRTUAL_CURRENCY_TRANSACTION\") return \"200 ignored\";\n  return \"credit the currency once, source \" + event.source;\n}\n\nconsole.log(handle(rawBody, header));"
+   },
+   "mapping": "`recordRawEvent` records it from `services/virtual-currencies.ts` when a granting purchase is applied, and from the ad reward service when a reward callback is verified. It uses its own field set: the common fields plus the currency fields.",
+   "related": [
+    "webhook-non-renewing-purchase",
+    "webhook-initial-purchase",
+    "webhook-renewal"
+   ],
+   "links": [
+    {
+     "label": "VIRTUAL_CURRENCY_TRANSACTION fields and a recorded example payload",
+     "url": "../../api/webhook-events.md#virtual_currency_transaction"
+    },
+    {
+     "label": "Webhooks guide: set up, verify and test",
+     "url": "../guides/webhooks.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot docs: which webhook events RevenueDot sends",
+     "url": "https://revenuedot.app/docs/api/webhook-events"
+    },
+    {
+     "label": "RevenueCat: webhook event types and fields (the format RevenueDot follows)",
+     "url": "https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields"
+    },
+    {
+     "label": "RevenueDot core: events.ts (the event types and the rules that derive them)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/virtual-currencies.ts",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/virtual-currencies.ts"
+    },
+    {
+     "label": "RevenueDot server: services/events.ts (how an event is recorded and delivered)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "webhook-experiment-enrollment",
+   "label": "Webhook: EXPERIMENT_ENROLLMENT",
+   "event": "EXPERIMENT_ENROLLMENT",
+   "title": "What does the RevenueDot webhook event EXPERIMENT_ENROLLMENT mean?",
+   "description": "EXPERIMENT_ENROLLMENT is sent once per customer and experiment when a customer joins an offering experiment. It carries no app, so app-scoped webhooks do not get it.",
+   "answer": "The RevenueDot webhook event EXPERIMENT_ENROLLMENT means a customer joined an offering experiment.",
+   "symbol": "`EXPERIMENT_ENROLLMENT`",
+   "api": "RevenueDot webhook (`event.type`), RevenueCat's webhook format",
+   "facts": [
+    [
+     "Sent to",
+     "Every enabled webhook whose filters match"
+    ],
+    [
+     "Fields that are specific to it",
+     "`experiment_id`, `experiment_variant`, `offering_id`, `experiment_enrolled_at_ms`"
+    ]
+   ],
+   "definitionLabel": "What it means",
+   "definition": "A customer joined an offering experiment: the first offerings request that enrolled them. Sent once per customer and experiment, as a production event with no app.",
+   "causes": [
+    "The first offerings request of a customer that matches an experiment's targeting enrolls them in a variant.",
+    "It is sent once per customer and experiment.",
+    "It is a production event with no app, so a webhook set to sandbox only, or to one app, does not get it."
+   ],
+   "fixes": [
+    "Store the `experiment_id` and `experiment_variant` (`a` is the control) against the customer so your analytics can split results.",
+    "Do not use it to grant anything.",
+    "Use a webhook set to production and all apps if you need it.",
+    "Deduplicate on `event.id`: deliveries can repeat, because anything but HTTP 200 is retried after 5, 10, 20, 40 and 80 minutes."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "variant b",
+    "code": "import { createHmac, timingSafeEqual } from \"node:crypto\";\n\n// X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\">\nfunction verify(rawBody, header, secret, toleranceSeconds = 300) {\n  const m = /^t=(\\d+),v1=([0-9a-f]{64})$/.exec(header ?? \"\");\n  if (!m || Math.abs(Date.now() / 1000 - Number(m[1])) > toleranceSeconds) return false;\n  const expected = createHmac(\"sha256\", secret).update(`${m[1]}.${rawBody}`).digest();\n  return timingSafeEqual(expected, Buffer.from(m[2], \"hex\"));\n}\n\n// Sign a sample delivery the way RevenueDot does, then handle it.\nconst secret = \"whsec_test_secret\";\nconst rawBody = JSON.stringify({ api_version: \"1.0\", event: {\"id\":\"66339910-3BFF-49F4-B873-D1283D673DE2\",\"type\":\"EXPERIMENT_ENROLLMENT\",\"app_user_id\":\"user_1\",\"product_id\":\"pro_monthly\",\"experiment_id\":\"exp_1\",\"experiment_variant\":\"b\"} });\nconst t = Math.floor(Date.now() / 1000);\nconst header = `t=${t},v1=${createHmac(\"sha256\", secret).update(`${t}.${rawBody}`).digest(\"hex\")}`;\n\nconst seen = new Set(); // use a database table in production\n\nfunction handle(rawBody, header) {\n  if (!verify(rawBody, header, secret)) return \"401 bad signature\";\n  const { event } = JSON.parse(rawBody);\n  if (seen.has(event.id)) return \"200 duplicate\";\n  seen.add(event.id);\n  if (event.type !== \"EXPERIMENT_ENROLLMENT\") return \"200 ignored\";\n  return \"record \" + event.app_user_id + \" in \" + event.experiment_id + \" variant \" + event.experiment_variant;\n}\n\nconsole.log(handle(rawBody, header));"
+   },
+   "mapping": "`services/targeting.ts` records it with `recordRawEvent` in the experiment shape (no `app_id`, no subscriber attributes) the first time a customer is enrolled.",
+   "related": [
+    "webhook-initial-purchase",
+    "webhook-test",
+    "webhook-transfer"
+   ],
+   "links": [
+    {
+     "label": "EXPERIMENT_ENROLLMENT fields and a recorded example payload",
+     "url": "../../api/webhook-events.md#experiment_enrollment"
+    },
+    {
+     "label": "Webhooks guide: set up, verify and test",
+     "url": "../guides/webhooks.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot docs: which webhook events RevenueDot sends",
+     "url": "https://revenuedot.app/docs/api/webhook-events"
+    },
+    {
+     "label": "RevenueCat: webhook event types and fields (the format RevenueDot follows)",
+     "url": "https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields"
+    },
+    {
+     "label": "RevenueDot core: events.ts (the event types and the rules that derive them)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/targeting.ts",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/targeting.ts"
+    },
+    {
+     "label": "RevenueDot server: services/events.ts (how an event is recorded and delivered)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "webhook-purchase-redeemed",
+   "label": "Webhook: PURCHASE_REDEEMED",
+   "event": "PURCHASE_REDEEMED",
+   "title": "What does the RevenueDot webhook event PURCHASE_REDEEMED mean?",
+   "description": "PURCHASE_REDEEMED is sent when a web purchase is redeemed in the app through a redemption link. The anonymous web customer is merged into the app user.",
+   "answer": "The RevenueDot webhook event PURCHASE_REDEEMED means a web purchase was redeemed in the app, so the customer who paid on the web is now the app user.",
+   "symbol": "`PURCHASE_REDEEMED`",
+   "api": "RevenueDot webhook (`event.type`), RevenueCat's webhook format",
+   "facts": [
+    [
+     "Sent to",
+     "Every enabled webhook whose filters match"
+    ],
+    [
+     "Fields that are specific to it",
+     "`redeemed_from`, `redeemed_by`, `redemption_outcome`, `redemption_platform`"
+    ]
+   ],
+   "definitionLabel": "What it means",
+   "definition": "A web purchase was redeemed in the app through a redemption link (`POST /v1/subscribers/redeem_purchase`): the anonymous customer who paid on the web was merged into the app user.",
+   "causes": [
+    "The app called the redeem endpoint with a token from a redemption link after a web checkout.",
+    "The anonymous customer who paid is merged into the app user.",
+    "`redeemed_from` is the anonymous web buyer and `redeemed_by` the app user id that redeemed it. RevenueDot adds `app_user_id` to RevenueCat's sample."
+   ],
+   "fixes": [
+    "Link the web purchase to the app user in your own records.",
+    "Grant the entitlements the web purchase unlocks.",
+    "Do not treat it as a new purchase: the purchase has its own events.",
+    "Deduplicate on `event.id`: deliveries can repeat, because anything but HTTP 200 is retried after 5, 10, 20, 40 and 80 minutes."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "link the web purchase to user_1",
+    "code": "import { createHmac, timingSafeEqual } from \"node:crypto\";\n\n// X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\">\nfunction verify(rawBody, header, secret, toleranceSeconds = 300) {\n  const m = /^t=(\\d+),v1=([0-9a-f]{64})$/.exec(header ?? \"\");\n  if (!m || Math.abs(Date.now() / 1000 - Number(m[1])) > toleranceSeconds) return false;\n  const expected = createHmac(\"sha256\", secret).update(`${m[1]}.${rawBody}`).digest();\n  return timingSafeEqual(expected, Buffer.from(m[2], \"hex\"));\n}\n\n// Sign a sample delivery the way RevenueDot does, then handle it.\nconst secret = \"whsec_test_secret\";\nconst rawBody = JSON.stringify({ api_version: \"1.0\", event: {\"id\":\"66339910-3BFF-49F4-B873-D1283D673DE2\",\"type\":\"PURCHASE_REDEEMED\",\"app_user_id\":\"user_1\",\"product_id\":\"pro_monthly\",\"redeemed_from\":[\"$RCAnonymousID:a\"],\"redeemed_by\":[\"user_1\"]} });\nconst t = Math.floor(Date.now() / 1000);\nconst header = `t=${t},v1=${createHmac(\"sha256\", secret).update(`${t}.${rawBody}`).digest(\"hex\")}`;\n\nconst seen = new Set(); // use a database table in production\n\nfunction handle(rawBody, header) {\n  if (!verify(rawBody, header, secret)) return \"401 bad signature\";\n  const { event } = JSON.parse(rawBody);\n  if (seen.has(event.id)) return \"200 duplicate\";\n  seen.add(event.id);\n  if (event.type !== \"PURCHASE_REDEEMED\") return \"200 ignored\";\n  return \"link the web purchase to \" + event.redeemed_by[0];\n}\n\nconsole.log(handle(rawBody, header));"
+   },
+   "mapping": "`services/web/checkout.ts` records it when the redeem endpoint moves the web customer's purchase to the app user, using the fields of RevenueCat's sample plus `app_user_id`.",
+   "related": [
+    "webhook-transfer",
+    "webhook-subscriber-alias",
+    "webhook-initial-purchase"
+   ],
+   "links": [
+    {
+     "label": "PURCHASE_REDEEMED fields and a recorded example payload",
+     "url": "../../api/webhook-events.md#purchase_redeemed"
+    },
+    {
+     "label": "Webhooks guide: set up, verify and test",
+     "url": "../guides/webhooks.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot docs: which webhook events RevenueDot sends",
+     "url": "https://revenuedot.app/docs/api/webhook-events"
+    },
+    {
+     "label": "RevenueCat: webhook event types and fields (the format RevenueDot follows)",
+     "url": "https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields"
+    },
+    {
+     "label": "RevenueDot core: events.ts (the event types and the rules that derive them)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/web/checkout.ts",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/web/checkout.ts"
+    },
+    {
+     "label": "RevenueDot server: services/events.ts (how an event is recorded and delivered)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "webhook-subscriber-alias",
+   "label": "Webhook: SUBSCRIBER_ALIAS",
+   "event": "SUBSCRIBER_ALIAS",
+   "title": "What does the RevenueDot webhook event SUBSCRIBER_ALIAS mean?",
+   "description": "SUBSCRIBER_ALIAS is sent when a new app user id joins an existing customer. RevenueCat deprecated it, so RevenueDot sends it only to webhooks that ask for it.",
+   "answer": "The RevenueDot webhook event SUBSCRIBER_ALIAS means a new app user id was linked to an existing customer.",
+   "symbol": "`SUBSCRIBER_ALIAS`",
+   "api": "RevenueDot webhook (`event.type`), RevenueCat's webhook format",
+   "facts": [
+    [
+     "Sent to",
+     "Only webhooks whose `event_types` filter names `subscriber_alias`"
+    ],
+    [
+     "Fields that are specific to it",
+     "`original_app_user_id`"
+    ]
+   ],
+   "definitionLabel": "What it means",
+   "definition": "A new app user id joined an existing customer: `logIn` onto an anonymous customer, `logIn` that merged an anonymous customer into an existing one, Android's alias call, or a restore that merged two customers.",
+   "causes": [
+    "The app called `logIn` and the anonymous customer got a real app user id, or two customers were merged.",
+    "RevenueCat deprecated the event and sends it only to older projects.",
+    "RevenueDot delivers it only to webhooks whose `event_types` filter names `subscriber_alias`, and always keeps it in the customer's event history."
+   ],
+   "fixes": [
+    "Add the new id to the customer's list of ids in your own records.",
+    "Subscribe to it only if you need to follow id changes.",
+    "Prefer reading `aliases` on any event, which lists every id of the customer.",
+    "Deduplicate on `event.id`: deliveries can repeat, because anything but HTTP 200 is retried after 5, 10, 20, 40 and 80 minutes."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "add user_1",
+    "code": "import { createHmac, timingSafeEqual } from \"node:crypto\";\n\n// X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\">\nfunction verify(rawBody, header, secret, toleranceSeconds = 300) {\n  const m = /^t=(\\d+),v1=([0-9a-f]{64})$/.exec(header ?? \"\");\n  if (!m || Math.abs(Date.now() / 1000 - Number(m[1])) > toleranceSeconds) return false;\n  const expected = createHmac(\"sha256\", secret).update(`${m[1]}.${rawBody}`).digest();\n  return timingSafeEqual(expected, Buffer.from(m[2], \"hex\"));\n}\n\n// Sign a sample delivery the way RevenueDot does, then handle it.\nconst secret = \"whsec_test_secret\";\nconst rawBody = JSON.stringify({ api_version: \"1.0\", event: {\"id\":\"66339910-3BFF-49F4-B873-D1283D673DE2\",\"type\":\"SUBSCRIBER_ALIAS\",\"app_user_id\":\"user_1\",\"product_id\":\"pro_monthly\",\"original_app_user_id\":\"$RCAnonymousID:a\"} });\nconst t = Math.floor(Date.now() / 1000);\nconst header = `t=${t},v1=${createHmac(\"sha256\", secret).update(`${t}.${rawBody}`).digest(\"hex\")}`;\n\nconst seen = new Set(); // use a database table in production\n\nfunction handle(rawBody, header) {\n  if (!verify(rawBody, header, secret)) return \"401 bad signature\";\n  const { event } = JSON.parse(rawBody);\n  if (seen.has(event.id)) return \"200 duplicate\";\n  seen.add(event.id);\n  if (event.type !== \"SUBSCRIBER_ALIAS\") return \"200 ignored\";\n  return \"add \" + event.app_user_id + \" to the customer's ids\";\n}\n\nconsole.log(handle(rawBody, header));"
+   },
+   "mapping": "`recordSubscriberAlias` records it when a customer gets a new alias or two customers merge. `OPT_IN_EVENT_TYPES` in `packages/core` keeps it from any webhook that does not name it in its filter.",
+   "related": [
+    "webhook-transfer",
+    "webhook-purchase-redeemed",
+    "webhook-initial-purchase"
+   ],
+   "links": [
+    {
+     "label": "SUBSCRIBER_ALIAS fields and a recorded example payload",
+     "url": "../../api/webhook-events.md#subscriber_alias"
+    },
+    {
+     "label": "Webhooks guide: set up, verify and test",
+     "url": "../guides/webhooks.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot docs: which webhook events RevenueDot sends",
+     "url": "https://revenuedot.app/docs/api/webhook-events"
+    },
+    {
+     "label": "RevenueCat: webhook event types and fields (the format RevenueDot follows)",
+     "url": "https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields"
+    },
+    {
+     "label": "RevenueDot core: events.ts (the event types and the rules that derive them)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/events.ts (how an event is recorded and delivered)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/purchases.ts (where store changes become events)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/purchases.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "webhook-price-increase-consent-required",
+   "label": "Webhook: PRICE_INCREASE_CONSENT_REQUIRED",
+   "event": "PRICE_INCREASE_CONSENT_REQUIRED",
+   "title": "What does the RevenueDot webhook event PRICE_INCREASE_CONSENT_REQUIRED mean?",
+   "description": "PRICE_INCREASE_CONSENT_REQUIRED is sent when the store asks a customer to accept a subscription price increase. Remind them to accept before the renewal.",
+   "answer": "The RevenueDot webhook event PRICE_INCREASE_CONSENT_REQUIRED means a store asked a customer to accept a higher subscription price.",
+   "symbol": "`PRICE_INCREASE_CONSENT_REQUIRED`",
+   "api": "RevenueDot webhook (`event.type`), RevenueCat's webhook format",
+   "facts": [
+    [
+     "Sent to",
+     "Every enabled webhook whose filters match"
+    ],
+    [
+     "Fields that are specific to it",
+     "identity, `product_id`, `transaction_id`, `original_transaction_id`, `store`, `environment`, `currency`, `country_code`"
+    ]
+   ],
+   "definitionLabel": "What it means",
+   "definition": "The store asks the customer to accept a price increase.",
+   "causes": [
+    "On the App Store, the price increase needs consent and the customer has not answered (`PRICE_INCREASE` with subtype `PENDING`).",
+    "On Google Play, an opt-in price increase is outstanding, or a price step-up awaits consent.",
+    "If the customer never accepts, the subscription ends."
+   ],
+   "fixes": [
+    "Show a message in your app that the new price needs their consent.",
+    "Watch for `PRICE_INCREASE_CONSENT_APPROVED` or an `EXPIRATION`.",
+    "Use `currency` and `country_code` to say which price applies.",
+    "Deduplicate on `event.id`: deliveries can repeat, because anything but HTTP 200 is retried after 5, 10, 20, 40 and 80 minutes."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "remind user_1",
+    "code": "import { createHmac, timingSafeEqual } from \"node:crypto\";\n\n// X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\">\nfunction verify(rawBody, header, secret, toleranceSeconds = 300) {\n  const m = /^t=(\\d+),v1=([0-9a-f]{64})$/.exec(header ?? \"\");\n  if (!m || Math.abs(Date.now() / 1000 - Number(m[1])) > toleranceSeconds) return false;\n  const expected = createHmac(\"sha256\", secret).update(`${m[1]}.${rawBody}`).digest();\n  return timingSafeEqual(expected, Buffer.from(m[2], \"hex\"));\n}\n\n// Sign a sample delivery the way RevenueDot does, then handle it.\nconst secret = \"whsec_test_secret\";\nconst rawBody = JSON.stringify({ api_version: \"1.0\", event: {\"id\":\"66339910-3BFF-49F4-B873-D1283D673DE2\",\"type\":\"PRICE_INCREASE_CONSENT_REQUIRED\",\"app_user_id\":\"user_1\",\"product_id\":\"pro_monthly\",\"currency\":\"USD\",\"country_code\":\"US\"} });\nconst t = Math.floor(Date.now() / 1000);\nconst header = `t=${t},v1=${createHmac(\"sha256\", secret).update(`${t}.${rawBody}`).digest(\"hex\")}`;\n\nconst seen = new Set(); // use a database table in production\n\nfunction handle(rawBody, header) {\n  if (!verify(rawBody, header, secret)) return \"401 bad signature\";\n  const { event } = JSON.parse(rawBody);\n  if (seen.has(event.id)) return \"200 duplicate\";\n  seen.add(event.id);\n  if (event.type !== \"PRICE_INCREASE_CONSENT_REQUIRED\") return \"200 ignored\";\n  return \"remind \" + event.app_user_id + \" to accept the new price\";\n}\n\nconsole.log(handle(rawBody, header));"
+   },
+   "mapping": "`priceIncreaseEvents` returns it when the stored consent state changes to pending. Apple's renewal info (`priceIncreaseStatus` 0) and Google's price change details set that state.",
+   "related": [
+    "webhook-price-increase-consent-approved",
+    "webhook-expiration",
+    "webhook-renewal"
+   ],
+   "links": [
+    {
+     "label": "PRICE_INCREASE_CONSENT_REQUIRED fields and a recorded example payload",
+     "url": "../../api/webhook-events.md#price_increase_consent_required"
+    },
+    {
+     "label": "Webhooks guide: set up, verify and test",
+     "url": "../guides/webhooks.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot docs: which webhook events RevenueDot sends",
+     "url": "https://revenuedot.app/docs/api/webhook-events"
+    },
+    {
+     "label": "RevenueCat: webhook event types and fields (the format RevenueDot follows)",
+     "url": "https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields"
+    },
+    {
+     "label": "RevenueDot core: events.ts (the event types and the rules that derive them)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/events.ts (how an event is recorded and delivered)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/purchases.ts (where store changes become events)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/purchases.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "webhook-price-increase-consent-approved",
+   "label": "Webhook: PRICE_INCREASE_CONSENT_APPROVED",
+   "event": "PRICE_INCREASE_CONSENT_APPROVED",
+   "title": "What does the RevenueDot webhook event PRICE_INCREASE_CONSENT_APPROVED mean?",
+   "description": "PRICE_INCREASE_CONSENT_APPROVED is sent when a customer accepted a subscription price increase. Record the new price. Access and renewal continue.",
+   "answer": "The RevenueDot webhook event PRICE_INCREASE_CONSENT_APPROVED means a customer accepted a higher subscription price.",
+   "symbol": "`PRICE_INCREASE_CONSENT_APPROVED`",
+   "api": "RevenueDot webhook (`event.type`), RevenueCat's webhook format",
+   "facts": [
+    [
+     "Sent to",
+     "Every enabled webhook whose filters match"
+    ],
+    [
+     "Fields that are specific to it",
+     "identity, `product_id`, `transaction_id`, `original_transaction_id`, `store`, `environment`, `currency`, `country_code`"
+    ]
+   ],
+   "definitionLabel": "What it means",
+   "definition": "The customer accepted the price increase.",
+   "causes": [
+    "The customer consented to the increase in the store's sheet.",
+    "On the App Store it can also mean an increase that needed no consent was notified.",
+    "The subscription renews at the new price."
+   ],
+   "fixes": [
+    "Record the new price for revenue reports and stop the reminder.",
+    "Do not change access.",
+    "Compare accepted and expired customers to learn the effect of the increase.",
+    "Deduplicate on `event.id`: deliveries can repeat, because anything but HTTP 200 is retried after 5, 10, 20, 40 and 80 minutes."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "stop the reminder",
+    "code": "import { createHmac, timingSafeEqual } from \"node:crypto\";\n\n// X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\">\nfunction verify(rawBody, header, secret, toleranceSeconds = 300) {\n  const m = /^t=(\\d+),v1=([0-9a-f]{64})$/.exec(header ?? \"\");\n  if (!m || Math.abs(Date.now() / 1000 - Number(m[1])) > toleranceSeconds) return false;\n  const expected = createHmac(\"sha256\", secret).update(`${m[1]}.${rawBody}`).digest();\n  return timingSafeEqual(expected, Buffer.from(m[2], \"hex\"));\n}\n\n// Sign a sample delivery the way RevenueDot does, then handle it.\nconst secret = \"whsec_test_secret\";\nconst rawBody = JSON.stringify({ api_version: \"1.0\", event: {\"id\":\"66339910-3BFF-49F4-B873-D1283D673DE2\",\"type\":\"PRICE_INCREASE_CONSENT_APPROVED\",\"app_user_id\":\"user_1\",\"product_id\":\"pro_monthly\",\"currency\":\"USD\",\"country_code\":\"US\"} });\nconst t = Math.floor(Date.now() / 1000);\nconst header = `t=${t},v1=${createHmac(\"sha256\", secret).update(`${t}.${rawBody}`).digest(\"hex\")}`;\n\nconst seen = new Set(); // use a database table in production\n\nfunction handle(rawBody, header) {\n  if (!verify(rawBody, header, secret)) return \"401 bad signature\";\n  const { event } = JSON.parse(rawBody);\n  if (seen.has(event.id)) return \"200 duplicate\";\n  seen.add(event.id);\n  if (event.type !== \"PRICE_INCREASE_CONSENT_APPROVED\") return \"200 ignored\";\n  return \"stop the reminder for \" + event.app_user_id + \", record the new price\";\n}\n\nconsole.log(handle(rawBody, header));"
+   },
+   "mapping": "`priceIncreaseEvents` returns it when the stored consent state changes to accepted. Apple's `PRICE_INCREASE` with subtype `ACCEPTED` and Google's confirmed state set it.",
+   "related": [
+    "webhook-price-increase-consent-required",
+    "webhook-renewal",
+    "webhook-expiration"
+   ],
+   "links": [
+    {
+     "label": "PRICE_INCREASE_CONSENT_APPROVED fields and a recorded example payload",
+     "url": "../../api/webhook-events.md#price_increase_consent_approved"
+    },
+    {
+     "label": "Webhooks guide: set up, verify and test",
+     "url": "../guides/webhooks.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot docs: which webhook events RevenueDot sends",
+     "url": "https://revenuedot.app/docs/api/webhook-events"
+    },
+    {
+     "label": "RevenueCat: webhook event types and fields (the format RevenueDot follows)",
+     "url": "https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields"
+    },
+    {
+     "label": "RevenueDot core: events.ts (the event types and the rules that derive them)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/events.ts (how an event is recorded and delivered)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/purchases.ts (where store changes become events)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/purchases.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "webhook-temporary-entitlement-grant",
+   "label": "Webhook: TEMPORARY_ENTITLEMENT_GRANT",
+   "event": "TEMPORARY_ENTITLEMENT_GRANT",
+   "neverSent": true,
+   "title": "What does the RevenueDot webhook event TEMPORARY_ENTITLEMENT_GRANT mean?",
+   "description": "TEMPORARY_ENTITLEMENT_GRANT is accepted in a webhook filter but RevenueDot never sends it, because it never grants access it has not verified with the store.",
+   "answer": "The RevenueDot webhook event TEMPORARY_ENTITLEMENT_GRANT is never sent, because RevenueDot never grants access that the store has not verified.",
+   "symbol": "`TEMPORARY_ENTITLEMENT_GRANT`",
+   "api": "RevenueDot webhook (`event.type`), RevenueCat's webhook format",
+   "facts": [
+    [
+     "Sent to",
+     "No webhook: it is never sent"
+    ],
+    [
+     "Fields that are specific to it",
+     "none"
+    ]
+   ],
+   "definitionLabel": "What it means",
+   "definition": "A RevenueCat event type for access granted without a verified purchase, during a store outage. RevenueDot accepts it in a webhook's `event_types` filter and never sends it.",
+   "causes": [
+    "RevenueCat sends it when it grants a temporary entitlement while a store is down.",
+    "RevenueDot never has that fact: it does not grant access it has not verified with the store.",
+    "During a store outage the SDK keeps the purchase and grants access on the device from the offline entitlement mapping."
+   ],
+   "fixes": [
+    "Do not wait for this event. Your handler may keep a case for it so a RevenueCat handler still compiles.",
+    "If you migrate from RevenueCat, remove any logic that depends on it, or keep it as a no-op.",
+    "Use the offline entitlements guide for how access works during an outage.",
+    "Deduplicate on `event.id`: deliveries can repeat, because anything but HTTP 200 is retried after 5, 10, 20, 40 and 80 minutes."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "no-op",
+    "code": "import { createHmac, timingSafeEqual } from \"node:crypto\";\n\n// X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\">\nfunction verify(rawBody, header, secret, toleranceSeconds = 300) {\n  const m = /^t=(\\d+),v1=([0-9a-f]{64})$/.exec(header ?? \"\");\n  if (!m || Math.abs(Date.now() / 1000 - Number(m[1])) > toleranceSeconds) return false;\n  const expected = createHmac(\"sha256\", secret).update(`${m[1]}.${rawBody}`).digest();\n  return timingSafeEqual(expected, Buffer.from(m[2], \"hex\"));\n}\n\n// Sign a sample delivery the way RevenueDot does, then handle it.\nconst secret = \"whsec_test_secret\";\nconst rawBody = JSON.stringify({ api_version: \"1.0\", event: {\"id\":\"66339910-3BFF-49F4-B873-D1283D673DE2\",\"type\":\"TEMPORARY_ENTITLEMENT_GRANT\",\"app_user_id\":\"user_1\",\"product_id\":\"pro_monthly\"} });\nconst t = Math.floor(Date.now() / 1000);\nconst header = `t=${t},v1=${createHmac(\"sha256\", secret).update(`${t}.${rawBody}`).digest(\"hex\")}`;\n\nconst seen = new Set(); // use a database table in production\n\nfunction handle(rawBody, header) {\n  if (!verify(rawBody, header, secret)) return \"401 bad signature\";\n  const { event } = JSON.parse(rawBody);\n  if (seen.has(event.id)) return \"200 duplicate\";\n  seen.add(event.id);\n  if (event.type !== \"TEMPORARY_ENTITLEMENT_GRANT\") return \"200 ignored\";\n  return \"no-op, RevenueDot never sends this\";\n}\n\nconsole.log(handle(rawBody, header));"
+   },
+   "mapping": "The type is in `EVENT_TYPES` so a filter that names it is valid, and in `NEVER_SENT_EVENT_TYPES` so nothing produces it. That makes 19 of RevenueCat's 21 event types sent.",
+   "related": [
+    "webhook-invoice-issuance",
+    "webhook-initial-purchase",
+    "webhook-test"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events RevenueDot sends, and the two it never sends",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Webhooks guide: set up, verify and test",
+     "url": "../guides/webhooks.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot docs: which webhook events RevenueDot sends",
+     "url": "https://revenuedot.app/docs/api/webhook-events"
+    },
+    {
+     "label": "RevenueCat: webhook event types and fields (the format RevenueDot follows)",
+     "url": "https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields"
+    },
+    {
+     "label": "RevenueDot core: events.ts (the event types and the rules that derive them)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "webhook-invoice-issuance",
+   "label": "Webhook: INVOICE_ISSUANCE",
+   "event": "INVOICE_ISSUANCE",
+   "neverSent": true,
+   "title": "What does the RevenueDot webhook event INVOICE_ISSUANCE mean?",
+   "description": "INVOICE_ISSUANCE is accepted in a webhook filter but RevenueDot never sends it, because only RevenueCat Billing issues invoices.",
+   "answer": "The RevenueDot webhook event INVOICE_ISSUANCE is never sent, because RevenueDot does not issue invoices.",
+   "symbol": "`INVOICE_ISSUANCE`",
+   "api": "RevenueDot webhook (`event.type`), RevenueCat's webhook format",
+   "facts": [
+    [
+     "Sent to",
+     "No webhook: it is never sent"
+    ],
+    [
+     "Fields that are specific to it",
+     "none"
+    ]
+   ],
+   "definitionLabel": "What it means",
+   "definition": "A RevenueCat event type for an invoice issued by RevenueCat Billing. RevenueDot accepts it in a webhook's `event_types` filter and never sends it.",
+   "causes": [
+    "RevenueCat sends it when RevenueCat Billing issues an invoice.",
+    "RevenueDot has no invoicing product, so nothing produces the event.",
+    "A web checkout on Stripe sends Stripe's own invoice emails and events, not this one."
+   ],
+   "fixes": [
+    "Do not wait for this event.",
+    "If you migrate from RevenueCat and used it, take invoices from Stripe's own webhooks instead.",
+    "Keep a no-op case for it if you share a handler between both systems.",
+    "Deduplicate on `event.id`: deliveries can repeat, because anything but HTTP 200 is retried after 5, 10, 20, 40 and 80 minutes."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "no-op",
+    "code": "import { createHmac, timingSafeEqual } from \"node:crypto\";\n\n// X-RevenueCat-Webhook-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\">\nfunction verify(rawBody, header, secret, toleranceSeconds = 300) {\n  const m = /^t=(\\d+),v1=([0-9a-f]{64})$/.exec(header ?? \"\");\n  if (!m || Math.abs(Date.now() / 1000 - Number(m[1])) > toleranceSeconds) return false;\n  const expected = createHmac(\"sha256\", secret).update(`${m[1]}.${rawBody}`).digest();\n  return timingSafeEqual(expected, Buffer.from(m[2], \"hex\"));\n}\n\n// Sign a sample delivery the way RevenueDot does, then handle it.\nconst secret = \"whsec_test_secret\";\nconst rawBody = JSON.stringify({ api_version: \"1.0\", event: {\"id\":\"66339910-3BFF-49F4-B873-D1283D673DE2\",\"type\":\"INVOICE_ISSUANCE\",\"app_user_id\":\"user_1\",\"product_id\":\"pro_monthly\"} });\nconst t = Math.floor(Date.now() / 1000);\nconst header = `t=${t},v1=${createHmac(\"sha256\", secret).update(`${t}.${rawBody}`).digest(\"hex\")}`;\n\nconst seen = new Set(); // use a database table in production\n\nfunction handle(rawBody, header) {\n  if (!verify(rawBody, header, secret)) return \"401 bad signature\";\n  const { event } = JSON.parse(rawBody);\n  if (seen.has(event.id)) return \"200 duplicate\";\n  seen.add(event.id);\n  if (event.type !== \"INVOICE_ISSUANCE\") return \"200 ignored\";\n  return \"no-op, RevenueDot never sends this\";\n}\n\nconsole.log(handle(rawBody, header));"
+   },
+   "mapping": "The type is in `EVENT_TYPES` so a filter that names it is valid, and in `NEVER_SENT_EVENT_TYPES` so nothing produces it.",
+   "related": [
+    "webhook-temporary-entitlement-grant",
+    "webhook-initial-purchase",
+    "webhook-test"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events RevenueDot sends, and the two it never sends",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Webhooks guide: set up, verify and test",
+     "url": "../guides/webhooks.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "RevenueDot docs: which webhook events RevenueDot sends",
+     "url": "https://revenuedot.app/docs/api/webhook-events"
+    },
+    {
+     "label": "RevenueCat: webhook event types and fields (the format RevenueDot follows)",
+     "url": "https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields"
+    },
+    {
+     "label": "RevenueDot core: events.ts (the event types and the rules that derive them)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  }
+ ]
+}

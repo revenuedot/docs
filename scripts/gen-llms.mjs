@@ -21,6 +21,8 @@ const SECTIONS = [
   { id: "migrate", title: "Migrate from RevenueCat", dir: "docs/migrate", order: ["README.md", "importer.md", "dual-run.md", "sdk-changes.md", "cutover-checklist.md", "what-differs.md"] },
   { id: "api", title: "API reference", dir: "api", order: ["README.md", "authentication.md", "errors.md", "sdk-endpoints.md", "rest-v1.md", "rest-v2.md", "extensions.md", "enterprise.md", "webhook-events.md"] },
   { id: "errors", title: "Error reference: StoreKit, Play Billing and SDK error codes", dir: "docs/errors", order: ["README.md"] },
+  { id: "notifications", title: "Store notification reference: App Store Server Notifications and Google Play RTDN", dir: "docs/notifications", order: ["README.md"] },
+  { id: "webhooks", title: "Webhook event reference: what each RevenueDot event means", dir: "docs/webhooks", order: ["README.md"] },
   { id: "help", title: "Help center", dir: "docs/help", order: ["README.md", "faq.md", "troubleshooting.md", "known-issues.md"] },
   { id: "blog", title: "Blog", dir: "blog", order: ["README.md"] },
 ];
