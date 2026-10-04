@@ -2191,7 +2191,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/purchases" -H 
 
 `GET /v2/projects/{project_id}/customers/{customer_id}/events` · Auth: secret key or dashboard session · Permissions: `customer_information:customers:read`
 
-Newest first. `body` is the webhook event.
+Newest first. `body` is the webhook event. Paywall events (PAYWALL_*) only with `include_paywall_events=true` or when `type` names them.
 
 **Path parameters**
 
@@ -2204,6 +2204,8 @@ Newest first. `body` is the webhook event.
 
 | Name | Type | Required | Description |
 |---|---|---|---|
+| `type` | array of string | no | Event types (any case); repeat or comma-separate. Naming a paywall type returns it. |
+| `include_paywall_events` | boolean | no | Also return paywall events (PAYWALL_*). Default false: paywall events are left out unless `type` names them. |
 | `environment` | `production`, `sandbox` | no | Only this environment. Default: both. |
 | `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
 | `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |

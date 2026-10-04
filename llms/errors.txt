@@ -12,7 +12,7 @@ Generated from https://github.com/revenuedot/docs by scripts/gen-llms.mjs. Index
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/README.md
 Description: One page per Apple StoreKit 2 error, Google Play Billing response code and purchases SDK error code: what it means, why it happens, how to fix it, and where the vendor says so.
 
-Each page below answers one error in a sentence, then gives the cause, the fix, an example and the vendor source it was checked against (40 pages). For the full list of RevenueDot server error codes, see [what RevenueDot's API errors mean](https://raw.githubusercontent.com/revenuedot/docs/main/api/errors.md).
+Each page below answers one error in a sentence, then gives the cause, the fix, an example and the vendor source it was checked against (52 pages). For the full list of RevenueDot server error codes, see [what RevenueDot's API errors mean](https://raw.githubusercontent.com/revenuedot/docs/main/api/errors.md).
 
 ## Apple StoreKit 2 errors
 
@@ -33,6 +33,16 @@ The error cases the StoreKit 2 Swift API throws when you load products, buy, ref
 - [What does Product.PurchaseError.invalidOfferSignature mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-purchase-error-invalid-offer-signature.md)
 - [What does Transaction.RefundRequestError.duplicateRequest mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-refund-error-duplicate-request.md)
 - [What does VerificationError.invalidSignature mean in StoreKit 2?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-verification-error-invalid-signature.md)
+- [What does Product.PurchaseError.invalidOfferPrice mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-purchase-error-invalid-offer-price.md)
+- [What does Product.PurchaseError.missingOfferParameters mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-purchase-error-missing-offer-parameters.md)
+- [What does Product.PurchaseError.paymentMethodBindingConfigurationRequired mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-purchase-error-payment-method-binding-configuration-required.md)
+- [What does StoreKitError.invalidPresentationContext mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-error-invalid-presentation-context.md)
+- [What does Transaction.RefundRequestError.failed mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-refund-error-failed.md)
+- [What does VerificationError.invalidCertificateChain mean in StoreKit 2?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-verification-error-invalid-certificate-chain.md)
+- [What does VerificationError.invalidDeviceVerification mean in StoreKit 2?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-verification-error-invalid-device-verification.md)
+- [What does VerificationError.invalidEncoding mean in StoreKit 2?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-verification-error-invalid-encoding.md)
+- [What does VerificationError.missingRequiredProperties mean in StoreKit 2?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-verification-error-missing-required-properties.md)
+- [What does VerificationError.revokedCertificate mean in StoreKit 2?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-verification-error-revoked-certificate.md)
 
 ## Google Play Billing response codes
 
@@ -48,6 +58,8 @@ The `BillingResponseCode` values that Play Billing Library calls return in a `Bi
 - [What does Play Billing ITEM_NOT_OWNED (8) mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/play-billing-item-not-owned.md)
 - [What does Play Billing NETWORK_ERROR (12) mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/play-billing-network-error.md)
 - [What does Play Billing USER_CANCELED (1) mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/play-billing-user-canceled.md)
+- [What does Play Billing FEATURE_NOT_SUPPORTED (-2) mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/play-billing-feature-not-supported.md)
+- [What does Play Billing SERVICE_TIMEOUT (-3) mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/play-billing-service-timeout.md)
 
 ## Purchases SDK error codes
 
@@ -264,6 +276,69 @@ The RevenueDot `purchases-android` fork maps `ERROR` to `PurchasesErrorCode.Stor
 ## Source
 
 - [Google: BillingResponseCode.ERROR](https://developer.android.com/reference/com/android/billingclient/api/BillingClient.BillingResponseCode)
+- [Google: Handle BillingResult response codes](https://developer.android.com/google/play/billing/errors)
+- [RevenueDot purchases-android: google/errors.kt (how the SDK maps response codes)](https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt)
+
+Checked: 2026-10-03
+
+---
+
+# What does Play Billing FEATURE_NOT_SUPPORTED (-2) mean?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/play-billing-feature-not-supported.md
+Description: FEATURE_NOT_SUPPORTED (-2) means the Play Store on the device does not support the Billing feature you called. It cannot be retried; check isFeatureSupported() first.
+
+Play Billing FEATURE_NOT_SUPPORTED (-2) means the Google Play Billing feature you called is not supported on this device.
+
+## Quick facts
+
+| | |
+|---|---|
+| Error | `BillingClient.BillingResponseCode.FEATURE_NOT_SUPPORTED` (-2) |
+| Where | Google Play Billing Library (`BillingResult.responseCode`) |
+| What the vendor says | The requested feature is not supported by the Play Store on the current device. |
+
+## Cause
+
+- Google says the cause is likely an old Play Store version on the user's device. Its example is a device that does not support in-app messaging.
+- Google lists it among the non-retriable responses: trying again on the same device gives the same answer.
+- It is a property of the device and Play Store version, not of your app's configuration.
+
+## Fix
+
+1. Call `billingClient.isFeatureSupported(FeatureType)` before you use an optional feature, and only use the feature when the response is `OK`.
+2. Do not retry the call. Hide the feature or use a fallback for that device.
+3. Do not show a purchase error to the person: the product itself may still be sellable without the optional feature.
+4. Keep the Billing Library current, because newer versions know more feature types.
+
+## Example
+
+```kotlin
+import com.android.billingclient.api.BillingClient
+
+// Ask before you use an optional feature. FEATURE_NOT_SUPPORTED cannot be fixed by retrying.
+fun supportsInAppMessaging(billingClient: BillingClient): Boolean {
+    if (!billingClient.isReady) return false
+    val result = billingClient.isFeatureSupported(BillingClient.FeatureType.IN_APP_MESSAGING)
+    return result.responseCode == BillingClient.BillingResponseCode.OK
+}
+```
+
+*Not compiled: this Kotlin snippet was not built here because the docs repo has no Kotlin or Android toolchain. Check it against your Play Billing Library or SDK version before you ship it.*
+
+## How the RevenueDot SDK reports it
+
+The RevenueDot `purchases-android` fork maps `FEATURE_NOT_SUPPORTED` to `PurchasesErrorCode.PurchaseNotAllowedError` (code 3), the same code it uses for `BILLING_UNAVAILABLE` and `ITEM_NOT_OWNED`. See [what purchaseNotAllowedError means](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/sdk-purchase-not-allowed-error.md).
+
+## Related
+
+- [What does Play Billing BILLING_UNAVAILABLE (3) mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/play-billing-billing-unavailable.md)
+- [What does Play Billing DEVELOPER_ERROR (5) mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/play-billing-developer-error.md)
+- [What does purchaseNotAllowedError (code 3) mean in the purchases SDK?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/sdk-purchase-not-allowed-error.md)
+
+## Source
+
+- [Google: BillingResponseCode.FEATURE_NOT_SUPPORTED](https://developer.android.com/reference/com/android/billingclient/api/BillingClient.BillingResponseCode)
 - [Google: Handle BillingResult response codes](https://developer.android.com/google/play/billing/errors)
 - [RevenueDot purchases-android: google/errors.kt (how the SDK maps response codes)](https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt)
 
@@ -599,6 +674,77 @@ The RevenueDot `purchases-android` fork maps `SERVICE_DISCONNECTED` to `Purchase
 - [Google: BillingResponseCode.SERVICE_DISCONNECTED](https://developer.android.com/reference/com/android/billingclient/api/BillingClient.BillingResponseCode)
 - [Google: Handle BillingResult response codes](https://developer.android.com/google/play/billing/errors)
 - [RevenueDot purchases-android: google/errors.kt (how the SDK maps response codes)](https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt)
+
+Checked: 2026-10-03
+
+---
+
+# What does Play Billing SERVICE_TIMEOUT (-3) mean?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/play-billing-service-timeout.md
+Description: SERVICE_TIMEOUT (-3) means Google Play did not answer before the request timed out. Only Billing Library 5.2.0 and earlier return it; retry the same call, with backoff in the background.
+
+Play Billing SERVICE_TIMEOUT (-3) means a request reached its maximum timeout before Google Play could answer.
+
+## Quick facts
+
+| | |
+|---|---|
+| Error | `BillingClient.BillingResponseCode.SERVICE_TIMEOUT` (-3) |
+| Where | Google Play Billing Library (`BillingResult.responseCode`) |
+| What the vendor says | The request has reached the maximum timeout before Google Play responds. |
+
+## Cause
+
+- Google gives an example: a delay in executing the action that the Billing Library call asked for.
+- Only Billing Library 5.2.0 and earlier return it. From 6.0.0 `SERVICE_UNAVAILABLE` is returned for the same problem and `SERVICE_TIMEOUT` is deprecated.
+- Unlike `SERVICE_DISCONNECTED`, the connection to the billing service is still up.
+
+## Fix
+
+1. Retry the same Billing Library call. Use a simple retry for something the person waits on, and exponential backoff for background work.
+2. Do not call `startConnection()` again, because the connection is not severed.
+3. Upgrade the Billing Library. Version 8 is required for new apps and updates from 2026-08-31, and it never returns this code.
+4. Treat `SERVICE_UNAVAILABLE` the same way, so one handler covers both.
+
+## Example
+
+```kotlin
+import com.android.billingclient.api.BillingClient
+import com.android.billingclient.api.BillingResult
+import kotlinx.coroutines.delay
+
+// Retry the same call on a timeout; the connection is fine (Google's guidance for code -3).
+suspend fun <T> retryOnTimeout(maxTries: Int = 3, call: suspend () -> Pair<BillingResult, T>): Pair<BillingResult, T> {
+    var result = call()
+    var tries = 1
+    while (result.first.responseCode == BillingClient.BillingResponseCode.SERVICE_TIMEOUT && tries < maxTries) {
+        delay(2_000L * tries)
+        result = call()
+        tries++
+    }
+    return result
+}
+```
+
+*Not compiled: this Kotlin snippet was not built here because the docs repo has no Kotlin or Android toolchain. Check it against your Play Billing Library or SDK version before you ship it.*
+
+## How the RevenueDot SDK reports it
+
+The RevenueDot `purchases-android` fork maps `SERVICE_TIMEOUT` to `PurchasesErrorCode.StoreProblemError` (code 2) and, inside its own billing code, treats it as `ServiceUnavailable`. See [what storeProblemError means](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/sdk-store-problem-error.md).
+
+## Related
+
+- [What does Play Billing SERVICE_UNAVAILABLE (2) mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/play-billing-service-unavailable.md)
+- [What does Play Billing SERVICE_DISCONNECTED (-1) mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/play-billing-service-disconnected.md)
+- [What does storeProblemError (code 2) mean in the purchases SDK?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/sdk-store-problem-error.md)
+
+## Source
+
+- [Google: BillingResponseCode.SERVICE_TIMEOUT](https://developer.android.com/reference/com/android/billingclient/api/BillingClient.BillingResponseCode)
+- [Google: Handle BillingResult response codes](https://developer.android.com/google/play/billing/errors)
+- [RevenueDot purchases-android: google/errors.kt (how the SDK maps response codes)](https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt)
+- [RevenueDot purchases-android: google/BillingResponse.kt](https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/BillingResponse.kt)
 
 Checked: 2026-10-03
 
@@ -1804,6 +1950,72 @@ Checked: 2026-10-03
 
 ---
 
+# What does StoreKitError.invalidPresentationContext mean?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-error-invalid-presentation-context.md
+Description: StoreKitError.invalidPresentationContext means StoreKit cannot show its UI from the current context. Call StoreKit views and sheets from a visible scene on the main actor. Available from iOS 27.
+
+StoreKitError.invalidPresentationContext means StoreKit tried to show its own screen and could not, because the context it was given cannot present one.
+
+## Quick facts
+
+| | |
+|---|---|
+| Error | `StoreKitError.invalidPresentationContext` |
+| Where | StoreKit 2, Swift (`StoreKitError`) |
+| Available since | iOS 27.0, iPadOS 27.0, macOS 27.0, tvOS 27.0, watchOS 27.0, visionOS 27.0 |
+| What the vendor says | StoreKit UI cannot be presented from the current context. |
+
+## Cause
+
+- Apple's case page gives only that one line. The case is listed under the enumeration cases of `StoreKitError`, separate from the other error codes.
+- StoreKit shows system UI for purchase confirmation, refund requests and offer redemption. Each needs a window or scene to present from.
+- The availability line in the StoreKit interface of the Xcode 27 SDK marks the case as new in version 27, so earlier systems never throw it.
+
+## Fix
+
+1. Start the StoreKit call from the main actor and while the app has a foreground scene, for example from a button handler.
+2. Pass the scene that is on screen when an API takes one (`beginRefundRequest(in:)` takes a `UIWindowScene`).
+3. Do not start purchase or refund flows from a background task, an extension or a scene that is closing.
+4. Retry after the scene is visible again, and show a short message if it still fails.
+
+## Example
+
+```swift
+import StoreKit
+
+// invalidPresentationContext is new in version 27 systems, so check availability before you name it.
+func describe(_ error: Error) -> String {
+    if #available(iOS 27.0, macOS 27.0, tvOS 27.0, watchOS 27.0, visionOS 27.0, *),
+       case StoreKitError.invalidPresentationContext = error {
+        return "StoreKit could not show its screen from here; try again from a visible scene"
+    }
+    return "Store error: \(error)"
+}
+```
+
+*Compile-checked: `npm run check:snippets` type-checks this snippet with `swiftc` against the Apple SDK (macOS target, checked 2026-10-03).*
+
+## How the RevenueDot SDK reports it
+
+The RevenueDot `purchases-ios` fork maps `StoreKitError.invalidPresentationContext` to `ErrorCode.storeProblemError` (code 2). The branch is compiled only with a Swift 6.4 compiler (Xcode 27).
+
+## Related
+
+- [What does StoreKitError.unsupported mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-error-unsupported.md)
+- [What does StoreKitError.systemError mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-error-system-error.md)
+- [What does storeProblemError (code 2) mean in the purchases SDK?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/sdk-store-problem-error.md)
+
+## Source
+
+- [Apple: StoreKitError.invalidPresentationContext](https://developer.apple.com/documentation/storekit/storekiterror/invalidpresentationcontext)
+- [Apple: StoreKitError](https://developer.apple.com/documentation/storekit/storekiterror)
+- [RevenueDot purchases-ios: StoreKitError+Extensions.swift (how the SDK maps StoreKit 2 errors)](https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift)
+
+Checked: 2026-10-03
+
+---
+
 # What does StoreKitError.networkError mean?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-error-network-error.md
@@ -2447,6 +2659,78 @@ Checked: 2026-10-03
 
 ---
 
+# What does Product.PurchaseError.invalidOfferPrice mean?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-purchase-error-invalid-offer-price.md
+Description: Product.PurchaseError.invalidOfferPrice means the App Store says the price of the promotional offer is not valid. Reload the product, check the offer in App Store Connect and try a fresh purchase.
+
+Product.PurchaseError.invalidOfferPrice means the App Store judged the price of the offer you tried to apply to be invalid.
+
+## Quick facts
+
+| | |
+|---|---|
+| Error | `Product.PurchaseError.invalidOfferPrice` |
+| Where | StoreKit 2, Swift (`Product.purchase(options:)`) |
+| Available since | iOS 15.0, iPadOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, visionOS 1.0 |
+| What the vendor says | The price of the offer isn't valid. |
+
+## Cause
+
+- Apple's case page gives only that one line and lists no causes, so the exact trigger is not documented.
+- Apple says promotional offers, with their price, are set up in App Store Connect before the app can use them ([promotionalOffer option](https://developer.apple.com/documentation/storekit/product/purchaseoption/promotionaloffer%28offerid:keyid:nonce:signature:timestamp:%29)). The offer the app applies must be one that still exists there for that product.
+- It is a sibling of `invalidOfferIdentifier` and `invalidOfferSignature`: the offer is rejected because of its data, not because the person cancelled or the network failed.
+
+## Fix
+
+1. Read the offer from `product.subscription?.promotionalOffers` after a fresh `Product.products(for:)` call, and show its `displayPrice`, so the price in your UI is the one the App Store holds.
+2. Open the offer in App Store Connect and check that it is active for the product and for the storefront the person uses.
+3. Do not reuse a signed offer after a failed attempt. Ask your server for a new signature before you try again.
+4. Test the same offer in the sandbox. If it fails there too, the offer configuration is the problem, not the device.
+
+## Example
+
+```swift
+import StoreKit
+
+// Show the price the App Store holds for the offer, and react to the rejection by reloading the product.
+func offerPrice(of product: Product, offerID: String) -> String? {
+    product.subscription?.promotionalOffers.first { $0.id == offerID }?.displayPrice
+}
+
+func buy(_ product: Product, options: Set<Product.PurchaseOption>) async {
+    do {
+        _ = try await product.purchase(options: options)
+    } catch Product.PurchaseError.invalidOfferPrice {
+        print("The App Store says the offer price is not valid; reload the product and its offers")
+    } catch {
+        print("Purchase failed: \(error)")
+    }
+}
+```
+
+*Compile-checked: `npm run check:snippets` type-checks this snippet with `swiftc` against the Apple SDK (macOS target, checked 2026-10-03).*
+
+## How the RevenueDot SDK reports it
+
+The RevenueDot `purchases-ios` fork maps `Product.PurchaseError.invalidOfferPrice` to `ErrorCode.invalidPromotionalOfferError` (code 34), together with `invalidOfferIdentifier`, `invalidOfferSignature` and `missingOfferParameters`.
+
+## Related
+
+- [What does Product.PurchaseError.invalidOfferSignature mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-purchase-error-invalid-offer-signature.md)
+- [What does Product.PurchaseError.invalidOfferIdentifier mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-purchase-error-invalid-offer-identifier.md)
+- [What does Product.PurchaseError.ineligibleForOffer mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-purchase-error-ineligible-for-offer.md)
+
+## Source
+
+- [Apple: Product.PurchaseError.invalidOfferPrice](https://developer.apple.com/documentation/storekit/product/purchaseerror/invalidofferprice)
+- [Apple: promotionalOffer purchase option](https://developer.apple.com/documentation/storekit/product/purchaseoption/promotionaloffer%28offerid:keyid:nonce:signature:timestamp:%29)
+- [RevenueDot purchases-ios: StoreKitError+Extensions.swift (how the SDK maps StoreKit 2 errors)](https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift)
+
+Checked: 2026-10-03
+
+---
+
 # What does Product.PurchaseError.invalidOfferSignature mean?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-purchase-error-invalid-offer-signature.md
@@ -2583,6 +2867,160 @@ The RevenueDot `purchases-ios` fork maps `Product.PurchaseError.invalidQuantity`
 
 - [Apple: Product.PurchaseError.invalidQuantity](https://developer.apple.com/documentation/storekit/product/purchaseerror/invalidquantity)
 - [Apple: Product.PurchaseError](https://developer.apple.com/documentation/storekit/product/purchaseerror)
+- [RevenueDot purchases-ios: StoreKitError+Extensions.swift (how the SDK maps StoreKit 2 errors)](https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift)
+
+Checked: 2026-10-03
+
+---
+
+# What does Product.PurchaseError.missingOfferParameters mean?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-purchase-error-missing-offer-parameters.md
+Description: Product.PurchaseError.missingOfferParameters means the offer parameters are missing from a purchase. Send the offer ID, key ID, nonce, signature and timestamp, or the signed JWS.
+
+Product.PurchaseError.missingOfferParameters means the purchase named an offer but did not carry all the parameters the App Store needs to apply it.
+
+## Quick facts
+
+| | |
+|---|---|
+| Error | `Product.PurchaseError.missingOfferParameters` |
+| Where | StoreKit 2, Swift (`Product.purchase(options:)`) |
+| Available since | iOS 15.0, iPadOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, visionOS 1.0 |
+| What the vendor says | The offer parameters are missing. |
+
+## Cause
+
+- Apple's case page gives only that one line. It lists no causes.
+- A promotional offer needs several values: the offer ID, and either the key ID, nonce, signature and timestamp from your server, or a compact JWS signed on your server. The `promotionalOffer(offerID:keyID:nonce:signature:timestamp:)` option takes the first group.
+- From iOS 26 the signature-and-nonce option is deprecated in the StoreKit interface in favor of `promotionalOffer(_:compactJWS:)`, so apps that mix the two styles can leave a part out.
+
+## Fix
+
+1. Build the offer option from one server response that contains every value, and pass nothing partial.
+2. Move to the JWS option (`promotionalOffer(_:compactJWS:)`) when your minimum iOS version allows it. It carries the signed offer as one string.
+3. Check that your server returns the key ID, the nonce, the timestamp and the signature, and that the app does not drop one while decoding.
+4. Request a fresh signature for each attempt. A signature works for one purchase request only.
+
+## Example
+
+```swift
+import StoreKit
+
+// Pass every parameter from one server response, so none is missing.
+struct SignedOffer {
+    let offerID: String
+    let keyID: String
+    let nonce: UUID
+    let signature: Data
+    let timestamp: Int
+}
+
+func buy(_ product: Product, offer: SignedOffer) async {
+    let option = Product.PurchaseOption.promotionalOffer(offerID: offer.offerID, keyID: offer.keyID, nonce: offer.nonce, signature: offer.signature, timestamp: offer.timestamp)
+    do {
+        _ = try await product.purchase(options: [option])
+    } catch Product.PurchaseError.missingOfferParameters {
+        print("An offer parameter is missing; request a complete signed offer from the server")
+    } catch {
+        print("Purchase failed: \(error)")
+    }
+}
+```
+
+*Compile-checked: `npm run check:snippets` type-checks this snippet with `swiftc` against the Apple SDK (macOS target, checked 2026-10-03).*
+
+## How the RevenueDot SDK reports it
+
+The RevenueDot `purchases-ios` fork maps `Product.PurchaseError.missingOfferParameters` to `ErrorCode.invalidPromotionalOfferError` (code 34). The SDK assembles the offer parameters itself when you use its promotional offer API, so you see this mostly when you build the option by hand.
+
+## Related
+
+- [What does Product.PurchaseError.invalidOfferSignature mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-purchase-error-invalid-offer-signature.md)
+- [What does Product.PurchaseError.invalidOfferPrice mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-purchase-error-invalid-offer-price.md)
+- [What does Product.PurchaseError.invalidOfferIdentifier mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-purchase-error-invalid-offer-identifier.md)
+
+## Source
+
+- [Apple: Product.PurchaseError.missingOfferParameters](https://developer.apple.com/documentation/storekit/product/purchaseerror/missingofferparameters)
+- [Apple: promotionalOffer purchase option](https://developer.apple.com/documentation/storekit/product/purchaseoption/promotionaloffer%28offerid:keyid:nonce:signature:timestamp:%29)
+- [Apple: Generating a signature for promotional offers](https://developer.apple.com/documentation/storekit/generating-a-signature-for-promotional-offers)
+- [RevenueDot purchases-ios: StoreKitError+Extensions.swift (how the SDK maps StoreKit 2 errors)](https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift)
+
+Checked: 2026-10-03
+
+---
+
+# What does Product.PurchaseError.paymentMethodBindingConfigurationRequired mean?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-purchase-error-payment-method-binding-configuration-required.md
+Description: paymentMethodBindingConfigurationRequired means the customer must add a payment method to their Apple Account before buying. Use PaymentMethodBinding to prompt them, then retry the purchase.
+
+Product.PurchaseError.paymentMethodBindingConfigurationRequired means the customer has no payment method on their Apple Account, so they must add one before the purchase can go through.
+
+## Quick facts
+
+| | |
+|---|---|
+| Error | `Product.PurchaseError.paymentMethodBindingConfigurationRequired` |
+| Where | StoreKit 2, Swift (`Product.purchase(options:)`) |
+| Available since | iOS 26.5, iPadOS 26.5, macOS 26.5, tvOS 26.5, watchOS 26.5, visionOS 26.5 |
+| What the vendor says | The customer needs to add a payment method to their Apple Account before making a purchase; use PaymentMethodBinding to prompt the customer and bind the payment method. |
+
+## Cause
+
+- Apple says the customer has no usable payment method on their Apple Account at the time of the purchase.
+- `PaymentMethodBinding` is available only to eligible apps with server entitlements. Its initializer throws if the app lacks the entitlement or the person is not eligible ([PaymentMethodBinding](https://developer.apple.com/documentation/storekit/paymentmethodbinding)).
+- The error exists from iOS 26.5, so older systems never throw it.
+
+## Fix
+
+1. Catch the error and start the binding flow: your server asks Apple for an in-app binding identifier, the app creates `PaymentMethodBinding(id:)` with it and calls `bind()`.
+2. `bind()` shows the system prompt where the customer confirms the new payment method as their primary one. Retry the purchase when it returns.
+3. If the initializer throws, the app or the customer is not eligible. Show a message that points to Settings and the Apple Account payment methods instead.
+4. Guard the code with an availability check for iOS 26.5 and keep a generic error path for earlier versions.
+
+## Example
+
+```swift
+import StoreKit
+
+// When the customer has no payment method, bind one with the identifier your server got from Apple, then buy again.
+@available(iOS 26.5, *)
+func buy(_ product: Product, bindingID: () async -> String?) async {
+    do {
+        _ = try await product.purchase()
+    } catch Product.PurchaseError.paymentMethodBindingConfigurationRequired {
+        guard let id = await bindingID() else { return }
+        do {
+            let binding = try await PaymentMethodBinding(id: id)
+            try await binding.bind()
+            print("Payment method bound; buy again")
+        } catch {
+            print("Binding failed: \(error)")
+        }
+    } catch {
+        print("Purchase failed: \(error)")
+    }
+}
+```
+
+*Compile-checked: `npm run check:snippets` type-checks this snippet with `swiftc` against the Apple SDK (macOS target, checked 2026-10-03).*
+
+## How the RevenueDot SDK reports it
+
+The RevenueDot `purchases-ios` fork maps `Product.PurchaseError.paymentMethodBindingConfigurationRequired` to `ErrorCode.storeProblemError` (code 2). The branch is compiled only with Xcode 26.5 or newer. The SDK does not start the binding flow for you.
+
+## Related
+
+- [What does Product.PurchaseError.purchaseNotAllowed mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-purchase-error-purchase-not-allowed.md)
+- [What does storeProblemError (code 2) mean in the purchases SDK?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/sdk-store-problem-error.md)
+- [What does StoreKitError.systemError mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-error-system-error.md)
+
+## Source
+
+- [Apple: Product.PurchaseError.paymentMethodBindingConfigurationRequired](https://developer.apple.com/documentation/storekit/product/purchaseerror/paymentmethodbindingconfigurationrequired)
+- [Apple: PaymentMethodBinding](https://developer.apple.com/documentation/storekit/paymentmethodbinding)
 - [RevenueDot purchases-ios: StoreKitError+Extensions.swift (how the SDK maps StoreKit 2 errors)](https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift)
 
 Checked: 2026-10-03
@@ -2813,6 +3251,294 @@ Checked: 2026-10-03
 
 ---
 
+# What does Transaction.RefundRequestError.failed mean?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-refund-error-failed.md
+Description: Transaction.RefundRequestError.failed means a StoreKit 2 refund request could not be submitted, for example because the transaction ID is not valid. Check the ID and the verified transaction.
+
+Transaction.RefundRequestError.failed means the App Store could not take the refund request you submitted.
+
+## Quick facts
+
+| | |
+|---|---|
+| Error | `Transaction.RefundRequestError.failed` |
+| Where | StoreKit 2, Swift (`Transaction.beginRefundRequest(in:)`) |
+| Available since | iOS 15.0, iPadOS 15.0, macOS 12.0, tvOS 17.0, watchOS 10.0, visionOS 1.0 |
+| What the vendor says | The refund request submission failed. |
+
+## Cause
+
+- Apple says a submission can fail for many reasons, such as an invalid transaction identifier, or because the App Store cannot process the request for another reason.
+- It is different from `duplicateRequest`, which means a request for the transaction already exists.
+- The refund sheet needs a transaction the App Store knows, so passing the ID of an unverified or unrelated transaction fails.
+
+## Fix
+
+1. Get the transaction with `Transaction.latest(for:)` and only offer the request for a `.verified` result.
+2. Pass that transaction's own `id` and a scene that is on screen.
+3. Tell the person the request could not be sent and let them try again later. Retrying at once is unlikely to help.
+4. Log the error and transaction ID. Refund requests can be tested in the sandbox, as Apple's refund testing guide describes.
+
+## Example
+
+```swift
+import StoreKit
+import UIKit
+
+// A failed submission: say so, and offer a later retry.
+@MainActor
+func requestRefund(productID: String, in scene: UIWindowScene) async {
+    guard let result = await Transaction.latest(for: productID), case .verified(let transaction) = result else {
+        print("No verified transaction to refund")
+        return
+    }
+    do {
+        let status = try await transaction.beginRefundRequest(in: scene)
+        print("Refund request status: \(status)")
+    } catch Transaction.RefundRequestError.failed {
+        print("The refund request could not be submitted; try again later")
+    } catch {
+        print("Refund request error: \(error)")
+    }
+}
+```
+
+*Compile-checked: `npm run check:snippets` type-checks this snippet with `swiftc` against the Apple SDK (macOS target, checked 2026-10-03).*
+
+## How the RevenueDot SDK reports it
+
+The RevenueDot `purchases-ios` fork wraps this in `beginRefundRequest(forEntitlement:)`. It logs "Refund request submission failed" and reports the failure as `ErrorCode.beginRefundRequestError` (code 31).
+
+## Related
+
+- [What does Transaction.RefundRequestError.duplicateRequest mean?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-refund-error-duplicate-request.md)
+- [What does storeProblemError (code 2) mean in the purchases SDK?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/sdk-store-problem-error.md)
+- [What does VerificationError.invalidSignature mean in StoreKit 2?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-verification-error-invalid-signature.md)
+
+## Source
+
+- [Apple: Transaction.RefundRequestError.failed](https://developer.apple.com/documentation/storekit/transaction/refundrequesterror/failed)
+- [Apple: Transaction.RefundRequestError](https://developer.apple.com/documentation/storekit/transaction/refundrequesterror)
+- [RevenueDot purchases-ios: SK2BeginRefundRequestHelper.swift](https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Purchasing/StoreKit2/SK2BeginRefundRequestHelper.swift)
+
+Checked: 2026-10-03
+
+---
+
+# What does VerificationError.invalidCertificateChain mean in StoreKit 2?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-verification-error-invalid-certificate-chain.md
+Description: VerificationResult.VerificationError.invalidCertificateChain means the certificate chain of a signed StoreKit 2 value is not valid. Treat the transaction as untrusted, log the reason and verify it on your server before unlocking.
+
+VerificationResult.VerificationError.invalidCertificateChain means the certificate chain of a signed StoreKit 2 value is not valid.
+
+## Quick facts
+
+| | |
+|---|---|
+| Error | `VerificationResult.VerificationError.invalidCertificateChain` |
+| Where | StoreKit 2, Swift (`VerificationResult`) |
+| Available since | iOS 15.0, iPadOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, visionOS 1.0 |
+| What the vendor says | An error indicating that the certificate chain is invalid. |
+
+## Cause
+
+- StoreKit 2 returns transactions, renewal information and the app transaction wrapped in a `VerificationResult`. It checks them for you, and a value that fails is `.unverified` with the reason as a `VerificationError` ([VerificationResult](https://developer.apple.com/documentation/storekit/verificationresult)).
+- Apple says this can happen when one or more certificates in the chain are expired or come from an untrusted source.
+- `invalidCertificateChain` is one of six reasons Apple lists, next to `invalidSignature`, `invalidCertificateChain`, `invalidDeviceVerification`, `invalidEncoding`, `missingRequiredProperties` and `revokedCertificate`.
+
+## Fix
+
+1. Treat an `.unverified` result as untrusted. Do not unlock content from it and do not call `finish()` on it until you have decided what to do.
+2. If the device clock is wrong, ask the person to set date and time automatically, because expired-looking certificates are a common result.
+3. Log the `VerificationError` and the transaction ID, then check the same transaction on your server with Apple's App Store Server Library or the App Store Server API.
+4. If it only happens in testing, check the test environment (Xcode StoreKit configuration, sandbox account) before changing code.
+
+## Example
+
+```swift
+import StoreKit
+
+// Only a verified transaction may unlock content. Log the reason when a transaction is unverified.
+func handle(_ result: VerificationResult<Transaction>) {
+    switch result {
+    case .verified(let transaction):
+        print("Unlock \(transaction.productID)")
+    case .unverified(let transaction, let error):
+        if case .invalidCertificateChain = error {
+            print("The certificate chain is invalid for \(transaction.productID); do not unlock")
+        } else {
+            print("Verification failed: \(error)")
+        }
+    }
+}
+```
+
+*Compile-checked: `npm run check:snippets` type-checks this snippet with `swiftc` against the Apple SDK (macOS target, checked 2026-10-03).*
+
+## How the RevenueDot SDK reports it
+
+The RevenueDot `purchases-ios` fork turns an unverified transaction from a purchase or a transaction update into `ErrorCode.storeProblemError` (code 2) with the `VerificationError` as the underlying error, and it does not unlock the purchase. When it only reads existing transactions (offline entitlements, transaction history), it logs a warning and skips the unverified ones.
+
+## Related
+
+- [What does VerificationError.invalidSignature mean in StoreKit 2?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-verification-error-invalid-signature.md)
+- [What does storeProblemError (code 2) mean in the purchases SDK?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/sdk-store-problem-error.md)
+- [What does invalidReceiptError (code 8) mean in the purchases SDK?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/sdk-invalid-receipt-error.md)
+
+## Source
+
+- [Apple: VerificationResult.VerificationError.invalidCertificateChain](https://developer.apple.com/documentation/storekit/verificationresult/verificationerror/invalidcertificatechain)
+- [Apple: VerificationResult](https://developer.apple.com/documentation/storekit/verificationresult)
+- [RevenueDot purchases-ios: StoreKit2TransactionListener.swift](https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Purchasing/StoreKit2/StoreKit2TransactionListener.swift)
+
+Checked: 2026-10-03
+
+---
+
+# What does VerificationError.invalidDeviceVerification mean in StoreKit 2?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-verification-error-invalid-device-verification.md
+Description: VerificationResult.VerificationError.invalidDeviceVerification means the signed StoreKit 2 value was not generated for the current device. Treat the transaction as untrusted, log the reason and verify it on your server before unlocking.
+
+VerificationResult.VerificationError.invalidDeviceVerification means the signed StoreKit 2 value was not generated for the current device.
+
+## Quick facts
+
+| | |
+|---|---|
+| Error | `VerificationResult.VerificationError.invalidDeviceVerification` |
+| Where | StoreKit 2, Swift (`VerificationResult`) |
+| Available since | iOS 15.0, iPadOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, visionOS 1.0 |
+| What the vendor says | An error that indicates the signed value wasn't generated for the current device. |
+
+## Cause
+
+- StoreKit 2 returns transactions, renewal information and the app transaction wrapped in a `VerificationResult`. It checks them for you, and a value that fails is `.unverified` with the reason as a `VerificationError` ([VerificationResult](https://developer.apple.com/documentation/storekit/verificationresult)).
+- Apple's page gives only that definition: the value is signed for another device, so it must not be trusted on this one.
+- `invalidDeviceVerification` is one of six reasons Apple lists, next to `invalidSignature`, `invalidCertificateChain`, `invalidDeviceVerification`, `invalidEncoding`, `missingRequiredProperties` and `revokedCertificate`.
+
+## Fix
+
+1. Treat an `.unverified` result as untrusted. Do not unlock content from it and do not call `finish()` on it until you have decided what to do.
+2. Do not copy signed transactions between devices and treat them as local proof. Verify on your server instead.
+3. Log the `VerificationError` and the transaction ID, then check the same transaction on your server with Apple's App Store Server Library or the App Store Server API.
+4. If it only happens in testing, check the test environment (Xcode StoreKit configuration, sandbox account) before changing code.
+
+## Example
+
+```swift
+import StoreKit
+
+// Only a verified transaction may unlock content. Log the reason when a transaction is unverified.
+func handle(_ result: VerificationResult<Transaction>) {
+    switch result {
+    case .verified(let transaction):
+        print("Unlock \(transaction.productID)")
+    case .unverified(let transaction, let error):
+        if case .invalidDeviceVerification = error {
+            print("The value was not signed for this device for \(transaction.productID); do not unlock")
+        } else {
+            print("Verification failed: \(error)")
+        }
+    }
+}
+```
+
+*Compile-checked: `npm run check:snippets` type-checks this snippet with `swiftc` against the Apple SDK (macOS target, checked 2026-10-03).*
+
+## How the RevenueDot SDK reports it
+
+The RevenueDot `purchases-ios` fork turns an unverified transaction from a purchase or a transaction update into `ErrorCode.storeProblemError` (code 2) with the `VerificationError` as the underlying error, and it does not unlock the purchase. When it only reads existing transactions (offline entitlements, transaction history), it logs a warning and skips the unverified ones.
+
+## Related
+
+- [What does VerificationError.invalidSignature mean in StoreKit 2?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-verification-error-invalid-signature.md)
+- [What does storeProblemError (code 2) mean in the purchases SDK?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/sdk-store-problem-error.md)
+- [What does invalidReceiptError (code 8) mean in the purchases SDK?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/sdk-invalid-receipt-error.md)
+
+## Source
+
+- [Apple: VerificationResult.VerificationError.invalidDeviceVerification](https://developer.apple.com/documentation/storekit/verificationresult/verificationerror/invaliddeviceverification)
+- [Apple: VerificationResult](https://developer.apple.com/documentation/storekit/verificationresult)
+- [RevenueDot purchases-ios: StoreKit2TransactionListener.swift](https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Purchasing/StoreKit2/StoreKit2TransactionListener.swift)
+
+Checked: 2026-10-03
+
+---
+
+# What does VerificationError.invalidEncoding mean in StoreKit 2?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-verification-error-invalid-encoding.md
+Description: VerificationResult.VerificationError.invalidEncoding means the signature, certificate chain or another part of a signed StoreKit 2 value uses an invalid encoding. Treat the transaction as untrusted, log the reason and verify it on your server before unlocking.
+
+VerificationResult.VerificationError.invalidEncoding means the signature, certificate chain or another part of a signed StoreKit 2 value uses an invalid encoding.
+
+## Quick facts
+
+| | |
+|---|---|
+| Error | `VerificationResult.VerificationError.invalidEncoding` |
+| Where | StoreKit 2, Swift (`VerificationResult`) |
+| Available since | iOS 15.0, iPadOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, visionOS 1.0 |
+| What the vendor says | An error that indicates the signature, certificate chain, or other part of value uses invalid encoding. |
+
+## Cause
+
+- StoreKit 2 returns transactions, renewal information and the app transaction wrapped in a `VerificationResult`. It checks them for you, and a value that fails is `.unverified` with the reason as a `VerificationError` ([VerificationResult](https://developer.apple.com/documentation/storekit/verificationresult)).
+- Apple's page gives only that definition: a part of the signed value cannot be decoded.
+- `invalidEncoding` is one of six reasons Apple lists, next to `invalidSignature`, `invalidCertificateChain`, `invalidDeviceVerification`, `invalidEncoding`, `missingRequiredProperties` and `revokedCertificate`.
+
+## Fix
+
+1. Treat an `.unverified` result as untrusted. Do not unlock content from it and do not call `finish()` on it until you have decided what to do.
+2. Do not edit, re-encode or store the signed JWS text through code that changes it. Keep `jwsRepresentation` byte for byte.
+3. Log the `VerificationError` and the transaction ID, then check the same transaction on your server with Apple's App Store Server Library or the App Store Server API.
+4. If it only happens in testing, check the test environment (Xcode StoreKit configuration, sandbox account) before changing code.
+
+## Example
+
+```swift
+import StoreKit
+
+// Only a verified transaction may unlock content. Log the reason when a transaction is unverified.
+func handle(_ result: VerificationResult<Transaction>) {
+    switch result {
+    case .verified(let transaction):
+        print("Unlock \(transaction.productID)")
+    case .unverified(let transaction, let error):
+        if case .invalidEncoding = error {
+            print("The signed value has an invalid encoding for \(transaction.productID); do not unlock")
+        } else {
+            print("Verification failed: \(error)")
+        }
+    }
+}
+```
+
+*Compile-checked: `npm run check:snippets` type-checks this snippet with `swiftc` against the Apple SDK (macOS target, checked 2026-10-03).*
+
+## How the RevenueDot SDK reports it
+
+The RevenueDot `purchases-ios` fork turns an unverified transaction from a purchase or a transaction update into `ErrorCode.storeProblemError` (code 2) with the `VerificationError` as the underlying error, and it does not unlock the purchase. When it only reads existing transactions (offline entitlements, transaction history), it logs a warning and skips the unverified ones.
+
+## Related
+
+- [What does VerificationError.invalidSignature mean in StoreKit 2?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-verification-error-invalid-signature.md)
+- [What does storeProblemError (code 2) mean in the purchases SDK?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/sdk-store-problem-error.md)
+- [What does invalidReceiptError (code 8) mean in the purchases SDK?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/sdk-invalid-receipt-error.md)
+
+## Source
+
+- [Apple: VerificationResult.VerificationError.invalidEncoding](https://developer.apple.com/documentation/storekit/verificationresult/verificationerror/invalidencoding)
+- [Apple: VerificationResult](https://developer.apple.com/documentation/storekit/verificationresult)
+- [RevenueDot purchases-ios: StoreKit2TransactionListener.swift](https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Purchasing/StoreKit2/StoreKit2TransactionListener.swift)
+
+Checked: 2026-10-03
+
+---
+
 # What does VerificationError.invalidSignature mean in StoreKit 2?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-verification-error-invalid-signature.md
@@ -2877,6 +3603,148 @@ The RevenueDot `purchases-ios` fork turns an unverified transaction into `ErrorC
 ## Source
 
 - [Apple: VerificationResult.VerificationError.invalidSignature](https://developer.apple.com/documentation/storekit/verificationresult/verificationerror/invalidsignature)
+- [Apple: VerificationResult](https://developer.apple.com/documentation/storekit/verificationresult)
+- [RevenueDot purchases-ios: StoreKit2TransactionListener.swift](https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Purchasing/StoreKit2/StoreKit2TransactionListener.swift)
+
+Checked: 2026-10-03
+
+---
+
+# What does VerificationError.missingRequiredProperties mean in StoreKit 2?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-verification-error-missing-required-properties.md
+Description: VerificationResult.VerificationError.missingRequiredProperties means the header or payload of a signed StoreKit 2 value lacks information that is needed to verify its signature. Treat the transaction as untrusted, log the reason and verify it on your server before unlocking.
+
+VerificationResult.VerificationError.missingRequiredProperties means the header or payload of a signed StoreKit 2 value lacks information that is needed to verify its signature.
+
+## Quick facts
+
+| | |
+|---|---|
+| Error | `VerificationResult.VerificationError.missingRequiredProperties` |
+| Where | StoreKit 2, Swift (`VerificationResult`) |
+| Available since | iOS 15.0, iPadOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, visionOS 1.0 |
+| What the vendor says | An error that indicates the header or payload are missing information that's required to verify the signature. |
+
+## Cause
+
+- StoreKit 2 returns transactions, renewal information and the app transaction wrapped in a `VerificationResult`. It checks them for you, and a value that fails is `.unverified` with the reason as a `VerificationError` ([VerificationResult](https://developer.apple.com/documentation/storekit/verificationresult)).
+- Apple's page gives only that definition: the signed value is incomplete.
+- `missingRequiredProperties` is one of six reasons Apple lists, next to `invalidSignature`, `invalidCertificateChain`, `invalidDeviceVerification`, `invalidEncoding`, `missingRequiredProperties` and `revokedCertificate`.
+
+## Fix
+
+1. Treat an `.unverified` result as untrusted. Do not unlock content from it and do not call `finish()` on it until you have decided what to do.
+2. Check that you did not rebuild the value yourself. Send the original `jwsRepresentation` to your server, not a copy of selected fields.
+3. Log the `VerificationError` and the transaction ID, then check the same transaction on your server with Apple's App Store Server Library or the App Store Server API.
+4. If it only happens in testing, check the test environment (Xcode StoreKit configuration, sandbox account) before changing code.
+
+## Example
+
+```swift
+import StoreKit
+
+// Only a verified transaction may unlock content. Log the reason when a transaction is unverified.
+func handle(_ result: VerificationResult<Transaction>) {
+    switch result {
+    case .verified(let transaction):
+        print("Unlock \(transaction.productID)")
+    case .unverified(let transaction, let error):
+        if case .missingRequiredProperties = error {
+            print("Required properties are missing for \(transaction.productID); do not unlock")
+        } else {
+            print("Verification failed: \(error)")
+        }
+    }
+}
+```
+
+*Compile-checked: `npm run check:snippets` type-checks this snippet with `swiftc` against the Apple SDK (macOS target, checked 2026-10-03).*
+
+## How the RevenueDot SDK reports it
+
+The RevenueDot `purchases-ios` fork turns an unverified transaction from a purchase or a transaction update into `ErrorCode.storeProblemError` (code 2) with the `VerificationError` as the underlying error, and it does not unlock the purchase. When it only reads existing transactions (offline entitlements, transaction history), it logs a warning and skips the unverified ones.
+
+## Related
+
+- [What does VerificationError.invalidSignature mean in StoreKit 2?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-verification-error-invalid-signature.md)
+- [What does storeProblemError (code 2) mean in the purchases SDK?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/sdk-store-problem-error.md)
+- [What does invalidReceiptError (code 8) mean in the purchases SDK?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/sdk-invalid-receipt-error.md)
+
+## Source
+
+- [Apple: VerificationResult.VerificationError.missingRequiredProperties](https://developer.apple.com/documentation/storekit/verificationresult/verificationerror/missingrequiredproperties)
+- [Apple: VerificationResult](https://developer.apple.com/documentation/storekit/verificationresult)
+- [RevenueDot purchases-ios: StoreKit2TransactionListener.swift](https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Purchasing/StoreKit2/StoreKit2TransactionListener.swift)
+
+Checked: 2026-10-03
+
+---
+
+# What does VerificationError.revokedCertificate mean in StoreKit 2?
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-verification-error-revoked-certificate.md
+Description: VerificationResult.VerificationError.revokedCertificate means the certificate chain of a signed StoreKit 2 value includes a revoked certificate. Treat the transaction as untrusted, log the reason and verify it on your server before unlocking.
+
+VerificationResult.VerificationError.revokedCertificate means the certificate chain of a signed StoreKit 2 value includes a revoked certificate.
+
+## Quick facts
+
+| | |
+|---|---|
+| Error | `VerificationResult.VerificationError.revokedCertificate` |
+| Where | StoreKit 2, Swift (`VerificationResult`) |
+| Available since | iOS 15.0, iPadOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, visionOS 1.0 |
+| What the vendor says | An error that indicates the certificate chain includes a revoked certificate. |
+
+## Cause
+
+- StoreKit 2 returns transactions, renewal information and the app transaction wrapped in a `VerificationResult`. It checks them for you, and a value that fails is `.unverified` with the reason as a `VerificationError` ([VerificationResult](https://developer.apple.com/documentation/storekit/verificationresult)).
+- Apple adds that in some cases this error may resolve if you try again later.
+- `revokedCertificate` is one of six reasons Apple lists, next to `invalidSignature`, `invalidCertificateChain`, `invalidDeviceVerification`, `invalidEncoding`, `missingRequiredProperties` and `revokedCertificate`.
+
+## Fix
+
+1. Treat an `.unverified` result as untrusted. Do not unlock content from it and do not call `finish()` on it until you have decided what to do.
+2. Retry later, because Apple says the error can clear. Meanwhile keep the purchase pending and do not unlock it from the device alone.
+3. Log the `VerificationError` and the transaction ID, then check the same transaction on your server with Apple's App Store Server Library or the App Store Server API.
+4. If it only happens in testing, check the test environment (Xcode StoreKit configuration, sandbox account) before changing code.
+
+## Example
+
+```swift
+import StoreKit
+
+// Only a verified transaction may unlock content. Log the reason when a transaction is unverified.
+func handle(_ result: VerificationResult<Transaction>) {
+    switch result {
+    case .verified(let transaction):
+        print("Unlock \(transaction.productID)")
+    case .unverified(let transaction, let error):
+        if case .revokedCertificate = error {
+            print("A certificate in the chain is revoked for \(transaction.productID); do not unlock")
+        } else {
+            print("Verification failed: \(error)")
+        }
+    }
+}
+```
+
+*Compile-checked: `npm run check:snippets` type-checks this snippet with `swiftc` against the Apple SDK (macOS target, checked 2026-10-03).*
+
+## How the RevenueDot SDK reports it
+
+The RevenueDot `purchases-ios` fork turns an unverified transaction from a purchase or a transaction update into `ErrorCode.storeProblemError` (code 2) with the `VerificationError` as the underlying error, and it does not unlock the purchase. When it only reads existing transactions (offline entitlements, transaction history), it logs a warning and skips the unverified ones.
+
+## Related
+
+- [What does VerificationError.invalidSignature mean in StoreKit 2?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/storekit-verification-error-invalid-signature.md)
+- [What does storeProblemError (code 2) mean in the purchases SDK?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/sdk-store-problem-error.md)
+- [What does invalidReceiptError (code 8) mean in the purchases SDK?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/sdk-invalid-receipt-error.md)
+
+## Source
+
+- [Apple: VerificationResult.VerificationError.revokedCertificate](https://developer.apple.com/documentation/storekit/verificationresult/verificationerror/revokedcertificate)
 - [Apple: VerificationResult](https://developer.apple.com/documentation/storekit/verificationresult)
 - [RevenueDot purchases-ios: StoreKit2TransactionListener.swift](https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Purchasing/StoreKit2/StoreKit2TransactionListener.swift)
 

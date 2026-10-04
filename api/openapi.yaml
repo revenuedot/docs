@@ -7531,13 +7531,27 @@ paths:
       tags:
         - Customers
       summary: List a customer's events
-      description: Newest first. `body` is the webhook event.
+      description: Newest first. `body` is the webhook event. Paywall events (PAYWALL_*) only with `include_paywall_events=true` or when `type` names them.
       security:
         - secretApiKey: []
         - dashboardSession: []
       parameters:
         - $ref: "#/components/parameters/ProjectId"
         - $ref: "#/components/parameters/CustomerId"
+        - name: type
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+          description: Event types (any case); repeat or comma-separate. Naming a paywall type returns it.
+        - name: include_paywall_events
+          in: query
+          schema:
+            type: boolean
+          description: "Also return paywall events (PAYWALL_*). Default false: paywall events are left out unless `type` names them."
         - $ref: "#/components/parameters/Environment"
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/StartingAfter"
@@ -47312,6 +47326,14 @@ paths:
               - pending
               - delivered
               - failed
+        - name: paywall_events
+          in: query
+          schema:
+            type: string
+            enum:
+              - exclude
+              - only
+          description: "Leave out, or return only, deliveries of paywall events (PAYWALL_*). Default: all."
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/StartingAfter"
       responses:
@@ -47567,7 +47589,7 @@ paths:
       tags:
         - Event log
       summary: Event log
-      description: Every event the project recorded, newest first. `body` is exactly what webhooks receive.
+      description: Every event the project recorded, newest first. `body` is exactly what webhooks receive. Paywall events (PAYWALL_*) only with `include_paywall_events=true` or when `type` names them.
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -47581,7 +47603,12 @@ paths:
               type: string
           style: form
           explode: true
-          description: Event types (any case); repeat or comma-separate.
+          description: Event types (any case); repeat or comma-separate. Naming a paywall type returns it.
+        - name: include_paywall_events
+          in: query
+          schema:
+            type: boolean
+          description: "Also return paywall events (PAYWALL_*). Default false: paywall events are left out unless `type` names them."
         - name: customer
           in: query
           schema:

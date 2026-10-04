@@ -1,0 +1,1757 @@
+{
+ "set": "apple",
+ "pages": [
+  {
+   "slug": "apple-subscribed",
+   "label": "Apple: SUBSCRIBED",
+   "title": "What does the App Store notification SUBSCRIBED mean?",
+   "description": "SUBSCRIBED means a customer subscribed to an auto-renewable subscription. Subtype INITIAL_BUY is the first time, RESUBSCRIBE a return. Grant access and record the purchase.",
+   "answer": "The App Store notification SUBSCRIBED means a customer subscribed to an auto-renewable subscription, for the first time or again.",
+   "symbol": "`notificationType` `SUBSCRIBED`",
+   "api": "App Store Server Notifications v2 (`responseBodyV2DecodedPayload`)",
+   "facts": [
+    [
+     "Sent by",
+     "The App Store server, to your notification URL"
+    ]
+   ],
+   "definitionLabel": "What Apple says",
+   "definition": "The customer subscribed to an auto-renewable subscription. The subtype says whether it is the first purchase or a resubscribe.",
+   "causes": [
+    "Subtype `INITIAL_BUY`: the customer bought or got access through Family Sharing to a subscription in the group for the first time, including by redeeming an offer code.",
+    "Subtype `RESUBSCRIBE`: the customer resubscribed, or got access through Family Sharing, to the same subscription or another one in the same subscription group, including through a promotional, offer code or win-back offer.",
+    "To tell whether an offer was used, Apple says to check `offerType` in the decoded transaction (`JWSTransactionDecodedPayload`)."
+   ],
+   "fixes": [
+    "Verify the `signedPayload` with Apple's App Store Server Library (`SignedDataVerifier.verifyAndDecodeNotification`) before you act on anything in it.",
+    "Decode `signedTransactionInfo`, find the customer through your own account link (for example the `appAccountToken`) and grant the entitlement until `expiresDate`.",
+    "Treat `RESUBSCRIBE` as access again, not as a second first purchase, so your counts of new subscribers stay right.",
+    "Answer HTTP 200 (any code from 200 to 206) once you have stored the notification. Apple retries other answers five times, at 1, 12, 24, 48 and 72 hours after the previous attempt, so make your handler safe to run twice (the payload carries a `notificationUUID`)."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "count a new subscriber",
+    "code": "// Run on the decoded payload, after you verified Apple's signature.\nconst notification = {\"notificationType\":\"SUBSCRIBED\",\"data\":{\"environment\":\"Sandbox\",\"bundleId\":\"com.example.app\"}};\n\nfunction decide(n) {\n  if (n.notificationType !== \"SUBSCRIBED\") return \"ignore\";\n  return n.subtype === \"RESUBSCRIBE\" ? \"grant access, count a returning subscriber\" : \"grant access, count a new subscriber\";\n}\n\nconsole.log(decide(notification));"
+   },
+   "mapping": "RevenueDot verifies Apple's signature, checks the bundle ID, stores the notification and answers 200. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. `SUBSCRIBED` is one of the types that update the stored purchase from the signed transaction and renewal info. A chain RevenueDot has not stored before produces `INITIAL_PURCHASE`; a chain it already holds with a new period produces `RENEWAL`, because RevenueCat reports a lapsed customer who resubscribes as a renewal and RevenueDot copies that. The subtype is not used; the stored state is.",
+   "related": [
+    "apple-did-renew",
+    "apple-offer-redeemed",
+    "apple-expired"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up App Store notifications in RevenueDot",
+     "url": "../guides/app-store.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Apple: notificationType",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/notificationtype"
+    },
+    {
+     "label": "Apple: Responding to App Store Server Notifications",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/responding-to-app-store-server-notifications"
+    },
+    {
+     "label": "Apple: app-store-server-library-node (SignedDataVerifier)",
+     "url": "https://github.com/apple/app-store-server-library-node"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/map.ts (how the transaction becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "apple-did-renew",
+   "label": "Apple: DID_RENEW",
+   "title": "What does the App Store notification DID_RENEW mean?",
+   "description": "DID_RENEW means the subscription renewed for a new period. With subtype BILLING_RECOVERY an expired subscription that failed to renew now renewed. Extend access.",
+   "answer": "The App Store notification DID_RENEW means an auto-renewable subscription renewed successfully for a new period.",
+   "symbol": "`notificationType` `DID_RENEW`",
+   "api": "App Store Server Notifications v2 (`responseBodyV2DecodedPayload`)",
+   "facts": [
+    [
+     "Sent by",
+     "The App Store server, to your notification URL"
+    ]
+   ],
+   "definitionLabel": "What Apple says",
+   "definition": "The subscription renewed. With subtype BILLING_RECOVERY, a subscription that previously failed to renew has now renewed. With no subtype, an active subscription auto-renewed.",
+   "causes": [
+    "Without a subtype, the active subscription auto-renewed for a new transaction period.",
+    "Subtype `BILLING_RECOVERY`: the expired subscription that had failed to renew has renewed after the billing retry.",
+    "Apple says to give the customer access to the subscription's content or service."
+   ],
+   "fixes": [
+    "Verify the `signedPayload` with Apple's App Store Server Library (`SignedDataVerifier.verifyAndDecodeNotification`) before you act on anything in it.",
+    "Read the new `expiresDate` from `signedTransactionInfo` and extend access to it.",
+    "If you showed a billing warning, remove it when the subtype is `BILLING_RECOVERY`.",
+    "Answer HTTP 200 (any code from 200 to 206) once you have stored the notification. Apple retries other answers five times, at 1, 12, 24, 48 and 72 hours after the previous attempt, so make your handler safe to run twice (the payload carries a `notificationUUID`)."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "extend access",
+    "code": "// Run on the decoded payload, after you verified Apple's signature.\nconst notification = {\"notificationType\":\"DID_RENEW\",\"data\":{\"environment\":\"Sandbox\",\"bundleId\":\"com.example.app\"}};\n\nfunction decide(n) {\n  if (n.notificationType !== \"DID_RENEW\") return \"ignore\";\n  return n.subtype === \"BILLING_RECOVERY\" ? \"extend access, clear the billing warning\" : \"extend access\";\n}\n\nconsole.log(decide(notification));"
+   },
+   "mapping": "RevenueDot verifies Apple's signature, checks the bundle ID, stores the notification and answers 200. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. `DID_RENEW` clears the billing issue on the stored purchase (a type override in the server code) and applies the new transaction. A new period gives a `RENEWAL` event, with `is_trial_conversion: true` when the previous period was a free trial. Recovering a failed payment is reported as `RENEWAL`, never as `UNCANCELLATION`.",
+   "related": [
+    "apple-subscribed",
+    "apple-did-fail-to-renew",
+    "apple-did-renew-billing-recovery"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up App Store notifications in RevenueDot",
+     "url": "../guides/app-store.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Apple: notificationType",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/notificationtype"
+    },
+    {
+     "label": "Apple: Responding to App Store Server Notifications",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/responding-to-app-store-server-notifications"
+    },
+    {
+     "label": "Apple: app-store-server-library-node (SignedDataVerifier)",
+     "url": "https://github.com/apple/app-store-server-library-node"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/map.ts (how the transaction becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "apple-did-renew-billing-recovery",
+   "label": "Apple: DID_RENEW / BILLING_RECOVERY",
+   "title": "What does the App Store notification DID_RENEW with subtype BILLING_RECOVERY mean?",
+   "description": "DID_RENEW with subtype BILLING_RECOVERY means an expired subscription that failed to renew has renewed after billing retry. Restore access and remove billing warnings.",
+   "answer": "The App Store subtype BILLING_RECOVERY on DID_RENEW means a subscription that failed to renew has now renewed after the App Store retried billing.",
+   "symbol": "`notificationType` `DID_RENEW`, `subtype` `BILLING_RECOVERY`",
+   "api": "App Store Server Notifications v2 (`responseBodyV2DecodedPayload`)",
+   "facts": [
+    [
+     "Sent by",
+     "The App Store server, to your notification URL"
+    ]
+   ],
+   "definitionLabel": "What Apple says",
+   "definition": "The expired subscription that previously failed to renew has successfully renewed.",
+   "causes": [
+    "The renewal charge failed earlier and the subscription entered the billing retry period. Apple keeps retrying for up to 60 days, or until the customer fixes billing or cancels.",
+    "The customer updated their payment method, or the retry succeeded on its own.",
+    "If the subscription had a billing grace period and recovered inside it, the customer never lost access."
+   ],
+   "fixes": [
+    "Verify the `signedPayload` with Apple's App Store Server Library (`SignedDataVerifier.verifyAndDecodeNotification`) before you act on anything in it.",
+    "Restore access, and extend it to the new `expiresDate`.",
+    "Remove any in-app message that asked the customer to fix their payment method.",
+    "Do not count this as a new subscriber: it is the same subscription, recovered.",
+    "Answer HTTP 200 (any code from 200 to 206) once you have stored the notification. Apple retries other answers five times, at 1, 12, 24, 48 and 72 hours after the previous attempt, so make your handler safe to run twice (the payload carries a `notificationUUID`)."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "restore access",
+    "code": "// Run on the decoded payload, after you verified Apple's signature.\nconst notification = {\"notificationType\":\"DID_RENEW\",\"subtype\":\"BILLING_RECOVERY\",\"data\":{\"environment\":\"Sandbox\",\"bundleId\":\"com.example.app\"}};\n\nfunction decide(n) {\n  const recovered = n.notificationType === \"DID_RENEW\" && n.subtype === \"BILLING_RECOVERY\";\n  return recovered ? \"restore access, remove the billing message, no new subscriber\" : \"ignore\";\n}\n\nconsole.log(decide(notification));"
+   },
+   "mapping": "RevenueDot verifies Apple's signature, checks the bundle ID, stores the notification and answers 200. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. The stored purchase loses its billing issue and takes the new period, so RevenueDot sends `RENEWAL` and no `UNCANCELLATION`: the diff code skips `UNCANCELLATION` when a renewal recovers a billing issue.",
+   "related": [
+    "apple-did-renew",
+    "apple-did-fail-to-renew",
+    "apple-grace-period-expired"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up App Store notifications in RevenueDot",
+     "url": "../guides/app-store.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Apple: notificationType",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/notificationtype"
+    },
+    {
+     "label": "Apple: subtype",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/subtype"
+    },
+    {
+     "label": "Apple: Responding to App Store Server Notifications",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/responding-to-app-store-server-notifications"
+    },
+    {
+     "label": "Apple: app-store-server-library-node (SignedDataVerifier)",
+     "url": "https://github.com/apple/app-store-server-library-node"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/map.ts (how the transaction becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "apple-did-fail-to-renew",
+   "label": "Apple: DID_FAIL_TO_RENEW",
+   "title": "What does the App Store notification DID_FAIL_TO_RENEW mean?",
+   "description": "DID_FAIL_TO_RENEW means a renewal failed because of a billing issue and the subscription entered billing retry. With subtype GRACE_PERIOD keep access; otherwise stop it and ask for new billing details.",
+   "answer": "The App Store notification DID_FAIL_TO_RENEW means a subscription failed to renew because of a billing issue and entered the billing retry period.",
+   "symbol": "`notificationType` `DID_FAIL_TO_RENEW`",
+   "api": "App Store Server Notifications v2 (`responseBodyV2DecodedPayload`)",
+   "facts": [
+    [
+     "Sent by",
+     "The App Store server, to your notification URL"
+    ]
+   ],
+   "definitionLabel": "What Apple says",
+   "definition": "The subscription failed to renew due to a billing issue and entered billing retry. With subtype GRACE_PERIOD, keep serving the customer; with none, you can stop.",
+   "causes": [
+    "The customer's payment method was declined, expired or otherwise could not be charged at renewal.",
+    "Subtype `GRACE_PERIOD`: Billing Grace Period is on for the app, so the customer keeps access while Apple retries. Apple says to continue to provide service.",
+    "With no subtype there is no grace period, and Apple says you can stop providing the subscription service. Apple keeps retrying billing for 60 days."
+   ],
+   "fixes": [
+    "Verify the `signedPayload` with Apple's App Store Server Library (`SignedDataVerifier.verifyAndDecodeNotification`) before you act on anything in it.",
+    "Tell the customer there may be a problem with their billing information and link them to their payment settings.",
+    "With subtype `GRACE_PERIOD`, keep access until the grace period ends (the renewal info has `gracePeriodExpiresDate`); with no subtype, pause access.",
+    "Answer HTTP 200 (any code from 200 to 206) once you have stored the notification. Apple retries other answers five times, at 1, 12, 24, 48 and 72 hours after the previous attempt, so make your handler safe to run twice (the payload carries a `notificationUUID`)."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "ask the customer to fix billing",
+    "code": "// Run on the decoded payload, after you verified Apple's signature.\nconst notification = {\"notificationType\":\"DID_FAIL_TO_RENEW\",\"data\":{\"environment\":\"Sandbox\",\"bundleId\":\"com.example.app\"}};\n\nfunction decide(n) {\n  if (n.notificationType !== \"DID_FAIL_TO_RENEW\") return \"ignore\";\n  return n.subtype === \"GRACE_PERIOD\" ? \"keep access, ask the customer to fix billing\" : \"stop access, ask the customer to fix billing\";\n}\n\nconsole.log(decide(notification));"
+   },
+   "mapping": "RevenueDot verifies Apple's signature, checks the bundle ID, stores the notification and answers 200. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. A type override marks the stored purchase as having a billing issue. RevenueDot sends `BILLING_ISSUE` (its `grace_period_expiration_at_ms` carries the grace end when the renewal info has one) and, as RevenueCat does, a `CANCELLATION` with `cancel_reason: BILLING_ERROR`. When access finally ends, the scheduler sends `EXPIRATION` with `expiration_reason: BILLING_ERROR`.",
+   "related": [
+    "apple-did-renew-billing-recovery",
+    "apple-grace-period-expired",
+    "apple-expired-billing-retry"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up App Store notifications in RevenueDot",
+     "url": "../guides/app-store.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Apple: notificationType",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/notificationtype"
+    },
+    {
+     "label": "Apple: Responding to App Store Server Notifications",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/responding-to-app-store-server-notifications"
+    },
+    {
+     "label": "Apple: app-store-server-library-node (SignedDataVerifier)",
+     "url": "https://github.com/apple/app-store-server-library-node"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/map.ts (how the transaction becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/tick.ts (the scheduled EXPIRATION)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/tick.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "apple-grace-period-expired",
+   "label": "Apple: GRACE_PERIOD_EXPIRED",
+   "title": "What does the App Store notification GRACE_PERIOD_EXPIRED mean?",
+   "description": "GRACE_PERIOD_EXPIRED means the billing grace period ended without a renewal, so turn access off. The App Store keeps retrying billing for up to 60 days.",
+   "answer": "The App Store notification GRACE_PERIOD_EXPIRED means the billing grace period ended before the subscription renewed.",
+   "symbol": "`notificationType` `GRACE_PERIOD_EXPIRED`",
+   "api": "App Store Server Notifications v2 (`responseBodyV2DecodedPayload`)",
+   "facts": [
+    [
+     "Sent by",
+     "The App Store server, to your notification URL"
+    ]
+   ],
+   "definitionLabel": "What Apple says",
+   "definition": "The billing grace period ended without renewing the subscription, so you can turn off access to the service or content.",
+   "causes": [
+    "A renewal failed, Billing Grace Period was on, and the customer did not fix their billing before the grace period ended.",
+    "Apple says grace periods last 3 or 6 days for weekly subscriptions and 3, 16 or 28 days for monthly and longer ones, and cannot be changed once assigned.",
+    "The subscription is still in billing retry. Apple continues for 60 days, until the customer fixes billing or cancels."
+   ],
+   "fixes": [
+    "Verify the `signedPayload` with Apple's App Store Server Library (`SignedDataVerifier.verifyAndDecodeNotification`) before you act on anything in it.",
+    "Turn off access now, and keep a message that asks the customer to update their payment method.",
+    "Keep listening: a later `DID_RENEW` with subtype `BILLING_RECOVERY` means billing recovered, and `EXPIRED` with `BILLING_RETRY` means Apple gave up.",
+    "Answer HTTP 200 (any code from 200 to 206) once you have stored the notification. Apple retries other answers five times, at 1, 12, 24, 48 and 72 hours after the previous attempt, so make your handler safe to run twice (the payload carries a `notificationUUID`)."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "turn off access",
+    "code": "// Run on the decoded payload, after you verified Apple's signature.\nconst notification = {\"notificationType\":\"GRACE_PERIOD_EXPIRED\",\"data\":{\"environment\":\"Sandbox\",\"bundleId\":\"com.example.app\"}};\n\nfunction decide(n) {\n  if (n.notificationType !== \"GRACE_PERIOD_EXPIRED\") return \"ignore\";\n  return \"turn off access, keep asking for a new payment method\";\n}\n\nconsole.log(decide(notification));"
+   },
+   "mapping": "RevenueDot verifies Apple's signature, checks the bundle ID, stores the notification and answers 200. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. A type override keeps the billing issue on the stored purchase. Access ends when the grace period passes, and the scheduler then records `EXPIRATION` with `expiration_reason: BILLING_ERROR`. The notification itself adds no new event.",
+   "related": [
+    "apple-did-fail-to-renew",
+    "apple-did-renew-billing-recovery",
+    "apple-expired-billing-retry"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up App Store notifications in RevenueDot",
+     "url": "../guides/app-store.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Apple: notificationType",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/notificationtype"
+    },
+    {
+     "label": "Apple: Responding to App Store Server Notifications",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/responding-to-app-store-server-notifications"
+    },
+    {
+     "label": "Apple: app-store-server-library-node (SignedDataVerifier)",
+     "url": "https://github.com/apple/app-store-server-library-node"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/map.ts (how the transaction becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/tick.ts (the scheduled EXPIRATION)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/tick.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "apple-did-change-renewal-status",
+   "label": "Apple: DID_CHANGE_RENEWAL_STATUS",
+   "title": "What does the App Store notification DID_CHANGE_RENEWAL_STATUS mean?",
+   "description": "DID_CHANGE_RENEWAL_STATUS means the customer turned auto-renew off (AUTO_RENEW_DISABLED) or on (AUTO_RENEW_ENABLED). Access continues to the end of the paid period.",
+   "answer": "The App Store notification DID_CHANGE_RENEWAL_STATUS means the customer changed whether their subscription renews automatically.",
+   "symbol": "`notificationType` `DID_CHANGE_RENEWAL_STATUS`",
+   "api": "App Store Server Notifications v2 (`responseBodyV2DecodedPayload`)",
+   "facts": [
+    [
+     "Sent by",
+     "The App Store server, to your notification URL"
+    ]
+   ],
+   "definitionLabel": "What Apple says",
+   "definition": "The customer changed the subscription's renewal status. AUTO_RENEW_ENABLED means auto-renew was turned on; AUTO_RENEW_DISABLED means it was turned off, by the customer or by the App Store after a refund request.",
+   "causes": [
+    "Subtype `AUTO_RENEW_DISABLED`: the customer cancelled from the App Store Subscriptions page, or the App Store turned off auto-renew after the customer started a refund through your app's refund request API.",
+    "Subtype `AUTO_RENEW_ENABLED`: the customer subscribed again after cancelling, which turns auto-renew back on.",
+    "Apple also sends it without a subtype when the customer cancels after a price increase notice."
+   ],
+   "fixes": [
+    "Verify the `signedPayload` with Apple's App Store Server Library (`SignedDataVerifier.verifyAndDecodeNotification`) before you act on anything in it.",
+    "Keep access until `expiresDate`: the customer paid for the period.",
+    "On `AUTO_RENEW_DISABLED`, start your win-back flow. Apple suggests this notification as one input for deciding who is eligible for a promotional offer.",
+    "On `AUTO_RENEW_ENABLED`, stop the win-back flow.",
+    "Answer HTTP 200 (any code from 200 to 206) once you have stored the notification. Apple retries other answers five times, at 1, 12, 24, 48 and 72 hours after the previous attempt, so make your handler safe to run twice (the payload carries a `notificationUUID`)."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "start win-back",
+    "code": "// Run on the decoded payload, after you verified Apple's signature.\nconst notification = {\"notificationType\":\"DID_CHANGE_RENEWAL_STATUS\",\"subtype\":\"AUTO_RENEW_DISABLED\",\"data\":{\"environment\":\"Sandbox\",\"bundleId\":\"com.example.app\"}};\n\nfunction decide(n) {\n  if (n.notificationType !== \"DID_CHANGE_RENEWAL_STATUS\") return \"ignore\";\n  if (n.subtype === \"AUTO_RENEW_DISABLED\") return \"keep access to the end of the period, start win-back\";\n  if (n.subtype === \"AUTO_RENEW_ENABLED\") return \"stop win-back\";\n  return \"check the renewal info\";\n}\n\nconsole.log(decide(notification));"
+   },
+   "mapping": "RevenueDot verifies Apple's signature, checks the bundle ID, stores the notification and answers 200. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. Type overrides set auto-renew from the subtype. Turning it off gives a `CANCELLATION` event with `cancel_reason: UNSUBSCRIBE` (or the store's reason, or `BILLING_ERROR` when a billing issue exists); turning it back on gives `UNCANCELLATION`. Access is not touched, so no `EXPIRATION` is sent until the period ends.",
+   "related": [
+    "apple-did-change-renewal-status-auto-renew-disabled",
+    "apple-expired",
+    "apple-did-change-renewal-pref"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up App Store notifications in RevenueDot",
+     "url": "../guides/app-store.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Apple: notificationType",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/notificationtype"
+    },
+    {
+     "label": "Apple: Responding to App Store Server Notifications",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/responding-to-app-store-server-notifications"
+    },
+    {
+     "label": "Apple: app-store-server-library-node (SignedDataVerifier)",
+     "url": "https://github.com/apple/app-store-server-library-node"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/map.ts (how the transaction becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "apple-did-change-renewal-status-auto-renew-disabled",
+   "label": "Apple: DID_CHANGE_RENEWAL_STATUS / AUTO_RENEW_DISABLED",
+   "title": "What does the App Store notification DID_CHANGE_RENEWAL_STATUS with subtype AUTO_RENEW_DISABLED mean?",
+   "description": "DID_CHANGE_RENEWAL_STATUS with subtype AUTO_RENEW_DISABLED means the customer cancelled, or Apple turned auto-renew off after a refund request. Keep access to the period end.",
+   "answer": "The App Store subtype AUTO_RENEW_DISABLED means auto-renew was turned off for a subscription that has not expired yet.",
+   "symbol": "`notificationType` `DID_CHANGE_RENEWAL_STATUS`, `subtype` `AUTO_RENEW_DISABLED`",
+   "api": "App Store Server Notifications v2 (`responseBodyV2DecodedPayload`)",
+   "facts": [
+    [
+     "Sent by",
+     "The App Store server, to your notification URL"
+    ]
+   ],
+   "definitionLabel": "What Apple says",
+   "definition": "The customer turned off subscription auto-renewal, or the App Store turned it off after the customer requested a refund.",
+   "causes": [
+    "The customer cancelled in the App Store Subscriptions settings.",
+    "The system turned auto-renew off because the customer started a refund request through your app with the refund request API.",
+    "The subscription itself is not over: it expires at the end of the paid period and `EXPIRED` with subtype `VOLUNTARY` follows then."
+   ],
+   "fixes": [
+    "Verify the `signedPayload` with Apple's App Store Server Library (`SignedDataVerifier.verifyAndDecodeNotification`) before you act on anything in it.",
+    "Keep access until `expiresDate`.",
+    "Show a message that the subscription ends on that date, and offer a way back.",
+    "Do not mark the customer as churned until `EXPIRED` arrives.",
+    "Answer HTTP 200 (any code from 200 to 206) once you have stored the notification. Apple retries other answers five times, at 1, 12, 24, 48 and 72 hours after the previous attempt, so make your handler safe to run twice (the payload carries a `notificationUUID`)."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "not churned yet",
+    "code": "// Run on the decoded payload, after you verified Apple's signature.\nconst notification = {\"notificationType\":\"DID_CHANGE_RENEWAL_STATUS\",\"subtype\":\"AUTO_RENEW_DISABLED\",\"data\":{\"environment\":\"Sandbox\",\"bundleId\":\"com.example.app\"}};\n\nfunction decide(n) {\n  const off = n.notificationType === \"DID_CHANGE_RENEWAL_STATUS\" && n.subtype === \"AUTO_RENEW_DISABLED\";\n  return off ? \"mark renewal off, keep access until expiresDate, not churned yet\" : \"ignore\";\n}\n\nconsole.log(decide(notification));"
+   },
+   "mapping": "RevenueDot verifies Apple's signature, checks the bundle ID, stores the notification and answers 200. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. The type override stores the purchase as unsubscribed. RevenueDot sends one `CANCELLATION` event with a `cancel_reason` (`UNSUBSCRIBE` unless the store or a billing issue says otherwise) and keeps `expiration_at_ms` unchanged. The `EXPIRATION` event follows when the period ends.",
+   "related": [
+    "apple-did-change-renewal-status",
+    "apple-expired-voluntary",
+    "apple-refund-declined"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up App Store notifications in RevenueDot",
+     "url": "../guides/app-store.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Apple: notificationType",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/notificationtype"
+    },
+    {
+     "label": "Apple: subtype",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/subtype"
+    },
+    {
+     "label": "Apple: Responding to App Store Server Notifications",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/responding-to-app-store-server-notifications"
+    },
+    {
+     "label": "Apple: app-store-server-library-node (SignedDataVerifier)",
+     "url": "https://github.com/apple/app-store-server-library-node"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/map.ts (how the transaction becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "apple-did-change-renewal-pref",
+   "label": "Apple: DID_CHANGE_RENEWAL_PREF",
+   "title": "What does the App Store notification DID_CHANGE_RENEWAL_PREF mean?",
+   "description": "DID_CHANGE_RENEWAL_PREF means the customer changed their subscription plan. UPGRADE starts now, DOWNGRADE at the next renewal, and no subtype means they reverted a downgrade.",
+   "answer": "The App Store notification DID_CHANGE_RENEWAL_PREF means the customer switched to a different subscription plan in the same group.",
+   "symbol": "`notificationType` `DID_CHANGE_RENEWAL_PREF`",
+   "api": "App Store Server Notifications v2 (`responseBodyV2DecodedPayload`)",
+   "facts": [
+    [
+     "Sent by",
+     "The App Store server, to your notification URL"
+    ]
+   ],
+   "definitionLabel": "What Apple says",
+   "definition": "The customer changed their subscription plan. UPGRADE takes effect immediately, DOWNGRADE at the next renewal date, and an empty subtype means the customer reverted to the current plan, cancelling a downgrade.",
+   "causes": [
+    "Subtype `UPGRADE`: the upgrade takes effect at once and starts a new billing period. Apple gives the customer a prorated refund for the unused part of the old period.",
+    "Subtype `DOWNGRADE`: the change takes effect at the next renewal date and does not affect the active plan. A cross-grade to a different duration counts as a downgrade.",
+    "No subtype: the customer changed the renewal preference back to the current plan, which cancels a scheduled downgrade."
+   ],
+   "fixes": [
+    "Verify the `signedPayload` with Apple's App Store Server Library (`SignedDataVerifier.verifyAndDecodeNotification`) before you act on anything in it.",
+    "On `UPGRADE`, switch the entitlement now, to the product in the new transaction.",
+    "On `DOWNGRADE`, keep the current plan and note the product in `autoRenewProductId` of the renewal info as the plan from the next renewal.",
+    "With no subtype, clear the scheduled change.",
+    "Answer HTTP 200 (any code from 200 to 206) once you have stored the notification. Apple retries other answers five times, at 1, 12, 24, 48 and 72 hours after the previous attempt, so make your handler safe to run twice (the payload carries a `notificationUUID`)."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "switch plan now",
+    "code": "// Run on the decoded payload, after you verified Apple's signature.\nconst notification = {\"notificationType\":\"DID_CHANGE_RENEWAL_PREF\",\"subtype\":\"UPGRADE\",\"data\":{\"environment\":\"Sandbox\",\"bundleId\":\"com.example.app\"}};\n\nfunction decide(n) {\n  if (n.notificationType !== \"DID_CHANGE_RENEWAL_PREF\") return \"ignore\";\n  if (n.subtype === \"UPGRADE\") return \"switch plan now\";\n  if (n.subtype === \"DOWNGRADE\") return \"switch plan at the next renewal\";\n  return \"clear the scheduled downgrade\";\n}\n\nconsole.log(decide(notification));"
+   },
+   "mapping": "RevenueDot verifies Apple's signature, checks the bundle ID, stores the notification and answers 200. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. The renewal info's `autoRenewProductId` is stored. A downgrade scheduled for the next renewal gives `PRODUCT_CHANGE` with `new_product_id` set to that product. An upgrade arrives as a transaction for the new product, which gives `PRODUCT_CHANGE` with `product_id` the old product, plus `RENEWAL` when the new product starts a new period.",
+   "related": [
+    "apple-offer-redeemed",
+    "apple-did-renew",
+    "apple-did-change-renewal-status"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up App Store notifications in RevenueDot",
+     "url": "../guides/app-store.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Apple: notificationType",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/notificationtype"
+    },
+    {
+     "label": "Apple: Responding to App Store Server Notifications",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/responding-to-app-store-server-notifications"
+    },
+    {
+     "label": "Apple: app-store-server-library-node (SignedDataVerifier)",
+     "url": "https://github.com/apple/app-store-server-library-node"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/map.ts (how the transaction becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "apple-expired",
+   "label": "Apple: EXPIRED",
+   "title": "What does the App Store notification EXPIRED mean?",
+   "description": "EXPIRED means a subscription ended. The subtype says why: VOLUNTARY, BILLING_RETRY, PRICE_INCREASE or PRODUCT_NOT_FOR_SALE. Remove access and keep the reason for win-back.",
+   "answer": "The App Store notification EXPIRED means a subscription has expired and the customer should lose access.",
+   "symbol": "`notificationType` `EXPIRED`",
+   "api": "App Store Server Notifications v2 (`responseBodyV2DecodedPayload`)",
+   "facts": [
+    [
+     "Sent by",
+     "The App Store server, to your notification URL"
+    ]
+   ],
+   "definitionLabel": "What Apple says",
+   "definition": "The subscription expired. The subtype gives the reason: VOLUNTARY, BILLING_RETRY, PRICE_INCREASE or PRODUCT_NOT_FOR_SALE. With no subtype it expired for another reason.",
+   "causes": [
+    "`VOLUNTARY`: the customer turned off renewal and the period ended.",
+    "`BILLING_RETRY`: billing retry ended without a successful charge.",
+    "`PRICE_INCREASE`: the customer did not consent to a price increase that needs consent.",
+    "`PRODUCT_NOT_FOR_SALE`: the product was not available for purchase when the renewal was due. No subtype means some other reason."
+   ],
+   "fixes": [
+    "Verify the `signedPayload` with Apple's App Store Server Library (`SignedDataVerifier.verifyAndDecodeNotification`) before you act on anything in it.",
+    "Remove access to the paid features and mark the subscription as ended.",
+    "Use the subtype to choose the win-back message: a payment problem needs a billing prompt, a voluntary cancel needs an offer.",
+    "Keep the customer's data; they can resubscribe, which arrives as `SUBSCRIBED` with subtype `RESUBSCRIBE`.",
+    "Answer HTTP 200 (any code from 200 to 206) once you have stored the notification. Apple retries other answers five times, at 1, 12, 24, 48 and 72 hours after the previous attempt, so make your handler safe to run twice (the payload carries a `notificationUUID`)."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "remove access, ",
+    "code": "// Run on the decoded payload, after you verified Apple's signature.\nconst notification = {\"notificationType\":\"EXPIRED\",\"data\":{\"environment\":\"Sandbox\",\"bundleId\":\"com.example.app\"}};\n\nfunction decide(n) {\n  if (n.notificationType !== \"EXPIRED\") return \"ignore\";\n  const why = { VOLUNTARY: \"offer a discount\", BILLING_RETRY: \"ask for a new payment method\", PRICE_INCREASE: \"explain the new price\", PRODUCT_NOT_FOR_SALE: \"offer another plan\" }[n.subtype];\n  return \"remove access, \" + (why ?? \"ask why they left\");\n}\n\nconsole.log(decide(notification));"
+   },
+   "mapping": "RevenueDot verifies Apple's signature, checks the bundle ID, stores the notification and answers 200. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. Type overrides set the stored state from the subtype: `VOLUNTARY` turns renewal off and clears any billing issue, `BILLING_RETRY` marks a billing issue, `PRICE_INCREASE` stores the cancel reason `PRICE_INCREASE`. The `EXPIRATION` webhook event is recorded by RevenueDot's scheduler once access, grace period included, has ended, with `expiration_reason` taken from the stored state.",
+   "related": [
+    "apple-expired-voluntary",
+    "apple-expired-billing-retry",
+    "apple-subscribed"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up App Store notifications in RevenueDot",
+     "url": "../guides/app-store.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Apple: notificationType",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/notificationtype"
+    },
+    {
+     "label": "Apple: Responding to App Store Server Notifications",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/responding-to-app-store-server-notifications"
+    },
+    {
+     "label": "Apple: app-store-server-library-node (SignedDataVerifier)",
+     "url": "https://github.com/apple/app-store-server-library-node"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/map.ts (how the transaction becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/tick.ts (the scheduled EXPIRATION)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/tick.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "apple-expired-voluntary",
+   "label": "Apple: EXPIRED / VOLUNTARY",
+   "title": "What does the App Store notification EXPIRED with subtype VOLUNTARY mean?",
+   "description": "EXPIRED with subtype VOLUNTARY means a subscription ended because the customer turned off auto-renew. Remove access and start a win-back flow.",
+   "answer": "The App Store subtype VOLUNTARY on EXPIRED means the subscription ended because the customer chose to stop it.",
+   "symbol": "`notificationType` `EXPIRED`, `subtype` `VOLUNTARY`",
+   "api": "App Store Server Notifications v2 (`responseBodyV2DecodedPayload`)",
+   "facts": [
+    [
+     "Sent by",
+     "The App Store server, to your notification URL"
+    ]
+   ],
+   "definitionLabel": "What Apple says",
+   "definition": "The subscription expired after the customer turned off subscription renewal.",
+   "causes": [
+    "The customer cancelled earlier (you saw `DID_CHANGE_RENEWAL_STATUS` with `AUTO_RENEW_DISABLED`) and the paid period has now run out.",
+    "No payment problem is involved, so it is not billing related.",
+    "The customer can come back at any time, which arrives as `SUBSCRIBED` with subtype `RESUBSCRIBE`."
+   ],
+   "fixes": [
+    "Verify the `signedPayload` with Apple's App Store Server Library (`SignedDataVerifier.verifyAndDecodeNotification`) before you act on anything in it.",
+    "Remove access and mark the customer as churned by choice.",
+    "Send your win-back message or an offer, for example a promotional or win-back offer.",
+    "Do not ask for a payment update: their payment method is not the reason.",
+    "Answer HTTP 200 (any code from 200 to 206) once you have stored the notification. Apple retries other answers five times, at 1, 12, 24, 48 and 72 hours after the previous attempt, so make your handler safe to run twice (the payload carries a `notificationUUID`)."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "churned by choice",
+    "code": "// Run on the decoded payload, after you verified Apple's signature.\nconst notification = {\"notificationType\":\"EXPIRED\",\"subtype\":\"VOLUNTARY\",\"data\":{\"environment\":\"Sandbox\",\"bundleId\":\"com.example.app\"}};\n\nfunction decide(n) {\n  const gone = n.notificationType === \"EXPIRED\" && n.subtype === \"VOLUNTARY\";\n  return gone ? \"remove access, mark churned by choice, send win-back\" : \"ignore\";\n}\n\nconsole.log(decide(notification));"
+   },
+   "mapping": "RevenueDot verifies Apple's signature, checks the bundle ID, stores the notification and answers 200. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. The type override stores renewal off and no billing issue. The scheduler records `EXPIRATION` with `expiration_reason: UNSUBSCRIBE`, because the earlier `CANCELLATION` already carried that reason.",
+   "related": [
+    "apple-expired",
+    "apple-did-change-renewal-status-auto-renew-disabled",
+    "apple-subscribed"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up App Store notifications in RevenueDot",
+     "url": "../guides/app-store.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Apple: notificationType",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/notificationtype"
+    },
+    {
+     "label": "Apple: subtype",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/subtype"
+    },
+    {
+     "label": "Apple: Responding to App Store Server Notifications",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/responding-to-app-store-server-notifications"
+    },
+    {
+     "label": "Apple: app-store-server-library-node (SignedDataVerifier)",
+     "url": "https://github.com/apple/app-store-server-library-node"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/map.ts (how the transaction becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/tick.ts (the scheduled EXPIRATION)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/tick.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "apple-expired-billing-retry",
+   "label": "Apple: EXPIRED / BILLING_RETRY",
+   "title": "What does the App Store notification EXPIRED with subtype BILLING_RETRY mean?",
+   "description": "EXPIRED with subtype BILLING_RETRY means billing retry ended without recovering the subscription. Remove access and ask the customer for a new payment method.",
+   "answer": "The App Store subtype BILLING_RETRY on EXPIRED means the App Store gave up charging the customer and the subscription ended.",
+   "symbol": "`notificationType` `EXPIRED`, `subtype` `BILLING_RETRY`",
+   "api": "App Store Server Notifications v2 (`responseBodyV2DecodedPayload`)",
+   "facts": [
+    [
+     "Sent by",
+     "The App Store server, to your notification URL"
+    ]
+   ],
+   "definitionLabel": "What Apple says",
+   "definition": "The subscription expired because it failed to renew before the billing retry period ended.",
+   "causes": [
+    "A renewal failed, and Apple retried billing for up to 60 days without success.",
+    "Any grace period had already ended (you saw `GRACE_PERIOD_EXPIRED`) or the app had no grace period.",
+    "The customer did not fix their payment method, and did not cancel."
+   ],
+   "fixes": [
+    "Verify the `signedPayload` with Apple's App Store Server Library (`SignedDataVerifier.verifyAndDecodeNotification`) before you act on anything in it.",
+    "Remove access and mark the churn as involuntary.",
+    "Send a win-back message that asks for a new payment method and links to the customer's payment settings.",
+    "Report it separately from voluntary churn in your metrics.",
+    "Answer HTTP 200 (any code from 200 to 206) once you have stored the notification. Apple retries other answers five times, at 1, 12, 24, 48 and 72 hours after the previous attempt, so make your handler safe to run twice (the payload carries a `notificationUUID`)."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "involuntary churn",
+    "code": "// Run on the decoded payload, after you verified Apple's signature.\nconst notification = {\"notificationType\":\"EXPIRED\",\"subtype\":\"BILLING_RETRY\",\"data\":{\"environment\":\"Sandbox\",\"bundleId\":\"com.example.app\"}};\n\nfunction decide(n) {\n  const gaveUp = n.notificationType === \"EXPIRED\" && n.subtype === \"BILLING_RETRY\";\n  return gaveUp ? \"remove access, mark involuntary churn, ask for a new payment method\" : \"ignore\";\n}\n\nconsole.log(decide(notification));"
+   },
+   "mapping": "RevenueDot verifies Apple's signature, checks the bundle ID, stores the notification and answers 200. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. The type override marks a billing issue on the stored purchase. The scheduler records `EXPIRATION` with `expiration_reason: BILLING_ERROR`, which is how RevenueDot (like RevenueCat) tells involuntary churn from a voluntary cancel.",
+   "related": [
+    "apple-expired",
+    "apple-did-fail-to-renew",
+    "apple-grace-period-expired"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up App Store notifications in RevenueDot",
+     "url": "../guides/app-store.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Apple: notificationType",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/notificationtype"
+    },
+    {
+     "label": "Apple: subtype",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/subtype"
+    },
+    {
+     "label": "Apple: Responding to App Store Server Notifications",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/responding-to-app-store-server-notifications"
+    },
+    {
+     "label": "Apple: app-store-server-library-node (SignedDataVerifier)",
+     "url": "https://github.com/apple/app-store-server-library-node"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/map.ts (how the transaction becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/tick.ts (the scheduled EXPIRATION)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/tick.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "apple-offer-redeemed",
+   "label": "Apple: OFFER_REDEEMED",
+   "title": "What does the App Store notification OFFER_REDEEMED mean?",
+   "description": "OFFER_REDEEMED means a customer with an active subscription redeemed an offer. Subtype UPGRADE applies now, DOWNGRADE at the next renewal, and no subtype is an offer on the same plan.",
+   "answer": "The App Store notification OFFER_REDEEMED means a customer with an active subscription redeemed a promotional offer or an offer code.",
+   "symbol": "`notificationType` `OFFER_REDEEMED`",
+   "api": "App Store Server Notifications v2 (`responseBodyV2DecodedPayload`)",
+   "facts": [
+    [
+     "Sent by",
+     "The App Store server, to your notification URL"
+    ]
+   ],
+   "definitionLabel": "What Apple says",
+   "definition": "A customer with an active subscription redeemed a subscription offer. UPGRADE applies at once, DOWNGRADE at the next renewal date, and no subtype means an offer on the current subscription.",
+   "causes": [
+    "The customer redeemed a promotional offer or offer code while subscribed. First-time and returning subscribers redeeming an offer arrive as `SUBSCRIBED`, and offers on consumables or non-consumables as `ONE_TIME_CHARGE`.",
+    "Subtype `UPGRADE`: the offer upgraded the plan, effective immediately. `DOWNGRADE`: the plan changes at the next renewal.",
+    "Apple says to check `offerType` in the transaction to see what kind of offer it was."
+   ],
+   "fixes": [
+    "Verify the `signedPayload` with Apple's App Store Server Library (`SignedDataVerifier.verifyAndDecodeNotification`) before you act on anything in it.",
+    "Read `offerType` and `offerIdentifier` from the signed transaction and record which offer was used.",
+    "Update the entitlement for an `UPGRADE`; schedule it for a `DOWNGRADE`.",
+    "Mark the customer as having used the offer, so you do not show it again.",
+    "Answer HTTP 200 (any code from 200 to 206) once you have stored the notification. Apple retries other answers five times, at 1, 12, 24, 48 and 72 hours after the previous attempt, so make your handler safe to run twice (the payload carries a `notificationUUID`)."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "record the offer",
+    "code": "// Run on the decoded payload, after you verified Apple's signature.\nconst notification = {\"notificationType\":\"OFFER_REDEEMED\",\"data\":{\"environment\":\"Sandbox\",\"bundleId\":\"com.example.app\"}};\n\nfunction decide(n) {\n  if (n.notificationType !== \"OFFER_REDEEMED\") return \"ignore\";\n  const when = { UPGRADE: \"now\", DOWNGRADE: \"at the next renewal\" }[n.subtype] ?? \"on the current plan\";\n  return \"record the offer, apply it \" + when;\n}\n\nconsole.log(decide(notification));"
+   },
+   "mapping": "RevenueDot verifies Apple's signature, checks the bundle ID, stores the notification and answers 200. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. The signed transaction carries the offer, and RevenueDot stores its identifier as the period's offer, which webhooks send as `offer_code`. The period type follows the offer (a free offer is `TRIAL`, a paid introductory or offer code period is `INTRO`, a paid promotional or win-back period is `NORMAL`). A plan change gives the same `PRODUCT_CHANGE` rules as `DID_CHANGE_RENEWAL_PREF`.",
+   "related": [
+    "apple-did-change-renewal-pref",
+    "apple-subscribed",
+    "apple-one-time-charge"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up App Store notifications in RevenueDot",
+     "url": "../guides/app-store.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Apple: notificationType",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/notificationtype"
+    },
+    {
+     "label": "Apple: Responding to App Store Server Notifications",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/responding-to-app-store-server-notifications"
+    },
+    {
+     "label": "Apple: app-store-server-library-node (SignedDataVerifier)",
+     "url": "https://github.com/apple/app-store-server-library-node"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/map.ts (how the transaction becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "apple-one-time-charge",
+   "label": "Apple: ONE_TIME_CHARGE",
+   "title": "What does the App Store notification ONE_TIME_CHARGE mean?",
+   "description": "ONE_TIME_CHARGE means a customer bought a consumable, non-consumable or non-renewing subscription, or got a non-consumable through Family Sharing. Deliver the purchase once.",
+   "answer": "The App Store notification ONE_TIME_CHARGE means a customer bought a consumable, a non-consumable or a non-renewing subscription.",
+   "symbol": "`notificationType` `ONE_TIME_CHARGE`",
+   "api": "App Store Server Notifications v2 (`responseBodyV2DecodedPayload`)",
+   "facts": [
+    [
+     "Sent by",
+     "The App Store server, to your notification URL"
+    ]
+   ],
+   "definitionLabel": "What Apple says",
+   "definition": "The customer purchased a consumable, non-consumable or non-renewing subscription. It is also sent when they get a non-consumable through Family Sharing.",
+   "causes": [
+    "A purchase of a one-time product, including by redeeming an offer code for one.",
+    "A family member received a non-consumable through Family Sharing.",
+    "Purchases of auto-renewable subscriptions arrive as `SUBSCRIBED`, not as this type."
+   ],
+   "fixes": [
+    "Verify the `signedPayload` with Apple's App Store Server Library (`SignedDataVerifier.verifyAndDecodeNotification`) before you act on anything in it.",
+    "Deliver the product once, keyed on `transactionId`, so a retried notification does not grant it twice.",
+    "Check `inAppOwnershipType` to tell a purchase from a Family Sharing grant.",
+    "Check `offerType` when you need to know if an offer code was used.",
+    "Answer HTTP 200 (any code from 200 to 206) once you have stored the notification. Apple retries other answers five times, at 1, 12, 24, 48 and 72 hours after the previous attempt, so make your handler safe to run twice (the payload carries a `notificationUUID`)."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "deliver the product once",
+    "code": "// Run on the decoded payload, after you verified Apple's signature.\nconst notification = {\"notificationType\":\"ONE_TIME_CHARGE\",\"data\":{\"environment\":\"Sandbox\",\"bundleId\":\"com.example.app\"}};\n\nfunction decide(n) {\n  if (n.notificationType !== \"ONE_TIME_CHARGE\") return \"ignore\";\n  const delivered = new Set();\n  const txId = \"2000000123456789\";\n  if (delivered.has(txId)) return \"already delivered\";\n  delivered.add(txId);\n  return \"deliver the product once\";\n}\n\nconsole.log(decide(notification));"
+   },
+   "mapping": "RevenueDot verifies Apple's signature, checks the bundle ID, stores the notification and answers 200. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. The transaction is stored as a one-time purchase keyed on `transactionId`. A purchase RevenueDot has not recorded gives a `NON_RENEWING_PURCHASE` event; a refund later gives `CANCELLATION` with `cancel_reason: CUSTOMER_SUPPORT`.",
+   "related": [
+    "apple-refund",
+    "apple-offer-redeemed",
+    "apple-subscribed"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up App Store notifications in RevenueDot",
+     "url": "../guides/app-store.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Apple: notificationType",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/notificationtype"
+    },
+    {
+     "label": "Apple: Responding to App Store Server Notifications",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/responding-to-app-store-server-notifications"
+    },
+    {
+     "label": "Apple: app-store-server-library-node (SignedDataVerifier)",
+     "url": "https://github.com/apple/app-store-server-library-node"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/map.ts (how the transaction becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "apple-price-increase",
+   "label": "Apple: PRICE_INCREASE",
+   "title": "What does the App Store notification PRICE_INCREASE mean?",
+   "description": "PRICE_INCREASE means the system told a customer about a subscription price increase. PENDING means no response yet; ACCEPTED means consent given or none needed.",
+   "answer": "The App Store notification PRICE_INCREASE means the system informed a customer of a subscription price increase.",
+   "symbol": "`notificationType` `PRICE_INCREASE`",
+   "api": "App Store Server Notifications v2 (`responseBodyV2DecodedPayload`)",
+   "facts": [
+    [
+     "Sent by",
+     "The App Store server, to your notification URL"
+    ]
+   ],
+   "definitionLabel": "What Apple says",
+   "definition": "The system informed the customer of an auto-renewable subscription price increase. With consent required, PENDING means no answer yet and ACCEPTED means consent; with no consent required, the subtype is ACCEPTED.",
+   "causes": [
+    "Subtype `PENDING`: the increase needs the customer's consent and they have not responded.",
+    "Subtype `ACCEPTED`: the customer consented, or the increase did not need consent and the system just notified them.",
+    "If the customer never consents, the subscription ends with `EXPIRED` and subtype `PRICE_INCREASE`."
+   ],
+   "fixes": [
+    "Verify the `signedPayload` with Apple's App Store Server Library (`SignedDataVerifier.verifyAndDecodeNotification`) before you act on anything in it.",
+    "On `PENDING`, remind the customer in your app that the new price needs their consent before the renewal.",
+    "On `ACCEPTED`, record the new price for reporting.",
+    "Expect `EXPIRED` with subtype `PRICE_INCREASE` for customers who ignore it, and plan a win-back.",
+    "Answer HTTP 200 (any code from 200 to 206) once you have stored the notification. Apple retries other answers five times, at 1, 12, 24, 48 and 72 hours after the previous attempt, so make your handler safe to run twice (the payload carries a `notificationUUID`)."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "remind the customer",
+    "code": "// Run on the decoded payload, after you verified Apple's signature.\nconst notification = {\"notificationType\":\"PRICE_INCREASE\",\"subtype\":\"PENDING\",\"data\":{\"environment\":\"Sandbox\",\"bundleId\":\"com.example.app\"}};\n\nfunction decide(n) {\n  if (n.notificationType !== \"PRICE_INCREASE\") return \"ignore\";\n  return n.subtype === \"PENDING\" ? \"remind the customer to accept the new price\" : \"record the accepted price\";\n}\n\nconsole.log(decide(notification));"
+   },
+   "mapping": "RevenueDot verifies Apple's signature, checks the bundle ID, stores the notification and answers 200. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. The subtype sets the stored consent state (`PENDING` or `ACCEPTED`). A change into pending gives a `PRICE_INCREASE_CONSENT_REQUIRED` event and a change into accepted gives `PRICE_INCREASE_CONSENT_APPROVED`.",
+   "related": [
+    "apple-expired",
+    "apple-did-change-renewal-status",
+    "apple-did-renew"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up App Store notifications in RevenueDot",
+     "url": "../guides/app-store.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Apple: notificationType",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/notificationtype"
+    },
+    {
+     "label": "Apple: Responding to App Store Server Notifications",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/responding-to-app-store-server-notifications"
+    },
+    {
+     "label": "Apple: app-store-server-library-node (SignedDataVerifier)",
+     "url": "https://github.com/apple/app-store-server-library-node"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/map.ts (how the transaction becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "apple-refund",
+   "label": "Apple: REFUND",
+   "title": "What does the App Store notification REFUND mean?",
+   "description": "REFUND means the App Store refunded a purchase. Revoke what the customer got, using the revocation date and reason. Applies to consumables, non-consumables and subscriptions.",
+   "answer": "The App Store notification REFUND means Apple refunded a transaction, so the customer should lose what that purchase gave them.",
+   "symbol": "`notificationType` `REFUND`",
+   "api": "App Store Server Notifications v2 (`responseBodyV2DecodedPayload`)",
+   "facts": [
+    [
+     "Sent by",
+     "The App Store server, to your notification URL"
+    ]
+   ],
+   "definitionLabel": "What Apple says",
+   "definition": "The App Store refunded a transaction for a consumable, a non-consumable, an auto-renewable subscription or a non-renewing subscription. revocationDate holds the time of the refund.",
+   "causes": [
+    "Apple approved a refund request, whether the customer asked through Apple support or through your app's refund request API.",
+    "The decoded transaction has `revocationDate` and `revocationReason`, and `originalTransactionId` and `productId` identify the purchase.",
+    "Apple's Get Refund History endpoint lists a customer's refunded transactions."
+   ],
+   "fixes": [
+    "Verify the `signedPayload` with Apple's App Store Server Library (`SignedDataVerifier.verifyAndDecodeNotification`) before you act on anything in it.",
+    "Revoke the access or the credited item for that transaction, effective at `revocationDate`.",
+    "Keep a record of the refund against the customer for support.",
+    "Only roll back what that transaction gave: a refund of an old renewal does not undo the current period.",
+    "Answer HTTP 200 (any code from 200 to 206) once you have stored the notification. Apple retries other answers five times, at 1, 12, 24, 48 and 72 hours after the previous attempt, so make your handler safe to run twice (the payload carries a `notificationUUID`)."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "revoke the purchase as of 2026-09-30",
+    "code": "// Run on the decoded payload, after you verified Apple's signature.\nconst notification = {\"notificationType\":\"REFUND\",\"data\":{\"environment\":\"Sandbox\",\"bundleId\":\"com.example.app\"}};\n\nfunction decide(n) {\n  if (n.notificationType !== \"REFUND\") return \"ignore\";\n  const revokedAt = 1790800914000;\n  return \"revoke the purchase as of \" + new Date(revokedAt).toISOString().slice(0, 10);\n}\n\nconsole.log(decide(notification));"
+   },
+   "mapping": "RevenueDot verifies Apple's signature, checks the bundle ID, stores the notification and answers 200. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. The transaction's `revocationDate` becomes the purchase's refund time. A refunded subscription period gives `CANCELLATION` with `cancel_reason: CUSTOMER_SUPPORT` and a negative price. A refund of an older period never rolls the chain back, because RevenueCat reports only the latest period. If the transaction had a refund request, Refund Control marks it approved.",
+   "related": [
+    "apple-refund-reversed",
+    "apple-refund-declined",
+    "apple-revoke"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up App Store notifications in RevenueDot",
+     "url": "../guides/app-store.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Apple: notificationType",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/notificationtype"
+    },
+    {
+     "label": "Apple: Responding to App Store Server Notifications",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/responding-to-app-store-server-notifications"
+    },
+    {
+     "label": "Apple: app-store-server-library-node (SignedDataVerifier)",
+     "url": "https://github.com/apple/app-store-server-library-node"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/map.ts (how the transaction becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    },
+    {
+     "label": "RevenueDot server: services/refunds.ts (Refund Control)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/refunds.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "apple-refund-reversed",
+   "label": "Apple: REFUND_REVERSED",
+   "title": "What does the App Store notification REFUND_REVERSED mean?",
+   "description": "REFUND_REVERSED means Apple reversed a refund after a customer dispute. Reinstate the access or item you revoked. A subscription's renewal date does not change.",
+   "answer": "The App Store notification REFUND_REVERSED means Apple took back a refund it had granted, after a dispute by the customer.",
+   "symbol": "`notificationType` `REFUND_REVERSED`",
+   "api": "App Store Server Notifications v2 (`responseBodyV2DecodedPayload`)",
+   "facts": [
+    [
+     "Sent by",
+     "The App Store server, to your notification URL"
+    ]
+   ],
+   "definitionLabel": "What Apple says",
+   "definition": "The App Store reversed a refund it granted, because of a dispute the customer raised. If your app revoked content because of the refund, it needs to restore it.",
+   "causes": [
+    "The customer disputed a refund and Apple reversed it.",
+    "It applies to every product type. For auto-renewable subscriptions the renewal date stays the same.",
+    "You will have seen a `REFUND` for the same transaction earlier."
+   ],
+   "fixes": [
+    "Verify the `signedPayload` with Apple's App Store Server Library (`SignedDataVerifier.verifyAndDecodeNotification`) before you act on anything in it.",
+    "Restore the access or credited item that the refund removed.",
+    "Undo the refund record on your side so revenue reports match.",
+    "Match it to the earlier `REFUND` by `transactionId`.",
+    "Answer HTTP 200 (any code from 200 to 206) once you have stored the notification. Apple retries other answers five times, at 1, 12, 24, 48 and 72 hours after the previous attempt, so make your handler safe to run twice (the payload carries a `notificationUUID`)."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "reinstate the purchase",
+    "code": "// Run on the decoded payload, after you verified Apple's signature.\nconst notification = {\"notificationType\":\"REFUND_REVERSED\",\"data\":{\"environment\":\"Sandbox\",\"bundleId\":\"com.example.app\"}};\n\nfunction decide(n) {\n  if (n.notificationType !== \"REFUND_REVERSED\") return \"ignore\";\n  return \"reinstate the purchase, remove the refund record\";\n}\n\nconsole.log(decide(notification));"
+   },
+   "mapping": "RevenueDot verifies Apple's signature, checks the bundle ID, stores the notification and answers 200. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. The transaction no longer has a revocation date, so the refund time is cleared and RevenueDot sends `REFUND_REVERSED`. Its payload adds `renewal_number`, the count of renewals the subscription had gone through, as RevenueCat's sample does.",
+   "related": [
+    "apple-refund",
+    "apple-refund-declined",
+    "apple-revoke"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up App Store notifications in RevenueDot",
+     "url": "../guides/app-store.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Apple: notificationType",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/notificationtype"
+    },
+    {
+     "label": "Apple: Responding to App Store Server Notifications",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/responding-to-app-store-server-notifications"
+    },
+    {
+     "label": "Apple: app-store-server-library-node (SignedDataVerifier)",
+     "url": "https://github.com/apple/app-store-server-library-node"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/map.ts (how the transaction becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "apple-refund-declined",
+   "label": "Apple: REFUND_DECLINED",
+   "title": "What does the App Store notification REFUND_DECLINED mean?",
+   "description": "REFUND_DECLINED means Apple declined a refund the customer asked for in your app. Nothing to revoke; record the outcome. It follows a CONSUMPTION_REQUEST.",
+   "answer": "The App Store notification REFUND_DECLINED means Apple turned down a refund request that a customer made.",
+   "symbol": "`notificationType` `REFUND_DECLINED`",
+   "api": "App Store Server Notifications v2 (`responseBodyV2DecodedPayload`)",
+   "facts": [
+    [
+     "Sent by",
+     "The App Store server, to your notification URL"
+    ]
+   ],
+   "definitionLabel": "What Apple says",
+   "definition": "The App Store declined a refund request that the customer started in the app with the refund request API.",
+   "causes": [
+    "The customer used the in-app refund request API and Apple decided against a refund.",
+    "It usually follows a `CONSUMPTION_REQUEST`, where Apple asked you for usage data about the purchase.",
+    "Nothing about the customer's access changes."
+   ],
+   "fixes": [
+    "Verify the `signedPayload` with Apple's App Store Server Library (`SignedDataVerifier.verifyAndDecodeNotification`) before you act on anything in it.",
+    "Do not revoke anything. The purchase stands.",
+    "Record the outcome, so your refund statistics are right.",
+    "If you replied to a `CONSUMPTION_REQUEST`, compare your reply with the result to tune your policy.",
+    "Answer HTTP 200 (any code from 200 to 206) once you have stored the notification. Apple retries other answers five times, at 1, 12, 24, 48 and 72 hours after the previous attempt, so make your handler safe to run twice (the payload carries a `notificationUUID`)."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "keep access",
+    "code": "// Run on the decoded payload, after you verified Apple's signature.\nconst notification = {\"notificationType\":\"REFUND_DECLINED\",\"data\":{\"environment\":\"Sandbox\",\"bundleId\":\"com.example.app\"}};\n\nfunction decide(n) {\n  if (n.notificationType !== \"REFUND_DECLINED\") return \"ignore\";\n  return \"keep access, record the declined refund\";\n}\n\nconsole.log(decide(notification));"
+   },
+   "mapping": "RevenueDot verifies Apple's signature, checks the bundle ID, stores the notification and answers 200. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. RevenueDot records the refund request's outcome as declined in Refund Control and changes nothing else: it is not in the list of types that update the purchase, so no webhook event is sent. If no request had been recorded, it creates one with the outcome declined.",
+   "related": [
+    "apple-consumption-request",
+    "apple-refund",
+    "apple-refund-reversed"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up App Store notifications in RevenueDot",
+     "url": "../guides/app-store.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Apple: notificationType",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/notificationtype"
+    },
+    {
+     "label": "Apple: Responding to App Store Server Notifications",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/responding-to-app-store-server-notifications"
+    },
+    {
+     "label": "Apple: app-store-server-library-node (SignedDataVerifier)",
+     "url": "https://github.com/apple/app-store-server-library-node"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: services/refunds.ts (Refund Control)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/refunds.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "apple-revoke",
+   "label": "Apple: REVOKE",
+   "title": "What does the App Store notification REVOKE mean?",
+   "description": "REVOKE means a Family Sharing entitlement is no longer available: sharing was turned off, a family member left, or the purchaser got a refund. Remove the family member's access.",
+   "answer": "The App Store notification REVOKE means a purchase that a family member could use through Family Sharing is no longer shared with them.",
+   "symbol": "`notificationType` `REVOKE`",
+   "api": "App Store Server Notifications v2 (`responseBodyV2DecodedPayload`)",
+   "facts": [
+    [
+     "Sent by",
+     "The App Store server, to your notification URL"
+    ]
+   ],
+   "definitionLabel": "What Apple says",
+   "definition": "An in-app purchase the customer had through Family Sharing is no longer available that way. The App Store sends it when the purchaser turns off Family Sharing for it, when the purchaser or a family member leaves the family, or when the purchaser is refunded.",
+   "causes": [
+    "The purchaser disabled Family Sharing for the purchase.",
+    "The purchaser or the family member left the family group.",
+    "The purchaser received a refund. Family Sharing applies to non-consumables and auto-renewable subscriptions."
+   ],
+   "fixes": [
+    "Verify the `signedPayload` with Apple's App Store Server Library (`SignedDataVerifier.verifyAndDecodeNotification`) before you act on anything in it.",
+    "Remove the family member's access to that purchase, and keep the purchaser's own access.",
+    "On iOS the app also gets `paymentQueue(_:didRevokeEntitlementsForProductIdentifiers:)` for StoreKit 1 apps. A StoreKit 2 app sees the transaction's `revocationDate`.",
+    "Offer the family member their own subscription.",
+    "Answer HTTP 200 (any code from 200 to 206) once you have stored the notification. Apple retries other answers five times, at 1, 12, 24, 48 and 72 hours after the previous attempt, so make your handler safe to run twice (the payload carries a `notificationUUID`)."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "remove the family member's access",
+    "code": "// Run on the decoded payload, after you verified Apple's signature.\nconst notification = {\"notificationType\":\"REVOKE\",\"data\":{\"environment\":\"Sandbox\",\"bundleId\":\"com.example.app\"}};\n\nfunction decide(n) {\n  if (n.notificationType !== \"REVOKE\") return \"ignore\";\n  return \"remove the family member's access, keep the purchaser's\";\n}\n\nconsole.log(decide(notification));"
+   },
+   "mapping": "RevenueDot verifies Apple's signature, checks the bundle ID, stores the notification and answers 200. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. REVOKE is one of the types that apply the signed transaction. RevenueDot reads the transaction's `revocationDate` as the refund time, so the stored purchase is treated like a refunded one and a `CANCELLATION` event with `cancel_reason: CUSTOMER_SUPPORT` follows.",
+   "related": [
+    "apple-refund",
+    "apple-refund-reversed",
+    "apple-subscribed"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up App Store notifications in RevenueDot",
+     "url": "../guides/app-store.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Apple: notificationType",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/notificationtype"
+    },
+    {
+     "label": "Apple: Responding to App Store Server Notifications",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/responding-to-app-store-server-notifications"
+    },
+    {
+     "label": "Apple: app-store-server-library-node (SignedDataVerifier)",
+     "url": "https://github.com/apple/app-store-server-library-node"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/map.ts (how the transaction becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "apple-renewal-extended",
+   "label": "Apple: RENEWAL_EXTENDED",
+   "title": "What does the App Store notification RENEWAL_EXTENDED mean?",
+   "description": "RENEWAL_EXTENDED means the App Store pushed one subscription's renewal date back, as you asked through the Server API. Extend access to the new date.",
+   "answer": "The App Store notification RENEWAL_EXTENDED means Apple moved one subscription's renewal date later, at your request.",
+   "symbol": "`notificationType` `RENEWAL_EXTENDED`",
+   "api": "App Store Server Notifications v2 (`responseBodyV2DecodedPayload`)",
+   "facts": [
+    [
+     "Sent by",
+     "The App Store server, to your notification URL"
+    ]
+   ],
+   "definitionLabel": "What Apple says",
+   "definition": "The App Store extended the renewal date of a specific subscription, after you called Extend a Subscription Renewal Date or Extend Subscription Renewal Dates for All Active Subscribers.",
+   "causes": [
+    "Your server called Extend a Subscription Renewal Date in the App Store Server API for this customer.",
+    "Or your server called the bulk endpoint and this subscriber's extension succeeded.",
+    "The paid period is unchanged; only the end date moves."
+   ],
+   "fixes": [
+    "Verify the `signedPayload` with Apple's App Store Server Library (`SignedDataVerifier.verifyAndDecodeNotification`) before you act on anything in it.",
+    "Read the new `expiresDate` from `signedTransactionInfo` and extend access to it.",
+    "Record why the extension was given, such as a service outage or a goodwill gesture.",
+    "Answer HTTP 200 (any code from 200 to 206) once you have stored the notification. Apple retries other answers five times, at 1, 12, 24, 48 and 72 hours after the previous attempt, so make your handler safe to run twice (the payload carries a `notificationUUID`)."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "extend access",
+    "code": "// Run on the decoded payload, after you verified Apple's signature.\nconst notification = {\"notificationType\":\"RENEWAL_EXTENDED\",\"data\":{\"environment\":\"Sandbox\",\"bundleId\":\"com.example.app\"}};\n\nfunction decide(n) {\n  if (n.notificationType !== \"RENEWAL_EXTENDED\") return \"ignore\";\n  return \"extend access to the new expiresDate\";\n}\n\nconsole.log(decide(notification));"
+   },
+   "mapping": "RevenueDot verifies Apple's signature, checks the bundle ID, stores the notification and answers 200. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. The new `expiresDate` is applied to the stored purchase. When the period start is unchanged and the end moves later, RevenueDot sends `SUBSCRIPTION_EXTENDED`.",
+   "related": [
+    "apple-renewal-extension",
+    "apple-did-renew",
+    "apple-subscribed"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up App Store notifications in RevenueDot",
+     "url": "../guides/app-store.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Apple: notificationType",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/notificationtype"
+    },
+    {
+     "label": "Apple: Responding to App Store Server Notifications",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/responding-to-app-store-server-notifications"
+    },
+    {
+     "label": "Apple: app-store-server-library-node (SignedDataVerifier)",
+     "url": "https://github.com/apple/app-store-server-library-node"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/map.ts (how the transaction becomes a stored purchase)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/map.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "apple-renewal-extension",
+   "label": "Apple: RENEWAL_EXTENSION",
+   "title": "What does the App Store notification RENEWAL_EXTENSION mean?",
+   "description": "RENEWAL_EXTENSION reports a bulk renewal-date extension: subtype SUMMARY when it finished for all subscribers, FAILURE when one subscription failed. Log it and retry failures.",
+   "answer": "The App Store notification RENEWAL_EXTENSION reports how a bulk renewal-date extension went: a SUMMARY when it finished, a FAILURE for one subscription that failed.",
+   "symbol": "`notificationType` `RENEWAL_EXTENSION`",
+   "api": "App Store Server Notifications v2 (`responseBodyV2DecodedPayload`)",
+   "facts": [
+    [
+     "Sent by",
+     "The App Store server, to your notification URL"
+    ]
+   ],
+   "definitionLabel": "What Apple says",
+   "definition": "The App Store is attempting the renewal-date extension you asked for with Extend Subscription Renewal Dates for All Active Subscribers. SUMMARY means it finished for all eligible subscribers; FAILURE means it failed for one subscription.",
+   "causes": [
+    "Your server called the bulk extension endpoint in the App Store Server API.",
+    "Subtype `SUMMARY`: the work is done. The `summary` object holds the details instead of `data`.",
+    "Subtype `FAILURE`: one subscription was not extended. See the `data` object."
+   ],
+   "fixes": [
+    "Verify the `signedPayload` with Apple's App Store Server Library (`SignedDataVerifier.verifyAndDecodeNotification`) before you act on anything in it.",
+    "On `SUMMARY`, compare the counts with what you expected and log them.",
+    "On `FAILURE`, note the subscription and try the single-subscription extension for it, or tell the customer.",
+    "Do not change any customer's access because of this type: individual successes arrive as `RENEWAL_EXTENDED`.",
+    "Answer HTTP 200 (any code from 200 to 206) once you have stored the notification. Apple retries other answers five times, at 1, 12, 24, 48 and 72 hours after the previous attempt, so make your handler safe to run twice (the payload carries a `notificationUUID`)."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "log the summary counts",
+    "code": "// Run on the decoded payload, after you verified Apple's signature.\nconst notification = {\"notificationType\":\"RENEWAL_EXTENSION\",\"subtype\":\"SUMMARY\",\"data\":{\"environment\":\"Sandbox\",\"bundleId\":\"com.example.app\"}};\n\nfunction decide(n) {\n  if (n.notificationType !== \"RENEWAL_EXTENSION\") return \"ignore\";\n  return n.subtype === \"SUMMARY\" ? \"log the summary counts\" : \"retry the failed subscription\";\n}\n\nconsole.log(decide(notification));"
+   },
+   "mapping": "RevenueDot verifies Apple's signature, checks the bundle ID, stores the notification and answers 200. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. RevenueDot stores the notification and marks the app's notifications as received, and changes no purchase: this type is not in the list that updates purchases. Individual extensions arrive as `RENEWAL_EXTENDED`.",
+   "related": [
+    "apple-renewal-extended",
+    "apple-test",
+    "apple-did-renew"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up App Store notifications in RevenueDot",
+     "url": "../guides/app-store.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Apple: notificationType",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/notificationtype"
+    },
+    {
+     "label": "Apple: Responding to App Store Server Notifications",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/responding-to-app-store-server-notifications"
+    },
+    {
+     "label": "Apple: app-store-server-library-node (SignedDataVerifier)",
+     "url": "https://github.com/apple/app-store-server-library-node"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "apple-consumption-request",
+   "label": "Apple: CONSUMPTION_REQUEST",
+   "title": "What does the App Store notification CONSUMPTION_REQUEST mean?",
+   "description": "CONSUMPTION_REQUEST means a customer asked Apple for a refund and Apple wants usage data from you. RevenueDot's Refund Control can answer it.",
+   "answer": "The App Store notification CONSUMPTION_REQUEST means a customer asked for a refund and Apple wants you to report how much of the purchase they used.",
+   "symbol": "`notificationType` `CONSUMPTION_REQUEST`",
+   "api": "App Store Server Notifications v2 (`responseBodyV2DecodedPayload`)",
+   "facts": [
+    [
+     "Sent by",
+     "The App Store server, to your notification URL"
+    ]
+   ],
+   "definitionLabel": "What Apple says",
+   "definition": "The customer started a refund request for a consumable or an auto-renewable subscription, and the App Store asks you for consumption data.",
+   "causes": [
+    "The customer asked for a refund through Apple. Apple then asks the developer for facts about the purchase before it decides.",
+    "It applies to consumable in-app purchases and auto-renewable subscriptions.",
+    "Apple makes the final decision, and tells you with `REFUND` or `REFUND_DECLINED`."
+   ],
+   "fixes": [
+    "Verify the `signedPayload` with Apple's App Store Server Library (`SignedDataVerifier.verifyAndDecodeNotification`) before you act on anything in it.",
+    "Answer with the Send Consumption Information endpoint of the App Store Server API, and only when you have the customer's consent to share the data.",
+    "Base your answer on facts: how much they used, whether they were a paying customer, and your refund preference.",
+    "Wait for `REFUND` or `REFUND_DECLINED` for the result.",
+    "Answer HTTP 200 (any code from 200 to 206) once you have stored the notification. Apple retries other answers five times, at 1, 12, 24, 48 and 72 hours after the previous attempt, so make your handler safe to run twice (the payload carries a `notificationUUID`)."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "send consumption information",
+    "code": "// Run on the decoded payload, after you verified Apple's signature.\nconst notification = {\"notificationType\":\"CONSUMPTION_REQUEST\",\"data\":{\"environment\":\"Sandbox\",\"bundleId\":\"com.example.app\"}};\n\nfunction decide(n) {\n  if (n.notificationType !== \"CONSUMPTION_REQUEST\") return \"ignore\";\n  const consented = true;\n  return consented ? \"send consumption information to Apple\" : \"skip, no customer consent\";\n}\n\nconsole.log(decide(notification));"
+   },
+   "mapping": "RevenueDot verifies Apple's signature, checks the bundle ID, stores the notification and answers 200. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. RevenueDot's Refund Control records the request, picks a policy and, when the customer consent setting is on and the policy says to respond, sends the consumption information to Apple at once. Without consent, or when the policy is not to respond, it skips the answer and records why. It changes no purchase and sends no webhook event.",
+   "related": [
+    "apple-refund",
+    "apple-refund-declined",
+    "apple-refund-reversed"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up App Store notifications in RevenueDot",
+     "url": "../guides/app-store.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Apple: notificationType",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/notificationtype"
+    },
+    {
+     "label": "Apple: Responding to App Store Server Notifications",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/responding-to-app-store-server-notifications"
+    },
+    {
+     "label": "Apple: app-store-server-library-node (SignedDataVerifier)",
+     "url": "https://github.com/apple/app-store-server-library-node"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: services/refunds.ts (Refund Control)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/refunds.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "apple-test",
+   "label": "Apple: TEST",
+   "title": "What does the App Store notification TEST mean?",
+   "description": "TEST is the notification the App Store sends when you ask for one with the Request a Test Notification endpoint. Use it to check your server receives and answers notifications.",
+   "answer": "The App Store notification TEST is a sample notification that Apple sends only when you request it, to check that your server receives notifications.",
+   "symbol": "`notificationType` `TEST`",
+   "api": "App Store Server Notifications v2 (`responseBodyV2DecodedPayload`)",
+   "facts": [
+    [
+     "Sent by",
+     "The App Store server, to your notification URL"
+    ]
+   ],
+   "definitionLabel": "What Apple says",
+   "definition": "The App Store server sends it when you call the Request a Test Notification endpoint. You get it only at your request.",
+   "causes": [
+    "You called Request a Test Notification in the App Store Server API,.",
+    "It carries no purchase, so there is nothing to apply.",
+    "Apple's Get Test Notification Status endpoint shows whether the delivery worked."
+   ],
+   "fixes": [
+    "Verify the `signedPayload` with Apple's App Store Server Library (`SignedDataVerifier.verifyAndDecodeNotification`) before you act on anything in it.",
+    "Answer 200 so Apple records success.",
+    "Do not treat it as a customer event.",
+    "If it does not arrive, call Get Test Notification Status for the failure reason.",
+    "Answer HTTP 200 (any code from 200 to 206) once you have stored the notification. Apple retries other answers five times, at 1, 12, 24, 48 and 72 hours after the previous attempt, so make your handler safe to run twice (the payload carries a `notificationUUID`)."
+   ],
+   "snippet": {
+    "lang": "javascript",
+    "check": "node",
+    "expect": "answer 200",
+    "code": "// Run on the decoded payload, after you verified Apple's signature.\nconst notification = {\"notificationType\":\"TEST\",\"data\":{\"environment\":\"Sandbox\",\"bundleId\":\"com.example.app\"}};\n\nfunction decide(n) {\n  if (n.notificationType !== \"TEST\") return \"ignore\";\n  return \"answer 200, do not touch any customer\";\n}\n\nconsole.log(decide(notification));"
+   },
+   "mapping": "RevenueDot verifies Apple's signature, checks the bundle ID, stores the notification and answers 200. A purchase RevenueDot has not seen is applied only when the app's **Track new purchases from server-to-server notifications** setting is on. RevenueDot stores the test notification, answers 200 and counts it as received, so the app's notification status in setup health can turn ready. It applies nothing and sends no webhook event.",
+   "related": [
+    "apple-renewal-extension",
+    "apple-did-renew",
+    "apple-subscribed"
+   ],
+   "links": [
+    {
+     "label": "Which webhook events does RevenueDot send?",
+     "url": "../../api/webhook-events.md"
+    },
+    {
+     "label": "Set up App Store notifications in RevenueDot",
+     "url": "../guides/app-store.md"
+    }
+   ],
+   "sources": [
+    {
+     "label": "Apple: notificationType",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/notificationtype"
+    },
+    {
+     "label": "Apple: Responding to App Store Server Notifications",
+     "url": "https://developer.apple.com/documentation/appstoreservernotifications/responding-to-app-store-server-notifications"
+    },
+    {
+     "label": "Apple: app-store-server-library-node (SignedDataVerifier)",
+     "url": "https://github.com/apple/app-store-server-library-node"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    },
+    {
+     "label": "RevenueDot server: stores/apple/notifications.ts (how the notification is applied)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/notifications.ts"
+    },
+    {
+     "label": "RevenueDot core: events.ts (how a change becomes a webhook event)",
+     "url": "https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/events.ts"
+    }
+   ],
+   "checked": "2026-10-03"
+  }
+ ]
+}

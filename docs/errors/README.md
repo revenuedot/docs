@@ -8,7 +8,7 @@ label: "All error pages"
 
 # What do store and SDK error codes mean?
 
-Each page below answers one error in a sentence, then gives the cause, the fix, an example and the vendor source it was checked against (40 pages). For the full list of RevenueDot server error codes, see [what RevenueDot's API errors mean](../../api/errors.md).
+Each page below answers one error in a sentence, then gives the cause, the fix, an example and the vendor source it was checked against (52 pages). For the full list of RevenueDot server error codes, see [what RevenueDot's API errors mean](../../api/errors.md).
 
 ## Apple StoreKit 2 errors
 
@@ -29,6 +29,16 @@ The error cases the StoreKit 2 Swift API throws when you load products, buy, ref
 - [What does Product.PurchaseError.invalidOfferSignature mean?](storekit-purchase-error-invalid-offer-signature.md)
 - [What does Transaction.RefundRequestError.duplicateRequest mean?](storekit-refund-error-duplicate-request.md)
 - [What does VerificationError.invalidSignature mean in StoreKit 2?](storekit-verification-error-invalid-signature.md)
+- [What does Product.PurchaseError.invalidOfferPrice mean?](storekit-purchase-error-invalid-offer-price.md)
+- [What does Product.PurchaseError.missingOfferParameters mean?](storekit-purchase-error-missing-offer-parameters.md)
+- [What does Product.PurchaseError.paymentMethodBindingConfigurationRequired mean?](storekit-purchase-error-payment-method-binding-configuration-required.md)
+- [What does StoreKitError.invalidPresentationContext mean?](storekit-error-invalid-presentation-context.md)
+- [What does Transaction.RefundRequestError.failed mean?](storekit-refund-error-failed.md)
+- [What does VerificationError.invalidCertificateChain mean in StoreKit 2?](storekit-verification-error-invalid-certificate-chain.md)
+- [What does VerificationError.invalidDeviceVerification mean in StoreKit 2?](storekit-verification-error-invalid-device-verification.md)
+- [What does VerificationError.invalidEncoding mean in StoreKit 2?](storekit-verification-error-invalid-encoding.md)
+- [What does VerificationError.missingRequiredProperties mean in StoreKit 2?](storekit-verification-error-missing-required-properties.md)
+- [What does VerificationError.revokedCertificate mean in StoreKit 2?](storekit-verification-error-revoked-certificate.md)
 
 ## Google Play Billing response codes
 
@@ -44,6 +54,8 @@ The `BillingResponseCode` values that Play Billing Library calls return in a `Bi
 - [What does Play Billing ITEM_NOT_OWNED (8) mean?](play-billing-item-not-owned.md)
 - [What does Play Billing NETWORK_ERROR (12) mean?](play-billing-network-error.md)
 - [What does Play Billing USER_CANCELED (1) mean?](play-billing-user-canceled.md)
+- [What does Play Billing FEATURE_NOT_SUPPORTED (-2) mean?](play-billing-feature-not-supported.md)
+- [What does Play Billing SERVICE_TIMEOUT (-3) mean?](play-billing-service-timeout.md)
 
 ## Purchases SDK error codes
 
