@@ -6322,9 +6322,31 @@ GROUP BY day ORDER BY day DESC;
 2. In your app, set `$appsflyerId` to the AppsFlyer SDK's id and call `collectDeviceIdentifiers()`, before the first purchase.
 3. In RevenueDot, open **Integrations → AppsFlyer**, enter the key and app IDs (tick **The key is an S2S token** if it is one) and click **Connect AppsFlyer**.
 
-Events go through AppsFlyer's server-to-server API with `eventValue` holding `af_revenue`, `af_price`, `af_content_id`, `renewal` and `af_currency` (`USD`). Refunds carry negative revenue. Events of customers without `$appsflyerId` are skipped. Sandbox events need the **Sandbox developer key**. Turn off purchase tracking in the AppsFlyer SDK so purchases are not counted twice.
+App Store and Play events go through AppsFlyer's server-to-server API with `eventValue` holding `af_revenue`, `af_price`, `af_content_id`, `renewal`, `af_currency` (`USD`) and `af_order_id` (the store transaction id). Refunds carry negative revenue. Events of customers without `$appsflyerId` are skipped. Sandbox events need the **Sandbox developer key**. Turn off purchase tracking in the AppsFlyer SDK so purchases are not counted twice.
 
-**Web funnels (optional):** to send [funnel events](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#funnel-events-to-ad-networks), also enter the AppsFlyer web app's **Web app ID** (the brand bundle ID) and its **Web S2S token**. Funnel events then go through AppsFlyer's Web S2S API (`POST https://events.appsflyer.com/v2.0/s2s/inapps/app/web/{web app id}`, `Authorization: Bearer <token>`) as `rd_funnel_viewed`, `rd_funnel_step_completed` and `rd_funnel_purchase`, with the visitor's app user id as `customer_user_id` (set the same id as the customer user id in AppsFlyer's web SDK). The purchase carries `event_revenue` in US dollars; `event_value` has the funnel, step, `utm_*` parameters and ad click ids. Sandbox funnel events are not sent to AppsFlyer.
+### Web store purchases
+Purchases from Stripe, Web Billing and Paddle can go to AppsFlyer's web APIs. Set up the one your AppsFlyer account uses:
+
+| AppsFlyer web solution | Fields in RevenueDot | Stores |
+|---|---|---|
+| Web Performance Measurement (current) | **Web SDK ID** (the web app's ID in My Apps, a domain or a UUID) and **Web S2S API token** (Security center → AppsFlyer API tokens) | Stripe, Web Billing, Paddle |
+| People-Based Attribution (PBA, being retired) | **Web (PBA) bundle ID** (the UUID in the address of the brand bundle's PBA settings page) and **Web (PBA) dev key** | Stripe only |
+
+When both are set, the Web S2S API is used.
+
+**Web store event routing** decides which API gets a web purchase:
+- **Mobile S2S** (the default): when the customer has an `$appsflyerId`, the purchase goes to the app they last used (its iOS or Android app ID, through the mobile API), so it is credited to the app install. Customers without one go to the web API.
+- **Web S2S**: every web purchase goes to the web API, even when the customer has an `$appsflyerId`.
+
+A web purchase is never sent through both APIs. When no web API is set up (or PBA is set up and the purchase is not from Stripe), the purchase falls back to the mobile API; with no `$appsflyerId` either, it is skipped with the reason in the delivery log. App Store and Play purchases always use the mobile API.
+
+What the web APIs get:
+- **Web S2S:** `POST https://events.appsflyer.com/v2.0/s2s/inapps/app/web/{Web SDK ID}` with `Authorization: Bearer <token>`. The body has `user_id.customer_user_id` (the app user id), `event_name`, `event_revenue` in US dollars (following **Sales reporting**), `event_revenue_currency: USD`, `event_value` with `af_content_id`, `renewal`, `store` and `af_order_id`, `customer_dedup_id` (the RevenueDot event id), `timestamp` in milliseconds and `ip` from `$ip`.
+- **PBA:** `POST https://webs2s.appsflyer.com/v1/{bundle ID}/event` ([AppsFlyer's reference](https://dev.appsflyer.com/hc/reference/web-s2s-api-event-post)) with the dev key in the body as `webDevKey`, `customerUserId`, `eventType: EVENT`, `eventName`, `eventRevenue`, `eventRevenueCurrency: USD`, `eventValue` (the same fields as the mobile API), `timestamp` and `ip`.
+
+AppsFlyer's web APIs have no sandbox, so sandbox web purchases (Stripe test mode, Web Billing sandbox) use only the mobile API, with the **Sandbox developer key**, for customers with an `$appsflyerId`.
+
+**Web funnels (optional):** to send [funnel events](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#funnel-events-to-ad-networks), enter the **Web SDK ID** and **Web S2S API token** too. Funnel events then go through the Web S2S API as `rd_funnel_viewed`, `rd_funnel_step_completed` and `rd_funnel_purchase`, with the visitor's app user id as `customer_user_id` (set the same id as the customer user id in AppsFlyer's web SDK). The funnel purchase carries `event_revenue` in US dollars; `event_value` has the funnel, step, `utm_*` parameters and ad click ids. Sandbox funnel events are not sent to AppsFlyer. The Stripe purchase behind a funnel purchase is also sent as a web store purchase (`rc_initial_purchase_event`) with the same revenue, so count revenue from one of the two events in AppsFlyer.
 
 ## Adjust
 1. In Adjust, copy each app's **app token** and create one **event token** per step you want (purchase, trial started, renewal ...).
@@ -6334,11 +6356,23 @@ Events go through AppsFlyer's server-to-server API with `eventValue` holding `af
 Events go to Adjust's S2S endpoint with the customer's `adid`, device ids and `environment` (`production` or `sandbox`). Adjust rejects amounts below 0.001, so trials and refunds are sent without revenue. Steps without an event token, and customers without `$adjustId`, are skipped.
 
 ## Meta
-1. In Meta Events Manager, open the dataset (pixel) linked to your app, copy the **Dataset ID** and generate a **Conversions API access token**.
-2. In your app, call `collectDeviceIdentifiers()` and set `$fbAnonId` with the Meta SDK's anonymous id.
-3. In RevenueDot, open **Integrations → Meta**, enter the dataset ID and token and click **Connect Meta**. A **Test event code** sends events to Events Manager's Test Events tab.
+Choose the **Integration type**: the **Conversions API** (recommended) or the older **App Events API**. Both send the same events: trial starts as `StartTrial`; purchases, conversions and renewals as `Subscribe`; one-time purchases as `fb_mobile_purchase`. Rename any of them under **Event names**. Meta takes no negative revenue, so refunds are not sent. When the customer has `$ip`, the request carries it as `X-Forwarded-For`. Turn off automatic purchase logging in the Meta SDK to avoid counting purchases twice.
 
-Trial starts arrive as `StartTrial`, purchases, conversions and renewals as `Subscribe`, one-time purchases as `fb_mobile_purchase`, through the [Conversions API for app events](https://developers.facebook.com/docs/marketing-api/conversions-api/app-events) with `action_source: app`. Meta matches on `$fbAnonId` or the advertising id; the app user id, email and phone number are sent SHA-256 hashed. On iOS, events are sent only when `$attConsentStatus` is `authorized`, unless you turn on **Send iOS events without ATT consent**. Meta takes no negative revenue, so refunds are not sent. Turn off automatic purchase logging in the Meta SDK to avoid counting purchases twice.
+In your app, call `collectDeviceIdentifiers()` and set `$fbAnonId` with the Meta SDK's anonymous id. Set `$email` and `$phoneNumber` when you can: they are sent SHA-256 hashed and improve matching.
+
+### Conversions API
+1. In Meta Events Manager, open the dataset linked to your app, copy the **Dataset ID** and generate a **Conversions API access token**.
+2. In RevenueDot, open **Integrations → Meta Ads**, keep **Conversions API**, enter the dataset ID and token and click **Connect Meta Ads**. A **Test event code** sends events to Events Manager's Test Events tab.
+
+Events go through the [Conversions API for app events](https://developers.facebook.com/docs/marketing-api/conversions-api/app-events) with `action_source: app`. Meta matches on `$fbAnonId` or the advertising id; the app user id is sent hashed as `external_id`. On iOS, events are sent only when `$attConsentStatus` is `authorized`, unless you turn on **Send iOS events without ATT consent**. Test events are sent only with a test event code.
+
+### App Events API
+1. In Meta's app dashboard, copy the **App ID** and, under App settings → Advanced, the **Client token**.
+2. In RevenueDot, open **Integrations → Meta Ads**, pick **App Events API**, enter the app ID and client token (and a **Sandbox app ID** and **Sandbox client token** for sandbox events), and click **Connect Meta Ads**.
+
+Events go to `POST https://graph.facebook.com/v21.0/{app id}/activities` as `CUSTOM_APP_EVENTS` with the client token, the app user id, `advertiser_id` (a real IDFA, Google or Amazon advertising id) or, without one, `anon_id` (`$fbAnonId`), the event in `custom_events` (product, US dollar value, order id, time), hashed email and phone in `ud`, and the app and device details in `extinfo`. App Store customers need `$fbAnonId` or `$idfa`, and `$attConsentStatus` = `authorized`, with no override. Play customers need `$fbAnonId` or `$gpsAdId`.
+
+The App Events API has no test mode, so a test event would count as a real conversion. Test events are therefore sent only to the sandbox app: set **Environment** to **Sandbox** and send the test event with an app user id whose attributes include the ids above. Web [funnel events](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#funnel-events-to-ad-networks) are website events, which only the Conversions API takes: with the App Events API they are skipped.
 
 ## Funnel events to ad networks
 Meta, Google Tag Manager, Branch and AppsFlyer can count your web [funnels](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md) as **website events**, so ad campaigns that send people to a funnel learn which clicks led to sign-ups and purchases. Like for analytics tools, funnel events are opt-in: add `funnel_viewed`, `funnel_step_completed` and `funnel_purchase` to the integration's event types.
