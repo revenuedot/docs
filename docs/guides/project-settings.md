@@ -77,14 +77,25 @@ Publish a public page with your production numbers, computed by RevenueDot, for 
 
 1. Open **Project settings → Verified Metrics**.
 2. Pick a **share URL** slug (3 to 40 characters: a-z, 0-9 and dashes; the dashboard checks it is free) and a **display name**.
-3. Order the six metrics (MRR, Revenue, Active subscriptions, Active trials, New customers, Active customers) and hide the ones you do not want to show.
-4. Optionally show an uploaded image as the project icon, and links to your App Store and Google Play pages.
-5. Click **Publish**. **Unpublish** takes the page down at once; publishing again keeps the same URL.
+3. Pick a **chart type**: **Number & sparklines** (each number with its last 28 days), **Only numbers**, or **Line charts** (a larger chart of the last 12 calendar months, one point per month).
+4. Order the six metrics (MRR, Revenue, Active subscriptions, Active trials, New customers, Active customers) and hide the ones you do not want to show.
+5. Optionally show an uploaded image as the project icon, and links to your App Store and Google Play pages.
+6. Click **Publish**. **Unpublish** takes the page down at once; publishing again keeps the same URL.
 
 What the page shows, and does not:
 
-- **Totals only:** each visible metric's current value and a 28-day sparkline, from production purchases. No customers, app user IDs, sandbox purchases or project ID.
+- **Totals only:** each visible metric's current value with its sparkline or monthly chart, from production purchases. In Line charts, MRR, active subscriptions and active trials are the value at each month's end (the current month live), revenue and new customers are monthly totals, and active customers shows its value only. No customers, app user IDs, sandbox purchases or project ID.
 - **Fresh within 15 minutes.** The page is cached (5 minutes in browsers, 15 at the edge). Saving or unpublishing clears the cache on RevenueDot Cloud.
 - **Link previews:** `/verified/<slug>/og.png` is a 1200×630 image with the name and up to three metrics. `/verified/<slug>/metrics.json` has the same numbers as JSON.
+
+### Use your own domain
+
+Serve the page at the root of a subdomain you own, such as `https://metrics.yourapp.com`.
+
+1. Under **Custom domain**, enter the domain and click **Save domain**.
+2. Add the two DNS records shown: a CNAME from your domain to the target, and a TXT record `_revenuedot.<your domain>` that proves you own it.
+3. Click **Verify**. DNS changes can take a few minutes to show.
+
+Once verified and published, the domain serves the page at `/`, its numbers at `/metrics.json` and its preview at `/og.png`, and nothing else. On RevenueDot Cloud the domain also needs a TLS certificate, which RevenueDot adds after verification; the tab shows its state. When you host RevenueDot yourself, serve the domain over HTTPS with your own proxy or load balancer.
 
 New customers and active customers count everyone your apps have seen, because customers have no environment; the money and subscription numbers are production only. Definitions match the [Overview cards and charts](charts.md).
