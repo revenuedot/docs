@@ -7,7 +7,7 @@ description: Use the Test Store for the fastest loop, then App Store sandbox, St
 
 Start with the **Test Store**: it needs no App Store or Google Play account and works in seconds. Then test with each store's own sandbox: **App Store sandbox** accounts, **StoreKit testing in Xcode** (after you give RevenueDot Xcode's certificate), and **Google Play license testers**. RevenueDot marks all of these purchases as sandbox, so they stay out of your production numbers and webhooks carry `"environment": "SANDBOX"`.
 
-> App Store and Google Play support is tested against mocked Apple and Google APIs only. No real sandbox purchase has run end to end yet (2026-09-30). Please report what you find.
+> A real App Store sandbox purchase ran end to end on a physical iPhone on 2026-10-02. Google Play support is tested against a copy of Google's API; no real Play sandbox purchase has run end to end yet (2026-10-03). Please report what you find.
 
 ## Test Store: no store account needed
 1. Create an app with `type: test_store`, or run the [seed script](https://github.com/revenuedot/examples/blob/main/selfhost/docker-compose/seed.sh).

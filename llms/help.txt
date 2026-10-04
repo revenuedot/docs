@@ -16,7 +16,7 @@ Pick the question closest to yours below. Each article starts with the answer, t
 
 ## Getting started
 - [Frequently asked questions](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/faq.md): what RevenueDot is, what it costs, which stores and SDKs work today.
-- [Known issues and gaps as of 2026-09-30](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md): what does not work yet, and the workaround for each.
+- [Known issues and gaps as of 2026-10-03](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md): what does not work yet, and the workaround for each.
 - [Troubleshooting by symptom](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/troubleshooting.md): one table from symptom to cause to fix.
 
 ## Account
@@ -102,7 +102,7 @@ Receipts are accepted today for four app types:
 RevenueCat Billing (`rcb_`) apps can be created, but their receipts answer HTTP 400 with code 7662. Paddle, Roku and Samsung Galaxy Store apps work: see [Paddle](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paddle.md), [Roku](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/roku.md) and [Galaxy Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/galaxy-store.md), and [Projects and apps](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md).
 
 ## Is it production-ready?
-No. The App Store and Google Play code is tested against mocked Apple and Google APIs only. No real App Store or Google Play sandbox purchase has run end to end yet. Use it for evaluation and testing, and keep RevenueCat for live customers until a release says otherwise. See [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md).
+Yes, for the App Store, Stripe and the Test Store today. A real App Store sandbox purchase ran end to end on a physical iPhone on 2026-10-02: Apple's purchase sheet, Apple's notification into RevenueDot, an `INITIAL_PURCHASE` webhook, access unlocked in the app. A production app has run RevenueDot and RevenueCat side by side since 2026-10-02, with RevenueDot processing its live store notifications and forwarding each one to RevenueCat. Real Stripe test-mode purchases, renewals, failed payments and refunds ran on 2026-10-03, and RevenueDot Cloud has billed real cards since the same day. Google Play, Amazon, Paddle, Roku and Galaxy Store are built and tested against copies of each store's API; their first real purchases are next. The first tagged release is [v2026.10.03](https://github.com/revenuedot/revenuedot/releases/tag/v2026.10.03). Switch safely with the [dual run](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/dual-run.md): RevenueDot forwards every store notification to RevenueCat until your numbers match. See [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md).
 
 ## Who owns the data?
 On RevenueDot Cloud, RevenueDot stores your customers, purchases, receipts and events for you, and you can read all of them through the dashboard and the REST API. When you self-host, they live in your own Postgres database and nothing is sent to RevenueDot. Back up a self-hosted database like any other production database: see [Backups](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/backups.md). Either way you can download everything a project owns as one archive, or move it between Cloud and your own server with `npx revenuedot move`: see [Move projects and export everything](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/move-projects.md).
@@ -238,13 +238,13 @@ Details: [Why are webhooks not arriving?](https://raw.githubusercontent.com/reve
 # What are the known issues and gaps in RevenueDot?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md
-Description: Known issues as of 2026-09-30: what does not work yet, and the workaround for each.
+Description: Known issues as of 2026-10-03: what does not work yet, and the workaround for each.
 
-The list below is complete as of **2026-09-30**. The biggest gap: **no real App Store or Google Play sandbox purchase has run end to end yet**. Store support is tested against mocked Apple and Google APIs only. Each item has a workaround where one exists.
+The list below is complete as of **2026-10-03**. A real App Store sandbox purchase ran end to end on a physical iPhone on 2026-10-02, and a production app has run RevenueDot beside RevenueCat since then. The biggest remaining gap: **no real Google Play purchase has run end to end yet**. Each item has a workaround where one exists.
 
 ## Stores and purchases
-1. **Real store purchases are untested end to end.** The App Store and Google Play code passes tests against mocked Apple and Google APIs.
-   - Workaround: test with App Store sandbox and Google Play license testers, report what you find, and keep live customers on your current backend. See [Test purchases](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/test-sandbox-purchases.md).
+1. **Google Play, Amazon, Paddle, Roku and Galaxy Store purchases are untested against the real stores.** Their code passes tests against copies of each store's API; the App Store ran a real sandbox purchase end to end on 2026-10-02.
+   - Workaround: test with Google Play license testers, report what you find, and keep the [dual run](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/dual-run.md) forwarding to your current backend until your numbers match. See [Test purchases](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/test-sandbox-purchases.md).
 2. **Nine app types accept receipts:** `app_store`, `mac_app_store`, `play_store`, `amazon`, `stripe`, `paddle`, `roku`, `galaxy` and `test_store`. RevenueCat Billing (`rcb_`) receipts answer HTTP 400, code 7662. Amazon, Stripe, Paddle, Roku and the Galaxy Store are tested against copies of the stores' APIs only; no real purchase in those stores has run yet. That includes [web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md): the hosted checkout, purchase links and funnels run against an in-memory copy of Stripe's API in the tests.
    - Workaround: none yet.
 3. **StoreKit 1 receipts need the App Store in-app purchase key.** Without it, RevenueDot answers HTTP 500, code 7234, so the SDK keeps retrying.
@@ -717,7 +717,7 @@ Description: Use the Test Store for the fastest loop, then App Store sandbox, St
 
 Start with the **Test Store**: it needs no App Store or Google Play account and works in seconds. Then test with each store's own sandbox: **App Store sandbox** accounts, **StoreKit testing in Xcode** (after you give RevenueDot Xcode's certificate), and **Google Play license testers**. RevenueDot marks all of these purchases as sandbox, so they stay out of your production numbers and webhooks carry `"environment": "SANDBOX"`.
 
-> App Store and Google Play support is tested against mocked Apple and Google APIs only. No real sandbox purchase has run end to end yet (2026-09-30). Please report what you find.
+> A real App Store sandbox purchase ran end to end on a physical iPhone on 2026-10-02. Google Play support is tested against a copy of Google's API; no real Play sandbox purchase has run end to end yet (2026-10-03). Please report what you find.
 
 ## Test Store: no store account needed
 1. Create an app with `type: test_store`, or run the [seed script](https://github.com/revenuedot/examples/blob/main/selfhost/docker-compose/seed.sh).

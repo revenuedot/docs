@@ -43,7 +43,7 @@ The import records **no events and sends no webhooks**, so your backend does not
 ## What is tested
 - The importer runs in tests against a fake RevenueCat API, whose responses are checked against RevenueCat's published OpenAPI schemas, and the real RevenueDot server.
 - Store notification forwarding was verified: a notification sent to RevenueDot reached the forwarding URL byte for byte.
-- No real App Store or Google Play sandbox purchase has run end to end yet; store handling is tested against mocked Apple and Google APIs.
+- A production app has run the dual run since 2026-10-02: RevenueDot processes its live store notifications and forwards each one to RevenueCat. A real App Store sandbox purchase ran end to end on a physical iPhone on 2026-10-02. No real Google Play purchase has run end to end yet; Play handling is tested against a copy of Google's API.
 
 ## Related
 - [The importer](importer.md)

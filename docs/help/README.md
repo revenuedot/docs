@@ -9,7 +9,7 @@ Pick the question closest to yours below. Each article starts with the answer, t
 
 ## Getting started
 - [Frequently asked questions](faq.md): what RevenueDot is, what it costs, which stores and SDKs work today.
-- [Known issues and gaps as of 2026-09-30](known-issues.md): what does not work yet, and the workaround for each.
+- [Known issues and gaps as of 2026-10-03](known-issues.md): what does not work yet, and the workaround for each.
 - [Troubleshooting by symptom](troubleshooting.md): one table from symptom to cause to fix.
 
 ## Account

@@ -770,7 +770,7 @@ Source: [`prd/sdk-forks/PRD.md`](https://github.com/revenuedot/revenuedot/blob/m
 ## What is tested today
 - Each released fork was installed the way an app installs it and checked against a RevenueDot server (2026-10-02). Web purchases-js from npm, Flutter web from its git tag and `@revenuedot/react-native-purchases` from npm on the web each bought a Test Store subscription, and the server shows `pro` active. iOS apps built with the published pods and Swift packages (Flutter, Capacitor, Cordova) carry `api.revenuedot.app` and RevenueDot's signing key, and no RevenueCat host. The Android artifacts on Maven Central and the Kotlin Multiplatform iOS library do the same.
 - The unmodified RevenueCat iOS SDK 5.92 on an iPhone simulator and Android SDK 10.24 on an Android emulator pass configure, customer info, offerings, a Test Store purchase and `logIn` against RevenueDot ([`scripts/e2e`](https://github.com/revenuedot/revenuedot/tree/main/scripts/e2e)).
-- Purchases through the real App Store and Google Play sandboxes have not run end to end yet. Store handling is tested against mocked Apple and Google APIs.
+- A real App Store sandbox purchase ran end to end on a physical iPhone on 2026-10-02: Apple's purchase sheet, Apple's notification into RevenueDot, an `INITIAL_PURCHASE` webhook, access unlocked in the app. Google Play sandbox purchases have not run end to end yet; Play handling is tested against a copy of Google's API.
 - The [React Native Expo example](https://github.com/revenuedot/examples/tree/main/mobile/react-native-expo) and the [purchases-js Vite example](https://github.com/revenuedot/examples/tree/main/web/purchases-js-vite) run against RevenueDot with a Test Store key.
 
 ## Related
@@ -4006,7 +4006,7 @@ Description: Real store test purchases work against RevenueDot once the app's st
 
 Store test purchases work against RevenueDot the same way they work in production: set up the app's [App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md) or [Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md) credentials and notifications first. RevenueDot reads the environment from the store, so these purchases are marked **sandbox**, unlock entitlements and send webhooks with `environment: SANDBOX`. For quick tests without any store account, use the [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md) instead.
 
-**Status (2026-09-30):** the App Store and Google Play code paths pass their test suites against mocked Apple and Google APIs. No real sandbox purchase has run end to end against RevenueDot yet. Tell us what you find in a [GitHub issue](https://github.com/revenuedot/revenuedot/issues).
+**Status (2026-10-03):** a real App Store sandbox purchase ran end to end on a physical iPhone on 2026-10-02: Apple's purchase sheet, Apple's notification into RevenueDot, an `INITIAL_PURCHASE` webhook, access unlocked in the app. Google Play's code path passes its tests against a copy of Google's API; no real Play sandbox purchase has run end to end yet. Tell us what you find in a [GitHub issue](https://github.com/revenuedot/revenuedot/issues).
 
 ## App Store sandbox and TestFlight
 1. Create a sandbox tester in App Store Connect (**Users and Access → Sandbox**), and sign in with it on the device under **Settings → App Store → Sandbox Account**. TestFlight builds use sandbox purchases too.
@@ -8456,7 +8456,7 @@ The import records **no events and sends no webhooks**, so your backend does not
 ## What is tested
 - The importer runs in tests against a fake RevenueCat API, whose responses are checked against RevenueCat's published OpenAPI schemas, and the real RevenueDot server.
 - Store notification forwarding was verified: a notification sent to RevenueDot reached the forwarding URL byte for byte.
-- No real App Store or Google Play sandbox purchase has run end to end yet; store handling is tested against mocked Apple and Google APIs.
+- A production app has run the dual run since 2026-10-02: RevenueDot processes its live store notifications and forwards each one to RevenueCat. A real App Store sandbox purchase ran end to end on a physical iPhone on 2026-10-02. No real Google Play purchase has run end to end yet; Play handling is tested against a copy of Google's API.
 
 ## Related
 - [The importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md)
@@ -41159,7 +41159,7 @@ The RevenueDot `purchases-ios` fork maps `StoreKitError.networkError` to `ErrorC
 
 ## Source
 
-- [Apple: StoreKitError.networkError(_:)](https://developer.apple.com/documentation/storekit/storekiterror/networkerror(_:))
+- [Apple: StoreKitError.networkError(_:)](https://developer.apple.com/documentation/storekit/storekiterror/networkerror%28_:%29)
 - [Apple: URLError](https://developer.apple.com/documentation/foundation/urlerror)
 - [RevenueDot purchases-ios: StoreKitError+Extensions.swift (how the SDK maps StoreKit 2 errors)](https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift)
 
@@ -41369,7 +41369,7 @@ The RevenueDot `purchases-ios` fork maps `StoreKitError.systemError` to `ErrorCo
 
 ## Source
 
-- [Apple: StoreKitError.systemError(_:)](https://developer.apple.com/documentation/storekit/storekiterror/systemerror(_:))
+- [Apple: StoreKitError.systemError(_:)](https://developer.apple.com/documentation/storekit/storekiterror/systemerror%28_:%29)
 - [Apple: StoreKitError](https://developer.apple.com/documentation/storekit/storekiterror)
 - [RevenueDot purchases-ios: StoreKitError+Extensions.swift (how the SDK maps StoreKit 2 errors)](https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift)
 
@@ -41686,7 +41686,7 @@ Product.PurchaseError.invalidOfferIdentifier means the promotional offer identif
 ## Cause
 
 - The identifier in `.promotionalOffer(offerID:keyID:nonce:signature:timestamp:)` does not match a promotional offer the App Store knows for this product.
-- Apple says promotional offers must first be set up in App Store Connect, and the offers on a product appear in its `subscription.promotionalOffers` array ([promotionalOffer option](https://developer.apple.com/documentation/storekit/product/purchaseoption/promotionaloffer(offerid:keyid:nonce:signature:timestamp:))).
+- Apple says promotional offers must first be set up in App Store Connect, and the offers on a product appear in its `subscription.promotionalOffers` array ([promotionalOffer option](https://developer.apple.com/documentation/storekit/product/purchaseoption/promotionaloffer%28offerid:keyid:nonce:signature:timestamp:%29)).
 - A typo, an offer attached to another product or an offer you never created all produce this error.
 
 ## Fix
@@ -41731,7 +41731,7 @@ The RevenueDot `purchases-ios` fork maps `invalidOfferIdentifier`, `invalidOffer
 
 ## Source
 
-- [Apple: promotionalOffer purchase option](https://developer.apple.com/documentation/storekit/product/purchaseoption/promotionaloffer(offerid:keyid:nonce:signature:timestamp:))
+- [Apple: promotionalOffer purchase option](https://developer.apple.com/documentation/storekit/product/purchaseoption/promotionaloffer%28offerid:keyid:nonce:signature:timestamp:%29)
 - [Apple: Product.PurchaseError.invalidOfferIdentifier](https://developer.apple.com/documentation/storekit/product/purchaseerror/invalidofferidentifier)
 - [Apple: Product.PurchaseError](https://developer.apple.com/documentation/storekit/product/purchaseerror)
 - [RevenueDot purchases-ios: StoreKitError+Extensions.swift (how the SDK maps StoreKit 2 errors)](https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift)
@@ -41760,7 +41760,7 @@ Product.PurchaseError.invalidOfferSignature means the App Store could not valida
 
 - Apple says the signature is made from the product and offer parameters plus a nonce and timestamp your server generates, joined in a fixed order with the invisible separator U+2063, and signed with your PKCS #8 private key using ECDSA with SHA-256 ([Generating a signature](https://developer.apple.com/documentation/storekit/generating-a-signature-for-promotional-offers)).
 - Apple also says each payload, signature and nonce is valid for one buy request only, even if the buy fails, so reusing a signature after a failed attempt fails.
-- If you pass an app account token, Apple says it must be part of the signed text, and the UUID strings of the token and the nonce must be lowercase ([promotionalOffer option](https://developer.apple.com/documentation/storekit/product/purchaseoption/promotionaloffer(offerid:keyid:nonce:signature:timestamp:))).
+- If you pass an app account token, Apple says it must be part of the signed text, and the UUID strings of the token and the nonce must be lowercase ([promotionalOffer option](https://developer.apple.com/documentation/storekit/product/purchaseoption/promotionaloffer%28offerid:keyid:nonce:signature:timestamp:%29)).
 
 ## Fix
 
@@ -41803,7 +41803,7 @@ The RevenueDot `purchases-ios` fork maps `Product.PurchaseError.invalidOfferSign
 ## Source
 
 - [Apple: Generating a signature for promotional offers](https://developer.apple.com/documentation/storekit/generating-a-signature-for-promotional-offers)
-- [Apple: promotionalOffer purchase option](https://developer.apple.com/documentation/storekit/product/purchaseoption/promotionaloffer(offerid:keyid:nonce:signature:timestamp:))
+- [Apple: promotionalOffer purchase option](https://developer.apple.com/documentation/storekit/product/purchaseoption/promotionaloffer%28offerid:keyid:nonce:signature:timestamp:%29)
 - [Apple: Product.PurchaseError.invalidOfferSignature](https://developer.apple.com/documentation/storekit/product/purchaseerror/invalidoffersignature)
 - [Apple: Product.PurchaseError](https://developer.apple.com/documentation/storekit/product/purchaseerror)
 - [RevenueDot purchases-ios: StoreKitError+Extensions.swift (how the SDK maps StoreKit 2 errors)](https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift)
@@ -41830,7 +41830,7 @@ Product.PurchaseError.invalidQuantity means the quantity you passed to `purchase
 
 ## Cause
 
-- The `.quantity(_:)` purchase option sets how many items the customer buys. Apple says the quantity applies to consumable In-App Purchases and non-renewing subscriptions ([PurchaseOption.quantity](https://developer.apple.com/documentation/storekit/product/purchaseoption/quantity(_:))).
+- The `.quantity(_:)` purchase option sets how many items the customer buys. Apple says the quantity applies to consumable In-App Purchases and non-renewing subscriptions ([PurchaseOption.quantity](https://developer.apple.com/documentation/storekit/product/purchaseoption/quantity%28_:%29)).
 - A quantity for a product of another type, or a value outside what the App Store accepts, is not a valid quantity. Apple does not publish the accepted range on the case page.
 - The error comes from the arguments your code passes, so it is reproducible and not a store outage.
 
@@ -41901,7 +41901,7 @@ Product.PurchaseError.productUnavailable means the App Store reports that this p
 ## Cause
 
 - The App Store has the product but will not sell it to this customer right now. Apple's page for the case gives no further reason.
-- Apple notes that if an identifier is invalid or the App Store cannot find it, `Product.products(for:)` leaves it out of the result instead of throwing ([products(for:)](https://developer.apple.com/documentation/storekit/product/products(for:))). A product you hold but cannot buy is a different state from one that never loaded.
+- Apple notes that if an identifier is invalid or the App Store cannot find it, `Product.products(for:)` leaves it out of the result instead of throwing ([products(for:)](https://developer.apple.com/documentation/storekit/product/products%28for:%29)). A product you hold but cannot buy is a different state from one that never loaded.
 - Products are sold per region, and Apple tells developers to keep their own list of identifiers and the storefronts where they are available ([Storefront](https://developer.apple.com/documentation/storekit/storefront)).
 
 ## Fix
@@ -41946,7 +41946,7 @@ The RevenueDot `purchases-ios` fork maps `Product.PurchaseError.productUnavailab
 
 ## Source
 
-- [Apple: Product.products(for:)](https://developer.apple.com/documentation/storekit/product/products(for:))
+- [Apple: Product.products(for:)](https://developer.apple.com/documentation/storekit/product/products%28for:%29)
 - [Apple: Product.PurchaseError.productUnavailable](https://developer.apple.com/documentation/storekit/product/purchaseerror/productunavailable)
 - [Apple: Product.PurchaseError](https://developer.apple.com/documentation/storekit/product/purchaseerror)
 - [RevenueDot purchases-ios: StoreKitError+Extensions.swift (how the SDK maps StoreKit 2 errors)](https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift)
@@ -41974,7 +41974,7 @@ Product.PurchaseError.purchaseNotAllowed means the person on this device is not 
 ## Cause
 
 - Apple's `AppStore.canMakePayments` page lists two conditions that make it `false`: Content & Privacy Restrictions in Screen Time that prevent purchases, and a mobile device management (MDM) profile that prevents purchases ([AppStore.canMakePayments](https://developer.apple.com/documentation/storekit/appstore/canmakepayments)).
-- A purchase attempted while one of those restrictions is on throws this error, because the person cannot authorize payments.
+- Apple documents `purchaseNotAllowed` as the user not being allowed to make purchases, which is the state those two conditions put the device in. Apple does not list other triggers.
 - It is a setting on the device or account, so retrying does not help until the person or an administrator changes it.
 
 ## Fix
@@ -42187,7 +42187,7 @@ Pick the question closest to yours below. Each article starts with the answer, t
 
 ## Getting started
 - [Frequently asked questions](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/faq.md): what RevenueDot is, what it costs, which stores and SDKs work today.
-- [Known issues and gaps as of 2026-09-30](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md): what does not work yet, and the workaround for each.
+- [Known issues and gaps as of 2026-10-03](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md): what does not work yet, and the workaround for each.
 - [Troubleshooting by symptom](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/troubleshooting.md): one table from symptom to cause to fix.
 
 ## Account
@@ -42273,7 +42273,7 @@ Receipts are accepted today for four app types:
 RevenueCat Billing (`rcb_`) apps can be created, but their receipts answer HTTP 400 with code 7662. Paddle, Roku and Samsung Galaxy Store apps work: see [Paddle](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paddle.md), [Roku](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/roku.md) and [Galaxy Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/galaxy-store.md), and [Projects and apps](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/projects-and-apps.md).
 
 ## Is it production-ready?
-No. The App Store and Google Play code is tested against mocked Apple and Google APIs only. No real App Store or Google Play sandbox purchase has run end to end yet. Use it for evaluation and testing, and keep RevenueCat for live customers until a release says otherwise. See [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md).
+Yes, for the App Store, Stripe and the Test Store today. A real App Store sandbox purchase ran end to end on a physical iPhone on 2026-10-02: Apple's purchase sheet, Apple's notification into RevenueDot, an `INITIAL_PURCHASE` webhook, access unlocked in the app. A production app has run RevenueDot and RevenueCat side by side since 2026-10-02, with RevenueDot processing its live store notifications and forwarding each one to RevenueCat. Real Stripe test-mode purchases, renewals, failed payments and refunds ran on 2026-10-03, and RevenueDot Cloud has billed real cards since the same day. Google Play, Amazon, Paddle, Roku and Galaxy Store are built and tested against copies of each store's API; their first real purchases are next. The first tagged release is [v2026.10.03](https://github.com/revenuedot/revenuedot/releases/tag/v2026.10.03). Switch safely with the [dual run](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/dual-run.md): RevenueDot forwards every store notification to RevenueCat until your numbers match. See [Known issues](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md).
 
 ## Who owns the data?
 On RevenueDot Cloud, RevenueDot stores your customers, purchases, receipts and events for you, and you can read all of them through the dashboard and the REST API. When you self-host, they live in your own Postgres database and nothing is sent to RevenueDot. Back up a self-hosted database like any other production database: see [Backups](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/backups.md). Either way you can download everything a project owns as one archive, or move it between Cloud and your own server with `npx revenuedot move`: see [Move projects and export everything](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/move-projects.md).
@@ -42409,13 +42409,13 @@ Details: [Why are webhooks not arriving?](https://raw.githubusercontent.com/reve
 # What are the known issues and gaps in RevenueDot?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/known-issues.md
-Description: Known issues as of 2026-09-30: what does not work yet, and the workaround for each.
+Description: Known issues as of 2026-10-03: what does not work yet, and the workaround for each.
 
-The list below is complete as of **2026-09-30**. The biggest gap: **no real App Store or Google Play sandbox purchase has run end to end yet**. Store support is tested against mocked Apple and Google APIs only. Each item has a workaround where one exists.
+The list below is complete as of **2026-10-03**. A real App Store sandbox purchase ran end to end on a physical iPhone on 2026-10-02, and a production app has run RevenueDot beside RevenueCat since then. The biggest remaining gap: **no real Google Play purchase has run end to end yet**. Each item has a workaround where one exists.
 
 ## Stores and purchases
-1. **Real store purchases are untested end to end.** The App Store and Google Play code passes tests against mocked Apple and Google APIs.
-   - Workaround: test with App Store sandbox and Google Play license testers, report what you find, and keep live customers on your current backend. See [Test purchases](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/test-sandbox-purchases.md).
+1. **Google Play, Amazon, Paddle, Roku and Galaxy Store purchases are untested against the real stores.** Their code passes tests against copies of each store's API; the App Store ran a real sandbox purchase end to end on 2026-10-02.
+   - Workaround: test with Google Play license testers, report what you find, and keep the [dual run](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/dual-run.md) forwarding to your current backend until your numbers match. See [Test purchases](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/test-sandbox-purchases.md).
 2. **Nine app types accept receipts:** `app_store`, `mac_app_store`, `play_store`, `amazon`, `stripe`, `paddle`, `roku`, `galaxy` and `test_store`. RevenueCat Billing (`rcb_`) receipts answer HTTP 400, code 7662. Amazon, Stripe, Paddle, Roku and the Galaxy Store are tested against copies of the stores' APIs only; no real purchase in those stores has run yet. That includes [web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md): the hosted checkout, purchase links and funnels run against an in-memory copy of Stripe's API in the tests.
    - Workaround: none yet.
 3. **StoreKit 1 receipts need the App Store in-app purchase key.** Without it, RevenueDot answers HTTP 500, code 7234, so the SDK keeps retrying.
@@ -42888,7 +42888,7 @@ Description: Use the Test Store for the fastest loop, then App Store sandbox, St
 
 Start with the **Test Store**: it needs no App Store or Google Play account and works in seconds. Then test with each store's own sandbox: **App Store sandbox** accounts, **StoreKit testing in Xcode** (after you give RevenueDot Xcode's certificate), and **Google Play license testers**. RevenueDot marks all of these purchases as sandbox, so they stay out of your production numbers and webhooks carry `"environment": "SANDBOX"`.
 
-> App Store and Google Play support is tested against mocked Apple and Google APIs only. No real sandbox purchase has run end to end yet (2026-09-30). Please report what you find.
+> A real App Store sandbox purchase ran end to end on a physical iPhone on 2026-10-02. Google Play support is tested against a copy of Google's API; no real Play sandbox purchase has run end to end yet (2026-10-03). Please report what you find.
 
 ## Test Store: no store account needed
 1. Create an app with `type: test_store`, or run the [seed script](https://github.com/revenuedot/examples/blob/main/selfhost/docker-compose/seed.sh).
