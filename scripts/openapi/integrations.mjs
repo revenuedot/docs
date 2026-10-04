@@ -1,14 +1,14 @@
 // RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
 // This file: third-party integrations (every entry of RevenueCat's integration catalogue plus BigQuery) and scheduled data
-// exports (S3, R2, Google Cloud Storage) in the OpenAPI document. RevenueDot extensions.
+// exports (S3, R2, Google Cloud Storage, Azure Blob Storage, email) in the OpenAPI document. RevenueDot extensions.
 // Docs: https://revenuedot.app/docs/guides/integrations   Migrate from RevenueCat: https://revenuedot.app/docs/migrate
-import { SECRET, arr, body, bool, en, int, listOf, ms, nint, nms, nstr, obj, ok, op, param, str, v2Errors } from "./common.mjs";
+import { NONE, SECRET, arr, body, bool, en, int, listOf, ms, nint, nms, nstr, obj, ok, op, param, str, v2Errors } from "./common.mjs";
 
 const P = "/v2/projects/{project_id}/integrations";
 const project = param("ProjectId");
 const page = [param("Limit"), param("StartingAfter")];
 const E = (...c) => v2Errors(401, 403, ...c);
-const RI = "routes/v2/partner-integrations.ts", RX = "routes/v2/data-exports.ts";
+const RI = "routes/v2/partner-integrations.ts", RX = "routes/v2/data-exports.ts", RD = "routes/data-export-download.ts";
 const READ = ["project_configuration:integrations:read"], WRITE = ["project_configuration:integrations:read_write"];
 const id = { name: "integration_id", in: "path", required: true, schema: str(), description: "Integration id (intg_...)." };
 const exportId = { name: "export_id", in: "path", required: true, schema: str(), description: "Export id (export_...)." };
@@ -55,20 +55,25 @@ const integrationIn = obj({
   event_types: arr(str()), settings: settingsIn, event_names: { type: "object", additionalProperties: str(), propertyNames: { enum: STEPS } },
 });
 
-const config = obj({ bucket: str(), prefix: nstr(), region: nstr("S3 region (default us-east-1)."), endpoint: nstr("S3-compatible endpoint (MinIO and the like)."), account_id: nstr("Cloudflare account id (R2)."), access_key_id: nstr("S3 or R2 access key id.") });
+const config = obj({ bucket: str(), prefix: nstr(), region: nstr("S3 region (default us-east-1)."), endpoint: nstr("S3-compatible endpoint (MinIO and the like)."), account_id: nstr("Cloudflare account id (R2)."), access_key_id: nstr("S3, R2 or GCS HMAC access key id."),
+  credential_type: { type: ["string", "null"], enum: ["service_account", "hmac", null], description: "GCS only: a service account JSON key (default) or an HMAC key." },
+  recipients: { type: ["array", "null"], items: str(), maxItems: 25, description: "Email only: up to 25 addresses, each a member of the project." },
+  subject_prefix: nstr("Email only: put before the email subject (up to 200 characters)."),
+}, [], { description: "`bucket` is the container for Azure. Email exports have no bucket." });
+const columns = { type: "object", additionalProperties: arr(str()), description: "Table → the columns to write, in the catalog's order (see List export columns). A table left out, or an empty list, gets every column, columns added later included." };
 const exportOut = obj({
-  object: en(["data_export"]), id: str(), project_id: str(), name: str(), enabled: bool(), destination: en(["s3", "r2", "gcs"]), config,
-  credentials: { type: "object", additionalProperties: hint, description: "`secret_access_key` (S3, R2) or `service_account_json` (GCS): whether it is saved, and its hint." },
-  format: en(["csv", "parquet"]), compression: en(["gzip", "none"], "CSV only."), schedule: en(["daily", "weekly"]), hour_utc: int(undefined, { minimum: 0, maximum: 23 }),
-  weekday: nint("0 = Sunday; weekly only."), mode: en(["incremental", "full"]), tables: arr(en(["transactions", "customers", "subscriptions", "events"])),
+  object: en(["data_export"]), id: str(), project_id: str(), name: str(), enabled: bool(), destination: en(["s3", "r2", "gcs", "azure", "email"]), config,
+  credentials: { type: "object", additionalProperties: hint, description: "`secret_access_key` (S3, R2, GCS with an HMAC key), `service_account_json` (GCS with a service account) or `connection_string` (Azure): whether it is saved, and its hint. Empty for email." },
+  format: en(["csv", "parquet"]), compression: en(["gzip", "none"], "CSV only."), schedule: en(["daily", "weekly", "interval"]), hour_utc: int(undefined, { minimum: 0, maximum: 23 }),
+  weekday: nint("0 = Sunday; weekly only."), interval_hours: nint("4, 6, 8 or 12; schedule interval only. Runs at hour_utc and every interval from it."), mode: en(["incremental", "full"]), tables: arr(en(["transactions", "customers", "subscriptions", "events", "paywall_events"])), columns,
   environment: { type: ["string", "null"], enum: ["production", "sandbox", null] }, next_run_at: nms("Next scheduled run."), last_run_at: nms("Last successful run."),
   last_error: nstr(), consecutive_failures: int(), created_at: ms("Created."), updated_at: nms("Last changed."),
 }, ["object", "id", "name", "destination", "format", "schedule", "mode", "tables"]);
 const exportIn = obj({
-  name: str(), enabled: bool(), destination: en(["s3", "r2", "gcs"]), config,
-  credentials: obj({ secret_access_key: nstr(), service_account_json: nstr("The service account's JSON key as a string.") }),
-  format: en(["csv", "parquet"]), compression: en(["gzip", "none"]), schedule: en(["daily", "weekly"]), hour_utc: int(), weekday: nint(), mode: en(["incremental", "full"]),
-  tables: arr(en(["transactions", "customers", "subscriptions", "events"])), environment: { type: ["string", "null"], enum: ["production", "sandbox", null] },
+  name: str(), enabled: bool(), destination: en(["s3", "r2", "gcs", "azure", "email"]), config,
+  credentials: obj({ secret_access_key: nstr(), service_account_json: nstr("The service account's JSON key as a string."), connection_string: nstr("Azure: the storage account's connection string (account key or shared access signature).") }),
+  format: en(["csv", "parquet"]), compression: en(["gzip", "none"]), schedule: en(["daily", "weekly", "interval"]), hour_utc: int(), weekday: nint(), interval_hours: nint("4, 6, 8 or 12."), mode: en(["incremental", "full"]),
+  tables: arr(en(["transactions", "customers", "subscriptions", "events", "paywall_events"])), columns, environment: { type: ["string", "null"], enum: ["production", "sandbox", null] },
 });
 const run = obj({
   object: en(["data_export_run"]), id: str(), export_id: str(), status: en(["queued", "running", "succeeded", "failed"]), trigger: en(["schedule", "manual"]), mode: en(["incremental", "full"]),
@@ -142,14 +147,25 @@ export const integrationPaths = {
   [`${P}/exports`]: {
     get: op2({ id: "listDataExports", tag: "Data exports", summary: "List scheduled data exports", source: RX, scopes: READ, parameters: [project, ...page], responses: { 200: ok("The project's exports.", listOf(exportOut)), ...v2Errors(400, 401, 403, 404) } }),
     post: op2({ id: "createDataExport", tag: "Data exports", summary: "Create a scheduled data export", source: RX, scopes: WRITE, parameters: [project],
-      description: "CSV or Parquet files of transactions, customers, subscriptions and events, written daily or weekly to Amazon S3 (or any S3-compatible storage), Cloudflare R2 or Google Cloud Storage under `<prefix>/<YYYY-MM-DD>/<table>_<YYYYMMDDTHHMMSSZ>.<ext>`. Incremental exports write rows that changed since the previous run; each table's first run is complete.",
+      description: "CSV or Parquet files of transactions, customers, subscriptions, events and paywall events, written every 4, 6, 8 or 12 hours, daily or weekly to Amazon S3 (or any S3-compatible storage), Cloudflare R2, Google Cloud Storage or Azure Blob Storage under `<prefix>/<YYYY-MM-DD>/<table>_<YYYYMMDDTHHMMSSZ>.<ext>`, or kept by RevenueDot for 7 days and emailed as download links to up to 25 members of the project (destination `email`). `columns` picks each table's columns. Incremental exports write rows that changed since the previous run; each table's first run is complete.",
       requestBody: body({ ...exportIn, required: ["destination", "config"] }, { name: "Warehouse", destination: "s3", config: { bucket: "acme-exports", prefix: "revenuedot", region: "eu-west-1", access_key_id: "AKIA..." }, credentials: { secret_access_key: "<secret>" }, format: "csv", schedule: "daily", hour_utc: 3, tables: ["transactions"] }),
       responses: { 201: ok("The export.", exportOut), ...v2Errors(400, 401, 403, 404) } }),
+  },
+  [`${P}/exports/columns`]: {
+    get: op2({ id: "listDataExportColumns", tag: "Data exports", summary: "List export columns", source: RX, scopes: READ, parameters: [project],
+      description: "Every table an export can write, with its columns and their types, in the order files use. Pick columns per table with `columns`.",
+      responses: { 200: ok("The tables.", listOf(obj({ object: en(["data_export_table"]), table: en(["transactions", "customers", "subscriptions", "events", "paywall_events"]), columns: arr(obj({ name: str(), type: en(["string", "bool", "int", "float", "timestamp", "json"]) }, ["name", "type"])) }, ["object", "table", "columns"]))), ...E(404) } }),
+  },
+  "/v2/data-exports/download/{token}": {
+    get: op({ extension: true, security: NONE, id: "downloadDataExportFile", tag: "Data exports", summary: "Download a file of an email export", source: RD,
+      parameters: [{ name: "token", in: "path", required: true, schema: str("The signed token from the link in the email.") }],
+      description: "One file of an email export run, as emailed to the recipients. The token is signed and is the only auth; it and the file last 7 days.",
+      responses: { 200: { description: "The file (`.csv.gz`, `.csv` or `.parquet`).", content: { "application/octet-stream": { schema: str("", { format: "binary" }) } } }, 404: { description: "The link has expired or is not valid." } } }),
   },
   [`${P}/exports/{export_id}`]: {
     get: op2({ id: "getDataExport", tag: "Data exports", summary: "Get a data export", source: RX, scopes: READ, parameters: [project, exportId], responses: { 200: ok("The export.", exportOut), ...E(404) } }),
     post: op2({ id: "updateDataExport", tag: "Data exports", summary: "Update a data export", source: RX, scopes: WRITE, parameters: [project, exportId], requestBody: body(exportIn, { schedule: "weekly", weekday: 1 }), responses: { 200: ok("The export.", exportOut), ...v2Errors(400, 401, 403, 404) } }),
-    delete: op2({ id: "deleteDataExport", tag: "Data exports", summary: "Delete a data export", source: RX, scopes: WRITE, parameters: [project, exportId], description: "Files already written stay in the bucket.", responses: { 200: deleted("data_export"), ...E(404) } }),
+    delete: op2({ id: "deleteDataExport", tag: "Data exports", summary: "Delete a data export", source: RX, scopes: WRITE, parameters: [project, exportId], description: "Files already written stay in the bucket. Files RevenueDot keeps for an email export are deleted.", responses: { 200: deleted("data_export"), ...E(404) } }),
   },
   [`${P}/exports/{export_id}/actions/run`]: {
     post: op2({ id: "runDataExport", tag: "Data exports", summary: "Run an export now", source: RX, scopes: WRITE, parameters: [project, exportId],
@@ -158,7 +174,7 @@ export const integrationPaths = {
   },
   [`${P}/exports/{export_id}/actions/check`]: {
     post: op2({ id: "checkDataExportBucket", tag: "Data exports", summary: "Check the bucket and credentials", source: RX, scopes: WRITE, parameters: [project, exportId],
-      description: "S3 and R2: HeadBucket. Google Cloud Storage: buckets.get.",
+      description: "S3, R2 and GCS with an HMAC key: HeadBucket. GCS with a service account: buckets.get. Azure: Get Container Properties. Email: always ok.",
       responses: { 200: ok("The result.", obj({ object: en(["storage_check"]), export_id: str(), ok: bool(), message: str(), checked_at: ms("Checked.") })), ...E(404) } }),
   },
   [`${P}/exports/{export_id}/runs`]: {

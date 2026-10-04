@@ -21649,6 +21649,8 @@ paths:
                             - s3
                             - r2
                             - gcs
+                            - azure
+                            - email
                         config:
                           type: object
                           properties:
@@ -21677,7 +21679,30 @@ paths:
                               type:
                                 - string
                                 - "null"
-                              description: S3 or R2 access key id.
+                              description: S3, R2 or GCS HMAC access key id.
+                            credential_type:
+                              type:
+                                - string
+                                - "null"
+                              enum:
+                                - service_account
+                                - hmac
+                                - null
+                              description: "GCS only: a service account JSON key (default) or an HMAC key."
+                            recipients:
+                              type:
+                                - array
+                                - "null"
+                              items:
+                                type: string
+                              maxItems: 25
+                              description: "Email only: up to 25 addresses, each a member of the project."
+                            subject_prefix:
+                              type:
+                                - string
+                                - "null"
+                              description: "Email only: put before the email subject (up to 200 characters)."
+                          description: "`bucket` is the container for Azure. Email exports have no bucket."
                         credentials:
                           type: object
                           additionalProperties:
@@ -21693,7 +21718,7 @@ paths:
                             required:
                               - configured
                               - hint
-                          description: "`secret_access_key` (S3, R2) or `service_account_json` (GCS): whether it is saved, and its hint."
+                          description: "`secret_access_key` (S3, R2, GCS with an HMAC key), `service_account_json` (GCS with a service account) or `connection_string` (Azure): whether it is saved, and its hint. Empty for email."
                         format:
                           type: string
                           enum:
@@ -21710,6 +21735,7 @@ paths:
                           enum:
                             - daily
                             - weekly
+                            - interval
                         hour_utc:
                           type: integer
                           minimum: 0
@@ -21719,6 +21745,11 @@ paths:
                             - integer
                             - "null"
                           description: 0 = Sunday; weekly only.
+                        interval_hours:
+                          type:
+                            - integer
+                            - "null"
+                          description: 4, 6, 8 or 12; schedule interval only. Runs at hour_utc and every interval from it.
                         mode:
                           type: string
                           enum:
@@ -21733,6 +21764,14 @@ paths:
                               - customers
                               - subscriptions
                               - events
+                              - paywall_events
+                        columns:
+                          type: object
+                          additionalProperties:
+                            type: array
+                            items:
+                              type: string
+                          description: Table → the columns to write, in the catalog's order (see List export columns). A table left out, or an empty list, gets every column, columns added later included.
                         environment:
                           type:
                             - string
@@ -21803,7 +21842,7 @@ paths:
       tags:
         - Data exports
       summary: Create a scheduled data export
-      description: CSV or Parquet files of transactions, customers, subscriptions and events, written daily or weekly to Amazon S3 (or any S3-compatible storage), Cloudflare R2 or Google Cloud Storage under `<prefix>/<YYYY-MM-DD>/<table>_<YYYYMMDDTHHMMSSZ>.<ext>`. Incremental exports write rows that changed since the previous run; each table's first run is complete.
+      description: CSV or Parquet files of transactions, customers, subscriptions, events and paywall events, written every 4, 6, 8 or 12 hours, daily or weekly to Amazon S3 (or any S3-compatible storage), Cloudflare R2, Google Cloud Storage or Azure Blob Storage under `<prefix>/<YYYY-MM-DD>/<table>_<YYYYMMDDTHHMMSSZ>.<ext>`, or kept by RevenueDot for 7 days and emailed as download links to up to 25 members of the project (destination `email`). `columns` picks each table's columns. Incremental exports write rows that changed since the previous run; each table's first run is complete.
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -21826,6 +21865,8 @@ paths:
                     - s3
                     - r2
                     - gcs
+                    - azure
+                    - email
                 config:
                   type: object
                   properties:
@@ -21854,7 +21895,30 @@ paths:
                       type:
                         - string
                         - "null"
-                      description: S3 or R2 access key id.
+                      description: S3, R2 or GCS HMAC access key id.
+                    credential_type:
+                      type:
+                        - string
+                        - "null"
+                      enum:
+                        - service_account
+                        - hmac
+                        - null
+                      description: "GCS only: a service account JSON key (default) or an HMAC key."
+                    recipients:
+                      type:
+                        - array
+                        - "null"
+                      items:
+                        type: string
+                      maxItems: 25
+                      description: "Email only: up to 25 addresses, each a member of the project."
+                    subject_prefix:
+                      type:
+                        - string
+                        - "null"
+                      description: "Email only: put before the email subject (up to 200 characters)."
+                  description: "`bucket` is the container for Azure. Email exports have no bucket."
                 credentials:
                   type: object
                   properties:
@@ -21867,6 +21931,11 @@ paths:
                         - string
                         - "null"
                       description: The service account's JSON key as a string.
+                    connection_string:
+                      type:
+                        - string
+                        - "null"
+                      description: "Azure: the storage account's connection string (account key or shared access signature)."
                 format:
                   type: string
                   enum:
@@ -21882,12 +21951,18 @@ paths:
                   enum:
                     - daily
                     - weekly
+                    - interval
                 hour_utc:
                   type: integer
                 weekday:
                   type:
                     - integer
                     - "null"
+                interval_hours:
+                  type:
+                    - integer
+                    - "null"
+                  description: 4, 6, 8 or 12.
                 mode:
                   type: string
                   enum:
@@ -21902,6 +21977,14 @@ paths:
                       - customers
                       - subscriptions
                       - events
+                      - paywall_events
+                columns:
+                  type: object
+                  additionalProperties:
+                    type: array
+                    items:
+                      type: string
+                  description: Table → the columns to write, in the catalog's order (see List export columns). A table left out, or an empty list, gets every column, columns added later included.
                 environment:
                   type:
                     - string
@@ -21954,6 +22037,8 @@ paths:
                       - s3
                       - r2
                       - gcs
+                      - azure
+                      - email
                   config:
                     type: object
                     properties:
@@ -21982,7 +22067,30 @@ paths:
                         type:
                           - string
                           - "null"
-                        description: S3 or R2 access key id.
+                        description: S3, R2 or GCS HMAC access key id.
+                      credential_type:
+                        type:
+                          - string
+                          - "null"
+                        enum:
+                          - service_account
+                          - hmac
+                          - null
+                        description: "GCS only: a service account JSON key (default) or an HMAC key."
+                      recipients:
+                        type:
+                          - array
+                          - "null"
+                        items:
+                          type: string
+                        maxItems: 25
+                        description: "Email only: up to 25 addresses, each a member of the project."
+                      subject_prefix:
+                        type:
+                          - string
+                          - "null"
+                        description: "Email only: put before the email subject (up to 200 characters)."
+                    description: "`bucket` is the container for Azure. Email exports have no bucket."
                   credentials:
                     type: object
                     additionalProperties:
@@ -21998,7 +22106,7 @@ paths:
                       required:
                         - configured
                         - hint
-                    description: "`secret_access_key` (S3, R2) or `service_account_json` (GCS): whether it is saved, and its hint."
+                    description: "`secret_access_key` (S3, R2, GCS with an HMAC key), `service_account_json` (GCS with a service account) or `connection_string` (Azure): whether it is saved, and its hint. Empty for email."
                   format:
                     type: string
                     enum:
@@ -22015,6 +22123,7 @@ paths:
                     enum:
                       - daily
                       - weekly
+                      - interval
                   hour_utc:
                     type: integer
                     minimum: 0
@@ -22024,6 +22133,11 @@ paths:
                       - integer
                       - "null"
                     description: 0 = Sunday; weekly only.
+                  interval_hours:
+                    type:
+                      - integer
+                      - "null"
+                    description: 4, 6, 8 or 12; schedule interval only. Runs at hour_utc and every interval from it.
                   mode:
                     type: string
                     enum:
@@ -22038,6 +22152,14 @@ paths:
                         - customers
                         - subscriptions
                         - events
+                        - paywall_events
+                  columns:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                    description: Table → the columns to write, in the catalog's order (see List export columns). A table left out, or an empty list, gets every column, columns added later included.
                   environment:
                     type:
                       - string
@@ -22095,6 +22217,119 @@ paths:
       x-scopes:
         - project_configuration:integrations:read_write
       x-revenuedot-extension: true
+  /v2/projects/{project_id}/integrations/exports/columns:
+    get:
+      operationId: listDataExportColumns
+      tags:
+        - Data exports
+      summary: List export columns
+      description: Every table an export can write, with its columns and their types, in the order files use. Pick columns per table with `columns`.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: The tables.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - object
+                  - items
+                  - next_page
+                  - url
+                properties:
+                  object:
+                    type: string
+                    const: list
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        object:
+                          type: string
+                          enum:
+                            - data_export_table
+                        table:
+                          type: string
+                          enum:
+                            - transactions
+                            - customers
+                            - subscriptions
+                            - events
+                            - paywall_events
+                        columns:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              name:
+                                type: string
+                              type:
+                                type: string
+                                enum:
+                                  - string
+                                  - bool
+                                  - int
+                                  - float
+                                  - timestamp
+                                  - json
+                            required:
+                              - name
+                              - type
+                      required:
+                        - object
+                        - table
+                        - columns
+                  next_page:
+                    type:
+                      - string
+                      - "null"
+                    description: Path of the next page, or null on the last page.
+                  url:
+                    type: string
+                    description: Path of this list.
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/data-exports.ts
+      x-scopes:
+        - project_configuration:integrations:read
+      x-revenuedot-extension: true
+  /v2/data-exports/download/{token}:
+    get:
+      operationId: downloadDataExportFile
+      tags:
+        - Data exports
+      summary: Download a file of an email export
+      description: One file of an email export run, as emailed to the recipients. The token is signed and is the only auth; it and the file last 7 days.
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+            description: The signed token from the link in the email.
+      responses:
+        "200":
+          description: The file (`.csv.gz`, `.csv` or `.parquet`).
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: The link has expired or is not valid.
+      x-source: routes/data-export-download.ts
+      x-revenuedot-extension: true
   /v2/projects/{project_id}/integrations/exports/{export_id}:
     get:
       operationId: getDataExport
@@ -22138,6 +22373,8 @@ paths:
                       - s3
                       - r2
                       - gcs
+                      - azure
+                      - email
                   config:
                     type: object
                     properties:
@@ -22166,7 +22403,30 @@ paths:
                         type:
                           - string
                           - "null"
-                        description: S3 or R2 access key id.
+                        description: S3, R2 or GCS HMAC access key id.
+                      credential_type:
+                        type:
+                          - string
+                          - "null"
+                        enum:
+                          - service_account
+                          - hmac
+                          - null
+                        description: "GCS only: a service account JSON key (default) or an HMAC key."
+                      recipients:
+                        type:
+                          - array
+                          - "null"
+                        items:
+                          type: string
+                        maxItems: 25
+                        description: "Email only: up to 25 addresses, each a member of the project."
+                      subject_prefix:
+                        type:
+                          - string
+                          - "null"
+                        description: "Email only: put before the email subject (up to 200 characters)."
+                    description: "`bucket` is the container for Azure. Email exports have no bucket."
                   credentials:
                     type: object
                     additionalProperties:
@@ -22182,7 +22442,7 @@ paths:
                       required:
                         - configured
                         - hint
-                    description: "`secret_access_key` (S3, R2) or `service_account_json` (GCS): whether it is saved, and its hint."
+                    description: "`secret_access_key` (S3, R2, GCS with an HMAC key), `service_account_json` (GCS with a service account) or `connection_string` (Azure): whether it is saved, and its hint. Empty for email."
                   format:
                     type: string
                     enum:
@@ -22199,6 +22459,7 @@ paths:
                     enum:
                       - daily
                       - weekly
+                      - interval
                   hour_utc:
                     type: integer
                     minimum: 0
@@ -22208,6 +22469,11 @@ paths:
                       - integer
                       - "null"
                     description: 0 = Sunday; weekly only.
+                  interval_hours:
+                    type:
+                      - integer
+                      - "null"
+                    description: 4, 6, 8 or 12; schedule interval only. Runs at hour_utc and every interval from it.
                   mode:
                     type: string
                     enum:
@@ -22222,6 +22488,14 @@ paths:
                         - customers
                         - subscriptions
                         - events
+                        - paywall_events
+                  columns:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                    description: Table → the columns to write, in the catalog's order (see List export columns). A table left out, or an empty list, gets every column, columns added later included.
                   environment:
                     type:
                       - string
@@ -22310,6 +22584,8 @@ paths:
                     - s3
                     - r2
                     - gcs
+                    - azure
+                    - email
                 config:
                   type: object
                   properties:
@@ -22338,7 +22614,30 @@ paths:
                       type:
                         - string
                         - "null"
-                      description: S3 or R2 access key id.
+                      description: S3, R2 or GCS HMAC access key id.
+                    credential_type:
+                      type:
+                        - string
+                        - "null"
+                      enum:
+                        - service_account
+                        - hmac
+                        - null
+                      description: "GCS only: a service account JSON key (default) or an HMAC key."
+                    recipients:
+                      type:
+                        - array
+                        - "null"
+                      items:
+                        type: string
+                      maxItems: 25
+                      description: "Email only: up to 25 addresses, each a member of the project."
+                    subject_prefix:
+                      type:
+                        - string
+                        - "null"
+                      description: "Email only: put before the email subject (up to 200 characters)."
+                  description: "`bucket` is the container for Azure. Email exports have no bucket."
                 credentials:
                   type: object
                   properties:
@@ -22351,6 +22650,11 @@ paths:
                         - string
                         - "null"
                       description: The service account's JSON key as a string.
+                    connection_string:
+                      type:
+                        - string
+                        - "null"
+                      description: "Azure: the storage account's connection string (account key or shared access signature)."
                 format:
                   type: string
                   enum:
@@ -22366,12 +22670,18 @@ paths:
                   enum:
                     - daily
                     - weekly
+                    - interval
                 hour_utc:
                   type: integer
                 weekday:
                   type:
                     - integer
                     - "null"
+                interval_hours:
+                  type:
+                    - integer
+                    - "null"
+                  description: 4, 6, 8 or 12.
                 mode:
                   type: string
                   enum:
@@ -22386,6 +22696,14 @@ paths:
                       - customers
                       - subscriptions
                       - events
+                      - paywall_events
+                columns:
+                  type: object
+                  additionalProperties:
+                    type: array
+                    items:
+                      type: string
+                  description: Table → the columns to write, in the catalog's order (see List export columns). A table left out, or an empty list, gets every column, columns added later included.
                 environment:
                   type:
                     - string
@@ -22423,6 +22741,8 @@ paths:
                       - s3
                       - r2
                       - gcs
+                      - azure
+                      - email
                   config:
                     type: object
                     properties:
@@ -22451,7 +22771,30 @@ paths:
                         type:
                           - string
                           - "null"
-                        description: S3 or R2 access key id.
+                        description: S3, R2 or GCS HMAC access key id.
+                      credential_type:
+                        type:
+                          - string
+                          - "null"
+                        enum:
+                          - service_account
+                          - hmac
+                          - null
+                        description: "GCS only: a service account JSON key (default) or an HMAC key."
+                      recipients:
+                        type:
+                          - array
+                          - "null"
+                        items:
+                          type: string
+                        maxItems: 25
+                        description: "Email only: up to 25 addresses, each a member of the project."
+                      subject_prefix:
+                        type:
+                          - string
+                          - "null"
+                        description: "Email only: put before the email subject (up to 200 characters)."
+                    description: "`bucket` is the container for Azure. Email exports have no bucket."
                   credentials:
                     type: object
                     additionalProperties:
@@ -22467,7 +22810,7 @@ paths:
                       required:
                         - configured
                         - hint
-                    description: "`secret_access_key` (S3, R2) or `service_account_json` (GCS): whether it is saved, and its hint."
+                    description: "`secret_access_key` (S3, R2, GCS with an HMAC key), `service_account_json` (GCS with a service account) or `connection_string` (Azure): whether it is saved, and its hint. Empty for email."
                   format:
                     type: string
                     enum:
@@ -22484,6 +22827,7 @@ paths:
                     enum:
                       - daily
                       - weekly
+                      - interval
                   hour_utc:
                     type: integer
                     minimum: 0
@@ -22493,6 +22837,11 @@ paths:
                       - integer
                       - "null"
                     description: 0 = Sunday; weekly only.
+                  interval_hours:
+                    type:
+                      - integer
+                      - "null"
+                    description: 4, 6, 8 or 12; schedule interval only. Runs at hour_utc and every interval from it.
                   mode:
                     type: string
                     enum:
@@ -22507,6 +22856,14 @@ paths:
                         - customers
                         - subscriptions
                         - events
+                        - paywall_events
+                  columns:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                    description: Table → the columns to write, in the catalog's order (see List export columns). A table left out, or an empty list, gets every column, columns added later included.
                   environment:
                     type:
                       - string
@@ -22569,7 +22926,7 @@ paths:
       tags:
         - Data exports
       summary: Delete a data export
-      description: Files already written stay in the bucket.
+      description: Files already written stay in the bucket. Files RevenueDot keeps for an email export are deleted.
       security:
         - secretApiKey: []
         - dashboardSession: []
@@ -22762,7 +23119,7 @@ paths:
       tags:
         - Data exports
       summary: Check the bucket and credentials
-      description: "S3 and R2: HeadBucket. Google Cloud Storage: buckets.get."
+      description: "S3, R2 and GCS with an HMAC key: HeadBucket. GCS with a service account: buckets.get. Azure: Get Container Properties. Email: always ok."
       security:
         - secretApiKey: []
         - dashboardSession: []
