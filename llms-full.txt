@@ -5517,7 +5517,7 @@ RevenueDot has 42 charts in the dashboard under **Analytics > Charts**, with the
 
 | Chart | API name | Definition |
 |---|---|---|
-| <a id="revenue"></a>Revenue | `revenue` | Money received in each period: purchases, renewals and one-time purchases, plus ad revenue, minus refunds recorded in the period. **Transactions** counts paid purchases, renewals and one-time purchases; refunds do not reduce it. Selector `revenue_type`: `revenue` (gross), `revenue_net_of_taxes` (equal to gross, because the stores do not report tax per purchase) or `proceeds` (gross minus the store commission). |
+| <a id="revenue"></a>Revenue | `revenue` | Money received in each period: purchases, renewals and one-time purchases, plus ad revenue, minus refunds recorded in the period. **Transactions** counts paid purchases, renewals and one-time purchases; refunds do not reduce it. Selector `revenue_type`: `revenue` (gross), `revenue_net_of_taxes` (gross minus the tax inside each price, see [Taxes](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md#taxes)) or `proceeds` (net of taxes, minus the store commission). |
 | <a id="arr"></a>ARR | `arr` | MRR at the end of each period times 12. |
 | <a id="mrr"></a>MRR | `mrr` | At the end of each period, every paid subscription with access contributes its price normalised to one month: 1 day ×30, 3 days ×10, 1 week ×4, 2 weeks ×2, 4 weeks ×1, 1 month ×1, 2 months ×½, 3 months ×⅓, 6 months ×⅙, 1 year ×1/12. Cancelled subscriptions count until they expire; trials count zero. |
 | <a id="mrr_movement"></a>MRR Movement | `mrr_movement` | New MRR (subscriptions that became paid), resubscription MRR, expansion MRR (a product change or renewal at a higher monthly value), churned MRR (subscriptions that lost paid access, net of billing recoveries) and contraction MRR. Churned and contraction are negative; the movement is their sum and equals MRR at the end of the period minus MRR at its start. |
@@ -5608,7 +5608,23 @@ RevenueDot has 42 charts in the dashboard under **Analytics > Charts**, with the
 
 ## Filters and segments
 
-Filter and segment by app, store, product, product duration, offering, country (the purchase's storefront, else the customer's last country), platform, app version and the customer's attribution (media source, campaign, ad group, keyword, ad and creative; see [Attribution](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/attribution.md)); paywall charts also by paywall, and the Customer Center chart by survey option. Customers without attribution show as "No attribution" (an empty value in the API). A filter on a purchase dimension (store, product …) does not change the new-customer counts that conversion charts divide by. A segmented chart shows the five largest values, then "Other" and the total.
+Filter and segment by app, store, product, product duration, offering, country (the purchase's storefront, else the customer's last country), platform, app version, the customer's attribution (media source, campaign, ad group, keyword, ad and creative; see [Attribution](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/attribution.md)) and your own customer attributes; paywall charts also by paywall, and the Customer Center chart by survey option.
+
+- **Renewal Cycle** (`subscription_renewal_cycle_group`): Trial, Cycle 1 (a subscription's first paid period), Cycle 2, Cycle 3, Cycle 4 and Cycle 5+; one-time purchases and ad revenue are "Non-subscription". A resubscription after a lapse starts again at Cycle 1. Offered on Revenue, ARR, MRR, Active Subscriptions, Paid Subscriptions, Subscription Status, Active Trials and their movement, New Trials, Churn, Refund Rate and Refunds.
+- **Offer type** (`offer_type`): Free trial, Introductory price, Promotional offer, Offer code, Win-back offer or No offer, as the store reported the period. The same charts except ARR and MRR.
+- **Custom attributes** (`custom_attribute:<key>`, such as `custom_attribute:plan_source`): any attribute you set on customers, on every chart that takes customer dimensions. Reserved attributes that start with `$` (such as `$email`) are not offered. Customers without the attribute show as "Not set".
+
+A refund counts in the renewal cycle and offer type of the period it refunded. Snapshots (MRR, actives, trials) count the period that gives access at the end of each period. Customers without attribution show as "No attribution" (an empty value in the API). A filter on a purchase dimension (store, product …) does not change the new-customer counts that conversion charts divide by. A segmented chart shows the five largest values, then "Other" and the total.
+
+## Taxes
+
+Store prices include the tax the store collects in most countries. **Revenue (net of taxes)** takes that tax out, and **Proceeds** then takes the store commission from what is left: proceeds = (price − tax) × (1 − commission).
+
+- Stripe, Paddle and Google Play orders report the tax of each purchase, and RevenueDot uses their figure.
+- For the App Store, Amazon, Galaxy Store, Roku and other Google Play purchases, the tax is estimated from the standard VAT or GST rate of the customer's country (about 120 countries). Prices in the United States, Canada and Puerto Rico exclude sales tax, so they hold none.
+- Stripe purchases without Stripe Tax hold no tax.
+
+The same rule applies to the Revenue chart, the Cohort Explorer and `GET /v2/projects/{project_id}/metrics/revenue?revenue_type=revenue_net_of_taxes`.
 
 ## Chart types
 
@@ -6141,10 +6157,10 @@ GROUP BY s.customer_id HAVING sum(s.mrr) > 0 ORDER BY s.customer_id;
 
 ## Differences from RevenueCat
 
-- **Taxes:** the stores do not report tax per purchase, so "revenue net of taxes" equals revenue and proceeds subtract only the store commission. RevenueCat estimates tax per country ([Taxes and commissions](https://www.revenuecat.com/docs/dashboard-and-metrics/taxes-and-commissions)).
+- **Taxes:** where the store does not report tax, RevenueDot uses the country's standard VAT or GST rate; reduced rates and US sales tax are not modelled. RevenueCat also estimates tax per country ([Taxes and commissions](https://www.revenuecat.com/docs/dashboard-and-metrics/taxes-and-commissions)).
 - **Exchange rates:** RevenueDot uses the ECB's daily rates, so converted amounts can differ by a few cents.
-- **Paid introductory offers** are counted as direct purchases in Paid Subscriptions.
-- **Dimensions** RevenueCat also offers (renewal cycle, offer type, first purchase month, Apple Search Ads claim type, custom attributes) are not available yet; platform and app version are the customer's latest, not their first. Attribution dimensions cover every media source, not only Apple Search Ads.
+- **Offer types** of paid purchases recorded before RevenueDot stored them (for Stripe, before October 2026) count as "No offer"; trials are always free trials.
+- **Dimensions** RevenueCat also offers (first purchase month, Apple Search Ads claim type) are not available yet, and the MRR Movement and Active Subscriptions Movement charts take no renewal cycle or offer type; platform and app version are the customer's latest, not their first. Attribution dimensions cover every media source, not only Apple Search Ads.
 - **Prediction Explorer** projects from your own cohorts, not from a model trained on many apps.
 - **App Store Save Outcomes** is always zero, and refund requests cover the App Store only.
 - **Ad revenue in segments:** ad revenue has no product, store or offering, so a Revenue chart segmented by one of them shows it in every segment.
@@ -7290,15 +7306,26 @@ Publish a public page with your production numbers, computed by RevenueDot, for 
 
 1. Open **Project settings → Verified Metrics**.
 2. Pick a **share URL** slug (3 to 40 characters: a-z, 0-9 and dashes; the dashboard checks it is free) and a **display name**.
-3. Order the six metrics (MRR, Revenue, Active subscriptions, Active trials, New customers, Active customers) and hide the ones you do not want to show.
-4. Optionally show an uploaded image as the project icon, and links to your App Store and Google Play pages.
-5. Click **Publish**. **Unpublish** takes the page down at once; publishing again keeps the same URL.
+3. Pick a **chart type**: **Number & sparklines** (each number with its last 28 days), **Only numbers**, or **Line charts** (a larger chart of the last 12 calendar months, one point per month).
+4. Order the six metrics (MRR, Revenue, Active subscriptions, Active trials, New customers, Active customers) and hide the ones you do not want to show.
+5. Optionally show an uploaded image as the project icon, and links to your App Store and Google Play pages.
+6. Click **Publish**. **Unpublish** takes the page down at once; publishing again keeps the same URL.
 
 What the page shows, and does not:
 
-- **Totals only:** each visible metric's current value and a 28-day sparkline, from production purchases. No customers, app user IDs, sandbox purchases or project ID.
+- **Totals only:** each visible metric's current value with its sparkline or monthly chart, from production purchases. In Line charts, MRR, active subscriptions and active trials are the value at each month's end (the current month live), revenue and new customers are monthly totals, and active customers shows its value only. No customers, app user IDs, sandbox purchases or project ID.
 - **Fresh within 15 minutes.** The page is cached (5 minutes in browsers, 15 at the edge). Saving or unpublishing clears the cache on RevenueDot Cloud.
 - **Link previews:** `/verified/<slug>/og.png` is a 1200×630 image with the name and up to three metrics. `/verified/<slug>/metrics.json` has the same numbers as JSON.
+
+### Use your own domain
+
+Serve the page at the root of a subdomain you own, such as `https://metrics.yourapp.com`.
+
+1. Under **Custom domain**, enter the domain and click **Save domain**.
+2. Add the two DNS records shown: a CNAME from your domain to the target, and a TXT record `_revenuedot.<your domain>` that proves you own it.
+3. Click **Verify**. DNS changes can take a few minutes to show.
+
+Once verified and published, the domain serves the page at `/`, its numbers at `/metrics.json` and its preview at `/og.png`, and nothing else. On RevenueDot Cloud the domain also needs a TLS certificate, which RevenueDot adds after verification; the tab shows its state. When you host RevenueDot yourself, serve the domain over HTTPS with your own proxy or load balancer.
 
 New customers and active customers count everyone your apps have seen, because customers have no environment; the money and subscription numbers are production only. Definitions match the [Overview cards and charts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md).
 
@@ -9179,7 +9206,7 @@ One RevenueDot server answers every API below on one port. The reference is gene
 | SDK endpoints and store notifications | `/v1/...`, `/rcbilling/...` | public app key | 74 | [SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md) |
 | REST API v1 | `/v1/subscribers/...` | secret key | 10 | [REST API v1](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v1.md) |
 | REST API v2 | `/v2/projects/...` | secret key or dashboard session | 176 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
-| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 291 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
+| RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 294 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
 | RevenueDot Enterprise | `/v2/enterprise`, `/v2/organizations/...`, `/sso/...`, `/scim/v2/...` | session, SCIM token or none | 65 | [Enterprise](https://raw.githubusercontent.com/revenuedot/docs/main/api/enterprise.md) |
 | Webhooks (sent by RevenueDot) | your URL | HMAC signature | 29 event types | [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md) |
 
@@ -20833,7 +20860,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (291)
+## Operations on this page (294)
 
 - **Dashboard auth**: [Whether sign-up is open](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-sign-up-is-open), [Create a dashboard account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-dashboard-account), [Sign in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-in), [Sign out](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out), [The signed-in user and their projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-signed-in-user-and-their-projects), [Update account settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-account-settings), [Email a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#email-a-password-reset-link), [Check a password reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-a-password-reset-link), [Set a new password from a reset link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-a-new-password-from-a-reset-link), [Confirm an email address](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#confirm-an-email-address), [Send a new confirmation email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#send-a-new-confirmation-email), [Look up an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#look-up-an-invite), [Accept an invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#accept-an-invite)
 - **Account settings**: [Finish a sign-in with a two-factor code](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#finish-a-sign-in-with-a-two-factor-code), [Sign out of every session](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out-of-every-session), [Change the account's email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-the-accounts-email), [Cancel a waiting email change](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#cancel-a-waiting-email-change), [Confirm an email change](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#confirm-an-email-change), [Change the password](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-the-password), [List signed-in sessions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-signed-in-sessions), [Sign out one session](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out-one-session), [Sign out every other session](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#sign-out-every-other-session), [Start two-factor setup](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#start-two-factor-setup), [Turn two-factor authentication on](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#turn-two-factor-authentication-on), [Turn two-factor authentication off](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#turn-two-factor-authentication-off), [Make new recovery codes](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#make-new-recovery-codes), [List OAuth tokens you granted](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-oauth-tokens-you-granted), [Revoke an OAuth token](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#revoke-an-oauth-token), [List connected Stripe accounts](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-connected-stripe-accounts), [List your projects with role and plan](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-your-projects-with-role-and-plan), [What deleting the account would do](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#what-deleting-the-account-would-do), [Delete the account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-the-account), [Get notification choices](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-notification-choices), [Open an email's unsubscribe link](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#open-an-emails-unsubscribe-link), [Unsubscribe from one email](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unsubscribe-from-one-email), [Choose a project's emails](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#choose-a-projects-emails), [The display currency's exchange rate](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-display-currencys-exchange-rate)
@@ -20841,7 +20868,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Project settings**: [Get a project with its settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-project-with-its-settings), [Update a project's name, transfer behaviour and sandbox testing access](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-a-projects-name-transfer-behaviour-and-sandbox-testing-access), [Delete a project and everything in it](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-a-project-and-everything-in-it), [Get the Customer Center configuration of the project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-the-customer-center-configuration-of-the-project), [Set the Customer Center configuration](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-the-customer-center-configuration), [Transfer project ownership to an admin](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#transfer-project-ownership-to-an-admin)
 - **Brand**: [Colour and gradient presets](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#colour-and-gradient-presets), [Replace colour or gradient presets](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#replace-colour-or-gradient-presets)
 - **Blocked customers**: [List blocked app user ids](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-blocked-app-user-ids), [Block an app user id](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#block-an-app-user-id), [Is this app user id blocked?](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#is-this-app-user-id-blocked), [Unblock an app user id](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unblock-an-app-user-id)
-- **Verified Metrics**: [Verified Metrics page settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#verified-metrics-page-settings), [Save Verified Metrics page settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#save-verified-metrics-page-settings), [Whether a slug is free](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-a-slug-is-free), [Publish the page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#publish-the-page), [Unpublish the page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unpublish-the-page), [The public Verified Metrics page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-public-verified-metrics-page), [The page's numbers as JSON](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-pages-numbers-as-json), [The page's project icon](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-pages-project-icon), [The page's 1200×630 link preview](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-pages-1200630-link-preview)
+- **Verified Metrics**: [Verified Metrics page settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#verified-metrics-page-settings), [Save Verified Metrics page settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#save-verified-metrics-page-settings), [Whether a slug is free](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#whether-a-slug-is-free), [The 12 monthly points of each metric](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-12-monthly-points-of-each-metric), [Set or clear the page's custom domain](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#set-or-clear-the-pages-custom-domain), [Check the custom domain's DNS](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-the-custom-domains-dns), [Publish the page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#publish-the-page), [Unpublish the page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unpublish-the-page), [The public Verified Metrics page](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-public-verified-metrics-page), [The page's numbers as JSON](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-pages-numbers-as-json), [The page's project icon](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-pages-project-icon), [The page's 1200×630 link preview](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-pages-1200630-link-preview)
 - **Auth**: [Auth on or off](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#auth-on-or-off), [Turn Auth or anonymous sign-in on or off](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#turn-auth-or-anonymous-sign-in-on-or-off), [List identity providers](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-identity-providers), [Add a Firebase or OpenID Connect provider](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#add-a-firebase-or-openid-connect-provider), [Get an identity provider](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-an-identity-provider), [Update or turn off an identity provider](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-or-turn-off-an-identity-provider), [Delete an identity provider](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-an-identity-provider), [Check an ID token without signing in](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-an-id-token-without-signing-in), [List signed-in identities](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-signed-in-identities), [Read a signed-in user's balances and entitlements by identity](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#read-a-signed-in-users-balances-and-entitlements-by-identity), [Unlink an identity and sign it out](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#unlink-an-identity-and-sign-it-out)
 - **Store setup**: [Store setup state of an app](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#store-setup-state-of-an-app), [Download the sample app for this app](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#download-the-sample-app-for-this-app), [Check store credentials with the store](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-store-credentials-with-the-store), [Check the App Store Connect API key with Apple](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-the-app-store-connect-api-key-with-apple), [Paddle: create the notification destination (Apply in Paddle)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#paddle-create-the-notification-destination-apply-in-paddle), [Extend every active App Store subscriber of a product](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#status-of-a-mass-extension), [Setup health](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#setup-health)
 - **Store prices and product editor**: [List store prices](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-store-prices), [Read an app's store prices again](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#read-an-apps-store-prices-again), [Download a product file](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#download-a-product-file), [List product files](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-product-files), [Upload a product file](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#upload-a-product-file), [Get a product file](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-product-file), [Change a product file's options](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-a-product-files-options), [Discard a product file](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#discard-a-product-file), [Commit a product file to the store](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#commit-a-product-file-to-the-store), [Retry the failed rows of a product file](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#retry-the-failed-rows-of-a-product-file)
@@ -22873,7 +22900,8 @@ Example 200 response:
   "play_store_url": null,
   "url": "https://api.revenuedot.app/verified/scanner",
   "published_at": 1790894800000,
-  "updated_at": 1790894800000
+  "updated_at": 1790894800000,
+  "custom_domain": null
 }
 ```
 
@@ -22895,7 +22923,7 @@ A published page shows the change within 15 minutes (the cached copies are dropp
 |---|---|---|---|
 | `slug` | string | no | 3 to 40 characters: a-z, 0-9 and single dashes, not at either end. Unique on the server; a few words such as `admin` are reserved. |
 | `display_name` | string | no |  |
-| `chart_type` | `number_sparkline` | no | Number & sparklines, the only type. |
+| `chart_type` | `number_sparkline`, `numbers_only`, `line` | no | `number_sparkline` (Number & sparklines, the default), `numbers_only` (Only numbers) or `line` (Line charts: one point per month over the last 12 calendar months, RevenueDot's own). |
 | `metrics` | array of object | no | The 6 overview metrics in display order, each once. |
 | `metrics[].id` | `mrr`, `revenue`, `active_subscriptions`, `active_trials`, `new_customers`, `active_users` | yes |  |
 | `metrics[].visible` | boolean | yes |  |
@@ -22963,7 +22991,8 @@ Example 200 response:
   "play_store_url": null,
   "url": "https://api.revenuedot.app/verified/scanner",
   "published_at": 1790894800000,
-  "updated_at": 1790894800000
+  "updated_at": 1790894800000,
+  "custom_domain": null
 }
 ```
 
@@ -23007,6 +23036,260 @@ Example 200 response:
 }
 ```
 
+### The 12 monthly points of each metric
+
+`GET /v2/projects/{project_id}/verified_metrics/monthly_history` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+What the Line charts type draws, production only: MRR, active subscriptions and active trials at each month's end (the current month live), revenue and new customers as monthly totals; `active_users` is null (no monthly history).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/verified_metrics/monthly_history" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The points, oldest first.
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "verified_metrics_monthly_history",
+  "months": 12,
+  "metrics": {
+    "mrr": [
+      {
+        "date": "2025-11",
+        "value": 1879.19
+      }
+    ],
+    "active_users": null
+  }
+}
+```
+
+### Set or clear the page's custom domain
+
+`PUT /v2/projects/{project_id}/verified_metrics/domain` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+A subdomain you own, such as metrics.yourapp.com; null removes it. The answer's `custom_domain.dns` lists the CNAME and TXT records to add. Changing or removing the domain resets its proof. 409 when another project's page, or hosted web pages, use the domain.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `custom_domain` | string or null | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X PUT "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/verified_metrics/domain" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"custom_domain":"metrics.yourapp.com"}'
+```
+
+**Responses**
+
+- **200**: The settings.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "verified_metrics",
+  "status": "published",
+  "slug": "scanner",
+  "display_name": "Scanner",
+  "chart_type": "number_sparkline",
+  "metrics": [
+    {
+      "id": "mrr",
+      "visible": true
+    },
+    {
+      "id": "revenue",
+      "visible": true
+    },
+    {
+      "id": "active_subscriptions",
+      "visible": true
+    },
+    {
+      "id": "active_trials",
+      "visible": true
+    },
+    {
+      "id": "new_customers",
+      "visible": false
+    },
+    {
+      "id": "active_users",
+      "visible": false
+    }
+  ],
+  "show_icon": false,
+  "icon_asset_id": null,
+  "show_store_links": true,
+  "app_store_url": "https://apps.apple.com/app/id1234567890",
+  "play_store_url": null,
+  "url": "https://api.revenuedot.app/verified/scanner",
+  "published_at": 1790894800000,
+  "updated_at": 1790894800000,
+  "custom_domain": {
+    "domain": "metrics.yourapp.com",
+    "status": "pending",
+    "url": null,
+    "verified_at": null,
+    "checked_at": null,
+    "error": null,
+    "dns": [
+      {
+        "type": "CNAME",
+        "name": "metrics.yourapp.com",
+        "value": "api.revenuedot.app"
+      },
+      {
+        "type": "TXT",
+        "name": "_revenuedot.metrics.yourapp.com",
+        "value": "revenuedot-verify=3f9c2a"
+      }
+    ],
+    "certificate": {
+      "managed": "manual",
+      "status": null,
+      "note": "RevenueDot adds the TLS certificate for your domain after it is verified, usually within one business day. Until then the page stays on its RevenueDot URL."
+    }
+  }
+}
+```
+
+### Check the custom domain's DNS
+
+`POST /v2/projects/{project_id}/verified_metrics/domain/actions/verify` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Reads the TXT and CNAME records over DNS over HTTPS, 6 checks a minute. Once verified and published, the domain serves the page at `/`, `/metrics.json`, `/og.png` and `/icon`, and nothing else. On RevenueDot Cloud the answer also reports the TLS certificate. `found` holds the records seen.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/verified_metrics/domain/actions/verify" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The settings and the records found.
+- **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **429**: Too many requests. Retry later. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "verified_metrics",
+  "status": "published",
+  "slug": "scanner",
+  "display_name": "Scanner",
+  "chart_type": "number_sparkline",
+  "metrics": [
+    {
+      "id": "mrr",
+      "visible": true
+    },
+    {
+      "id": "revenue",
+      "visible": true
+    },
+    {
+      "id": "active_subscriptions",
+      "visible": true
+    },
+    {
+      "id": "active_trials",
+      "visible": true
+    },
+    {
+      "id": "new_customers",
+      "visible": false
+    },
+    {
+      "id": "active_users",
+      "visible": false
+    }
+  ],
+  "show_icon": false,
+  "icon_asset_id": null,
+  "show_store_links": true,
+  "app_store_url": "https://apps.apple.com/app/id1234567890",
+  "play_store_url": null,
+  "url": "https://api.revenuedot.app/verified/scanner",
+  "published_at": 1790894800000,
+  "updated_at": 1790894800000,
+  "custom_domain": {
+    "domain": "metrics.yourapp.com",
+    "status": "verified",
+    "url": "https://metrics.yourapp.com",
+    "verified_at": 1790894800000,
+    "checked_at": 1790894800000,
+    "error": null,
+    "dns": [
+      {
+        "type": "CNAME",
+        "name": "metrics.yourapp.com",
+        "value": "api.revenuedot.app"
+      },
+      {
+        "type": "TXT",
+        "name": "_revenuedot.metrics.yourapp.com",
+        "value": "revenuedot-verify=3f9c2a"
+      }
+    ],
+    "certificate": {
+      "managed": "manual",
+      "status": null,
+      "note": "RevenueDot adds the TLS certificate for your domain after it is verified, usually within one business day. Until then the page stays on its RevenueDot URL."
+    }
+  },
+  "found": {
+    "cname": [
+      "api.revenuedot.app"
+    ],
+    "txt": [
+      "revenuedot-verify=3f9c2a"
+    ]
+  }
+}
+```
+
 ### Publish the page
 
 `POST /v2/projects/{project_id}/verified_metrics/actions/publish` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
@@ -23025,7 +23308,7 @@ Takes the same fields as the update, saves them and publishes. The page then ans
 |---|---|---|---|
 | `slug` | string | no | 3 to 40 characters: a-z, 0-9 and single dashes, not at either end. Unique on the server; a few words such as `admin` are reserved. |
 | `display_name` | string | no |  |
-| `chart_type` | `number_sparkline` | no | Number & sparklines, the only type. |
+| `chart_type` | `number_sparkline`, `numbers_only`, `line` | no | `number_sparkline` (Number & sparklines, the default), `numbers_only` (Only numbers) or `line` (Line charts: one point per month over the last 12 calendar months, RevenueDot's own). |
 | `metrics` | array of object | no | The 6 overview metrics in display order, each once. |
 | `metrics[].id` | `mrr`, `revenue`, `active_subscriptions`, `active_trials`, `new_customers`, `active_users` | yes |  |
 | `metrics[].visible` | boolean | yes |  |
@@ -23093,7 +23376,8 @@ Example 200 response:
   "play_store_url": null,
   "url": "https://api.revenuedot.app/verified/scanner",
   "published_at": 1790894800000,
-  "updated_at": 1790894800000
+  "updated_at": 1790894800000,
+  "custom_domain": null
 }
 ```
 
@@ -23165,7 +23449,8 @@ Example 200 response:
   "play_store_url": null,
   "url": "https://api.revenuedot.app/verified/scanner",
   "published_at": 1790894800000,
-  "updated_at": 1790894800000
+  "updated_at": 1790894800000,
+  "custom_domain": null
 }
 ```
 

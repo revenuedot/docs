@@ -11,7 +11,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (291)
+## Operations on this page (294)
 
 - **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects), [Update account settings](#update-account-settings), [Email a password reset link](#email-a-password-reset-link), [Check a password reset link](#check-a-password-reset-link), [Set a new password from a reset link](#set-a-new-password-from-a-reset-link), [Confirm an email address](#confirm-an-email-address), [Send a new confirmation email](#send-a-new-confirmation-email), [Look up an invite](#look-up-an-invite), [Accept an invite](#accept-an-invite)
 - **Account settings**: [Finish a sign-in with a two-factor code](#finish-a-sign-in-with-a-two-factor-code), [Sign out of every session](#sign-out-of-every-session), [Change the account's email](#change-the-accounts-email), [Cancel a waiting email change](#cancel-a-waiting-email-change), [Confirm an email change](#confirm-an-email-change), [Change the password](#change-the-password), [List signed-in sessions](#list-signed-in-sessions), [Sign out one session](#sign-out-one-session), [Sign out every other session](#sign-out-every-other-session), [Start two-factor setup](#start-two-factor-setup), [Turn two-factor authentication on](#turn-two-factor-authentication-on), [Turn two-factor authentication off](#turn-two-factor-authentication-off), [Make new recovery codes](#make-new-recovery-codes), [List OAuth tokens you granted](#list-oauth-tokens-you-granted), [Revoke an OAuth token](#revoke-an-oauth-token), [List connected Stripe accounts](#list-connected-stripe-accounts), [List your projects with role and plan](#list-your-projects-with-role-and-plan), [What deleting the account would do](#what-deleting-the-account-would-do), [Delete the account](#delete-the-account), [Get notification choices](#get-notification-choices), [Open an email's unsubscribe link](#open-an-emails-unsubscribe-link), [Unsubscribe from one email](#unsubscribe-from-one-email), [Choose a project's emails](#choose-a-projects-emails), [The display currency's exchange rate](#the-display-currencys-exchange-rate)
@@ -19,7 +19,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Project settings**: [Get a project with its settings](#get-a-project-with-its-settings), [Update a project's name, transfer behaviour and sandbox testing access](#update-a-projects-name-transfer-behaviour-and-sandbox-testing-access), [Delete a project and everything in it](#delete-a-project-and-everything-in-it), [Get the Customer Center configuration of the project](#get-the-customer-center-configuration-of-the-project), [Set the Customer Center configuration](#set-the-customer-center-configuration), [Transfer project ownership to an admin](#transfer-project-ownership-to-an-admin)
 - **Brand**: [Colour and gradient presets](#colour-and-gradient-presets), [Replace colour or gradient presets](#replace-colour-or-gradient-presets)
 - **Blocked customers**: [List blocked app user ids](#list-blocked-app-user-ids), [Block an app user id](#block-an-app-user-id), [Is this app user id blocked?](#is-this-app-user-id-blocked), [Unblock an app user id](#unblock-an-app-user-id)
-- **Verified Metrics**: [Verified Metrics page settings](#verified-metrics-page-settings), [Save Verified Metrics page settings](#save-verified-metrics-page-settings), [Whether a slug is free](#whether-a-slug-is-free), [Publish the page](#publish-the-page), [Unpublish the page](#unpublish-the-page), [The public Verified Metrics page](#the-public-verified-metrics-page), [The page's numbers as JSON](#the-pages-numbers-as-json), [The page's project icon](#the-pages-project-icon), [The page's 1200×630 link preview](#the-pages-1200630-link-preview)
+- **Verified Metrics**: [Verified Metrics page settings](#verified-metrics-page-settings), [Save Verified Metrics page settings](#save-verified-metrics-page-settings), [Whether a slug is free](#whether-a-slug-is-free), [The 12 monthly points of each metric](#the-12-monthly-points-of-each-metric), [Set or clear the page's custom domain](#set-or-clear-the-pages-custom-domain), [Check the custom domain's DNS](#check-the-custom-domains-dns), [Publish the page](#publish-the-page), [Unpublish the page](#unpublish-the-page), [The public Verified Metrics page](#the-public-verified-metrics-page), [The page's numbers as JSON](#the-pages-numbers-as-json), [The page's project icon](#the-pages-project-icon), [The page's 1200×630 link preview](#the-pages-1200630-link-preview)
 - **Auth**: [Auth on or off](#auth-on-or-off), [Turn Auth or anonymous sign-in on or off](#turn-auth-or-anonymous-sign-in-on-or-off), [List identity providers](#list-identity-providers), [Add a Firebase or OpenID Connect provider](#add-a-firebase-or-openid-connect-provider), [Get an identity provider](#get-an-identity-provider), [Update or turn off an identity provider](#update-or-turn-off-an-identity-provider), [Delete an identity provider](#delete-an-identity-provider), [Check an ID token without signing in](#check-an-id-token-without-signing-in), [List signed-in identities](#list-signed-in-identities), [Read a signed-in user's balances and entitlements by identity](#read-a-signed-in-users-balances-and-entitlements-by-identity), [Unlink an identity and sign it out](#unlink-an-identity-and-sign-it-out)
 - **Store setup**: [Store setup state of an app](#store-setup-state-of-an-app), [Download the sample app for this app](#download-the-sample-app-for-this-app), [Check store credentials with the store](#check-store-credentials-with-the-store), [Check the App Store Connect API key with Apple](#check-the-app-store-connect-api-key-with-apple), [Paddle: create the notification destination (Apply in Paddle)](#paddle-create-the-notification-destination-apply-in-paddle), [Extend every active App Store subscriber of a product](#extend-every-active-app-store-subscriber-of-a-product), [Status of a mass extension](#status-of-a-mass-extension), [Setup health](#setup-health)
 - **Store prices and product editor**: [List store prices](#list-store-prices), [Read an app's store prices again](#read-an-apps-store-prices-again), [Download a product file](#download-a-product-file), [List product files](#list-product-files), [Upload a product file](#upload-a-product-file), [Get a product file](#get-a-product-file), [Change a product file's options](#change-a-product-files-options), [Discard a product file](#discard-a-product-file), [Commit a product file to the store](#commit-a-product-file-to-the-store), [Retry the failed rows of a product file](#retry-the-failed-rows-of-a-product-file)
@@ -2051,7 +2051,8 @@ Example 200 response:
   "play_store_url": null,
   "url": "https://api.revenuedot.app/verified/scanner",
   "published_at": 1790894800000,
-  "updated_at": 1790894800000
+  "updated_at": 1790894800000,
+  "custom_domain": null
 }
 ```
 
@@ -2073,7 +2074,7 @@ A published page shows the change within 15 minutes (the cached copies are dropp
 |---|---|---|---|
 | `slug` | string | no | 3 to 40 characters: a-z, 0-9 and single dashes, not at either end. Unique on the server; a few words such as `admin` are reserved. |
 | `display_name` | string | no |  |
-| `chart_type` | `number_sparkline` | no | Number & sparklines, the only type. |
+| `chart_type` | `number_sparkline`, `numbers_only`, `line` | no | `number_sparkline` (Number & sparklines, the default), `numbers_only` (Only numbers) or `line` (Line charts: one point per month over the last 12 calendar months, RevenueDot's own). |
 | `metrics` | array of object | no | The 6 overview metrics in display order, each once. |
 | `metrics[].id` | `mrr`, `revenue`, `active_subscriptions`, `active_trials`, `new_customers`, `active_users` | yes |  |
 | `metrics[].visible` | boolean | yes |  |
@@ -2141,7 +2142,8 @@ Example 200 response:
   "play_store_url": null,
   "url": "https://api.revenuedot.app/verified/scanner",
   "published_at": 1790894800000,
-  "updated_at": 1790894800000
+  "updated_at": 1790894800000,
+  "custom_domain": null
 }
 ```
 
@@ -2185,6 +2187,260 @@ Example 200 response:
 }
 ```
 
+### The 12 monthly points of each metric
+
+`GET /v2/projects/{project_id}/verified_metrics/monthly_history` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read`
+
+What the Line charts type draws, production only: MRR, active subscriptions and active trials at each month's end (the current month live), revenue and new customers as monthly totals; `active_users` is null (no monthly history).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/verified_metrics/monthly_history" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The points, oldest first.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "verified_metrics_monthly_history",
+  "months": 12,
+  "metrics": {
+    "mrr": [
+      {
+        "date": "2025-11",
+        "value": 1879.19
+      }
+    ],
+    "active_users": null
+  }
+}
+```
+
+### Set or clear the page's custom domain
+
+`PUT /v2/projects/{project_id}/verified_metrics/domain` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+A subdomain you own, such as metrics.yourapp.com; null removes it. The answer's `custom_domain.dns` lists the CNAME and TXT records to add. Changing or removing the domain resets its proof. 409 when another project's page, or hosted web pages, use the domain.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `custom_domain` | string or null | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X PUT "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/verified_metrics/domain" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"custom_domain":"metrics.yourapp.com"}'
+```
+
+**Responses**
+
+- **200**: The settings.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "verified_metrics",
+  "status": "published",
+  "slug": "scanner",
+  "display_name": "Scanner",
+  "chart_type": "number_sparkline",
+  "metrics": [
+    {
+      "id": "mrr",
+      "visible": true
+    },
+    {
+      "id": "revenue",
+      "visible": true
+    },
+    {
+      "id": "active_subscriptions",
+      "visible": true
+    },
+    {
+      "id": "active_trials",
+      "visible": true
+    },
+    {
+      "id": "new_customers",
+      "visible": false
+    },
+    {
+      "id": "active_users",
+      "visible": false
+    }
+  ],
+  "show_icon": false,
+  "icon_asset_id": null,
+  "show_store_links": true,
+  "app_store_url": "https://apps.apple.com/app/id1234567890",
+  "play_store_url": null,
+  "url": "https://api.revenuedot.app/verified/scanner",
+  "published_at": 1790894800000,
+  "updated_at": 1790894800000,
+  "custom_domain": {
+    "domain": "metrics.yourapp.com",
+    "status": "pending",
+    "url": null,
+    "verified_at": null,
+    "checked_at": null,
+    "error": null,
+    "dns": [
+      {
+        "type": "CNAME",
+        "name": "metrics.yourapp.com",
+        "value": "api.revenuedot.app"
+      },
+      {
+        "type": "TXT",
+        "name": "_revenuedot.metrics.yourapp.com",
+        "value": "revenuedot-verify=3f9c2a"
+      }
+    ],
+    "certificate": {
+      "managed": "manual",
+      "status": null,
+      "note": "RevenueDot adds the TLS certificate for your domain after it is verified, usually within one business day. Until then the page stays on its RevenueDot URL."
+    }
+  }
+}
+```
+
+### Check the custom domain's DNS
+
+`POST /v2/projects/{project_id}/verified_metrics/domain/actions/verify` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
+
+Reads the TXT and CNAME records over DNS over HTTPS, 6 checks a minute. Once verified and published, the domain serves the page at `/`, `/metrics.json`, `/og.png` and `/icon`, and nothing else. On RevenueDot Cloud the answer also reports the TLS certificate. `found` holds the records seen.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/verified_metrics/domain/actions/verify" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The settings and the records found.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+- **429**: Too many requests. Retry later. Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "verified_metrics",
+  "status": "published",
+  "slug": "scanner",
+  "display_name": "Scanner",
+  "chart_type": "number_sparkline",
+  "metrics": [
+    {
+      "id": "mrr",
+      "visible": true
+    },
+    {
+      "id": "revenue",
+      "visible": true
+    },
+    {
+      "id": "active_subscriptions",
+      "visible": true
+    },
+    {
+      "id": "active_trials",
+      "visible": true
+    },
+    {
+      "id": "new_customers",
+      "visible": false
+    },
+    {
+      "id": "active_users",
+      "visible": false
+    }
+  ],
+  "show_icon": false,
+  "icon_asset_id": null,
+  "show_store_links": true,
+  "app_store_url": "https://apps.apple.com/app/id1234567890",
+  "play_store_url": null,
+  "url": "https://api.revenuedot.app/verified/scanner",
+  "published_at": 1790894800000,
+  "updated_at": 1790894800000,
+  "custom_domain": {
+    "domain": "metrics.yourapp.com",
+    "status": "verified",
+    "url": "https://metrics.yourapp.com",
+    "verified_at": 1790894800000,
+    "checked_at": 1790894800000,
+    "error": null,
+    "dns": [
+      {
+        "type": "CNAME",
+        "name": "metrics.yourapp.com",
+        "value": "api.revenuedot.app"
+      },
+      {
+        "type": "TXT",
+        "name": "_revenuedot.metrics.yourapp.com",
+        "value": "revenuedot-verify=3f9c2a"
+      }
+    ],
+    "certificate": {
+      "managed": "manual",
+      "status": null,
+      "note": "RevenueDot adds the TLS certificate for your domain after it is verified, usually within one business day. Until then the page stays on its RevenueDot URL."
+    }
+  },
+  "found": {
+    "cname": [
+      "api.revenuedot.app"
+    ],
+    "txt": [
+      "revenuedot-verify=3f9c2a"
+    ]
+  }
+}
+```
+
 ### Publish the page
 
 `POST /v2/projects/{project_id}/verified_metrics/actions/publish` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:projects:read_write`
@@ -2203,7 +2459,7 @@ Takes the same fields as the update, saves them and publishes. The page then ans
 |---|---|---|---|
 | `slug` | string | no | 3 to 40 characters: a-z, 0-9 and single dashes, not at either end. Unique on the server; a few words such as `admin` are reserved. |
 | `display_name` | string | no |  |
-| `chart_type` | `number_sparkline` | no | Number & sparklines, the only type. |
+| `chart_type` | `number_sparkline`, `numbers_only`, `line` | no | `number_sparkline` (Number & sparklines, the default), `numbers_only` (Only numbers) or `line` (Line charts: one point per month over the last 12 calendar months, RevenueDot's own). |
 | `metrics` | array of object | no | The 6 overview metrics in display order, each once. |
 | `metrics[].id` | `mrr`, `revenue`, `active_subscriptions`, `active_trials`, `new_customers`, `active_users` | yes |  |
 | `metrics[].visible` | boolean | yes |  |
@@ -2271,7 +2527,8 @@ Example 200 response:
   "play_store_url": null,
   "url": "https://api.revenuedot.app/verified/scanner",
   "published_at": 1790894800000,
-  "updated_at": 1790894800000
+  "updated_at": 1790894800000,
+  "custom_domain": null
 }
 ```
 
@@ -2343,7 +2600,8 @@ Example 200 response:
   "play_store_url": null,
   "url": "https://api.revenuedot.app/verified/scanner",
   "published_at": 1790894800000,
-  "updated_at": 1790894800000
+  "updated_at": 1790894800000,
+  "custom_domain": null
 }
 ```
 

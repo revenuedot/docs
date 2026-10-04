@@ -88,7 +88,7 @@ const METRICS = ["mrr", "revenue", "active_subscriptions", "active_trials", "new
 const vmFields = {
   slug: str("3 to 40 characters: a-z, 0-9 and single dashes, not at either end. Unique on the server; a few words such as `admin` are reserved."),
   display_name: str(undefined, { maxLength: 60 }),
-  chart_type: en(["number_sparkline"], "Number & sparklines, the only type."),
+  chart_type: en(["number_sparkline", "numbers_only", "line"], "`number_sparkline` (Number & sparklines, the default), `numbers_only` (Only numbers) or `line` (Line charts: one point per month over the last 12 calendar months, RevenueDot's own)."),
   metrics: arr(obj({ id: en(METRICS), visible: bool() }, ["id", "visible"]), { minItems: 6, maxItems: 6, description: "The 6 overview metrics in display order, each once." }),
   show_icon: bool(), icon_asset_id: nstr("An image uploaded with `POST /v2/projects/{project_id}/media_assets`."),
   show_store_links: bool(), app_store_url: nstr("https on apps.apple.com."), play_store_url: nstr("https on play.google.com."),
@@ -96,11 +96,22 @@ const vmFields = {
 const vm = obj({
   object: en(["verified_metrics"]), status: en(["never_published", "published", "inactive"]), ...vmFields,
   url: str("The public page, on the API host."), published_at: nms("Last publish."), updated_at: nms("Last save."),
+  custom_domain: { ...obj({
+    domain: str(), status: en(["pending", "verified", "failed"]), url: nstr("https://<domain> once verified."), verified_at: nms(), checked_at: nms(), error: nstr("Why the last check failed."),
+    dns: arr(obj({ type: en(["CNAME", "TXT"]), name: str(), value: str() }), { description: "The two records to add at the DNS provider." }),
+    certificate: obj({ managed: en(["automatic", "manual", "self_hosted"], "Who provides the TLS certificate: Cloudflare for SaaS from the server, RevenueDot by hand after verification, or your own proxy."), status: nstr("Cloudflare's certificate status when automatic."), note: nstr() }),
+  }), type: ["object", "null"], description: "The page's custom domain, or null." },
 }, ["object", "status", "slug", "display_name", "metrics", "url"]);
 const vmExample = {
   object: "verified_metrics", status: "published", slug: "scanner", display_name: "Scanner", chart_type: "number_sparkline",
   metrics: METRICS.map((id, i) => ({ id, visible: i < 4 })), show_icon: false, icon_asset_id: null, show_store_links: true,
   app_store_url: "https://apps.apple.com/app/id1234567890", play_store_url: null, url: "https://api.revenuedot.app/verified/scanner", published_at: 1790894800000, updated_at: 1790894800000,
+  custom_domain: null,
+};
+const domainExample = {
+  domain: "metrics.yourapp.com", status: "pending", url: null, verified_at: null, checked_at: null, error: null,
+  dns: [{ type: "CNAME", name: "metrics.yourapp.com", value: "api.revenuedot.app" }, { type: "TXT", name: "_revenuedot.metrics.yourapp.com", value: "revenuedot-verify=3f9c2a" }],
+  certificate: { managed: "manual", status: null, note: "RevenueDot adds the TLS certificate for your domain after it is verified, usually within one business day. Until then the page stays on its RevenueDot URL." },
 };
 const slugParam = path("slug", "The page's slug.");
 Object.assign(settingsPaths, {
@@ -117,6 +128,24 @@ Object.assign(settingsPaths, {
     get: v2({ id: "checkVerifiedSlug", tag: "Verified Metrics", summary: "Whether a slug is free", source: SETTINGS, scopes: PREAD,
       parameters: [project, { name: "slug", in: "query", required: true, schema: str() }],
       responses: { 200: ok("The answer.", obj({ object: en(["slug_availability"]), slug: str(), available: bool(), reason: nstr() }, ["object", "slug", "available"]), { object: "slug_availability", slug: "scanner", available: true, reason: null }), ...E(404) } }),
+  },
+  [`${P}/verified_metrics/monthly_history`]: {
+    get: v2({ id: "getVerifiedMonthlyHistory", tag: "Verified Metrics", summary: "The 12 monthly points of each metric", source: SETTINGS, scopes: PREAD, parameters: [project],
+      description: "What the Line charts type draws, production only: MRR, active subscriptions and active trials at each month's end (the current month live), revenue and new customers as monthly totals; `active_users` is null (no monthly history).",
+      responses: { 200: ok("The points, oldest first.", obj({ object: en(["verified_metrics_monthly_history"]), months: { type: "integer" }, metrics: { type: "object", additionalProperties: { type: ["array", "null"], items: obj({ date: str("The month, YYYY-MM."), value: { type: "number" } }) } } }, ["object", "months", "metrics"]),
+        { object: "verified_metrics_monthly_history", months: 12, metrics: { mrr: [{ date: "2025-11", value: 1879.19 }], active_users: null } }), ...E(404) } }),
+  },
+  [`${P}/verified_metrics/domain`]: {
+    put: v2({ id: "setVerifiedMetricsDomain", tag: "Verified Metrics", summary: "Set or clear the page's custom domain", source: SETTINGS, scopes: PWRITE, parameters: [project],
+      description: "A subdomain you own, such as metrics.yourapp.com; null removes it. The answer's `custom_domain.dns` lists the CNAME and TXT records to add. Changing or removing the domain resets its proof. 409 when another project's page, or hosted web pages, use the domain.",
+      requestBody: body(obj({ custom_domain: nstr() }, ["custom_domain"]), { custom_domain: "metrics.yourapp.com" }),
+      responses: { 200: ok("The settings.", vm, { ...vmExample, custom_domain: domainExample }), ...v2Errors(400, 401, 403, 404, 409) } }),
+  },
+  [`${P}/verified_metrics/domain/actions/verify`]: {
+    post: v2({ id: "verifyVerifiedMetricsDomain", tag: "Verified Metrics", summary: "Check the custom domain's DNS", source: SETTINGS, scopes: PWRITE, parameters: [project],
+      description: "Reads the TXT and CNAME records over DNS over HTTPS, 6 checks a minute. Once verified and published, the domain serves the page at `/`, `/metrics.json`, `/og.png` and `/icon`, and nothing else. On RevenueDot Cloud the answer also reports the TLS certificate. `found` holds the records seen.",
+      responses: { 200: ok("The settings and the records found.", obj({ ...vm.properties, found: obj({ cname: arr(str()), txt: arr(str()) }) }),
+        { ...vmExample, custom_domain: { ...domainExample, status: "verified", url: "https://metrics.yourapp.com", verified_at: 1790894800000, checked_at: 1790894800000 }, found: { cname: ["api.revenuedot.app"], txt: ["revenuedot-verify=3f9c2a"] } }), ...v2Errors(400, 401, 403, 404, 429) } }),
   },
   [`${P}/verified_metrics/actions/publish`]: {
     post: v2({ id: "publishVerifiedMetrics", tag: "Verified Metrics", summary: "Publish the page", source: SETTINGS, scopes: PWRITE, parameters: [project],
@@ -140,7 +169,8 @@ Object.assign(settingsPaths, {
       responses: { 200: ok("The numbers.", obj({
         object: en(["verified_metrics_page"]), url: str(), slug: str(), display_name: str(), chart_type: str(), computed_at: ms("When the numbers were computed."), icon_url: nstr(),
         store_links: obj({ app_store: nstr(), play_store: nstr() }),
-        metrics: arr(obj({ id: en(METRICS), name: str(), unit: en(["$", "#"]), caption: str(), value: { type: "number" }, sparkline: arr({ type: "number" }, { description: "One value per UTC day, oldest first (28 days; empty for active customers)." }) })),
+        metrics: arr(obj({ id: en(METRICS), name: str(), unit: en(["$", "#"]), caption: str(), value: { type: "number" }, sparkline: arr({ type: "number" }, { description: "Number & sparklines only: one value per UTC day, oldest first (28 days; empty for active customers)." }),
+          history: arr(obj({ date: str("YYYY-MM."), value: { type: "number" } }), { description: "Line charts only: 12 monthly points, oldest first (empty for active customers)." }) })),
       }), { object: "verified_metrics_page", url: "https://api.revenuedot.app/verified/scanner", slug: "scanner", display_name: "Scanner", chart_type: "number_sparkline", computed_at: 1790894800000, icon_url: null, store_links: { app_store: "https://apps.apple.com/app/id1234567890", play_store: null }, metrics: [{ id: "mrr", name: "MRR", unit: "$", caption: "Monthly recurring revenue", value: 93.4, sparkline: [88.1, 90.2, 93.4] }] }),
         404: ok("Not published.", obj({ object: en(["error"]), type: str(), message: str() })) } }),
   },
