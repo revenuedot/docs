@@ -14,8 +14,8 @@ const id = (name) => ({ name, in: "path", required: true, schema: str() });
 
 const condition = obj({ field: str("A customer field, as in audiences (`country`, `platform`, `firstPurchaseAt`, `lastRenewalAt`, `customAttribute:<key>` ...)."), operator: str(), value: str() }, ["field", "operator"]);
 const rules = obj({ groups: arr(obj({ conditions: arr(condition) }, ["conditions"]), { description: "Groups are OR-ed; conditions in a group are AND-ed. No groups matches everyone." }) }, ["groups"]);
-const PREF = ["prefer_refund", "prefer_no_refund", "consumption_only", "do_not_respond"];
-const preference = en(PREF, "`prefer_refund` sends refundPreference 1, `prefer_no_refund` 2, `consumption_only` 0 (undeclared), `do_not_respond` sends nothing.");
+const PREF = ["prefer_refund", "prefer_prorated_refund", "prefer_no_refund", "consumption_only", "do_not_respond"];
+const preference = en(PREF, "Send Consumption Information (V2): `prefer_refund` sends refundPreference `GRANT_FULL`, `prefer_prorated_refund` `GRANT_PRORATED` (or `GRANT_FULL` at 0% used, `DECLINE` at 100% used, no preference when the use is unknown, outside auto-renewable subscriptions), `prefer_no_refund` `DECLINE`, `consumption_only` no refundPreference. V1 (Advanced Commerce API purchases): 1, 1, 2 and 0. `do_not_respond` sends nothing.");
 const settings = obj({ default_preference: preference, customer_consented: bool("You confirm customers agreed to share consumption data. Apple requires it; without it nothing is sent.") });
 const policy = obj({
   object: en(["refund_policy"]), id: str(), name: str(), template: en(["first_purchase_date", "platform", "recent_renewal", "custom"]), rules, preference,
@@ -25,15 +25,21 @@ const refundControl = obj({
   object: en(["refund_control"]), settings, default_policy: obj({ customer_count: int() }), policies: arr(policy),
   templates: { type: "object", additionalProperties: rules, description: "The conditions each template starts with." }, counts_are_approximate: bool(),
 }, ["object", "settings", "policies"]);
-const consumption = obj({
+const consumptionV1 = obj({
   accountTenure: int(), appAccountToken: str(), consumptionStatus: int(), customerConsented: bool(), deliveryStatus: int(), lifetimeDollarsPurchased: int(),
   lifetimeDollarsRefunded: int(), platform: int(), playTime: int(), refundPreference: int(), sampleContentProvided: bool(), userStatus: int(),
-}, [], { description: "Apple's ConsumptionRequestV1 exactly as sent." });
+}, [], { description: "Apple's ConsumptionRequestV1 exactly as sent (Advanced Commerce API purchases)." });
+const consumptionV2 = obj({
+  customerConsented: bool(), consumptionPercentage: int("Milliunits, 0 to 100000. Left out for auto-renewable subscriptions and when RevenueDot cannot tell."),
+  deliveryStatus: en(["DELIVERED", "UNDELIVERED_QUALITY_ISSUE", "UNDELIVERED_WRONG_ITEM", "UNDELIVERED_SERVER_OUTAGE", "UNDELIVERED_OTHER"]),
+  refundPreference: en(["DECLINE", "GRANT_FULL", "GRANT_PRORATED"]), sampleContentProvided: bool(),
+}, [], { description: "Apple's ConsumptionRequest (Send Consumption Information V2) exactly as sent." });
 const refundRequest = obj({
   object: en(["refund_request"]), id: str(), app_id: nstr(), app_user_id: nstr(), store: str(), environment: en(["production", "sandbox"]),
   transaction_id: str(), original_transaction_id: nstr(), product_id: nstr(), amount_in_usd: { type: ["number", "null"] }, reason: nstr("Apple's consumptionRequestReason, or how a refund arrived."),
   requested_at: ms("Requested."), deadline_at: nms("Apple's 12-hour deadline."), policy_id: nstr(), policy_name: nstr(), preference: nstr(),
-  consumption_status: en(["pending", "sent", "skipped", "failed", "expired", "not_requested", "not_applicable"]), consumption: { ...consumption, type: ["object", "null"] },
+  consumption_status: en(["pending", "sent", "skipped", "failed", "expired", "not_requested", "not_applicable"]), consumption: { oneOf: [consumptionV2, consumptionV1, { type: "null" }], description: "The body sent to Apple, or null when none was built." },
+  consumption_version: { type: ["string", "null"], enum: ["v1", "v2", null], description: "`v2` for Send Consumption Information, `v1` for Send Consumption Information V1 (Advanced Commerce API purchases), null when no body was built." },
   attempts: int(), last_error: nstr(), sent_at: nms("Sent to Apple."), outcome: en(["pending", "approved", "declined"]), outcome_at: nms("Decided."),
 });
 const stats = obj({

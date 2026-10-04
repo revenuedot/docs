@@ -9,7 +9,7 @@ When a customer asks Apple for a refund, Apple sends your server a `CONSUMPTION_
 
 ## Before you start
 1. Connect the App Store with the app's **In-App Purchase key** and turn on **App Store Server Notifications** (version 2). See [Connect the App Store](app-store.md). RevenueDot sends the answer with the same key.
-2. Make sure your terms or privacy policy tell customers that you share this data with Apple. Apple requires the customer's consent ([Send Consumption Information](https://developer.apple.com/documentation/appstoreserverapi/send-consumption-information-v1)), and RevenueDot sends nothing until you confirm it.
+2. Make sure your terms or privacy policy tell customers that you share this data with Apple. Apple requires the customer's consent ([Send Consumption Information](https://developer.apple.com/documentation/appstoreserverapi/send-consumption-information)), and RevenueDot sends nothing until you confirm it.
 
 ## Set the policies
 Open **Lifecycle > Refund control**.
@@ -24,16 +24,35 @@ Open **Lifecycle > Refund control**.
 
 | Preference | What Apple gets |
 |---|---|
-| Prefer full refund | Consumption information with `refundPreference` 1 |
-| Prefer no refund | Consumption information with `refundPreference` 2 |
-| Send consumption data only | Consumption information with no preference (`refundPreference` 0) |
+| Prefer full refund | Consumption information with `refundPreference` `GRANT_FULL` |
+| Prefer prorated refund | Consumption information with `refundPreference` `GRANT_PRORATED`, so Apple refunds the unused part (rules below) |
+| Prefer no refund | Consumption information with `refundPreference` `DECLINE` |
+| Send consumption data only | Consumption information with no `refundPreference` |
 | Do not respond | Nothing |
 
 4. Drag the policies into order. The first policy whose conditions match the customer decides; the **default policy** covers everyone else. Each card shows how many of your customers it would decide for.
 5. Select **Save**. **Cancel** throws your changes away.
 
 ## What RevenueDot sends
-For each request RevenueDot builds Apple's `ConsumptionRequestV1` from its own records:
+Apple's notification does not name a version, so RevenueDot follows Apple's rule ([changelog, version 1.19](https://developer.apple.com/documentation/appstoreserverapi/app-store-server-api-changelog)): purchases made through the Advanced Commerce API get **Send Consumption Information V1**, and every other purchase gets **Send Consumption Information** (V2). RevenueDot tells them apart by the `advancedCommerceInfo` field of the signed transaction. `GET /v2/projects/{project_id}/refund_requests` shows which one each answer used in `consumption_version`.
+
+### Most purchases: Send Consumption Information
+RevenueDot sends `PUT https://api.storekit.apple.com/inApps/v2/transactions/consumption/{transactionId}` (the sandbox host for sandbox purchases) with Apple's [`ConsumptionRequest`](https://developer.apple.com/documentation/appstoreserverapi/consumptionrequest):
+
+| Field | How it is set |
+|---|---|
+| `customerConsented` | `true` (only sent after you confirm consent) |
+| `consumptionPercentage` | How much the customer used, in thousandths of a percent (40% is `40000`). Prepaid (non-renewing) subscriptions: the share of the period that has passed. Consumables that grant an in-app currency: the share of the granted currency that is spent. Lifetime purchases: `0` when the customer never opened the app after buying. Left out when RevenueDot cannot tell, and always left out for auto-renewable subscriptions, because Apple works that out from the time passed |
+| `deliveryStatus` | `DELIVERED`: RevenueDot granted the purchase |
+| `refundPreference` | From the policy (table above) |
+| `sampleContentProvided` | `true` when the customer had a free trial of the product |
+
+A prorated refund follows Apple's [`refundPreference` rules](https://developer.apple.com/documentation/appstoreserverapi/refundpreference):
+- An auto-renewable subscription gets `GRANT_PRORATED` with no percentage.
+- Other products need a percentage between 0% and 100%. When nothing was used, RevenueDot sends `GRANT_FULL`. When everything was used, there is nothing left to refund, so it sends `DECLINE`. When the use is unknown, it sends the consumption data with no preference.
+
+### Advanced Commerce API purchases: Send Consumption Information V1
+For these, RevenueDot builds Apple's `ConsumptionRequestV1` from its own records. V1 has no prorated option, so **Prefer prorated refund** is sent as "prefer to grant" (`refundPreference` 1):
 
 | Field | How it is set |
 |---|---|
@@ -47,7 +66,7 @@ For each request RevenueDot builds Apple's `ConsumptionRequestV1` from its own r
 | `playTime` | 0, unless your app sets the custom attribute `rd_play_time_minutes` |
 | `lifetimeDollarsPurchased`, `lifetimeDollarsRefunded` | The customer's USD purchases and refunds, in Apple's buckets |
 | `userStatus` | 1 for a known customer; set the custom attribute `rd_user_status` to `suspended`, `terminated` or `limited` to say otherwise |
-| `refundPreference` | From the policy |
+| `refundPreference` | Full refund 1, no refund 2, consumption data only 0 |
 
 If Apple's API fails, RevenueDot retries after 5 minutes, 15 minutes and then every hour, and stops 5 minutes before the 12-hour deadline. A repeated notification for the same purchase is never answered twice.
 
