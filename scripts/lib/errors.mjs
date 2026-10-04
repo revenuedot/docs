@@ -90,6 +90,8 @@ export function validateEntry(p, slugs) {
   for (const f of FIELDS) if (p[f] === undefined || p[f] === "" || (Array.isArray(p[f]) && !p[f].length)) out.push(`missing ${f}`);
   if (!(p.mapping ?? p.sdk)) out.push("missing mapping (how RevenueDot handles it; legacy field sdk for error pages)");
   if (!/^[a-z0-9-]+$/.test(p.slug ?? "")) out.push("slug must be lower-case letters, digits and hyphens");
+  // The site falls back to "<label> | RevenueDot Docs" when a title is too long for a 70-character <title>, so the label must fit.
+  if (typeof p.label === "string" && `${p.label} | RevenueDot Docs`.length > 70) out.push(`label is ${p.label.length} characters; at most 52 so "<label> | RevenueDot Docs" fits a 70-character title`);
   if (typeof p.title === "string" && !p.title.trim().endsWith("?")) out.push("title must be a question");
   if (typeof p.description === "string" && (p.description.length > 300 || p.description.includes("\n"))) out.push("description must be one line of at most 300 characters");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(p.checked ?? "")) out.push("checked must be YYYY-MM-DD");
