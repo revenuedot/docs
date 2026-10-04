@@ -4275,6 +4275,7 @@ Newest first.
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `status` | `pending`, `delivered`, `failed` | no |  |
+| `paywall_events` | `exclude`, `only` | no | Leave out, or return only, deliveries of paywall events (PAYWALL_*). Default: all. |
 | `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
 | `starting_after` | string | no | Id of the last item of the previous page. Use `next_page` instead of building it. |
 
@@ -7548,7 +7549,7 @@ Every recorded event and money movement.
 
 `GET /v2/projects/{project_id}/events` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `customer_information:customers:read`
 
-Every event the project recorded, newest first. `body` is exactly what webhooks receive.
+Every event the project recorded, newest first. `body` is exactly what webhooks receive. Paywall events (PAYWALL_*) only with `include_paywall_events=true` or when `type` names them.
 
 **Path parameters**
 
@@ -7560,7 +7561,8 @@ Every event the project recorded, newest first. `body` is exactly what webhooks 
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `type` | array of string | no | Event types (any case); repeat or comma-separate. |
+| `type` | array of string | no | Event types (any case); repeat or comma-separate. Naming a paywall type returns it. |
+| `include_paywall_events` | boolean | no | Also return paywall events (PAYWALL_*). Default false: paywall events are left out unless `type` names them. |
 | `customer` | string | no | Any app user id of the customer. |
 | `environment` | `production`, `sandbox` | no | Only this environment. Default: both. |
 | `limit` | integer | no | Page size. Values outside 1-100 are clamped, not rejected. |
