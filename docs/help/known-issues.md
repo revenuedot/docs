@@ -1,15 +1,15 @@
 ---
 title: What are the known issues and gaps in RevenueDot?
-description: "Known issues as of 2026-09-30: what does not work yet, and the workaround for each."
+description: "Known issues as of 2026-10-03: what does not work yet, and the workaround for each."
 ---
 
 # What are the known issues and gaps in RevenueDot?
 
-The list below is complete as of **2026-09-30**. The biggest gap: **no real App Store or Google Play sandbox purchase has run end to end yet**. Store support is tested against mocked Apple and Google APIs only. Each item has a workaround where one exists.
+The list below is complete as of **2026-10-03**. A real App Store sandbox purchase ran end to end on a physical iPhone on 2026-10-02, and a production app has run RevenueDot beside RevenueCat since then. The biggest remaining gap: **no real Google Play purchase has run end to end yet**. Each item has a workaround where one exists.
 
 ## Stores and purchases
-1. **Real store purchases are untested end to end.** The App Store and Google Play code passes tests against mocked Apple and Google APIs.
-   - Workaround: test with App Store sandbox and Google Play license testers, report what you find, and keep live customers on your current backend. See [Test purchases](test-sandbox-purchases.md).
+1. **Google Play, Amazon, Paddle, Roku and Galaxy Store purchases are untested against the real stores.** Their code passes tests against copies of each store's API; the App Store ran a real sandbox purchase end to end on 2026-10-02.
+   - Workaround: test with Google Play license testers, report what you find, and keep the [dual run](../migrate/dual-run.md) forwarding to your current backend until your numbers match. See [Test purchases](test-sandbox-purchases.md).
 2. **Nine app types accept receipts:** `app_store`, `mac_app_store`, `play_store`, `amazon`, `stripe`, `paddle`, `roku`, `galaxy` and `test_store`. RevenueCat Billing (`rcb_`) receipts answer HTTP 400, code 7662. Amazon, Stripe, Paddle, Roku and the Galaxy Store are tested against copies of the stores' APIs only; no real purchase in those stores has run yet. That includes [web billing](../guides/web-billing.md): the hosted checkout, purchase links and funnels run against an in-memory copy of Stripe's API in the tests.
    - Workaround: none yet.
 3. **StoreKit 1 receipts need the App Store in-app purchase key.** Without it, RevenueDot answers HTTP 500, code 7234, so the SDK keeps retrying.
