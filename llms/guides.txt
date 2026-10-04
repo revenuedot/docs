@@ -2962,7 +2962,7 @@ Open the project switcher at the top of the sidebar and choose **Account setting
 - **Active OAuth tokens.** Every AI assistant or app you connected with **Allow access** ([Connect AI assistants](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/connect-ai-assistants.md)): the client, its address, the project, the access and when it was last used. **Revoke** stops it at once. Keys granted before this list existed are on the project's **API keys** page.
 
 ## Notifications
-- **Alert emails** for problems in projects you administer ([Alert emails](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md)).
+- **Alert emails** for problems in projects you administer, with a separate switch for integration failures ([Alert emails](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md)).
 - **Per project**, three emails you turn on yourself. Any member can subscribe to a project they belong to.
   - **Weekly summary**: on the first day of your week, MRR at the end of the week, revenue, new customers, new trials, churned subscriptions and the churn rate, each against the week before, in your display currency. The numbers come from the same engine as [Charts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md), production only.
   - **Experiment results**: one email when both variants of an [experiment](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/targeting-and-experiments.md) have 100 customers, and one when it is stopped.
@@ -3001,25 +3001,30 @@ Account settings use the dashboard session (`rd_session`), never an API key. The
 # Which alert emails does RevenueDot send?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md
-Description: Project admins get an email when store notifications fail, a webhook fails 5 times in a row, or Apple or Google rejects the store credentials. One email when it starts, at most one reminder a day, one when it is fixed.
+Description: Project admins get an email when store notifications fail, a webhook fails 5 times in a row, an integration keeps failing, or Apple or Google rejects the store credentials. One email when it starts, at most one reminder a day, one when it is fixed.
 
-RevenueDot emails a project's admins when one of three things breaks: **store notifications are failing**, **a webhook keeps failing**, or **Apple or Google rejects the app's store credentials**. You get one email when the problem starts, at most one reminder a day while it lasts, and one email when it is fixed. Each email links to the app or webhook page that shows the details.
+RevenueDot emails a project's admins when one of four things breaks: **store notifications are failing**, **a webhook keeps failing**, **an integration keeps failing**, or **Apple or Google rejects the app's store credentials**. You get one email when the problem starts, at most one reminder a day while it lasts, and one email when it is fixed. Each email links to the app, webhook or integration page that shows the details.
 
-## The three alerts
+## The four alerts
 | Alert | When it starts | When it ends |
 |---|---|---|
 | **Store notifications failing** | An App Store, Mac App Store or Google Play app's setup health says notifications are **failing**: the newest notification the store really sent could not be processed (for example another bundle ID or package name, or an invalid purchase token). Requests without a valid signature are rejected requests and never raise this alert | The next notification from the store is processed |
 | **Webhook failing** | The last 5 delivery attempts to one webhook all failed. Paused webhooks do not alert | A delivery succeeds, or you pause the webhook |
+| **Integration failing** | An integration that is on (Amplitude, Segment, Slack and the others) had **10 deliveries in a row fail**, or **more than half of its delivery attempts in the last hour failed** with at least 10 attempts. A delivery fails when it runs out of retries, or at once on an error a retry cannot fix (a 4xx other than 429). Skipped deliveries do not count, and attempts made before you last saved the integration's settings or turned it on do not count either | A delivery succeeds, none has failed since, and a quarter or less of the last hour's attempts failed (fewer than 10 attempts also counts). It also closes when you turn the integration off, or when no rule holds and nothing has failed for 7 days. If it fails again within a day of closing, it reopens without a new email, and the next reminder comes a day after the last one |
 | **Store credentials failing** | Apple answers 401 to the app's in-app purchase key, or Google answers 401 or 403 to the service account. This counts on any call: receipt checks, store notifications, the Google Play voided-purchases scan and the dashboard's **Check credentials** button | A check with the store succeeds |
 
 RevenueDot checks the store credentials of a failing app again every hour, and the credentials of every app once a day. So a fixed key clears the alert within an hour, and a key revoked in App Store Connect or Google Cloud raises one within a day even when no purchase comes in.
 
-Deleting the app or the webhook closes its alert without a "fixed" email.
+Deleting the app, the webhook or the integration closes its alert without a "fixed" email. Turning an integration off closes its alert with an email that says it was turned off.
+
+### Integration failing
+The email names the integration and the partner, says which rule tripped (for example "The last 10 deliveries failed, one after the other" or "7 of 10 delivery attempts in the last hour failed (70%)"), shows the last error, and links straight to the integration's delivery log, where **Replay failed** sends the failed events again once the settings are fixed. The integration's API object shows the count in `status.failed_deliveries_in_row`. See [Integrations](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#how-every-integration-behaves).
 
 ## Who gets them
 - **Every admin of the project** gets the emails. Developers and Viewers do not. See [roles](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/team.md#roles).
 - **Each admin can turn them off** in **Account settings** (`/account`, in the menu under your name): switch off **Email me about problems with my projects**. The setting covers every project you administer.
-- **With the API:** `POST /auth/me` with `{"alert_emails": false}` turns them off, and `true` turns them back on. `GET /auth/me` shows the current value in `user.alert_emails`. See [Update account settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-account-settings).
+- **Integration failures have their own switch** under it: **Email me when an integration keeps failing**, on by default. It needs the first switch on.
+- **With the API:** `POST /auth/me` with `{"alert_emails": false}` turns them off, and `true` turns them back on. `{"integration_alert_emails": false}` turns off integration failures only. `GET /auth/me` shows the current values in `user.alert_emails` and `user.integration_alert_emails`. See [Update account settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#update-account-settings).
 
 ## How often
 - **One email when the alert opens.**
@@ -3036,6 +3041,7 @@ Alert emails need mail settings. Without `REVENUEDOT_SMTP_URL`, each alert email
 - [Why are webhooks not arriving?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/webhooks-not-arriving.md)
 - [Connect the App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md) and [Connect Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md)
 - [Webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md)
+- [Integrations](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md)
 
 ---
 
@@ -4365,6 +4371,7 @@ For your own warehouse, a **scheduled data export** writes CSV or Parquet files 
 - **Revenue:** US dollars, either what the customer paid (**Gross revenue**) or what is left after the store's commission and taxes (**After store commission and taxes**). Refunds are negative where the tool accepts it.
 - **Keys stay secret:** API keys and tokens are encrypted on the server and never shown again; the dashboard shows their last four characters.
 - **Retries:** timeouts, rate limits (429) and server errors (5xx) retry on the webhook schedule. Any other 4xx fails at once, because sending the same request again cannot work: fix the setting, then click **Replay failed**.
+- **Alert email:** when an integration's last 10 deliveries failed, or more than half of its delivery attempts in the last hour failed (at least 10 attempts), the project's admins get one email with the error and a link to the delivery log. See [alert emails](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md#integration-failing).
 - **Skipped:** when there is nothing to send, the delivery is marked **skipped** with the reason, for example "The customer has no $adjustId attribute". Attributes set after the purchase count: once the app sends the id, **Retry** sends the event.
 - **Test:** **Send test event** sends a `TEST` event to that integration only. Attribution tools need the customer's device ids, so give the app user id of a customer whose attributes include them.
 
@@ -4452,7 +4459,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners" 
   -d '{"type":"amplitude","environment":null,"settings":{"api_key":"'"$AMPLITUDE_KEY"'","region":"us"},"event_names":{"initial_purchase":"Subscribed"}}'
 ```
 ```json
-{"object":"integration","id":"intg_8f2kq0x1m3zv7a","type":"amplitude","name":"Amplitude","enabled":true,"environment":null,"app_id":null,"event_types":[],"settings":{"region":"us"},"secrets":{"api_key":{"configured":true,"hint":"••••9f3a"},"sandbox_api_key":{"configured":false,"hint":null}},"event_names":{"initial_purchase":"Subscribed"},"status":{"last_delivered_at":null,"last_error":null,"consecutive_failures":0},"created_at":1790850000000,"updated_at":1790850000000}
+{"object":"integration","id":"intg_8f2kq0x1m3zv7a","type":"amplitude","name":"Amplitude","enabled":true,"environment":null,"app_id":null,"event_types":[],"settings":{"region":"us"},"secrets":{"api_key":{"configured":true,"hint":"••••9f3a"},"sandbox_api_key":{"configured":false,"hint":null}},"event_names":{"initial_purchase":"Subscribed"},"status":{"last_delivered_at":null,"last_error":null,"consecutive_failures":0,"failed_deliveries_in_row":0},"created_at":1790850000000,"updated_at":1790850000000}
 ```
 
 - `settings` takes every field of the tool, secrets included. On update, a secret you leave out keeps its saved value and `null` removes it.

@@ -24,6 +24,7 @@ For your own warehouse, a **scheduled data export** writes CSV or Parquet files 
 - **Revenue:** US dollars, either what the customer paid (**Gross revenue**) or what is left after the store's commission and taxes (**After store commission and taxes**). Refunds are negative where the tool accepts it.
 - **Keys stay secret:** API keys and tokens are encrypted on the server and never shown again; the dashboard shows their last four characters.
 - **Retries:** timeouts, rate limits (429) and server errors (5xx) retry on the webhook schedule. Any other 4xx fails at once, because sending the same request again cannot work: fix the setting, then click **Replay failed**.
+- **Alert email:** when an integration's last 10 deliveries failed, or more than half of its delivery attempts in the last hour failed (at least 10 attempts), the project's admins get one email with the error and a link to the delivery log. See [alert emails](alerts.md#integration-failing).
 - **Skipped:** when there is nothing to send, the delivery is marked **skipped** with the reason, for example "The customer has no $adjustId attribute". Attributes set after the purchase count: once the app sends the id, **Retry** sends the event.
 - **Test:** **Send test event** sends a `TEST` event to that integration only. Attribution tools need the customer's device ids, so give the app user id of a customer whose attributes include them.
 
@@ -111,7 +112,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/partners" 
   -d '{"type":"amplitude","environment":null,"settings":{"api_key":"'"$AMPLITUDE_KEY"'","region":"us"},"event_names":{"initial_purchase":"Subscribed"}}'
 ```
 ```json
-{"object":"integration","id":"intg_8f2kq0x1m3zv7a","type":"amplitude","name":"Amplitude","enabled":true,"environment":null,"app_id":null,"event_types":[],"settings":{"region":"us"},"secrets":{"api_key":{"configured":true,"hint":"••••9f3a"},"sandbox_api_key":{"configured":false,"hint":null}},"event_names":{"initial_purchase":"Subscribed"},"status":{"last_delivered_at":null,"last_error":null,"consecutive_failures":0},"created_at":1790850000000,"updated_at":1790850000000}
+{"object":"integration","id":"intg_8f2kq0x1m3zv7a","type":"amplitude","name":"Amplitude","enabled":true,"environment":null,"app_id":null,"event_types":[],"settings":{"region":"us"},"secrets":{"api_key":{"configured":true,"hint":"••••9f3a"},"sandbox_api_key":{"configured":false,"hint":null}},"event_names":{"initial_purchase":"Subscribed"},"status":{"last_delivered_at":null,"last_error":null,"consecutive_failures":0,"failed_deliveries_in_row":0},"created_at":1790850000000,"updated_at":1790850000000}
 ```
 
 - `settings` takes every field of the tool, secrets included. On update, a secret you leave out keeps its saved value and `null` removes it.

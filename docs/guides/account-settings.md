@@ -34,7 +34,7 @@ Open the project switcher at the top of the sidebar and choose **Account setting
 - **Active OAuth tokens.** Every AI assistant or app you connected with **Allow access** ([Connect AI assistants](connect-ai-assistants.md)): the client, its address, the project, the access and when it was last used. **Revoke** stops it at once. Keys granted before this list existed are on the project's **API keys** page.
 
 ## Notifications
-- **Alert emails** for problems in projects you administer ([Alert emails](alerts.md)).
+- **Alert emails** for problems in projects you administer, with a separate switch for integration failures ([Alert emails](alerts.md)).
 - **Per project**, three emails you turn on yourself. Any member can subscribe to a project they belong to.
   - **Weekly summary**: on the first day of your week, MRR at the end of the week, revenue, new customers, new trials, churned subscriptions and the churn rate, each against the week before, in your display currency. The numbers come from the same engine as [Charts](charts.md), production only.
   - **Experiment results**: one email when both variants of an [experiment](targeting-and-experiments.md) have 100 customers, and one when it is stopped.

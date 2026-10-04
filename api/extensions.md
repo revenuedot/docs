@@ -225,6 +225,7 @@ The display name, whether the user gets [alert emails](../docs/guides/alerts.md)
 |---|---|---|---|
 | `name` | string or null | no |  |
 | `alert_emails` | boolean | no | False stops alert emails for every project. |
+| `integration_alert_emails` | boolean | no | False stops integration failure alerts only. |
 | `insights_emails` | boolean | no | False stops the weekly growth insights digest for every project. |
 | `theme` | `system`, `light`, `dark` | no |  |
 | `tint` | string or null | no | #RRGGBB, or null for the default gold. |
@@ -4554,7 +4555,8 @@ Example 201 response:
   "status": {
     "last_delivered_at": null,
     "last_error": null,
-    "consecutive_failures": 0
+    "consecutive_failures": 0,
+    "failed_deliveries_in_row": 0
   },
   "created_at": 1790850000000,
   "updated_at": 1790850000000
