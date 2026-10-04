@@ -25949,10 +25949,11 @@ paths:
                         type: string
                         enum:
                           - prefer_refund
+                          - prefer_prorated_refund
                           - prefer_no_refund
                           - consumption_only
                           - do_not_respond
-                        description: "`prefer_refund` sends refundPreference 1, `prefer_no_refund` 2, `consumption_only` 0 (undeclared), `do_not_respond` sends nothing."
+                        description: "Send Consumption Information (V2): `prefer_refund` sends refundPreference `GRANT_FULL`, `prefer_prorated_refund` `GRANT_PRORATED` (or `GRANT_FULL` at 0% used, `DECLINE` at 100% used, no preference when the use is unknown, outside auto-renewable subscriptions), `prefer_no_refund` `DECLINE`, `consumption_only` no refundPreference. V1 (Advanced Commerce API purchases): 1, 1, 2 and 0. `do_not_respond` sends nothing."
                       customer_consented:
                         type: boolean
                         description: You confirm customers agreed to share consumption data. Apple requires it; without it nothing is sent.
@@ -26013,10 +26014,11 @@ paths:
                           type: string
                           enum:
                             - prefer_refund
+                            - prefer_prorated_refund
                             - prefer_no_refund
                             - consumption_only
                             - do_not_respond
-                          description: "`prefer_refund` sends refundPreference 1, `prefer_no_refund` 2, `consumption_only` 0 (undeclared), `do_not_respond` sends nothing."
+                          description: "Send Consumption Information (V2): `prefer_refund` sends refundPreference `GRANT_FULL`, `prefer_prorated_refund` `GRANT_PRORATED` (or `GRANT_FULL` at 0% used, `DECLINE` at 100% used, no preference when the use is unknown, outside auto-renewable subscriptions), `prefer_no_refund` `DECLINE`, `consumption_only` no refundPreference. V1 (Advanced Commerce API purchases): 1, 1, 2 and 0. `do_not_respond` sends nothing."
                         position:
                           type: integer
                           description: 0 is evaluated first.
@@ -26105,10 +26107,11 @@ paths:
                       type: string
                       enum:
                         - prefer_refund
+                        - prefer_prorated_refund
                         - prefer_no_refund
                         - consumption_only
                         - do_not_respond
-                      description: "`prefer_refund` sends refundPreference 1, `prefer_no_refund` 2, `consumption_only` 0 (undeclared), `do_not_respond` sends nothing."
+                      description: "Send Consumption Information (V2): `prefer_refund` sends refundPreference `GRANT_FULL`, `prefer_prorated_refund` `GRANT_PRORATED` (or `GRANT_FULL` at 0% used, `DECLINE` at 100% used, no preference when the use is unknown, outside auto-renewable subscriptions), `prefer_no_refund` `DECLINE`, `consumption_only` no refundPreference. V1 (Advanced Commerce API purchases): 1, 1, 2 and 0. `do_not_respond` sends nothing."
                     customer_consented:
                       type: boolean
                       description: You confirm customers agreed to share consumption data. Apple requires it; without it nothing is sent.
@@ -26155,10 +26158,11 @@ paths:
                         type: string
                         enum:
                           - prefer_refund
+                          - prefer_prorated_refund
                           - prefer_no_refund
                           - consumption_only
                           - do_not_respond
-                        description: "`prefer_refund` sends refundPreference 1, `prefer_no_refund` 2, `consumption_only` 0 (undeclared), `do_not_respond` sends nothing."
+                        description: "Send Consumption Information (V2): `prefer_refund` sends refundPreference `GRANT_FULL`, `prefer_prorated_refund` `GRANT_PRORATED` (or `GRANT_FULL` at 0% used, `DECLINE` at 100% used, no preference when the use is unknown, outside auto-renewable subscriptions), `prefer_no_refund` `DECLINE`, `consumption_only` no refundPreference. V1 (Advanced Commerce API purchases): 1, 1, 2 and 0. `do_not_respond` sends nothing."
                     required:
                       - name
                       - rules
@@ -26196,10 +26200,11 @@ paths:
                         type: string
                         enum:
                           - prefer_refund
+                          - prefer_prorated_refund
                           - prefer_no_refund
                           - consumption_only
                           - do_not_respond
-                        description: "`prefer_refund` sends refundPreference 1, `prefer_no_refund` 2, `consumption_only` 0 (undeclared), `do_not_respond` sends nothing."
+                        description: "Send Consumption Information (V2): `prefer_refund` sends refundPreference `GRANT_FULL`, `prefer_prorated_refund` `GRANT_PRORATED` (or `GRANT_FULL` at 0% used, `DECLINE` at 100% used, no preference when the use is unknown, outside auto-renewable subscriptions), `prefer_no_refund` `DECLINE`, `consumption_only` no refundPreference. V1 (Advanced Commerce API purchases): 1, 1, 2 and 0. `do_not_respond` sends nothing."
                       customer_consented:
                         type: boolean
                         description: You confirm customers agreed to share consumption data. Apple requires it; without it nothing is sent.
@@ -26260,10 +26265,11 @@ paths:
                           type: string
                           enum:
                             - prefer_refund
+                            - prefer_prorated_refund
                             - prefer_no_refund
                             - consumption_only
                             - do_not_respond
-                          description: "`prefer_refund` sends refundPreference 1, `prefer_no_refund` 2, `consumption_only` 0 (undeclared), `do_not_respond` sends nothing."
+                          description: "Send Consumption Information (V2): `prefer_refund` sends refundPreference `GRANT_FULL`, `prefer_prorated_refund` `GRANT_PRORATED` (or `GRANT_FULL` at 0% used, `DECLINE` at 100% used, no preference when the use is unknown, outside auto-renewable subscriptions), `prefer_no_refund` `DECLINE`, `consumption_only` no refundPreference. V1 (Advanced Commerce API purchases): 1, 1, 2 and 0. `do_not_respond` sends nothing."
                         position:
                           type: integer
                           description: 0 is evaluated first.
@@ -26521,35 +26527,69 @@ paths:
                             - not_requested
                             - not_applicable
                         consumption:
+                          oneOf:
+                            - type: object
+                              properties:
+                                customerConsented:
+                                  type: boolean
+                                consumptionPercentage:
+                                  type: integer
+                                  description: Milliunits, 0 to 100000. Left out for auto-renewable subscriptions and when RevenueDot cannot tell.
+                                deliveryStatus:
+                                  type: string
+                                  enum:
+                                    - DELIVERED
+                                    - UNDELIVERED_QUALITY_ISSUE
+                                    - UNDELIVERED_WRONG_ITEM
+                                    - UNDELIVERED_SERVER_OUTAGE
+                                    - UNDELIVERED_OTHER
+                                refundPreference:
+                                  type: string
+                                  enum:
+                                    - DECLINE
+                                    - GRANT_FULL
+                                    - GRANT_PRORATED
+                                sampleContentProvided:
+                                  type: boolean
+                              description: Apple's ConsumptionRequest (Send Consumption Information V2) exactly as sent.
+                            - type: object
+                              properties:
+                                accountTenure:
+                                  type: integer
+                                appAccountToken:
+                                  type: string
+                                consumptionStatus:
+                                  type: integer
+                                customerConsented:
+                                  type: boolean
+                                deliveryStatus:
+                                  type: integer
+                                lifetimeDollarsPurchased:
+                                  type: integer
+                                lifetimeDollarsRefunded:
+                                  type: integer
+                                platform:
+                                  type: integer
+                                playTime:
+                                  type: integer
+                                refundPreference:
+                                  type: integer
+                                sampleContentProvided:
+                                  type: boolean
+                                userStatus:
+                                  type: integer
+                              description: Apple's ConsumptionRequestV1 exactly as sent (Advanced Commerce API purchases).
+                            - type: "null"
+                          description: The body sent to Apple, or null when none was built.
+                        consumption_version:
                           type:
-                            - object
+                            - string
                             - "null"
-                          properties:
-                            accountTenure:
-                              type: integer
-                            appAccountToken:
-                              type: string
-                            consumptionStatus:
-                              type: integer
-                            customerConsented:
-                              type: boolean
-                            deliveryStatus:
-                              type: integer
-                            lifetimeDollarsPurchased:
-                              type: integer
-                            lifetimeDollarsRefunded:
-                              type: integer
-                            platform:
-                              type: integer
-                            playTime:
-                              type: integer
-                            refundPreference:
-                              type: integer
-                            sampleContentProvided:
-                              type: boolean
-                            userStatus:
-                              type: integer
-                          description: Apple's ConsumptionRequestV1 exactly as sent.
+                          enum:
+                            - v1
+                            - v2
+                            - null
+                          description: "`v2` for Send Consumption Information, `v1` for Send Consumption Information V1 (Advanced Commerce API purchases), null when no body was built."
                         attempts:
                           type: integer
                         last_error:

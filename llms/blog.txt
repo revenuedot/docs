@@ -654,7 +654,7 @@ Apple documents two request bodies, and you should know which one you use.
 | Refund preference | Numbers 0 to 3 | `GRANT_FULL`, `GRANT_PRORATED` or `DECLINE` |
 | Usage data | Status, play time, account tenure, lifetime dollars, user status | A `consumptionPercentage` in milliunits, plus delivery status |
 
-Sources: the [V1 endpoint](https://developer.apple.com/documentation/appstoreserverapi/send-consumption-information-v1), the [current endpoint](https://developer.apple.com/documentation/appstoreserverapi/send-consumption-information) and the [`ConsumptionRequest`](https://developer.apple.com/documentation/appstoreserverapi/consumptionrequest) body. Apple does not mark V1 as deprecated on the pages we read. RevenueDot's Refund Control calls the V1 path today. If you build your own, check Apple's pages for the current guidance before you choose.
+Sources: the [V1 endpoint](https://developer.apple.com/documentation/appstoreserverapi/send-consumption-information-v1), the [current endpoint](https://developer.apple.com/documentation/appstoreserverapi/send-consumption-information) and the [`ConsumptionRequest`](https://developer.apple.com/documentation/appstoreserverapi/consumptionrequest) body. Apple's [changelog](https://developer.apple.com/documentation/appstoreserverapi/app-store-server-api-changelog) (version 1.19, December 2025) says to use the current endpoint for every In-App Purchase that does not use the Advanced Commerce API, and the current endpoint refuses Advanced Commerce purchases. RevenueDot's Refund Control follows that rule: V1 only when the signed transaction has `advancedCommerceInfo`, the current endpoint otherwise.
 
 ## Consent comes first
 
@@ -720,23 +720,24 @@ Writing the notification handler, the JWT, the bucket mapping and the retry logi
 
 | Preference | What Apple gets |
 |---|---|
-| Prefer full refund | Consumption information with `refundPreference` 1 |
-| Prefer no refund | Consumption information with `refundPreference` 2 |
-| Send consumption data only | Consumption information with no preference (0) |
+| Prefer full refund | Consumption information with `refundPreference` `GRANT_FULL` |
+| Prefer prorated refund | Consumption information with `refundPreference` `GRANT_PRORATED`, so Apple refunds the unused part |
+| Prefer no refund | Consumption information with `refundPreference` `DECLINE` |
+| Send consumption data only | Consumption information with no `refundPreference` |
 | Do not respond | Nothing |
 
 The first policy whose conditions match the customer decides. The **default policy** covers everyone else. Each card shows how many of your customers it would decide for.
 
-**What RevenueDot fills in from its own records:**
+**What RevenueDot fills in from its own records** (the current endpoint):
 
 | Field | How it is set |
 |---|---|
-| `consumptionStatus` | For subscriptions: 3 when the period is over, 2 when the customer opened the app after buying, 1 when they never did |
+| `consumptionPercentage` | Prepaid subscriptions: the share of the period passed, from the product's duration. Consumables that grant an in-app currency: the share of that purchase's currency spent, oldest coins first. Left out for auto-renewable subscriptions (Apple computes it) and when RevenueDot cannot tell |
+| `deliveryStatus` | `DELIVERED`, because RevenueDot granted the purchase |
 | `sampleContentProvided` | `true` when the customer had a free trial |
-| `deliveryStatus` | 0, because RevenueDot granted the purchase |
-| `accountTenure`, `lifetimeDollarsPurchased`, `lifetimeDollarsRefunded` | From the customer's history, in Apple's buckets |
-| `playTime` | 0, unless your app sets the custom attribute `rd_play_time_minutes` |
-| `userStatus` | 1 for a known customer, or set `rd_user_status` to `suspended`, `terminated` or `limited` |
+| `refundPreference` | From the policy |
+
+Advanced Commerce purchases get the V1 body instead, with the V1 fields above filled from the customer's history. The [Refund Control guide](https://revenuedot.app/docs/guides/refund-control) lists every rule.
 
 If Apple's API fails, RevenueDot retries after 5 minutes, 15 minutes and then every hour, and stops 5 minutes before the 12-hour deadline. A repeated notification for the same purchase is never answered twice.
 
