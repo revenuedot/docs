@@ -19,7 +19,7 @@ Open **Integrations** in the dashboard, pick the tool, paste its key and click *
 For your own warehouse, a **scheduled data export** writes CSV or Parquet files of transactions, customers, subscriptions and events to Amazon S3, Cloudflare R2 or Google Cloud Storage every day or week.
 
 ## How every integration behaves
-- **Which events:** each integration gets the events webhooks get, filtered by environment (production, sandbox or both), app and event type, the same filters as [webhooks](webhooks.md). Events a tool never takes (Slack gets no expirations, Meta no cancellations) are not queued.
+- **Which events:** each integration gets the events webhooks get, filtered by environment (production, sandbox or both), app and event type, the same filters as [webhooks](webhooks.md), with one difference: [paywall event types](#paywall-events) in the filter are added to the other events and never narrow it. Events a tool never takes (Slack gets no expirations, Meta no cancellations) are not queued.
 - **Trials apart from purchases:** an `INITIAL_PURCHASE` with `period_type` `TRIAL` is sent as a trial start, a `RENEWAL` with `is_trial_conversion` as a trial conversion, and a `CANCELLATION` during a trial as a trial cancellation.
 - **Revenue:** US dollars, either what the customer paid (**Gross revenue**) or what is left after the store's commission and taxes (**After store commission and taxes**). Refunds are negative where the tool accepts it.
 - **Keys stay secret:** API keys and tokens are encrypted on the server and never shown again; the dashboard shows their last four characters.
@@ -50,6 +50,27 @@ For your own warehouse, a **scheduled data export** writes CSV or Parquet files 
 The three funnel events come from RevenueDot's web [funnels](funnels.md) and are **opt-in**: add `funnel_viewed`, `funnel_step_completed` and `funnel_purchase` to the integration's event types to get them. They carry `funnel_id`, `funnel_name`, `funnel_slug`, `session_id`, `step_id`, `step_type`, `step_index`, `answer`, `product_id` and the page's `utm_*` parameters as event properties. A visitor has no app user id until they pay, unless the funnel URL had `?app_user_id=`. Meta, Google Tag Manager, Branch and AppsFlyer also take them as web events; see [Funnel events to ad networks](#funnel-events-to-ad-networks).
 
 Rename any of them under **Event names** on the integration's page, or with `event_names` in the API. Each event also sets the customer's `rc_subscription_status` (`active`, `trial`, `cancelled`, `cancelled_trial`, `grace_period`, `expired`, `paused` ...) where the tool has profiles.
+
+### Paywall events
+Segment, Amplitude, Mixpanel and PostHog can also get what customers do on your paywalls, like RevenueCat's [paywall integrations](https://www.revenuecat.com/docs/tools/paywalls/integrations). The SDK reports these events to RevenueDot, and RevenueDot forwards them. The stock Android SDK sends paywall events to RevenueCat instead, so on Android use the [RevenueDot fork](../sdks/android.md).
+
+They are **opt-in** per integration. On the integration's page, under **Which events**, tick **Send paywall events**. That turns on RevenueCat's five, and you can change each one. With the API, add the types to `event_types`. Naming paywall types adds them to the other events: purchases keep flowing.
+
+| What happened | Type | Default name |
+|---|---|---|
+| A paywall is shown | `paywall_impression` | `paywall_impression` |
+| The customer closes a paywall | `paywall_close` | `paywall_close` |
+| The customer dismisses the store's payment sheet | `paywall_cancel` | `paywall_cancel` |
+| An exit offer is shown when the customer leaves | `paywall_exit_offer` | `paywall_exit_offer` |
+| The customer changes a control (tab, package, button, sheet) | `paywall_component_interacted` | `paywall_component_interacted` |
+| The customer starts a purchase from a paywall (RevenueDot only) | `paywall_purchase_initiated` | `paywall_purchase_initiated` |
+| A purchase started from a paywall fails (RevenueDot only) | `paywall_purchase_error` | `paywall_purchase_error` |
+
+The default names are RevenueCat's. Rename them under **Event names**. The last two are RevenueDot additions: RevenueCat does not forward them.
+
+Each event carries `paywall_id`, `paywall_name`, `paywall_revision`, `offering_id`, `session_id`, `display_mode`, `dark_mode`, `locale`, `environment`, `store`, `app_id`, `app_user_id`, `sdk_version` and the customer's attributes. Depending on the event it also carries the placement, the exit offer (`exit_offer_type`, `exit_offering_id`), the package and product of a purchase, the error, and the control that changed (`component_type`, `component_name`, `component_value`, `origin_package_id`, `destination_package_id`, `origin_product_id`, `destination_product_id` and more). Paywall events carry no revenue, price or transaction, and they do not change `rc_subscription_status`.
+
+Webhooks can get them too, as `PAYWALL_*` types; see [Webhooks](webhooks.md).
 
 ### Reserved attributes your app sets
 Set these with the SDK's attribute calls (`Purchases.shared.attribution.setAppsflyerID(...)`, `setAttributes(["$amplitudeDeviceId": ...])`, `collectDeviceIdentifiers()`). They are the same keys RevenueCat reads.

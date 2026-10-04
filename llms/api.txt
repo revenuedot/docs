@@ -21,7 +21,7 @@ One RevenueDot server answers every API below on one port. The reference is gene
 | REST API v2 | `/v2/projects/...` | secret key or dashboard session | 176 | [REST API v2](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md) |
 | RevenueDot extensions | `/v2/...`, `/auth/...`, `/oauth/...`, `/pay/...` | secret key, session or none | 289 | [Extensions](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md) |
 | RevenueDot Enterprise | `/v2/enterprise`, `/v2/organizations/...`, `/sso/...`, `/scim/v2/...` | session, SCIM token or none | 65 | [Enterprise](https://raw.githubusercontent.com/revenuedot/docs/main/api/enterprise.md) |
-| Webhooks (sent by RevenueDot) | your URL | HMAC signature | 22 event types | [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md) |
+| Webhooks (sent by RevenueDot) | your URL | HMAC signature | 29 event types | [Webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md) |
 
 ## Quick example
 
@@ -10301,7 +10301,7 @@ The answer includes `signing_secret` (whsec_...) once. Store it: it verifies the
 | `url` | string | yes | http(s) URL. |
 | `authorization_header` | string or null | no | Sent as the Authorization header. |
 | `environment` | `production`, `sandbox`, null | no | Null or absent: both. |
-| `event_types` | array of `initial_purchase`, `renewal`, `product_change`, `cancellation`, `billing_issue`, `non_renewing_purchase`, `uncancellation`, `transfer`, `subscription_paused`, `expiration`, `subscription_extended`, `invoice_issuance`, `temporary_entitlement_grant`, `refund_reversed`, `virtual_currency_transaction`, `test`, `experiment_enrollment`, `purchase_redeemed`, `subscriber_alias`, `price_increase_consent_required`, `price_increase_consent_approved`, `funnel_viewed`, `funnel_step_completed`, `funnel_purchase` | no | Empty or absent: every type except the opt-in ones (`subscriber_alias` and the three RevenueDot funnel types), which are sent only when named here. |
+| `event_types` | array of `initial_purchase`, `renewal`, `product_change`, `cancellation`, `billing_issue`, `non_renewing_purchase`, `uncancellation`, `transfer`, `subscription_paused`, `expiration`, `subscription_extended`, `invoice_issuance`, `temporary_entitlement_grant`, `refund_reversed`, `virtual_currency_transaction`, `test`, `experiment_enrollment`, `purchase_redeemed`, `subscriber_alias`, `price_increase_consent_required`, `price_increase_consent_approved`, `funnel_viewed`, `funnel_step_completed`, `funnel_purchase`, `paywall_impression`, `paywall_close`, `paywall_cancel`, `paywall_exit_offer`, `paywall_component_interacted`, `paywall_purchase_initiated`, `paywall_purchase_error` | no | Empty or absent: every type except the opt-in ones (`subscriber_alias`, the three RevenueDot funnel types and the seven paywall types), which are sent only when named here. |
 | `app_id` | string or null | no | Only this app's events. |
 
 **Example request**
@@ -27866,9 +27866,16 @@ RevenueDot POSTs one JSON event per request to each matching webhook: `{ "api_ve
 | [`FUNNEL_VIEWED`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#funnel_viewed) | RevenueDot type. A visitor opened a published funnel. Opt-in: sent only to webhooks and integrations whose `event_types` names `funnel_viewed`. `app_user_id` is null unless the page URL had `?app_user_id=`. See [Funnels](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/funnels.md). |
 | [`FUNNEL_STEP_COMPLETED`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#funnel_step_completed) | RevenueDot type. A visitor finished a funnel step, with the answer for a question (an email step's answer is `provided`, never the address). Opt-in: `funnel_step_completed`. |
 | [`FUNNEL_PURCHASE`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#funnel_purchase) | RevenueDot type. A funnel's checkout was paid. `app_user_id` is the buyer's (anonymous unless the page had one) and `product_id` the Stripe price. Opt-in: `funnel_purchase`. |
+| [`PAYWALL_IMPRESSION`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#paywall_impression) | A paywall was shown (RevenueDot type; the SDK reports it to `POST /v1/events`). Opt-in: sent only to webhooks and integrations whose `event_types` names `paywall_impression`. RevenueCat sends paywall events to Amplitude, Mixpanel, PostHog and Segment only, not to webhooks. See [Integrations](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#paywall-events). |
+| [`PAYWALL_CLOSE`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#paywall_close) | The customer closed a paywall. Opt-in: `paywall_close`. |
+| [`PAYWALL_CANCEL`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#paywall_cancel) | The customer dismissed the store's payment sheet on a paywall. Opt-in: `paywall_cancel`. |
+| [`PAYWALL_EXIT_OFFER`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#paywall_exit_offer) | An exit offer was shown when the customer left a paywall. Opt-in: `paywall_exit_offer`. |
+| [`PAYWALL_COMPONENT_INTERACTED`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#paywall_component_interacted) | The customer changed a paywall control: a tab, package, button or sheet. Opt-in: `paywall_component_interacted`. |
+| [`PAYWALL_PURCHASE_INITIATED`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#paywall_purchase_initiated) | The customer started a purchase from a paywall. A RevenueDot addition: RevenueCat does not forward it. Opt-in: `paywall_purchase_initiated`. |
+| [`PAYWALL_PURCHASE_ERROR`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#paywall_purchase_error) | A purchase started from a paywall failed. A RevenueDot addition: RevenueCat does not forward it. Opt-in: `paywall_purchase_error`. |
 | [`TEST`](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md#test) | Sent by the dashboard's "Send test event" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase, for no real customer, so it never carries `experiments`. |
 
-Accepted in a webhook's `event_types` filter but never sent, because RevenueDot never has the fact behind them: `TEMPORARY_ENTITLEMENT_GRANT` (RevenueDot never grants access it has not verified with the store; during a store outage the SDK keeps the purchase and grants access on the device from the [offline entitlement mapping](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/offline-entitlements.md)) and `INVOICE_ISSUANCE` (only RevenueCat Billing issues invoices). That makes 19 of RevenueCat's 21 event types sent. `SUBSCRIBER_ALIAS` and RevenueDot's three funnel types (`FUNNEL_VIEWED`, `FUNNEL_STEP_COMPLETED`, `FUNNEL_PURCHASE`) are opt-in: they go only to webhooks whose filter names them.
+Accepted in a webhook's `event_types` filter but never sent, because RevenueDot never has the fact behind them: `TEMPORARY_ENTITLEMENT_GRANT` (RevenueDot never grants access it has not verified with the store; during a store outage the SDK keeps the purchase and grants access on the device from the [offline entitlement mapping](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/offline-entitlements.md)) and `INVOICE_ISSUANCE` (only RevenueCat Billing issues invoices). That makes 19 of RevenueCat's 21 event types sent. `SUBSCRIBER_ALIAS` and RevenueDot's three funnel types (`FUNNEL_VIEWED`, `FUNNEL_STEP_COMPLETED`, `FUNNEL_PURCHASE`) are opt-in: they go only to webhooks whose filter names them. So are the seven paywall types the SDKs report (`PAYWALL_IMPRESSION`, `PAYWALL_CLOSE`, `PAYWALL_CANCEL`, `PAYWALL_EXIT_OFFER`, `PAYWALL_COMPONENT_INTERACTED`, `PAYWALL_PURCHASE_INITIATED`, `PAYWALL_PURCHASE_ERROR`); RevenueCat sends paywall events to analytics integrations only, not to webhooks.
 
 ## INITIAL_PURCHASE
 
@@ -29357,6 +29364,693 @@ Example:
     "subscriber_attributes": {},
     "revenue_usd": 39.99,
     "currency": "USD"
+  }
+}
+```
+
+## PAYWALL_IMPRESSION
+
+A paywall was shown (RevenueDot type; the SDK reports it to `POST /v1/events`). Opt-in: sent only to webhooks and integrations whose `event_types` names `paywall_impression`. RevenueCat sends paywall events to Amplitude, Mixpanel, PostHog and Segment only, not to webhooks. See [Integrations](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#paywall-events).
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | A UUID derived from the project and the SDK's event id, so a batch the SDK sends again is not delivered twice. |
+| `type` | string | Event type. |
+| `event_timestamp_ms` | integer | When RevenueDot recorded the event. Epoch milliseconds. |
+| `app_id` | string | RevenueDot app id. Left out for promotional grants. |
+| `app_user_id` | string | The app user id the event is about (a non-anonymous alias when there is one). |
+| `original_app_user_id` | string | The customer's first app user id. |
+| `aliases` | array of string | Every app user id of the customer. |
+| `environment` | `PRODUCTION`, `SANDBOX` | SANDBOX for TestFlight, Xcode and Test Store builds. |
+| `store` | string | The app's store: APP_STORE, PLAY_STORE, TEST_STORE ... |
+| `paywall_id` | string | The paywall's id. |
+| `paywall_name` | string | The paywall's name, when it has one. |
+| `paywall_revision` | integer |  |
+| `offering_id` | string |  |
+| `session_id` | string | One per time the paywall is shown. |
+| `display_mode` | string | full_screen, sheet, condensed_footer ... |
+| `dark_mode` | boolean |  |
+| `locale` | string |  |
+| `source` | string |  |
+| `placement_identifier` | string |  |
+| `targeting_revision` | integer |  |
+| `targeting_rule_id` | string |  |
+| `workflow_id` | string |  |
+| `exit_offer_type` | string | PAYWALL_EXIT_OFFER: `dismiss`. |
+| `exit_offering_id` | string | PAYWALL_EXIT_OFFER: the offering shown. |
+| `package_id` | string | PAYWALL_PURCHASE_*: the package. |
+| `product_id` | string | PAYWALL_PURCHASE_*: the product. |
+| `error_code` | integer | PAYWALL_PURCHASE_ERROR. |
+| `error_message` | string | PAYWALL_PURCHASE_ERROR. |
+| `component_type` | string | PAYWALL_COMPONENT_INTERACTED: tab, package, purchase_button, sheet ... |
+| `component_name` | string |  |
+| `component_value` | string |  |
+| `component_url` | string |  |
+| `origin_index` | integer |  |
+| `destination_index` | integer |  |
+| `default_index` | integer |  |
+| `origin_context_name` | string |  |
+| `destination_context_name` | string |  |
+| `origin_package_id` | string |  |
+| `destination_package_id` | string |  |
+| `default_package_id` | string |  |
+| `origin_product_id` | string |  |
+| `destination_product_id` | string |  |
+| `default_product_id` | string |  |
+| `current_package_id` | string |  |
+| `resulting_package_id` | string |  |
+| `current_product_id` | string |  |
+| `resulting_product_id` | string |  |
+| `sdk_version` | string | The customer's last SDK version. |
+| `platform_version` | string | The customer's last OS version. |
+| `subscriber_attributes` | object |  |
+
+Example:
+
+```json
+{
+  "api_version": "1.0",
+  "event": {
+    "id": "7D3F0B1E-5C2A-5E8B-9A4D-6F1E2C3B4A51",
+    "type": "PAYWALL_IMPRESSION",
+    "event_timestamp_ms": 1790800914034,
+    "app_id": "app1a2b3c4d",
+    "app_user_id": "user_42",
+    "original_app_user_id": "$RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0",
+    "aliases": [
+      "$RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0",
+      "user_42"
+    ],
+    "environment": "PRODUCTION",
+    "store": "APP_STORE",
+    "paywall_id": "pw_5k2m8q1x7c3z",
+    "paywall_name": "Spring sale",
+    "paywall_revision": 3,
+    "offering_id": "default",
+    "session_id": "0B6E2A4C-8D1F-4E3A-9C7B-5A2D8F1E6C3B",
+    "display_mode": "full_screen",
+    "dark_mode": false,
+    "locale": "en_US",
+    "placement_identifier": "onboarding",
+    "sdk_version": "5.62.0",
+    "platform_version": "18.5",
+    "subscriber_attributes": {
+      "$email": {
+        "value": "wren@example.com",
+        "updated_at_ms": 1790800000000
+      }
+    }
+  }
+}
+```
+
+## PAYWALL_CLOSE
+
+The customer closed a paywall. Opt-in: `paywall_close`.
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | A UUID derived from the project and the SDK's event id, so a batch the SDK sends again is not delivered twice. |
+| `type` | string | Event type. |
+| `event_timestamp_ms` | integer | When RevenueDot recorded the event. Epoch milliseconds. |
+| `app_id` | string | RevenueDot app id. Left out for promotional grants. |
+| `app_user_id` | string | The app user id the event is about (a non-anonymous alias when there is one). |
+| `original_app_user_id` | string | The customer's first app user id. |
+| `aliases` | array of string | Every app user id of the customer. |
+| `environment` | `PRODUCTION`, `SANDBOX` | SANDBOX for TestFlight, Xcode and Test Store builds. |
+| `store` | string | The app's store: APP_STORE, PLAY_STORE, TEST_STORE ... |
+| `paywall_id` | string | The paywall's id. |
+| `paywall_name` | string | The paywall's name, when it has one. |
+| `paywall_revision` | integer |  |
+| `offering_id` | string |  |
+| `session_id` | string | One per time the paywall is shown. |
+| `display_mode` | string | full_screen, sheet, condensed_footer ... |
+| `dark_mode` | boolean |  |
+| `locale` | string |  |
+| `source` | string |  |
+| `placement_identifier` | string |  |
+| `targeting_revision` | integer |  |
+| `targeting_rule_id` | string |  |
+| `workflow_id` | string |  |
+| `exit_offer_type` | string | PAYWALL_EXIT_OFFER: `dismiss`. |
+| `exit_offering_id` | string | PAYWALL_EXIT_OFFER: the offering shown. |
+| `package_id` | string | PAYWALL_PURCHASE_*: the package. |
+| `product_id` | string | PAYWALL_PURCHASE_*: the product. |
+| `error_code` | integer | PAYWALL_PURCHASE_ERROR. |
+| `error_message` | string | PAYWALL_PURCHASE_ERROR. |
+| `component_type` | string | PAYWALL_COMPONENT_INTERACTED: tab, package, purchase_button, sheet ... |
+| `component_name` | string |  |
+| `component_value` | string |  |
+| `component_url` | string |  |
+| `origin_index` | integer |  |
+| `destination_index` | integer |  |
+| `default_index` | integer |  |
+| `origin_context_name` | string |  |
+| `destination_context_name` | string |  |
+| `origin_package_id` | string |  |
+| `destination_package_id` | string |  |
+| `default_package_id` | string |  |
+| `origin_product_id` | string |  |
+| `destination_product_id` | string |  |
+| `default_product_id` | string |  |
+| `current_package_id` | string |  |
+| `resulting_package_id` | string |  |
+| `current_product_id` | string |  |
+| `resulting_product_id` | string |  |
+| `sdk_version` | string | The customer's last SDK version. |
+| `platform_version` | string | The customer's last OS version. |
+| `subscriber_attributes` | object |  |
+
+Example:
+
+```json
+{
+  "api_version": "1.0",
+  "event": {
+    "id": "7D3F0B1E-5C2A-5E8B-9A4D-6F1E2C3B4A52",
+    "type": "PAYWALL_CLOSE",
+    "event_timestamp_ms": 1790800914034,
+    "app_id": "app1a2b3c4d",
+    "app_user_id": "user_42",
+    "original_app_user_id": "$RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0",
+    "aliases": [
+      "$RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0",
+      "user_42"
+    ],
+    "environment": "PRODUCTION",
+    "store": "APP_STORE",
+    "paywall_id": "pw_5k2m8q1x7c3z",
+    "paywall_name": "Spring sale",
+    "paywall_revision": 3,
+    "offering_id": "default",
+    "session_id": "0B6E2A4C-8D1F-4E3A-9C7B-5A2D8F1E6C3B",
+    "display_mode": "full_screen",
+    "dark_mode": false,
+    "locale": "en_US",
+    "placement_identifier": "onboarding",
+    "sdk_version": "5.62.0",
+    "platform_version": "18.5",
+    "subscriber_attributes": {
+      "$email": {
+        "value": "wren@example.com",
+        "updated_at_ms": 1790800000000
+      }
+    }
+  }
+}
+```
+
+## PAYWALL_CANCEL
+
+The customer dismissed the store's payment sheet on a paywall. Opt-in: `paywall_cancel`.
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | A UUID derived from the project and the SDK's event id, so a batch the SDK sends again is not delivered twice. |
+| `type` | string | Event type. |
+| `event_timestamp_ms` | integer | When RevenueDot recorded the event. Epoch milliseconds. |
+| `app_id` | string | RevenueDot app id. Left out for promotional grants. |
+| `app_user_id` | string | The app user id the event is about (a non-anonymous alias when there is one). |
+| `original_app_user_id` | string | The customer's first app user id. |
+| `aliases` | array of string | Every app user id of the customer. |
+| `environment` | `PRODUCTION`, `SANDBOX` | SANDBOX for TestFlight, Xcode and Test Store builds. |
+| `store` | string | The app's store: APP_STORE, PLAY_STORE, TEST_STORE ... |
+| `paywall_id` | string | The paywall's id. |
+| `paywall_name` | string | The paywall's name, when it has one. |
+| `paywall_revision` | integer |  |
+| `offering_id` | string |  |
+| `session_id` | string | One per time the paywall is shown. |
+| `display_mode` | string | full_screen, sheet, condensed_footer ... |
+| `dark_mode` | boolean |  |
+| `locale` | string |  |
+| `source` | string |  |
+| `placement_identifier` | string |  |
+| `targeting_revision` | integer |  |
+| `targeting_rule_id` | string |  |
+| `workflow_id` | string |  |
+| `exit_offer_type` | string | PAYWALL_EXIT_OFFER: `dismiss`. |
+| `exit_offering_id` | string | PAYWALL_EXIT_OFFER: the offering shown. |
+| `package_id` | string | PAYWALL_PURCHASE_*: the package. |
+| `product_id` | string | PAYWALL_PURCHASE_*: the product. |
+| `error_code` | integer | PAYWALL_PURCHASE_ERROR. |
+| `error_message` | string | PAYWALL_PURCHASE_ERROR. |
+| `component_type` | string | PAYWALL_COMPONENT_INTERACTED: tab, package, purchase_button, sheet ... |
+| `component_name` | string |  |
+| `component_value` | string |  |
+| `component_url` | string |  |
+| `origin_index` | integer |  |
+| `destination_index` | integer |  |
+| `default_index` | integer |  |
+| `origin_context_name` | string |  |
+| `destination_context_name` | string |  |
+| `origin_package_id` | string |  |
+| `destination_package_id` | string |  |
+| `default_package_id` | string |  |
+| `origin_product_id` | string |  |
+| `destination_product_id` | string |  |
+| `default_product_id` | string |  |
+| `current_package_id` | string |  |
+| `resulting_package_id` | string |  |
+| `current_product_id` | string |  |
+| `resulting_product_id` | string |  |
+| `sdk_version` | string | The customer's last SDK version. |
+| `platform_version` | string | The customer's last OS version. |
+| `subscriber_attributes` | object |  |
+
+Example:
+
+```json
+{
+  "api_version": "1.0",
+  "event": {
+    "id": "7D3F0B1E-5C2A-5E8B-9A4D-6F1E2C3B4A53",
+    "type": "PAYWALL_CANCEL",
+    "event_timestamp_ms": 1790800914034,
+    "app_id": "app1a2b3c4d",
+    "app_user_id": "user_42",
+    "original_app_user_id": "$RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0",
+    "aliases": [
+      "$RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0",
+      "user_42"
+    ],
+    "environment": "PRODUCTION",
+    "store": "APP_STORE",
+    "paywall_id": "pw_5k2m8q1x7c3z",
+    "paywall_name": "Spring sale",
+    "paywall_revision": 3,
+    "offering_id": "default",
+    "session_id": "0B6E2A4C-8D1F-4E3A-9C7B-5A2D8F1E6C3B",
+    "display_mode": "full_screen",
+    "dark_mode": false,
+    "locale": "en_US",
+    "placement_identifier": "onboarding",
+    "sdk_version": "5.62.0",
+    "platform_version": "18.5",
+    "subscriber_attributes": {
+      "$email": {
+        "value": "wren@example.com",
+        "updated_at_ms": 1790800000000
+      }
+    }
+  }
+}
+```
+
+## PAYWALL_EXIT_OFFER
+
+An exit offer was shown when the customer left a paywall. Opt-in: `paywall_exit_offer`.
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | A UUID derived from the project and the SDK's event id, so a batch the SDK sends again is not delivered twice. |
+| `type` | string | Event type. |
+| `event_timestamp_ms` | integer | When RevenueDot recorded the event. Epoch milliseconds. |
+| `app_id` | string | RevenueDot app id. Left out for promotional grants. |
+| `app_user_id` | string | The app user id the event is about (a non-anonymous alias when there is one). |
+| `original_app_user_id` | string | The customer's first app user id. |
+| `aliases` | array of string | Every app user id of the customer. |
+| `environment` | `PRODUCTION`, `SANDBOX` | SANDBOX for TestFlight, Xcode and Test Store builds. |
+| `store` | string | The app's store: APP_STORE, PLAY_STORE, TEST_STORE ... |
+| `paywall_id` | string | The paywall's id. |
+| `paywall_name` | string | The paywall's name, when it has one. |
+| `paywall_revision` | integer |  |
+| `offering_id` | string |  |
+| `session_id` | string | One per time the paywall is shown. |
+| `display_mode` | string | full_screen, sheet, condensed_footer ... |
+| `dark_mode` | boolean |  |
+| `locale` | string |  |
+| `source` | string |  |
+| `placement_identifier` | string |  |
+| `targeting_revision` | integer |  |
+| `targeting_rule_id` | string |  |
+| `workflow_id` | string |  |
+| `exit_offer_type` | string | PAYWALL_EXIT_OFFER: `dismiss`. |
+| `exit_offering_id` | string | PAYWALL_EXIT_OFFER: the offering shown. |
+| `package_id` | string | PAYWALL_PURCHASE_*: the package. |
+| `product_id` | string | PAYWALL_PURCHASE_*: the product. |
+| `error_code` | integer | PAYWALL_PURCHASE_ERROR. |
+| `error_message` | string | PAYWALL_PURCHASE_ERROR. |
+| `component_type` | string | PAYWALL_COMPONENT_INTERACTED: tab, package, purchase_button, sheet ... |
+| `component_name` | string |  |
+| `component_value` | string |  |
+| `component_url` | string |  |
+| `origin_index` | integer |  |
+| `destination_index` | integer |  |
+| `default_index` | integer |  |
+| `origin_context_name` | string |  |
+| `destination_context_name` | string |  |
+| `origin_package_id` | string |  |
+| `destination_package_id` | string |  |
+| `default_package_id` | string |  |
+| `origin_product_id` | string |  |
+| `destination_product_id` | string |  |
+| `default_product_id` | string |  |
+| `current_package_id` | string |  |
+| `resulting_package_id` | string |  |
+| `current_product_id` | string |  |
+| `resulting_product_id` | string |  |
+| `sdk_version` | string | The customer's last SDK version. |
+| `platform_version` | string | The customer's last OS version. |
+| `subscriber_attributes` | object |  |
+
+Example:
+
+```json
+{
+  "api_version": "1.0",
+  "event": {
+    "id": "7D3F0B1E-5C2A-5E8B-9A4D-6F1E2C3B4A54",
+    "type": "PAYWALL_EXIT_OFFER",
+    "event_timestamp_ms": 1790800914034,
+    "app_id": "app1a2b3c4d",
+    "app_user_id": "user_42",
+    "original_app_user_id": "$RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0",
+    "aliases": [
+      "$RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0",
+      "user_42"
+    ],
+    "environment": "PRODUCTION",
+    "store": "APP_STORE",
+    "paywall_id": "pw_5k2m8q1x7c3z",
+    "paywall_name": "Spring sale",
+    "paywall_revision": 3,
+    "offering_id": "default",
+    "session_id": "0B6E2A4C-8D1F-4E3A-9C7B-5A2D8F1E6C3B",
+    "display_mode": "full_screen",
+    "dark_mode": false,
+    "locale": "en_US",
+    "placement_identifier": "onboarding",
+    "exit_offer_type": "dismiss",
+    "exit_offering_id": "winback",
+    "sdk_version": "5.62.0",
+    "platform_version": "18.5",
+    "subscriber_attributes": {
+      "$email": {
+        "value": "wren@example.com",
+        "updated_at_ms": 1790800000000
+      }
+    }
+  }
+}
+```
+
+## PAYWALL_COMPONENT_INTERACTED
+
+The customer changed a paywall control: a tab, package, button or sheet. Opt-in: `paywall_component_interacted`.
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | A UUID derived from the project and the SDK's event id, so a batch the SDK sends again is not delivered twice. |
+| `type` | string | Event type. |
+| `event_timestamp_ms` | integer | When RevenueDot recorded the event. Epoch milliseconds. |
+| `app_id` | string | RevenueDot app id. Left out for promotional grants. |
+| `app_user_id` | string | The app user id the event is about (a non-anonymous alias when there is one). |
+| `original_app_user_id` | string | The customer's first app user id. |
+| `aliases` | array of string | Every app user id of the customer. |
+| `environment` | `PRODUCTION`, `SANDBOX` | SANDBOX for TestFlight, Xcode and Test Store builds. |
+| `store` | string | The app's store: APP_STORE, PLAY_STORE, TEST_STORE ... |
+| `paywall_id` | string | The paywall's id. |
+| `paywall_name` | string | The paywall's name, when it has one. |
+| `paywall_revision` | integer |  |
+| `offering_id` | string |  |
+| `session_id` | string | One per time the paywall is shown. |
+| `display_mode` | string | full_screen, sheet, condensed_footer ... |
+| `dark_mode` | boolean |  |
+| `locale` | string |  |
+| `source` | string |  |
+| `placement_identifier` | string |  |
+| `targeting_revision` | integer |  |
+| `targeting_rule_id` | string |  |
+| `workflow_id` | string |  |
+| `exit_offer_type` | string | PAYWALL_EXIT_OFFER: `dismiss`. |
+| `exit_offering_id` | string | PAYWALL_EXIT_OFFER: the offering shown. |
+| `package_id` | string | PAYWALL_PURCHASE_*: the package. |
+| `product_id` | string | PAYWALL_PURCHASE_*: the product. |
+| `error_code` | integer | PAYWALL_PURCHASE_ERROR. |
+| `error_message` | string | PAYWALL_PURCHASE_ERROR. |
+| `component_type` | string | PAYWALL_COMPONENT_INTERACTED: tab, package, purchase_button, sheet ... |
+| `component_name` | string |  |
+| `component_value` | string |  |
+| `component_url` | string |  |
+| `origin_index` | integer |  |
+| `destination_index` | integer |  |
+| `default_index` | integer |  |
+| `origin_context_name` | string |  |
+| `destination_context_name` | string |  |
+| `origin_package_id` | string |  |
+| `destination_package_id` | string |  |
+| `default_package_id` | string |  |
+| `origin_product_id` | string |  |
+| `destination_product_id` | string |  |
+| `default_product_id` | string |  |
+| `current_package_id` | string |  |
+| `resulting_package_id` | string |  |
+| `current_product_id` | string |  |
+| `resulting_product_id` | string |  |
+| `sdk_version` | string | The customer's last SDK version. |
+| `platform_version` | string | The customer's last OS version. |
+| `subscriber_attributes` | object |  |
+
+Example:
+
+```json
+{
+  "api_version": "1.0",
+  "event": {
+    "id": "7D3F0B1E-5C2A-5E8B-9A4D-6F1E2C3B4A55",
+    "type": "PAYWALL_COMPONENT_INTERACTED",
+    "event_timestamp_ms": 1790800914034,
+    "app_id": "app1a2b3c4d",
+    "app_user_id": "user_42",
+    "original_app_user_id": "$RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0",
+    "aliases": [
+      "$RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0",
+      "user_42"
+    ],
+    "environment": "PRODUCTION",
+    "store": "APP_STORE",
+    "paywall_id": "pw_5k2m8q1x7c3z",
+    "paywall_name": "Spring sale",
+    "paywall_revision": 3,
+    "offering_id": "default",
+    "session_id": "0B6E2A4C-8D1F-4E3A-9C7B-5A2D8F1E6C3B",
+    "display_mode": "full_screen",
+    "dark_mode": false,
+    "locale": "en_US",
+    "placement_identifier": "onboarding",
+    "component_type": "package",
+    "component_name": "annual_pkg",
+    "component_value": "selected",
+    "origin_package_id": "$rc_monthly",
+    "destination_package_id": "$rc_annual",
+    "origin_product_id": "pro_monthly",
+    "destination_product_id": "pro_annual",
+    "sdk_version": "5.62.0",
+    "platform_version": "18.5",
+    "subscriber_attributes": {
+      "$email": {
+        "value": "wren@example.com",
+        "updated_at_ms": 1790800000000
+      }
+    }
+  }
+}
+```
+
+## PAYWALL_PURCHASE_INITIATED
+
+The customer started a purchase from a paywall. A RevenueDot addition: RevenueCat does not forward it. Opt-in: `paywall_purchase_initiated`.
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | A UUID derived from the project and the SDK's event id, so a batch the SDK sends again is not delivered twice. |
+| `type` | string | Event type. |
+| `event_timestamp_ms` | integer | When RevenueDot recorded the event. Epoch milliseconds. |
+| `app_id` | string | RevenueDot app id. Left out for promotional grants. |
+| `app_user_id` | string | The app user id the event is about (a non-anonymous alias when there is one). |
+| `original_app_user_id` | string | The customer's first app user id. |
+| `aliases` | array of string | Every app user id of the customer. |
+| `environment` | `PRODUCTION`, `SANDBOX` | SANDBOX for TestFlight, Xcode and Test Store builds. |
+| `store` | string | The app's store: APP_STORE, PLAY_STORE, TEST_STORE ... |
+| `paywall_id` | string | The paywall's id. |
+| `paywall_name` | string | The paywall's name, when it has one. |
+| `paywall_revision` | integer |  |
+| `offering_id` | string |  |
+| `session_id` | string | One per time the paywall is shown. |
+| `display_mode` | string | full_screen, sheet, condensed_footer ... |
+| `dark_mode` | boolean |  |
+| `locale` | string |  |
+| `source` | string |  |
+| `placement_identifier` | string |  |
+| `targeting_revision` | integer |  |
+| `targeting_rule_id` | string |  |
+| `workflow_id` | string |  |
+| `exit_offer_type` | string | PAYWALL_EXIT_OFFER: `dismiss`. |
+| `exit_offering_id` | string | PAYWALL_EXIT_OFFER: the offering shown. |
+| `package_id` | string | PAYWALL_PURCHASE_*: the package. |
+| `product_id` | string | PAYWALL_PURCHASE_*: the product. |
+| `error_code` | integer | PAYWALL_PURCHASE_ERROR. |
+| `error_message` | string | PAYWALL_PURCHASE_ERROR. |
+| `component_type` | string | PAYWALL_COMPONENT_INTERACTED: tab, package, purchase_button, sheet ... |
+| `component_name` | string |  |
+| `component_value` | string |  |
+| `component_url` | string |  |
+| `origin_index` | integer |  |
+| `destination_index` | integer |  |
+| `default_index` | integer |  |
+| `origin_context_name` | string |  |
+| `destination_context_name` | string |  |
+| `origin_package_id` | string |  |
+| `destination_package_id` | string |  |
+| `default_package_id` | string |  |
+| `origin_product_id` | string |  |
+| `destination_product_id` | string |  |
+| `default_product_id` | string |  |
+| `current_package_id` | string |  |
+| `resulting_package_id` | string |  |
+| `current_product_id` | string |  |
+| `resulting_product_id` | string |  |
+| `sdk_version` | string | The customer's last SDK version. |
+| `platform_version` | string | The customer's last OS version. |
+| `subscriber_attributes` | object |  |
+
+Example:
+
+```json
+{
+  "api_version": "1.0",
+  "event": {
+    "id": "7D3F0B1E-5C2A-5E8B-9A4D-6F1E2C3B4A56",
+    "type": "PAYWALL_PURCHASE_INITIATED",
+    "event_timestamp_ms": 1790800914034,
+    "app_id": "app1a2b3c4d",
+    "app_user_id": "user_42",
+    "original_app_user_id": "$RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0",
+    "aliases": [
+      "$RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0",
+      "user_42"
+    ],
+    "environment": "PRODUCTION",
+    "store": "APP_STORE",
+    "paywall_id": "pw_5k2m8q1x7c3z",
+    "paywall_name": "Spring sale",
+    "paywall_revision": 3,
+    "offering_id": "default",
+    "session_id": "0B6E2A4C-8D1F-4E3A-9C7B-5A2D8F1E6C3B",
+    "display_mode": "full_screen",
+    "dark_mode": false,
+    "locale": "en_US",
+    "placement_identifier": "onboarding",
+    "package_id": "$rc_annual",
+    "product_id": "pro_annual",
+    "sdk_version": "5.62.0",
+    "platform_version": "18.5",
+    "subscriber_attributes": {
+      "$email": {
+        "value": "wren@example.com",
+        "updated_at_ms": 1790800000000
+      }
+    }
+  }
+}
+```
+
+## PAYWALL_PURCHASE_ERROR
+
+A purchase started from a paywall failed. A RevenueDot addition: RevenueCat does not forward it. Opt-in: `paywall_purchase_error`.
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | A UUID derived from the project and the SDK's event id, so a batch the SDK sends again is not delivered twice. |
+| `type` | string | Event type. |
+| `event_timestamp_ms` | integer | When RevenueDot recorded the event. Epoch milliseconds. |
+| `app_id` | string | RevenueDot app id. Left out for promotional grants. |
+| `app_user_id` | string | The app user id the event is about (a non-anonymous alias when there is one). |
+| `original_app_user_id` | string | The customer's first app user id. |
+| `aliases` | array of string | Every app user id of the customer. |
+| `environment` | `PRODUCTION`, `SANDBOX` | SANDBOX for TestFlight, Xcode and Test Store builds. |
+| `store` | string | The app's store: APP_STORE, PLAY_STORE, TEST_STORE ... |
+| `paywall_id` | string | The paywall's id. |
+| `paywall_name` | string | The paywall's name, when it has one. |
+| `paywall_revision` | integer |  |
+| `offering_id` | string |  |
+| `session_id` | string | One per time the paywall is shown. |
+| `display_mode` | string | full_screen, sheet, condensed_footer ... |
+| `dark_mode` | boolean |  |
+| `locale` | string |  |
+| `source` | string |  |
+| `placement_identifier` | string |  |
+| `targeting_revision` | integer |  |
+| `targeting_rule_id` | string |  |
+| `workflow_id` | string |  |
+| `exit_offer_type` | string | PAYWALL_EXIT_OFFER: `dismiss`. |
+| `exit_offering_id` | string | PAYWALL_EXIT_OFFER: the offering shown. |
+| `package_id` | string | PAYWALL_PURCHASE_*: the package. |
+| `product_id` | string | PAYWALL_PURCHASE_*: the product. |
+| `error_code` | integer | PAYWALL_PURCHASE_ERROR. |
+| `error_message` | string | PAYWALL_PURCHASE_ERROR. |
+| `component_type` | string | PAYWALL_COMPONENT_INTERACTED: tab, package, purchase_button, sheet ... |
+| `component_name` | string |  |
+| `component_value` | string |  |
+| `component_url` | string |  |
+| `origin_index` | integer |  |
+| `destination_index` | integer |  |
+| `default_index` | integer |  |
+| `origin_context_name` | string |  |
+| `destination_context_name` | string |  |
+| `origin_package_id` | string |  |
+| `destination_package_id` | string |  |
+| `default_package_id` | string |  |
+| `origin_product_id` | string |  |
+| `destination_product_id` | string |  |
+| `default_product_id` | string |  |
+| `current_package_id` | string |  |
+| `resulting_package_id` | string |  |
+| `current_product_id` | string |  |
+| `resulting_product_id` | string |  |
+| `sdk_version` | string | The customer's last SDK version. |
+| `platform_version` | string | The customer's last OS version. |
+| `subscriber_attributes` | object |  |
+
+Example:
+
+```json
+{
+  "api_version": "1.0",
+  "event": {
+    "id": "7D3F0B1E-5C2A-5E8B-9A4D-6F1E2C3B4A57",
+    "type": "PAYWALL_PURCHASE_ERROR",
+    "event_timestamp_ms": 1790800914034,
+    "app_id": "app1a2b3c4d",
+    "app_user_id": "user_42",
+    "original_app_user_id": "$RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0",
+    "aliases": [
+      "$RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0",
+      "user_42"
+    ],
+    "environment": "PRODUCTION",
+    "store": "APP_STORE",
+    "paywall_id": "pw_5k2m8q1x7c3z",
+    "paywall_name": "Spring sale",
+    "paywall_revision": 3,
+    "offering_id": "default",
+    "session_id": "0B6E2A4C-8D1F-4E3A-9C7B-5A2D8F1E6C3B",
+    "display_mode": "full_screen",
+    "dark_mode": false,
+    "locale": "en_US",
+    "placement_identifier": "onboarding",
+    "package_id": "$rc_annual",
+    "product_id": "pro_annual",
+    "error_code": 2,
+    "error_message": "The payment was declined.",
+    "sdk_version": "5.62.0",
+    "platform_version": "18.5",
+    "subscriber_attributes": {
+      "$email": {
+        "value": "wren@example.com",
+        "updated_at_ms": 1790800000000
+      }
+    }
   }
 }
 ```

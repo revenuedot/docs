@@ -19,7 +19,7 @@ const TYPES = [
   "airship", "braze", "clevertap", "customerio", "discord", "intercom", "iterable", "onesignal",
   "admob", "intercom_inbox", "zendesk",
 ];
-const STEPS = ["initial_purchase", "trial_started", "trial_converted", "trial_cancelled", "renewal", "cancellation", "uncancellation", "non_subscription_purchase", "subscription_paused", "expiration", "billing_issue", "product_change", "transfer", "purchase_redeemed", "experiment_enrollment", "refund_reversed", "test", "funnel_viewed", "funnel_step_completed", "funnel_purchase"];
+const STEPS = ["initial_purchase", "trial_started", "trial_converted", "trial_cancelled", "renewal", "cancellation", "uncancellation", "non_subscription_purchase", "subscription_paused", "expiration", "billing_issue", "product_change", "transfer", "purchase_redeemed", "experiment_enrollment", "refund_reversed", "test", "funnel_viewed", "funnel_step_completed", "funnel_purchase", "paywall_impression", "paywall_close", "paywall_cancel", "paywall_exit_offer", "paywall_component_interacted", "paywall_purchase_initiated", "paywall_purchase_error"];
 const hint = obj({ configured: bool(), hint: nstr("The last four characters, or a service account's client_email.") }, ["configured", "hint"]);
 
 const field = obj({
@@ -35,7 +35,7 @@ const integrationType = obj({
 }, ["object", "type", "name", "fields", "api", "connection"]);
 const integration = obj({
   object: en(["integration"]), id: str(), project_id: str(), type: en(TYPES), name: str(), enabled: bool(), environment: { type: ["string", "null"], enum: ["production", "sandbox", null], description: "Null sends both." },
-  app_id: nstr("Only this app's events; null for all."), event_types: arr(str(), { description: "Lower-case webhook event types; empty for all the integration sends." }),
+  app_id: nstr("Only this app's events; null for all."), event_types: arr(str(), { description: "Lower-case webhook event types; empty for all the integration sends. Opt-in types (`subscriber_alias`, the funnel types and the paywall types) are sent only when named here. Paywall types add to the other events and never narrow the filter; any other named type narrows it." }),
   settings: { type: "object", additionalProperties: true, description: "The non-secret settings." },
   secrets: { type: "object", additionalProperties: hint, description: "Each secret field: whether it is saved, and its hint. Secrets are never returned." },
   event_names: { type: "object", additionalProperties: str(), description: "Step → event name overrides." },
