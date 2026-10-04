@@ -25,7 +25,7 @@ RevenueDot has 42 charts in the dashboard under **Analytics > Charts**, with the
 
 | Chart | API name | Definition |
 |---|---|---|
-| <a id="revenue"></a>Revenue | `revenue` | Money received in each period: purchases, renewals and one-time purchases, plus ad revenue, minus refunds recorded in the period. **Transactions** counts paid purchases, renewals and one-time purchases; refunds do not reduce it. Selector `revenue_type`: `revenue` (gross), `revenue_net_of_taxes` (equal to gross, because the stores do not report tax per purchase) or `proceeds` (gross minus the store commission). |
+| <a id="revenue"></a>Revenue | `revenue` | Money received in each period: purchases, renewals and one-time purchases, plus ad revenue, minus refunds recorded in the period. **Transactions** counts paid purchases, renewals and one-time purchases; refunds do not reduce it. Selector `revenue_type`: `revenue` (gross), `revenue_net_of_taxes` (gross minus the tax inside each price, see [Taxes](#taxes)) or `proceeds` (net of taxes, minus the store commission). |
 | <a id="arr"></a>ARR | `arr` | MRR at the end of each period times 12. |
 | <a id="mrr"></a>MRR | `mrr` | At the end of each period, every paid subscription with access contributes its price normalised to one month: 1 day ×30, 3 days ×10, 1 week ×4, 2 weeks ×2, 4 weeks ×1, 1 month ×1, 2 months ×½, 3 months ×⅓, 6 months ×⅙, 1 year ×1/12. Cancelled subscriptions count until they expire; trials count zero. |
 | <a id="mrr_movement"></a>MRR Movement | `mrr_movement` | New MRR (subscriptions that became paid), resubscription MRR, expansion MRR (a product change or renewal at a higher monthly value), churned MRR (subscriptions that lost paid access, net of billing recoveries) and contraction MRR. Churned and contraction are negative; the movement is their sum and equals MRR at the end of the period minus MRR at its start. |
@@ -116,7 +116,23 @@ RevenueDot has 42 charts in the dashboard under **Analytics > Charts**, with the
 
 ## Filters and segments
 
-Filter and segment by app, store, product, product duration, offering, country (the purchase's storefront, else the customer's last country), platform, app version and the customer's attribution (media source, campaign, ad group, keyword, ad and creative; see [Attribution](attribution.md)); paywall charts also by paywall, and the Customer Center chart by survey option. Customers without attribution show as "No attribution" (an empty value in the API). A filter on a purchase dimension (store, product …) does not change the new-customer counts that conversion charts divide by. A segmented chart shows the five largest values, then "Other" and the total.
+Filter and segment by app, store, product, product duration, offering, country (the purchase's storefront, else the customer's last country), platform, app version, the customer's attribution (media source, campaign, ad group, keyword, ad and creative; see [Attribution](attribution.md)) and your own customer attributes; paywall charts also by paywall, and the Customer Center chart by survey option.
+
+- **Renewal Cycle** (`subscription_renewal_cycle_group`): Trial, Cycle 1 (a subscription's first paid period), Cycle 2, Cycle 3, Cycle 4 and Cycle 5+; one-time purchases and ad revenue are "Non-subscription". A resubscription after a lapse starts again at Cycle 1. Offered on Revenue, ARR, MRR, Active Subscriptions, Paid Subscriptions, Subscription Status, Active Trials and their movement, New Trials, Churn, Refund Rate and Refunds.
+- **Offer type** (`offer_type`): Free trial, Introductory price, Promotional offer, Offer code, Win-back offer or No offer, as the store reported the period. The same charts except ARR and MRR.
+- **Custom attributes** (`custom_attribute:<key>`, such as `custom_attribute:plan_source`): any attribute you set on customers, on every chart that takes customer dimensions. Reserved attributes that start with `$` (such as `$email`) are not offered. Customers without the attribute show as "Not set".
+
+A refund counts in the renewal cycle and offer type of the period it refunded. Snapshots (MRR, actives, trials) count the period that gives access at the end of each period. Customers without attribution show as "No attribution" (an empty value in the API). A filter on a purchase dimension (store, product …) does not change the new-customer counts that conversion charts divide by. A segmented chart shows the five largest values, then "Other" and the total.
+
+## Taxes
+
+Store prices include the tax the store collects in most countries. **Revenue (net of taxes)** takes that tax out, and **Proceeds** then takes the store commission from what is left: proceeds = (price − tax) × (1 − commission).
+
+- Stripe, Paddle and Google Play orders report the tax of each purchase, and RevenueDot uses their figure.
+- For the App Store, Amazon, Galaxy Store, Roku and other Google Play purchases, the tax is estimated from the standard VAT or GST rate of the customer's country (about 120 countries). Prices in the United States, Canada and Puerto Rico exclude sales tax, so they hold none.
+- Stripe purchases without Stripe Tax hold no tax.
+
+The same rule applies to the Revenue chart, the Cohort Explorer and `GET /v2/projects/{project_id}/metrics/revenue?revenue_type=revenue_net_of_taxes`.
 
 ## Chart types
 
@@ -649,10 +665,10 @@ GROUP BY s.customer_id HAVING sum(s.mrr) > 0 ORDER BY s.customer_id;
 
 ## Differences from RevenueCat
 
-- **Taxes:** the stores do not report tax per purchase, so "revenue net of taxes" equals revenue and proceeds subtract only the store commission. RevenueCat estimates tax per country ([Taxes and commissions](https://www.revenuecat.com/docs/dashboard-and-metrics/taxes-and-commissions)).
+- **Taxes:** where the store does not report tax, RevenueDot uses the country's standard VAT or GST rate; reduced rates and US sales tax are not modelled. RevenueCat also estimates tax per country ([Taxes and commissions](https://www.revenuecat.com/docs/dashboard-and-metrics/taxes-and-commissions)).
 - **Exchange rates:** RevenueDot uses the ECB's daily rates, so converted amounts can differ by a few cents.
-- **Paid introductory offers** are counted as direct purchases in Paid Subscriptions.
-- **Dimensions** RevenueCat also offers (renewal cycle, offer type, first purchase month, Apple Search Ads claim type, custom attributes) are not available yet; platform and app version are the customer's latest, not their first. Attribution dimensions cover every media source, not only Apple Search Ads.
+- **Offer types** of paid purchases recorded before RevenueDot stored them (for Stripe, before October 2026) count as "No offer"; trials are always free trials.
+- **Dimensions** RevenueCat also offers (first purchase month, Apple Search Ads claim type) are not available yet, and the MRR Movement and Active Subscriptions Movement charts take no renewal cycle or offer type; platform and app version are the customer's latest, not their first. Attribution dimensions cover every media source, not only Apple Search Ads.
 - **Prediction Explorer** projects from your own cohorts, not from a model trained on many apps.
 - **App Store Save Outcomes** is always zero, and refund requests cover the App Store only.
 - **Ad revenue in segments:** ad revenue has no product, store or offering, so a Revenue chart segmented by one of them shows it in every segment.
