@@ -147,7 +147,7 @@ Refused (409) while you own a project with other members or are the last admin o
   "/auth/notifications": {
     get: op({ id: "getNotificationSettings", tag: TAG, summary: "Get notification choices", security: SESSION, source: SRC, extension: true,
       description: "Alert emails (on by default), and per project the weekly summary, experiment results and revenue anomaly alerts, which are off until you turn them on.",
-      responses: { 200: ok("Choices.", obj({ object: { type: "string", const: "notification_settings" }, alert_emails: bool(), projects: arr(obj({ project: obj({ id: str(), name: str(), role: str("admin, developer, viewer, or a custom role id (RevenueDot Enterprise).") }), ...prefs.properties })) })), 401: authErr } }),
+      responses: { 200: ok("Choices.", obj({ object: { type: "string", const: "notification_settings" }, alert_emails: bool(), integration_alert_emails: bool("Integration failure alerts, on by default."), projects: arr(obj({ project: obj({ id: str(), name: str(), role: str("admin, developer, viewer, or a custom role id (RevenueDot Enterprise).") }), ...prefs.properties })) })), 401: authErr } }),
   },
   "/auth/notifications/unsubscribe/{token}": {
     get: op({ id: "showUnsubscribe", tag: TAG, summary: "Open an email's unsubscribe link", security: NONE, source: SRC, extension: true,

@@ -39,7 +39,7 @@ const integration = obj({
   settings: { type: "object", additionalProperties: true, description: "The non-secret settings." },
   secrets: { type: "object", additionalProperties: hint, description: "Each secret field: whether it is saved, and its hint. Secrets are never returned." },
   event_names: { type: "object", additionalProperties: str(), description: "Step → event name overrides." },
-  status: obj({ last_delivered_at: nms("Last successful delivery."), last_error: nstr(), consecutive_failures: int() }),
+  status: obj({ last_delivered_at: nms("Last successful delivery."), last_error: nstr(), consecutive_failures: int("Delivery attempts in a row that failed, retries included. 0 after any success."), failed_deliveries_in_row: int("Deliveries in a row that ended failed (no retry left, or an error a retry cannot fix). 0 after any success; 10 or more sends an alert email to the project's admins.") }),
   created_at: ms("Created."), updated_at: nms("Last changed."),
 }, ["object", "id", "type", "name", "enabled", "settings", "secrets"]);
 const delivery = obj({
@@ -78,7 +78,7 @@ const run = obj({
 }, ["object", "id", "export_id", "status", "trigger", "mode", "window_end", "files"]);
 const deleted = (object) => ok("Deleted.", obj({ object: en([object]), id: str(), deleted_at: ms("When it was deleted.") }, ["object", "id", "deleted_at"]));
 
-const exampleIntegration = { object: "integration", id: "intg_8f2kq0x1m3zv7a", project_id: "proj1a2b3c4d", type: "amplitude", name: "Amplitude", enabled: true, environment: null, app_id: null, event_types: [], settings: { region: "us" }, secrets: { api_key: { configured: true, hint: "••••9f3a" }, sandbox_api_key: { configured: false, hint: null } }, event_names: {}, status: { last_delivered_at: null, last_error: null, consecutive_failures: 0 }, created_at: 1790850000000, updated_at: 1790850000000 };
+const exampleIntegration = { object: "integration", id: "intg_8f2kq0x1m3zv7a", project_id: "proj1a2b3c4d", type: "amplitude", name: "Amplitude", enabled: true, environment: null, app_id: null, event_types: [], settings: { region: "us" }, secrets: { api_key: { configured: true, hint: "••••9f3a" }, sandbox_api_key: { configured: false, hint: null } }, event_names: {}, status: { last_delivered_at: null, last_error: null, consecutive_failures: 0, failed_deliveries_in_row: 0 }, created_at: 1790850000000, updated_at: 1790850000000 };
 
 export const integrationPaths = {
   [`${P}/catalog`]: {
