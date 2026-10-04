@@ -26,7 +26,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products" \
 
 | Field | What to put there |
 |---|---|
-| `store_identifier` | The store's product id, exactly as in App Store Connect or Play Console. For Google Play subscriptions use `subscriptionId:basePlanId`, for example `pro:monthly`. A plain `pro` also matches every base plan of that subscription |
+| `store_identifier` | The store's product id, exactly as in App Store Connect or Play Console. For Google Play subscriptions use `subscriptionId:basePlanId`, for example `pro:monthly`. A plain `pro` also matches every base plan of that subscription. For an App Store monthly billing plan with a 12-month commitment (iOS 26.4) use `productId:monthly`; a plain product id also matches it ([offline entitlements](../guides/offline-entitlements.md)) |
 | `type` | `subscription`, `non_consumable` (a lifetime unlock), `consumable` (coins, credits), `non_renewing_subscription` or `one_time` |
 | `subscription.duration` | ISO 8601 period: `P1W`, `P1M`, `P3M`, `P6M`, `P1Y`, or any other such as `P3D`. The Test Store uses it as the period length, and MRR uses it for every store |
 | `display_name` | Your own label for the dashboard |
