@@ -70,6 +70,13 @@ const EVENTS = [
   ["FUNNEL_VIEWED", "RevenueDot type. A visitor opened a published funnel. Opt-in: sent only to webhooks and integrations whose `event_types` names `funnel_viewed`. `app_user_id` is null unless the page URL had `?app_user_id=`. See [Funnels](../docs/guides/funnels.md).", "funnel"],
   ["FUNNEL_STEP_COMPLETED", "RevenueDot type. A visitor finished a funnel step, with the answer for a question (an email step's answer is `provided`, never the address). Opt-in: `funnel_step_completed`.", "funnel"],
   ["FUNNEL_PURCHASE", "RevenueDot type. A funnel's checkout was paid. `app_user_id` is the buyer's (anonymous unless the page had one) and `product_id` the Stripe price. Opt-in: `funnel_purchase`.", "funnel"],
+  ["PAYWALL_IMPRESSION", "A paywall was shown (RevenueDot type; the SDK reports it to `POST /v1/events`). Opt-in: sent only to webhooks and integrations whose `event_types` names `paywall_impression`. RevenueCat sends paywall events to Amplitude, Mixpanel, PostHog and Segment only, not to webhooks. See [Integrations](../docs/guides/integrations.md#paywall-events).", "paywall"],
+  ["PAYWALL_CLOSE", "The customer closed a paywall. Opt-in: `paywall_close`.", "paywall"],
+  ["PAYWALL_CANCEL", "The customer dismissed the store's payment sheet on a paywall. Opt-in: `paywall_cancel`.", "paywall"],
+  ["PAYWALL_EXIT_OFFER", "An exit offer was shown when the customer left a paywall. Opt-in: `paywall_exit_offer`.", "paywall"],
+  ["PAYWALL_COMPONENT_INTERACTED", "The customer changed a paywall control: a tab, package, button or sheet. Opt-in: `paywall_component_interacted`.", "paywall"],
+  ["PAYWALL_PURCHASE_INITIATED", "The customer started a purchase from a paywall. A RevenueDot addition: RevenueCat does not forward it. Opt-in: `paywall_purchase_initiated`.", "paywall"],
+  ["PAYWALL_PURCHASE_ERROR", "A purchase started from a paywall failed. A RevenueDot addition: RevenueCat does not forward it. Opt-in: `paywall_purchase_error`.", "paywall"],
   ["TEST", "Sent by the dashboard's \"Send test event\" or `POST .../integrations/webhooks/{id}/test`. Shaped like a purchase, for no real customer, so it never carries `experiments`.", {}],
 ];
 
@@ -146,6 +153,23 @@ for (const [type, description, extra] of EVENTS) {
       page_url: str("The funnel page's address, without its query. While any enabled integration (not a webhook) has a funnel event type in its filter; not for a visitor with Global Privacy Control on."),
     }, ["id", "type", "event_timestamp_ms", "environment", "store", "funnel_id", "funnel_name", "session_id"]);
     schema.properties.event.additionalProperties = { type: "string", description: "The page's `utm_*` query parameters, such as `utm_source`." };
+  } else if (extra === "paywall") {
+    const s = (d) => str(d), n = (d) => int(d);
+    schema = payload({
+      id: str("A UUID derived from the project and the SDK's event id, so a batch the SDK sends again is not delivered twice."), type: lifecycle.type, event_timestamp_ms: lifecycle.event_timestamp_ms,
+      app_id: lifecycle.app_id, app_user_id: lifecycle.app_user_id, original_app_user_id: lifecycle.original_app_user_id, aliases: lifecycle.aliases,
+      environment: en(["PRODUCTION", "SANDBOX"], "SANDBOX for TestFlight, Xcode and Test Store builds."), store: str("The app's store: APP_STORE, PLAY_STORE, TEST_STORE ..."),
+      paywall_id: s("The paywall's id."), paywall_name: s("The paywall's name, when it has one."), paywall_revision: n(), offering_id: s(), session_id: s("One per time the paywall is shown."),
+      display_mode: s("full_screen, sheet, condensed_footer ..."), dark_mode: bool(), locale: s(), source: s(),
+      placement_identifier: s(), targeting_revision: n(), targeting_rule_id: s(), workflow_id: s(),
+      exit_offer_type: s("PAYWALL_EXIT_OFFER: `dismiss`."), exit_offering_id: s("PAYWALL_EXIT_OFFER: the offering shown."),
+      package_id: s("PAYWALL_PURCHASE_*: the package."), product_id: s("PAYWALL_PURCHASE_*: the product."), error_code: n("PAYWALL_PURCHASE_ERROR."), error_message: s("PAYWALL_PURCHASE_ERROR."),
+      component_type: s("PAYWALL_COMPONENT_INTERACTED: tab, package, purchase_button, sheet ..."), component_name: s(), component_value: s(), component_url: s(),
+      origin_index: n(), destination_index: n(), default_index: n(), origin_context_name: s(), destination_context_name: s(),
+      origin_package_id: s(), destination_package_id: s(), default_package_id: s(), origin_product_id: s(), destination_product_id: s(), default_product_id: s(),
+      current_package_id: s(), resulting_package_id: s(), current_product_id: s(), resulting_product_id: s(),
+      sdk_version: s("The customer's last SDK version."), platform_version: s("The customer's last OS version."), subscriber_attributes: lifecycle.subscriber_attributes,
+    }, ["id", "type", "event_timestamp_ms", "environment", "subscriber_attributes"]);
   } else if (extra === null) {
     const pick = ["id", "type", "event_timestamp_ms", "app_id", "app_user_id", "original_app_user_id", "aliases", "product_id", "transaction_id", "original_transaction_id", "store", "environment", "currency", "country_code", "subscriber_attributes"];
     schema = payload(Object.fromEntries(pick.map((k) => [k, lifecycle[k]])), ["id", "type", "event_timestamp_ms", "app_user_id", "product_id", "store", "environment"]);

@@ -8523,7 +8523,14 @@ paths:
                       - funnel_viewed
                       - funnel_step_completed
                       - funnel_purchase
-                  description: "Empty or absent: every type except the opt-in ones (`subscriber_alias` and the three RevenueDot funnel types), which are sent only when named here."
+                      - paywall_impression
+                      - paywall_close
+                      - paywall_cancel
+                      - paywall_exit_offer
+                      - paywall_component_interacted
+                      - paywall_purchase_initiated
+                      - paywall_purchase_error
+                  description: "Empty or absent: every type except the opt-in ones (`subscriber_alias`, the three RevenueDot funnel types and the seven paywall types), which are sent only when named here."
                 app_id:
                   type:
                     - string
@@ -20098,7 +20105,7 @@ paths:
                           type: array
                           items:
                             type: string
-                          description: Lower-case webhook event types; empty for all the integration sends.
+                          description: "Lower-case webhook event types; empty for all the integration sends. Opt-in types (`subscriber_alias`, the funnel types and the paywall types) are sent only when named here, and naming them adds them to the other events: they never narrow the filter."
                         settings:
                           type: object
                           additionalProperties: true
@@ -20284,6 +20291,13 @@ paths:
                       - funnel_viewed
                       - funnel_step_completed
                       - funnel_purchase
+                      - paywall_impression
+                      - paywall_close
+                      - paywall_cancel
+                      - paywall_exit_offer
+                      - paywall_component_interacted
+                      - paywall_purchase_initiated
+                      - paywall_purchase_error
               required:
                 - type
             example:
@@ -20369,7 +20383,7 @@ paths:
                     type: array
                     items:
                       type: string
-                    description: Lower-case webhook event types; empty for all the integration sends.
+                    description: "Lower-case webhook event types; empty for all the integration sends. Opt-in types (`subscriber_alias`, the funnel types and the paywall types) are sent only when named here, and naming them adds them to the other events: they never narrow the filter."
                   settings:
                     type: object
                     additionalProperties: true
@@ -20560,7 +20574,7 @@ paths:
                     type: array
                     items:
                       type: string
-                    description: Lower-case webhook event types; empty for all the integration sends.
+                    description: "Lower-case webhook event types; empty for all the integration sends. Opt-in types (`subscriber_alias`, the funnel types and the paywall types) are sent only when named here, and naming them adds them to the other events: they never narrow the filter."
                   settings:
                     type: object
                     additionalProperties: true
@@ -20742,6 +20756,13 @@ paths:
                       - funnel_viewed
                       - funnel_step_completed
                       - funnel_purchase
+                      - paywall_impression
+                      - paywall_close
+                      - paywall_cancel
+                      - paywall_exit_offer
+                      - paywall_component_interacted
+                      - paywall_purchase_initiated
+                      - paywall_purchase_error
             example:
               enabled: false
       responses:
@@ -20821,7 +20842,7 @@ paths:
                     type: array
                     items:
                       type: string
-                    description: Lower-case webhook event types; empty for all the integration sends.
+                    description: "Lower-case webhook event types; empty for all the integration sends. Opt-in types (`subscriber_alias`, the funnel types and the paywall types) are sent only when named here, and naming them adds them to the other events: they never narrow the filter."
                   settings:
                     type: object
                     additionalProperties: true
@@ -59504,6 +59525,1505 @@ webhooks:
                 subscriber_attributes: {}
                 revenue_usd: 39.99
                 currency: USD
+      responses:
+        "200":
+          description: Only HTTP 200 counts as delivered. Anything else, or no answer within 60 seconds, is retried after 5, 10, 20, 40 and 80 minutes.
+      x-source: services/events.ts
+  PAYWALL_IMPRESSION:
+    post:
+      operationId: webhookPaywallImpression
+      tags:
+        - Webhook events
+      summary: PAYWALL_IMPRESSION
+      description: "A paywall was shown (RevenueDot type; the SDK reports it to `POST /v1/events`). Opt-in: sent only to webhooks and integrations whose `event_types` names `paywall_impression`. RevenueCat sends paywall events to Amplitude, Mixpanel, PostHog and Segment only, not to webhooks. See [Integrations](../docs/guides/integrations.md#paywall-events)."
+      parameters:
+        - name: X-RevenueCat-Webhook-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+          description: "`t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\" with the webhook's signing secret>`. Signed again on every attempt."
+          example: t=1790800914,v1=0a1552334e825926036f7efe21527800ea45caa63eca523c6120c6da9041ef99
+        - name: Authorization
+          in: header
+          required: false
+          schema:
+            type: string
+          description: The webhook's `authorization_header`, verbatim, when you set one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - api_version
+                - event
+              properties:
+                api_version:
+                  type: string
+                  const: "1.0"
+                event:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      description: A UUID derived from the project and the SDK's event id, so a batch the SDK sends again is not delivered twice.
+                    type:
+                      type: string
+                      description: Event type.
+                    event_timestamp_ms:
+                      type: integer
+                      description: When RevenueDot recorded the event. Epoch milliseconds.
+                    app_id:
+                      type: string
+                      description: RevenueDot app id. Left out for promotional grants.
+                    app_user_id:
+                      type: string
+                      description: The app user id the event is about (a non-anonymous alias when there is one).
+                    original_app_user_id:
+                      type: string
+                      description: The customer's first app user id.
+                    aliases:
+                      type: array
+                      items:
+                        type: string
+                      description: Every app user id of the customer.
+                    environment:
+                      type: string
+                      enum:
+                        - PRODUCTION
+                        - SANDBOX
+                      description: SANDBOX for TestFlight, Xcode and Test Store builds.
+                    store:
+                      type: string
+                      description: "The app's store: APP_STORE, PLAY_STORE, TEST_STORE ..."
+                    paywall_id:
+                      type: string
+                      description: The paywall's id.
+                    paywall_name:
+                      type: string
+                      description: The paywall's name, when it has one.
+                    paywall_revision:
+                      type: integer
+                    offering_id:
+                      type: string
+                    session_id:
+                      type: string
+                      description: One per time the paywall is shown.
+                    display_mode:
+                      type: string
+                      description: full_screen, sheet, condensed_footer ...
+                    dark_mode:
+                      type: boolean
+                    locale:
+                      type: string
+                    source:
+                      type: string
+                    placement_identifier:
+                      type: string
+                    targeting_revision:
+                      type: integer
+                    targeting_rule_id:
+                      type: string
+                    workflow_id:
+                      type: string
+                    exit_offer_type:
+                      type: string
+                      description: "PAYWALL_EXIT_OFFER: `dismiss`."
+                    exit_offering_id:
+                      type: string
+                      description: "PAYWALL_EXIT_OFFER: the offering shown."
+                    package_id:
+                      type: string
+                      description: "PAYWALL_PURCHASE_*: the package."
+                    product_id:
+                      type: string
+                      description: "PAYWALL_PURCHASE_*: the product."
+                    error_code:
+                      type: integer
+                      description: PAYWALL_PURCHASE_ERROR.
+                    error_message:
+                      type: string
+                      description: PAYWALL_PURCHASE_ERROR.
+                    component_type:
+                      type: string
+                      description: "PAYWALL_COMPONENT_INTERACTED: tab, package, purchase_button, sheet ..."
+                    component_name:
+                      type: string
+                    component_value:
+                      type: string
+                    component_url:
+                      type: string
+                    origin_index:
+                      type: integer
+                    destination_index:
+                      type: integer
+                    default_index:
+                      type: integer
+                    origin_context_name:
+                      type: string
+                    destination_context_name:
+                      type: string
+                    origin_package_id:
+                      type: string
+                    destination_package_id:
+                      type: string
+                    default_package_id:
+                      type: string
+                    origin_product_id:
+                      type: string
+                    destination_product_id:
+                      type: string
+                    default_product_id:
+                      type: string
+                    current_package_id:
+                      type: string
+                    resulting_package_id:
+                      type: string
+                    current_product_id:
+                      type: string
+                    resulting_product_id:
+                      type: string
+                    sdk_version:
+                      type: string
+                      description: The customer's last SDK version.
+                    platform_version:
+                      type: string
+                      description: The customer's last OS version.
+                    subscriber_attributes:
+                      type: object
+                      additionalProperties:
+                        type: object
+                        properties:
+                          value:
+                            type:
+                              - string
+                              - "null"
+                          updated_at_ms:
+                            type: integer
+                  required:
+                    - id
+                    - type
+                    - event_timestamp_ms
+                    - environment
+                    - subscriber_attributes
+            example:
+              api_version: "1.0"
+              event:
+                id: 7D3F0B1E-5C2A-5E8B-9A4D-6F1E2C3B4A51
+                type: PAYWALL_IMPRESSION
+                event_timestamp_ms: 1790800914034
+                app_id: app1a2b3c4d
+                app_user_id: user_42
+                original_app_user_id: $RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0
+                aliases:
+                  - $RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0
+                  - user_42
+                environment: PRODUCTION
+                store: APP_STORE
+                paywall_id: pw_5k2m8q1x7c3z
+                paywall_name: Spring sale
+                paywall_revision: 3
+                offering_id: default
+                session_id: 0B6E2A4C-8D1F-4E3A-9C7B-5A2D8F1E6C3B
+                display_mode: full_screen
+                dark_mode: false
+                locale: en_US
+                placement_identifier: onboarding
+                sdk_version: 5.62.0
+                platform_version: "18.5"
+                subscriber_attributes:
+                  $email:
+                    value: wren@example.com
+                    updated_at_ms: 1790800000000
+      responses:
+        "200":
+          description: Only HTTP 200 counts as delivered. Anything else, or no answer within 60 seconds, is retried after 5, 10, 20, 40 and 80 minutes.
+      x-source: services/events.ts
+  PAYWALL_CLOSE:
+    post:
+      operationId: webhookPaywallClose
+      tags:
+        - Webhook events
+      summary: PAYWALL_CLOSE
+      description: "The customer closed a paywall. Opt-in: `paywall_close`."
+      parameters:
+        - name: X-RevenueCat-Webhook-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+          description: "`t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\" with the webhook's signing secret>`. Signed again on every attempt."
+          example: t=1790800914,v1=0a1552334e825926036f7efe21527800ea45caa63eca523c6120c6da9041ef99
+        - name: Authorization
+          in: header
+          required: false
+          schema:
+            type: string
+          description: The webhook's `authorization_header`, verbatim, when you set one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - api_version
+                - event
+              properties:
+                api_version:
+                  type: string
+                  const: "1.0"
+                event:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      description: A UUID derived from the project and the SDK's event id, so a batch the SDK sends again is not delivered twice.
+                    type:
+                      type: string
+                      description: Event type.
+                    event_timestamp_ms:
+                      type: integer
+                      description: When RevenueDot recorded the event. Epoch milliseconds.
+                    app_id:
+                      type: string
+                      description: RevenueDot app id. Left out for promotional grants.
+                    app_user_id:
+                      type: string
+                      description: The app user id the event is about (a non-anonymous alias when there is one).
+                    original_app_user_id:
+                      type: string
+                      description: The customer's first app user id.
+                    aliases:
+                      type: array
+                      items:
+                        type: string
+                      description: Every app user id of the customer.
+                    environment:
+                      type: string
+                      enum:
+                        - PRODUCTION
+                        - SANDBOX
+                      description: SANDBOX for TestFlight, Xcode and Test Store builds.
+                    store:
+                      type: string
+                      description: "The app's store: APP_STORE, PLAY_STORE, TEST_STORE ..."
+                    paywall_id:
+                      type: string
+                      description: The paywall's id.
+                    paywall_name:
+                      type: string
+                      description: The paywall's name, when it has one.
+                    paywall_revision:
+                      type: integer
+                    offering_id:
+                      type: string
+                    session_id:
+                      type: string
+                      description: One per time the paywall is shown.
+                    display_mode:
+                      type: string
+                      description: full_screen, sheet, condensed_footer ...
+                    dark_mode:
+                      type: boolean
+                    locale:
+                      type: string
+                    source:
+                      type: string
+                    placement_identifier:
+                      type: string
+                    targeting_revision:
+                      type: integer
+                    targeting_rule_id:
+                      type: string
+                    workflow_id:
+                      type: string
+                    exit_offer_type:
+                      type: string
+                      description: "PAYWALL_EXIT_OFFER: `dismiss`."
+                    exit_offering_id:
+                      type: string
+                      description: "PAYWALL_EXIT_OFFER: the offering shown."
+                    package_id:
+                      type: string
+                      description: "PAYWALL_PURCHASE_*: the package."
+                    product_id:
+                      type: string
+                      description: "PAYWALL_PURCHASE_*: the product."
+                    error_code:
+                      type: integer
+                      description: PAYWALL_PURCHASE_ERROR.
+                    error_message:
+                      type: string
+                      description: PAYWALL_PURCHASE_ERROR.
+                    component_type:
+                      type: string
+                      description: "PAYWALL_COMPONENT_INTERACTED: tab, package, purchase_button, sheet ..."
+                    component_name:
+                      type: string
+                    component_value:
+                      type: string
+                    component_url:
+                      type: string
+                    origin_index:
+                      type: integer
+                    destination_index:
+                      type: integer
+                    default_index:
+                      type: integer
+                    origin_context_name:
+                      type: string
+                    destination_context_name:
+                      type: string
+                    origin_package_id:
+                      type: string
+                    destination_package_id:
+                      type: string
+                    default_package_id:
+                      type: string
+                    origin_product_id:
+                      type: string
+                    destination_product_id:
+                      type: string
+                    default_product_id:
+                      type: string
+                    current_package_id:
+                      type: string
+                    resulting_package_id:
+                      type: string
+                    current_product_id:
+                      type: string
+                    resulting_product_id:
+                      type: string
+                    sdk_version:
+                      type: string
+                      description: The customer's last SDK version.
+                    platform_version:
+                      type: string
+                      description: The customer's last OS version.
+                    subscriber_attributes:
+                      type: object
+                      additionalProperties:
+                        type: object
+                        properties:
+                          value:
+                            type:
+                              - string
+                              - "null"
+                          updated_at_ms:
+                            type: integer
+                  required:
+                    - id
+                    - type
+                    - event_timestamp_ms
+                    - environment
+                    - subscriber_attributes
+            example:
+              api_version: "1.0"
+              event:
+                id: 7D3F0B1E-5C2A-5E8B-9A4D-6F1E2C3B4A52
+                type: PAYWALL_CLOSE
+                event_timestamp_ms: 1790800914034
+                app_id: app1a2b3c4d
+                app_user_id: user_42
+                original_app_user_id: $RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0
+                aliases:
+                  - $RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0
+                  - user_42
+                environment: PRODUCTION
+                store: APP_STORE
+                paywall_id: pw_5k2m8q1x7c3z
+                paywall_name: Spring sale
+                paywall_revision: 3
+                offering_id: default
+                session_id: 0B6E2A4C-8D1F-4E3A-9C7B-5A2D8F1E6C3B
+                display_mode: full_screen
+                dark_mode: false
+                locale: en_US
+                placement_identifier: onboarding
+                sdk_version: 5.62.0
+                platform_version: "18.5"
+                subscriber_attributes:
+                  $email:
+                    value: wren@example.com
+                    updated_at_ms: 1790800000000
+      responses:
+        "200":
+          description: Only HTTP 200 counts as delivered. Anything else, or no answer within 60 seconds, is retried after 5, 10, 20, 40 and 80 minutes.
+      x-source: services/events.ts
+  PAYWALL_CANCEL:
+    post:
+      operationId: webhookPaywallCancel
+      tags:
+        - Webhook events
+      summary: PAYWALL_CANCEL
+      description: "The customer dismissed the store's payment sheet on a paywall. Opt-in: `paywall_cancel`."
+      parameters:
+        - name: X-RevenueCat-Webhook-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+          description: "`t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\" with the webhook's signing secret>`. Signed again on every attempt."
+          example: t=1790800914,v1=0a1552334e825926036f7efe21527800ea45caa63eca523c6120c6da9041ef99
+        - name: Authorization
+          in: header
+          required: false
+          schema:
+            type: string
+          description: The webhook's `authorization_header`, verbatim, when you set one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - api_version
+                - event
+              properties:
+                api_version:
+                  type: string
+                  const: "1.0"
+                event:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      description: A UUID derived from the project and the SDK's event id, so a batch the SDK sends again is not delivered twice.
+                    type:
+                      type: string
+                      description: Event type.
+                    event_timestamp_ms:
+                      type: integer
+                      description: When RevenueDot recorded the event. Epoch milliseconds.
+                    app_id:
+                      type: string
+                      description: RevenueDot app id. Left out for promotional grants.
+                    app_user_id:
+                      type: string
+                      description: The app user id the event is about (a non-anonymous alias when there is one).
+                    original_app_user_id:
+                      type: string
+                      description: The customer's first app user id.
+                    aliases:
+                      type: array
+                      items:
+                        type: string
+                      description: Every app user id of the customer.
+                    environment:
+                      type: string
+                      enum:
+                        - PRODUCTION
+                        - SANDBOX
+                      description: SANDBOX for TestFlight, Xcode and Test Store builds.
+                    store:
+                      type: string
+                      description: "The app's store: APP_STORE, PLAY_STORE, TEST_STORE ..."
+                    paywall_id:
+                      type: string
+                      description: The paywall's id.
+                    paywall_name:
+                      type: string
+                      description: The paywall's name, when it has one.
+                    paywall_revision:
+                      type: integer
+                    offering_id:
+                      type: string
+                    session_id:
+                      type: string
+                      description: One per time the paywall is shown.
+                    display_mode:
+                      type: string
+                      description: full_screen, sheet, condensed_footer ...
+                    dark_mode:
+                      type: boolean
+                    locale:
+                      type: string
+                    source:
+                      type: string
+                    placement_identifier:
+                      type: string
+                    targeting_revision:
+                      type: integer
+                    targeting_rule_id:
+                      type: string
+                    workflow_id:
+                      type: string
+                    exit_offer_type:
+                      type: string
+                      description: "PAYWALL_EXIT_OFFER: `dismiss`."
+                    exit_offering_id:
+                      type: string
+                      description: "PAYWALL_EXIT_OFFER: the offering shown."
+                    package_id:
+                      type: string
+                      description: "PAYWALL_PURCHASE_*: the package."
+                    product_id:
+                      type: string
+                      description: "PAYWALL_PURCHASE_*: the product."
+                    error_code:
+                      type: integer
+                      description: PAYWALL_PURCHASE_ERROR.
+                    error_message:
+                      type: string
+                      description: PAYWALL_PURCHASE_ERROR.
+                    component_type:
+                      type: string
+                      description: "PAYWALL_COMPONENT_INTERACTED: tab, package, purchase_button, sheet ..."
+                    component_name:
+                      type: string
+                    component_value:
+                      type: string
+                    component_url:
+                      type: string
+                    origin_index:
+                      type: integer
+                    destination_index:
+                      type: integer
+                    default_index:
+                      type: integer
+                    origin_context_name:
+                      type: string
+                    destination_context_name:
+                      type: string
+                    origin_package_id:
+                      type: string
+                    destination_package_id:
+                      type: string
+                    default_package_id:
+                      type: string
+                    origin_product_id:
+                      type: string
+                    destination_product_id:
+                      type: string
+                    default_product_id:
+                      type: string
+                    current_package_id:
+                      type: string
+                    resulting_package_id:
+                      type: string
+                    current_product_id:
+                      type: string
+                    resulting_product_id:
+                      type: string
+                    sdk_version:
+                      type: string
+                      description: The customer's last SDK version.
+                    platform_version:
+                      type: string
+                      description: The customer's last OS version.
+                    subscriber_attributes:
+                      type: object
+                      additionalProperties:
+                        type: object
+                        properties:
+                          value:
+                            type:
+                              - string
+                              - "null"
+                          updated_at_ms:
+                            type: integer
+                  required:
+                    - id
+                    - type
+                    - event_timestamp_ms
+                    - environment
+                    - subscriber_attributes
+            example:
+              api_version: "1.0"
+              event:
+                id: 7D3F0B1E-5C2A-5E8B-9A4D-6F1E2C3B4A53
+                type: PAYWALL_CANCEL
+                event_timestamp_ms: 1790800914034
+                app_id: app1a2b3c4d
+                app_user_id: user_42
+                original_app_user_id: $RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0
+                aliases:
+                  - $RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0
+                  - user_42
+                environment: PRODUCTION
+                store: APP_STORE
+                paywall_id: pw_5k2m8q1x7c3z
+                paywall_name: Spring sale
+                paywall_revision: 3
+                offering_id: default
+                session_id: 0B6E2A4C-8D1F-4E3A-9C7B-5A2D8F1E6C3B
+                display_mode: full_screen
+                dark_mode: false
+                locale: en_US
+                placement_identifier: onboarding
+                sdk_version: 5.62.0
+                platform_version: "18.5"
+                subscriber_attributes:
+                  $email:
+                    value: wren@example.com
+                    updated_at_ms: 1790800000000
+      responses:
+        "200":
+          description: Only HTTP 200 counts as delivered. Anything else, or no answer within 60 seconds, is retried after 5, 10, 20, 40 and 80 minutes.
+      x-source: services/events.ts
+  PAYWALL_EXIT_OFFER:
+    post:
+      operationId: webhookPaywallExitOffer
+      tags:
+        - Webhook events
+      summary: PAYWALL_EXIT_OFFER
+      description: "An exit offer was shown when the customer left a paywall. Opt-in: `paywall_exit_offer`."
+      parameters:
+        - name: X-RevenueCat-Webhook-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+          description: "`t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\" with the webhook's signing secret>`. Signed again on every attempt."
+          example: t=1790800914,v1=0a1552334e825926036f7efe21527800ea45caa63eca523c6120c6da9041ef99
+        - name: Authorization
+          in: header
+          required: false
+          schema:
+            type: string
+          description: The webhook's `authorization_header`, verbatim, when you set one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - api_version
+                - event
+              properties:
+                api_version:
+                  type: string
+                  const: "1.0"
+                event:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      description: A UUID derived from the project and the SDK's event id, so a batch the SDK sends again is not delivered twice.
+                    type:
+                      type: string
+                      description: Event type.
+                    event_timestamp_ms:
+                      type: integer
+                      description: When RevenueDot recorded the event. Epoch milliseconds.
+                    app_id:
+                      type: string
+                      description: RevenueDot app id. Left out for promotional grants.
+                    app_user_id:
+                      type: string
+                      description: The app user id the event is about (a non-anonymous alias when there is one).
+                    original_app_user_id:
+                      type: string
+                      description: The customer's first app user id.
+                    aliases:
+                      type: array
+                      items:
+                        type: string
+                      description: Every app user id of the customer.
+                    environment:
+                      type: string
+                      enum:
+                        - PRODUCTION
+                        - SANDBOX
+                      description: SANDBOX for TestFlight, Xcode and Test Store builds.
+                    store:
+                      type: string
+                      description: "The app's store: APP_STORE, PLAY_STORE, TEST_STORE ..."
+                    paywall_id:
+                      type: string
+                      description: The paywall's id.
+                    paywall_name:
+                      type: string
+                      description: The paywall's name, when it has one.
+                    paywall_revision:
+                      type: integer
+                    offering_id:
+                      type: string
+                    session_id:
+                      type: string
+                      description: One per time the paywall is shown.
+                    display_mode:
+                      type: string
+                      description: full_screen, sheet, condensed_footer ...
+                    dark_mode:
+                      type: boolean
+                    locale:
+                      type: string
+                    source:
+                      type: string
+                    placement_identifier:
+                      type: string
+                    targeting_revision:
+                      type: integer
+                    targeting_rule_id:
+                      type: string
+                    workflow_id:
+                      type: string
+                    exit_offer_type:
+                      type: string
+                      description: "PAYWALL_EXIT_OFFER: `dismiss`."
+                    exit_offering_id:
+                      type: string
+                      description: "PAYWALL_EXIT_OFFER: the offering shown."
+                    package_id:
+                      type: string
+                      description: "PAYWALL_PURCHASE_*: the package."
+                    product_id:
+                      type: string
+                      description: "PAYWALL_PURCHASE_*: the product."
+                    error_code:
+                      type: integer
+                      description: PAYWALL_PURCHASE_ERROR.
+                    error_message:
+                      type: string
+                      description: PAYWALL_PURCHASE_ERROR.
+                    component_type:
+                      type: string
+                      description: "PAYWALL_COMPONENT_INTERACTED: tab, package, purchase_button, sheet ..."
+                    component_name:
+                      type: string
+                    component_value:
+                      type: string
+                    component_url:
+                      type: string
+                    origin_index:
+                      type: integer
+                    destination_index:
+                      type: integer
+                    default_index:
+                      type: integer
+                    origin_context_name:
+                      type: string
+                    destination_context_name:
+                      type: string
+                    origin_package_id:
+                      type: string
+                    destination_package_id:
+                      type: string
+                    default_package_id:
+                      type: string
+                    origin_product_id:
+                      type: string
+                    destination_product_id:
+                      type: string
+                    default_product_id:
+                      type: string
+                    current_package_id:
+                      type: string
+                    resulting_package_id:
+                      type: string
+                    current_product_id:
+                      type: string
+                    resulting_product_id:
+                      type: string
+                    sdk_version:
+                      type: string
+                      description: The customer's last SDK version.
+                    platform_version:
+                      type: string
+                      description: The customer's last OS version.
+                    subscriber_attributes:
+                      type: object
+                      additionalProperties:
+                        type: object
+                        properties:
+                          value:
+                            type:
+                              - string
+                              - "null"
+                          updated_at_ms:
+                            type: integer
+                  required:
+                    - id
+                    - type
+                    - event_timestamp_ms
+                    - environment
+                    - subscriber_attributes
+            example:
+              api_version: "1.0"
+              event:
+                id: 7D3F0B1E-5C2A-5E8B-9A4D-6F1E2C3B4A54
+                type: PAYWALL_EXIT_OFFER
+                event_timestamp_ms: 1790800914034
+                app_id: app1a2b3c4d
+                app_user_id: user_42
+                original_app_user_id: $RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0
+                aliases:
+                  - $RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0
+                  - user_42
+                environment: PRODUCTION
+                store: APP_STORE
+                paywall_id: pw_5k2m8q1x7c3z
+                paywall_name: Spring sale
+                paywall_revision: 3
+                offering_id: default
+                session_id: 0B6E2A4C-8D1F-4E3A-9C7B-5A2D8F1E6C3B
+                display_mode: full_screen
+                dark_mode: false
+                locale: en_US
+                placement_identifier: onboarding
+                exit_offer_type: dismiss
+                exit_offering_id: winback
+                sdk_version: 5.62.0
+                platform_version: "18.5"
+                subscriber_attributes:
+                  $email:
+                    value: wren@example.com
+                    updated_at_ms: 1790800000000
+      responses:
+        "200":
+          description: Only HTTP 200 counts as delivered. Anything else, or no answer within 60 seconds, is retried after 5, 10, 20, 40 and 80 minutes.
+      x-source: services/events.ts
+  PAYWALL_COMPONENT_INTERACTED:
+    post:
+      operationId: webhookPaywallComponentInteracted
+      tags:
+        - Webhook events
+      summary: PAYWALL_COMPONENT_INTERACTED
+      description: "The customer changed a paywall control: a tab, package, button or sheet. Opt-in: `paywall_component_interacted`."
+      parameters:
+        - name: X-RevenueCat-Webhook-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+          description: "`t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\" with the webhook's signing secret>`. Signed again on every attempt."
+          example: t=1790800914,v1=0a1552334e825926036f7efe21527800ea45caa63eca523c6120c6da9041ef99
+        - name: Authorization
+          in: header
+          required: false
+          schema:
+            type: string
+          description: The webhook's `authorization_header`, verbatim, when you set one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - api_version
+                - event
+              properties:
+                api_version:
+                  type: string
+                  const: "1.0"
+                event:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      description: A UUID derived from the project and the SDK's event id, so a batch the SDK sends again is not delivered twice.
+                    type:
+                      type: string
+                      description: Event type.
+                    event_timestamp_ms:
+                      type: integer
+                      description: When RevenueDot recorded the event. Epoch milliseconds.
+                    app_id:
+                      type: string
+                      description: RevenueDot app id. Left out for promotional grants.
+                    app_user_id:
+                      type: string
+                      description: The app user id the event is about (a non-anonymous alias when there is one).
+                    original_app_user_id:
+                      type: string
+                      description: The customer's first app user id.
+                    aliases:
+                      type: array
+                      items:
+                        type: string
+                      description: Every app user id of the customer.
+                    environment:
+                      type: string
+                      enum:
+                        - PRODUCTION
+                        - SANDBOX
+                      description: SANDBOX for TestFlight, Xcode and Test Store builds.
+                    store:
+                      type: string
+                      description: "The app's store: APP_STORE, PLAY_STORE, TEST_STORE ..."
+                    paywall_id:
+                      type: string
+                      description: The paywall's id.
+                    paywall_name:
+                      type: string
+                      description: The paywall's name, when it has one.
+                    paywall_revision:
+                      type: integer
+                    offering_id:
+                      type: string
+                    session_id:
+                      type: string
+                      description: One per time the paywall is shown.
+                    display_mode:
+                      type: string
+                      description: full_screen, sheet, condensed_footer ...
+                    dark_mode:
+                      type: boolean
+                    locale:
+                      type: string
+                    source:
+                      type: string
+                    placement_identifier:
+                      type: string
+                    targeting_revision:
+                      type: integer
+                    targeting_rule_id:
+                      type: string
+                    workflow_id:
+                      type: string
+                    exit_offer_type:
+                      type: string
+                      description: "PAYWALL_EXIT_OFFER: `dismiss`."
+                    exit_offering_id:
+                      type: string
+                      description: "PAYWALL_EXIT_OFFER: the offering shown."
+                    package_id:
+                      type: string
+                      description: "PAYWALL_PURCHASE_*: the package."
+                    product_id:
+                      type: string
+                      description: "PAYWALL_PURCHASE_*: the product."
+                    error_code:
+                      type: integer
+                      description: PAYWALL_PURCHASE_ERROR.
+                    error_message:
+                      type: string
+                      description: PAYWALL_PURCHASE_ERROR.
+                    component_type:
+                      type: string
+                      description: "PAYWALL_COMPONENT_INTERACTED: tab, package, purchase_button, sheet ..."
+                    component_name:
+                      type: string
+                    component_value:
+                      type: string
+                    component_url:
+                      type: string
+                    origin_index:
+                      type: integer
+                    destination_index:
+                      type: integer
+                    default_index:
+                      type: integer
+                    origin_context_name:
+                      type: string
+                    destination_context_name:
+                      type: string
+                    origin_package_id:
+                      type: string
+                    destination_package_id:
+                      type: string
+                    default_package_id:
+                      type: string
+                    origin_product_id:
+                      type: string
+                    destination_product_id:
+                      type: string
+                    default_product_id:
+                      type: string
+                    current_package_id:
+                      type: string
+                    resulting_package_id:
+                      type: string
+                    current_product_id:
+                      type: string
+                    resulting_product_id:
+                      type: string
+                    sdk_version:
+                      type: string
+                      description: The customer's last SDK version.
+                    platform_version:
+                      type: string
+                      description: The customer's last OS version.
+                    subscriber_attributes:
+                      type: object
+                      additionalProperties:
+                        type: object
+                        properties:
+                          value:
+                            type:
+                              - string
+                              - "null"
+                          updated_at_ms:
+                            type: integer
+                  required:
+                    - id
+                    - type
+                    - event_timestamp_ms
+                    - environment
+                    - subscriber_attributes
+            example:
+              api_version: "1.0"
+              event:
+                id: 7D3F0B1E-5C2A-5E8B-9A4D-6F1E2C3B4A55
+                type: PAYWALL_COMPONENT_INTERACTED
+                event_timestamp_ms: 1790800914034
+                app_id: app1a2b3c4d
+                app_user_id: user_42
+                original_app_user_id: $RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0
+                aliases:
+                  - $RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0
+                  - user_42
+                environment: PRODUCTION
+                store: APP_STORE
+                paywall_id: pw_5k2m8q1x7c3z
+                paywall_name: Spring sale
+                paywall_revision: 3
+                offering_id: default
+                session_id: 0B6E2A4C-8D1F-4E3A-9C7B-5A2D8F1E6C3B
+                display_mode: full_screen
+                dark_mode: false
+                locale: en_US
+                placement_identifier: onboarding
+                component_type: package
+                component_name: annual_pkg
+                component_value: selected
+                origin_package_id: $rc_monthly
+                destination_package_id: $rc_annual
+                origin_product_id: pro_monthly
+                destination_product_id: pro_annual
+                sdk_version: 5.62.0
+                platform_version: "18.5"
+                subscriber_attributes:
+                  $email:
+                    value: wren@example.com
+                    updated_at_ms: 1790800000000
+      responses:
+        "200":
+          description: Only HTTP 200 counts as delivered. Anything else, or no answer within 60 seconds, is retried after 5, 10, 20, 40 and 80 minutes.
+      x-source: services/events.ts
+  PAYWALL_PURCHASE_INITIATED:
+    post:
+      operationId: webhookPaywallPurchaseInitiated
+      tags:
+        - Webhook events
+      summary: PAYWALL_PURCHASE_INITIATED
+      description: "The customer started a purchase from a paywall. A RevenueDot addition: RevenueCat does not forward it. Opt-in: `paywall_purchase_initiated`."
+      parameters:
+        - name: X-RevenueCat-Webhook-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+          description: "`t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\" with the webhook's signing secret>`. Signed again on every attempt."
+          example: t=1790800914,v1=0a1552334e825926036f7efe21527800ea45caa63eca523c6120c6da9041ef99
+        - name: Authorization
+          in: header
+          required: false
+          schema:
+            type: string
+          description: The webhook's `authorization_header`, verbatim, when you set one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - api_version
+                - event
+              properties:
+                api_version:
+                  type: string
+                  const: "1.0"
+                event:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      description: A UUID derived from the project and the SDK's event id, so a batch the SDK sends again is not delivered twice.
+                    type:
+                      type: string
+                      description: Event type.
+                    event_timestamp_ms:
+                      type: integer
+                      description: When RevenueDot recorded the event. Epoch milliseconds.
+                    app_id:
+                      type: string
+                      description: RevenueDot app id. Left out for promotional grants.
+                    app_user_id:
+                      type: string
+                      description: The app user id the event is about (a non-anonymous alias when there is one).
+                    original_app_user_id:
+                      type: string
+                      description: The customer's first app user id.
+                    aliases:
+                      type: array
+                      items:
+                        type: string
+                      description: Every app user id of the customer.
+                    environment:
+                      type: string
+                      enum:
+                        - PRODUCTION
+                        - SANDBOX
+                      description: SANDBOX for TestFlight, Xcode and Test Store builds.
+                    store:
+                      type: string
+                      description: "The app's store: APP_STORE, PLAY_STORE, TEST_STORE ..."
+                    paywall_id:
+                      type: string
+                      description: The paywall's id.
+                    paywall_name:
+                      type: string
+                      description: The paywall's name, when it has one.
+                    paywall_revision:
+                      type: integer
+                    offering_id:
+                      type: string
+                    session_id:
+                      type: string
+                      description: One per time the paywall is shown.
+                    display_mode:
+                      type: string
+                      description: full_screen, sheet, condensed_footer ...
+                    dark_mode:
+                      type: boolean
+                    locale:
+                      type: string
+                    source:
+                      type: string
+                    placement_identifier:
+                      type: string
+                    targeting_revision:
+                      type: integer
+                    targeting_rule_id:
+                      type: string
+                    workflow_id:
+                      type: string
+                    exit_offer_type:
+                      type: string
+                      description: "PAYWALL_EXIT_OFFER: `dismiss`."
+                    exit_offering_id:
+                      type: string
+                      description: "PAYWALL_EXIT_OFFER: the offering shown."
+                    package_id:
+                      type: string
+                      description: "PAYWALL_PURCHASE_*: the package."
+                    product_id:
+                      type: string
+                      description: "PAYWALL_PURCHASE_*: the product."
+                    error_code:
+                      type: integer
+                      description: PAYWALL_PURCHASE_ERROR.
+                    error_message:
+                      type: string
+                      description: PAYWALL_PURCHASE_ERROR.
+                    component_type:
+                      type: string
+                      description: "PAYWALL_COMPONENT_INTERACTED: tab, package, purchase_button, sheet ..."
+                    component_name:
+                      type: string
+                    component_value:
+                      type: string
+                    component_url:
+                      type: string
+                    origin_index:
+                      type: integer
+                    destination_index:
+                      type: integer
+                    default_index:
+                      type: integer
+                    origin_context_name:
+                      type: string
+                    destination_context_name:
+                      type: string
+                    origin_package_id:
+                      type: string
+                    destination_package_id:
+                      type: string
+                    default_package_id:
+                      type: string
+                    origin_product_id:
+                      type: string
+                    destination_product_id:
+                      type: string
+                    default_product_id:
+                      type: string
+                    current_package_id:
+                      type: string
+                    resulting_package_id:
+                      type: string
+                    current_product_id:
+                      type: string
+                    resulting_product_id:
+                      type: string
+                    sdk_version:
+                      type: string
+                      description: The customer's last SDK version.
+                    platform_version:
+                      type: string
+                      description: The customer's last OS version.
+                    subscriber_attributes:
+                      type: object
+                      additionalProperties:
+                        type: object
+                        properties:
+                          value:
+                            type:
+                              - string
+                              - "null"
+                          updated_at_ms:
+                            type: integer
+                  required:
+                    - id
+                    - type
+                    - event_timestamp_ms
+                    - environment
+                    - subscriber_attributes
+            example:
+              api_version: "1.0"
+              event:
+                id: 7D3F0B1E-5C2A-5E8B-9A4D-6F1E2C3B4A56
+                type: PAYWALL_PURCHASE_INITIATED
+                event_timestamp_ms: 1790800914034
+                app_id: app1a2b3c4d
+                app_user_id: user_42
+                original_app_user_id: $RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0
+                aliases:
+                  - $RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0
+                  - user_42
+                environment: PRODUCTION
+                store: APP_STORE
+                paywall_id: pw_5k2m8q1x7c3z
+                paywall_name: Spring sale
+                paywall_revision: 3
+                offering_id: default
+                session_id: 0B6E2A4C-8D1F-4E3A-9C7B-5A2D8F1E6C3B
+                display_mode: full_screen
+                dark_mode: false
+                locale: en_US
+                placement_identifier: onboarding
+                package_id: $rc_annual
+                product_id: pro_annual
+                sdk_version: 5.62.0
+                platform_version: "18.5"
+                subscriber_attributes:
+                  $email:
+                    value: wren@example.com
+                    updated_at_ms: 1790800000000
+      responses:
+        "200":
+          description: Only HTTP 200 counts as delivered. Anything else, or no answer within 60 seconds, is retried after 5, 10, 20, 40 and 80 minutes.
+      x-source: services/events.ts
+  PAYWALL_PURCHASE_ERROR:
+    post:
+      operationId: webhookPaywallPurchaseError
+      tags:
+        - Webhook events
+      summary: PAYWALL_PURCHASE_ERROR
+      description: "A purchase started from a paywall failed. A RevenueDot addition: RevenueCat does not forward it. Opt-in: `paywall_purchase_error`."
+      parameters:
+        - name: X-RevenueCat-Webhook-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+          description: "`t=<unix seconds>,v1=<hex HMAC-SHA256 of \"<t>.<raw body>\" with the webhook's signing secret>`. Signed again on every attempt."
+          example: t=1790800914,v1=0a1552334e825926036f7efe21527800ea45caa63eca523c6120c6da9041ef99
+        - name: Authorization
+          in: header
+          required: false
+          schema:
+            type: string
+          description: The webhook's `authorization_header`, verbatim, when you set one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - api_version
+                - event
+              properties:
+                api_version:
+                  type: string
+                  const: "1.0"
+                event:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      description: A UUID derived from the project and the SDK's event id, so a batch the SDK sends again is not delivered twice.
+                    type:
+                      type: string
+                      description: Event type.
+                    event_timestamp_ms:
+                      type: integer
+                      description: When RevenueDot recorded the event. Epoch milliseconds.
+                    app_id:
+                      type: string
+                      description: RevenueDot app id. Left out for promotional grants.
+                    app_user_id:
+                      type: string
+                      description: The app user id the event is about (a non-anonymous alias when there is one).
+                    original_app_user_id:
+                      type: string
+                      description: The customer's first app user id.
+                    aliases:
+                      type: array
+                      items:
+                        type: string
+                      description: Every app user id of the customer.
+                    environment:
+                      type: string
+                      enum:
+                        - PRODUCTION
+                        - SANDBOX
+                      description: SANDBOX for TestFlight, Xcode and Test Store builds.
+                    store:
+                      type: string
+                      description: "The app's store: APP_STORE, PLAY_STORE, TEST_STORE ..."
+                    paywall_id:
+                      type: string
+                      description: The paywall's id.
+                    paywall_name:
+                      type: string
+                      description: The paywall's name, when it has one.
+                    paywall_revision:
+                      type: integer
+                    offering_id:
+                      type: string
+                    session_id:
+                      type: string
+                      description: One per time the paywall is shown.
+                    display_mode:
+                      type: string
+                      description: full_screen, sheet, condensed_footer ...
+                    dark_mode:
+                      type: boolean
+                    locale:
+                      type: string
+                    source:
+                      type: string
+                    placement_identifier:
+                      type: string
+                    targeting_revision:
+                      type: integer
+                    targeting_rule_id:
+                      type: string
+                    workflow_id:
+                      type: string
+                    exit_offer_type:
+                      type: string
+                      description: "PAYWALL_EXIT_OFFER: `dismiss`."
+                    exit_offering_id:
+                      type: string
+                      description: "PAYWALL_EXIT_OFFER: the offering shown."
+                    package_id:
+                      type: string
+                      description: "PAYWALL_PURCHASE_*: the package."
+                    product_id:
+                      type: string
+                      description: "PAYWALL_PURCHASE_*: the product."
+                    error_code:
+                      type: integer
+                      description: PAYWALL_PURCHASE_ERROR.
+                    error_message:
+                      type: string
+                      description: PAYWALL_PURCHASE_ERROR.
+                    component_type:
+                      type: string
+                      description: "PAYWALL_COMPONENT_INTERACTED: tab, package, purchase_button, sheet ..."
+                    component_name:
+                      type: string
+                    component_value:
+                      type: string
+                    component_url:
+                      type: string
+                    origin_index:
+                      type: integer
+                    destination_index:
+                      type: integer
+                    default_index:
+                      type: integer
+                    origin_context_name:
+                      type: string
+                    destination_context_name:
+                      type: string
+                    origin_package_id:
+                      type: string
+                    destination_package_id:
+                      type: string
+                    default_package_id:
+                      type: string
+                    origin_product_id:
+                      type: string
+                    destination_product_id:
+                      type: string
+                    default_product_id:
+                      type: string
+                    current_package_id:
+                      type: string
+                    resulting_package_id:
+                      type: string
+                    current_product_id:
+                      type: string
+                    resulting_product_id:
+                      type: string
+                    sdk_version:
+                      type: string
+                      description: The customer's last SDK version.
+                    platform_version:
+                      type: string
+                      description: The customer's last OS version.
+                    subscriber_attributes:
+                      type: object
+                      additionalProperties:
+                        type: object
+                        properties:
+                          value:
+                            type:
+                              - string
+                              - "null"
+                          updated_at_ms:
+                            type: integer
+                  required:
+                    - id
+                    - type
+                    - event_timestamp_ms
+                    - environment
+                    - subscriber_attributes
+            example:
+              api_version: "1.0"
+              event:
+                id: 7D3F0B1E-5C2A-5E8B-9A4D-6F1E2C3B4A57
+                type: PAYWALL_PURCHASE_ERROR
+                event_timestamp_ms: 1790800914034
+                app_id: app1a2b3c4d
+                app_user_id: user_42
+                original_app_user_id: $RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0
+                aliases:
+                  - $RCAnonymousID:9f8e7d6c5b4a39281706f5e4d3c2b1a0
+                  - user_42
+                environment: PRODUCTION
+                store: APP_STORE
+                paywall_id: pw_5k2m8q1x7c3z
+                paywall_name: Spring sale
+                paywall_revision: 3
+                offering_id: default
+                session_id: 0B6E2A4C-8D1F-4E3A-9C7B-5A2D8F1E6C3B
+                display_mode: full_screen
+                dark_mode: false
+                locale: en_US
+                placement_identifier: onboarding
+                package_id: $rc_annual
+                product_id: pro_annual
+                error_code: 2
+                error_message: The payment was declined.
+                sdk_version: 5.62.0
+                platform_version: "18.5"
+                subscriber_attributes:
+                  $email:
+                    value: wren@example.com
+                    updated_at_ms: 1790800000000
       responses:
         "200":
           description: Only HTTP 200 counts as delivered. Anything else, or no answer within 60 seconds, is retried after 5, 10, 20, 40 and 80 minutes.
