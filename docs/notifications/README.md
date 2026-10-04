@@ -20,7 +20,7 @@ The `notificationType` and `subtype` values in the signed payload that the App S
 - [What does the App Store notification DID_FAIL_TO_RENEW mean?](apple-did-fail-to-renew.md)
 - [What does the App Store notification GRACE_PERIOD_EXPIRED mean?](apple-grace-period-expired.md)
 - [What does the App Store notification DID_CHANGE_RENEWAL_STATUS mean?](apple-did-change-renewal-status.md)
-- [What does the App Store notification DID_CHANGE_RENEWAL_STATUS with subtype AUTO_RENEW_DISABLED mean?](apple-did-change-renewal-status-auto-renew-disabled.md)
+- [What does Apple's AUTO_RENEW_DISABLED notification mean?](apple-did-change-renewal-status-auto-renew-disabled.md)
 - [What does the App Store notification DID_CHANGE_RENEWAL_PREF mean?](apple-did-change-renewal-pref.md)
 - [What does the App Store notification EXPIRED mean?](apple-expired.md)
 - [What does the App Store notification EXPIRED with subtype VOLUNTARY mean?](apple-expired-voluntary.md)

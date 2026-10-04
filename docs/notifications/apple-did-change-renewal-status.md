@@ -57,7 +57,7 @@ RevenueDot verifies Apple's signature, checks the bundle ID, stores the notifica
 
 ## Related
 
-- [What does the App Store notification DID_CHANGE_RENEWAL_STATUS with subtype AUTO_RENEW_DISABLED mean?](apple-did-change-renewal-status-auto-renew-disabled.md)
+- [What does Apple's AUTO_RENEW_DISABLED notification mean?](apple-did-change-renewal-status-auto-renew-disabled.md)
 - [What does the App Store notification EXPIRED mean?](apple-expired.md)
 - [What does the App Store notification DID_CHANGE_RENEWAL_PREF mean?](apple-did-change-renewal-pref.md)
 - [Which webhook events does RevenueDot send?](../../api/webhook-events.md)
