@@ -4350,7 +4350,7 @@ GROUP BY s.customer_id HAVING sum(s.mrr) > 0 ORDER BY s.customer_id;
 # How do I send purchase events to analytics, attribution and marketing tools, and export my data?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md
-Description: Every entry of RevenueCat's integration catalogue (37) plus BigQuery. Connect a tool with its key, and every purchase, trial, renewal and refund is sent with RevenueCat's event names, retried and logged. Exports write CSV or Parquet to S3, R2 or GCS.
+Description: Every entry of RevenueCat's integration catalogue (37) plus BigQuery. Connect a tool with its key, and every purchase, trial, renewal and refund is sent with RevenueCat's event names, retried and logged. Exports write CSV or Parquet to S3, R2, GCS or Azure, or email download links.
 
 RevenueDot has every entry of RevenueCat's integration catalogue, 37 in all ([third-party tools](https://www.revenuecat.com/docs/integrations/third-party-integrations), [attribution](https://www.revenuecat.com/docs/integrations/attribution)), plus BigQuery:
 
@@ -4363,7 +4363,7 @@ RevenueDot has every entry of RevenueCat's integration catalogue, 37 in all ([th
 
 Open **Integrations** in the dashboard, pick the tool, paste its key and click **Connect**. From then on, every event your webhooks would get also goes to that tool: purchases, trials, conversions, renewals, cancellations, refunds, billing issues and more. Event names and reserved attributes match [RevenueCat's integrations](https://www.revenuecat.com/docs/integrations/third-party-integrations/amplitude), so charts and funnels built on `rc_initial_purchase_event` keep working after you switch. Failed sends retry after 5, 10, 20, 40 and 80 minutes, and each integration has a delivery log with the request, the answer and **Retry**.
 
-For your own warehouse, a **scheduled data export** writes CSV or Parquet files of transactions, customers, subscriptions and events to Amazon S3, Cloudflare R2 or Google Cloud Storage every day or week.
+For your own warehouse, a **scheduled data export** writes CSV or Parquet files of transactions, customers, subscriptions, events and paywall events, with the columns you pick, to Amazon S3, Cloudflare R2, Google Cloud Storage or Azure Blob Storage, or emails download links to members of your project. It runs every 4, 6, 8 or 12 hours, every day or every week.
 
 ## How every integration behaves
 - **Which events:** each integration gets the events webhooks get, filtered by environment (production, sandbox or both), app and event type, the same filters as [webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md), with one difference: [paywall event types](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#paywall-events) in the filter are added to the other events and never narrow it. Events a tool never takes (Slack gets no expirations, Meta no cancellations) are not queued.
@@ -4777,9 +4777,11 @@ A ticket sidebar app with the requester's entitlements, subscriptions, refunds a
 1. Create a bucket and credentials:
    - **Amazon S3:** an IAM user with `s3:PutObject` on `arn:aws:s3:::<bucket>/*` and `s3:ListBucket` on `arn:aws:s3:::<bucket>`, and its access key.
    - **Cloudflare R2:** an R2 API token with **Object Read & Write** on the bucket; use its access key ID and secret, and your account ID.
-   - **Google Cloud Storage:** a service account with **Storage Object Creator** and **Storage Legacy Bucket Reader** on the bucket, and its JSON key.
+   - **Google Cloud Storage:** a service account with **Storage Object Creator** and **Storage Legacy Bucket Reader** on the bucket, and either its JSON key or an [HMAC key](https://cloud.google.com/storage/docs/authentication/hmackeys) for it (access ID and secret).
+   - **Azure Blob Storage:** a container, and the storage account's connection string from **Security + networking → Access keys** in the Azure portal. A connection string with a shared access signature works too; it needs write and list on the container.
    - **Other S3-compatible storage** (MinIO and the like): choose Amazon S3 and fill in **Endpoint**.
-2. In RevenueDot, open **Integrations → Scheduled Data Exports → New export**, fill in the bucket and credentials, pick the tables, format and schedule, and click **Create export**.
+   - **Email:** no bucket. Add up to 25 recipients; each must be a member of the project.
+2. In RevenueDot, open **Integrations → Scheduled Data Exports → New export**, fill in the destination and credentials, pick the tables and their columns, the format and the schedule, and click **Create export**.
 3. Click **Check bucket**, then **Run now** for the first export. Later runs follow the schedule.
 
 ```bash
@@ -4790,7 +4792,9 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports" \
 
 - **Files:** `<prefix>/<YYYY-MM-DD>/<table>_<YYYYMMDDTHHMMSSZ>.csv.gz` (or `.csv`, `.parquet`), split into `_part2`, `_part3` ... above 10,000 rows. The date is the end of the window the file covers.
 - **Formats:** CSV (comma-separated, header row, gzip by default, times in UTC as `YYYY-MM-DD HH:MM:SS`) or Parquet (Snappy, typed columns: timestamps, integers, decimals, booleans and JSON).
-- **Schedule:** every day at an hour you pick (UTC), or every week on a day you pick. **Run now** queues one at once.
+- **Schedule:** every 4, 6, 8 or 12 hours counted from an hour you pick (from 03:00 UTC every 6 hours runs at 03:00, 09:00, 15:00 and 21:00), every day at an hour you pick (UTC), or every week on a day you pick. **Run now** queues one at once.
+- **Columns:** each table has a column picker. Leave every box ticked to get every column, including columns added later. A change applies from the next run. `GET /v2/projects/{project_id}/integrations/exports/columns` lists the columns and their types.
+- **Email:** after each run, every recipient gets one email with a download link per file. The links need no sign-in and work for 7 days; then RevenueDot deletes the files. A recipient who leaves the project stops getting the emails. Add an optional subject prefix (up to 200 characters) to filter the emails.
 - **New and changed only** (default): each run exports what changed since the previous successful run of that table. The first run of a table is always complete. A refunded transaction is exported again with `price_in_usd` 0 and `refunded_at` set, so keep the latest row per `store_transaction_id` by `updated_at`. **Everything, every time** writes full tables.
 - **Failures:** a run that hits a temporary error retries after 10 and 30 minutes; files are overwritten, so a retry never duplicates. The run history shows each file, its rows and size, and any error.
 
@@ -4799,6 +4803,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports" \
 - **customers:** `rc_original_app_user_id`, `rc_last_seen_app_user_id_alias`, `aliases`, `first_seen_time`, `last_seen_time`, `platform`, `app_version`, `country`, `sdk_version`, `original_purchase_time`, the two attribute columns, `updated_at`.
 - **subscriptions:** the current state of each subscription: store, product, dates, period type, cancellation, billing issue, refund, price, country, presented offering, `updated_at`.
 - **events:** every event webhooks receive: `event_id`, `type`, `event_time`, `recorded_at`, `environment`, `app_id`, the customer's ids, product, store, price, and `payload` (the webhook body as JSON).
+- **paywall_events:** the paywall events the SDKs send (impressions, closes, cancels, purchases started and failed): `id`, `occurred_at`, `received_at`, `app_id`, `app_user_id`, `customer_id`, `type`, `is_sandbox`, `paywall_id`, `offering_id`, `session_id`, `paywall_revision`, `locale`, `display_mode`, `package_id`, `product_id` and `payload` (the event as JSON). Incremental runs take the events received since the last run, so a late event is still exported once.
 
 ```sql
 -- Monthly revenue from the transactions files, net of refunds.

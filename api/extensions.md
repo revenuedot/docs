@@ -11,7 +11,7 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (289)
+## Operations on this page (291)
 
 - **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects), [Update account settings](#update-account-settings), [Email a password reset link](#email-a-password-reset-link), [Check a password reset link](#check-a-password-reset-link), [Set a new password from a reset link](#set-a-new-password-from-a-reset-link), [Confirm an email address](#confirm-an-email-address), [Send a new confirmation email](#send-a-new-confirmation-email), [Look up an invite](#look-up-an-invite), [Accept an invite](#accept-an-invite)
 - **Account settings**: [Finish a sign-in with a two-factor code](#finish-a-sign-in-with-a-two-factor-code), [Sign out of every session](#sign-out-of-every-session), [Change the account's email](#change-the-accounts-email), [Cancel a waiting email change](#cancel-a-waiting-email-change), [Confirm an email change](#confirm-an-email-change), [Change the password](#change-the-password), [List signed-in sessions](#list-signed-in-sessions), [Sign out one session](#sign-out-one-session), [Sign out every other session](#sign-out-every-other-session), [Start two-factor setup](#start-two-factor-setup), [Turn two-factor authentication on](#turn-two-factor-authentication-on), [Turn two-factor authentication off](#turn-two-factor-authentication-off), [Make new recovery codes](#make-new-recovery-codes), [List OAuth tokens you granted](#list-oauth-tokens-you-granted), [Revoke an OAuth token](#revoke-an-oauth-token), [List connected Stripe accounts](#list-connected-stripe-accounts), [List your projects with role and plan](#list-your-projects-with-role-and-plan), [What deleting the account would do](#what-deleting-the-account-would-do), [Delete the account](#delete-the-account), [Get notification choices](#get-notification-choices), [Open an email's unsubscribe link](#open-an-emails-unsubscribe-link), [Unsubscribe from one email](#unsubscribe-from-one-email), [Choose a project's emails](#choose-a-projects-emails), [The display currency's exchange rate](#the-display-currencys-exchange-rate)
@@ -27,7 +27,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Webhook deliveries**: [Send a TEST event to one webhook](#send-a-test-event-to-one-webhook), [Whether each webhook is enabled](#whether-each-webhook-is-enabled), [Delivery log of a webhook](#delivery-log-of-a-webhook), [One delivery: what was sent and every attempt](#one-delivery-what-was-sent-and-every-attempt), [Retry a delivery now](#retry-a-delivery-now)
 - **Integrations**: [What each integration needs](#what-each-integration-needs), [List integrations](#list-integrations), [Connect an integration](#connect-an-integration), [Get an integration](#get-an-integration), [Update, enable or disable an integration](#update-enable-or-disable-an-integration), [Disconnect an integration](#disconnect-an-integration), [Send a TEST event to one integration](#send-a-test-event-to-one-integration), [Delivery log of an integration](#delivery-log-of-an-integration), [One delivery with every attempt](#one-delivery-with-every-attempt), [Retry a delivery now](#retry-a-delivery-now), [Queue failed or skipped deliveries again](#queue-failed-or-skipped-deliveries-again)
 - **Ads**: [Ads Overview: ad revenue, impressions, eCPM and breakdowns](#ads-overview-ad-revenue-impressions-ecpm-and-breakdowns), [List reward rules in the order they are checked](#list-reward-rules-in-the-order-they-are-checked), [Create a reward rule](#create-a-reward-rule), [Reorder reward rules](#reorder-reward-rules), [Update, turn on or turn off a reward rule](#update-turn-on-or-turn-off-a-reward-rule), [Delete a reward rule](#delete-a-reward-rule), [The rewards ledger](#the-rewards-ledger), [Send a test reward](#send-a-test-reward), [AdMob connection, loaded ad units and the URLs to paste](#admob-connection-loaded-ad-units-and-the-urls-to-paste), [Disconnect AdMob](#disconnect-admob), [Start Google sign-in for AdMob](#start-google-sign-in-for-admob), [Finish Google sign-in for AdMob](#finish-google-sign-in-for-admob), [Load AdMob ad units now](#load-admob-ad-units-now), [Customers and revenue by Apple Search Ads campaign](#customers-and-revenue-by-apple-search-ads-campaign), [Load campaign names from Apple Search Ads](#load-campaign-names-from-apple-search-ads), [AdMob server-side verification callback](#admob-server-side-verification-callback), [Google's redirect after AdMob sign-in](#googles-redirect-after-admob-sign-in)
-- **Data exports**: [List scheduled data exports](#list-scheduled-data-exports), [Create a scheduled data export](#create-a-scheduled-data-export), [Get a data export](#get-a-data-export), [Update a data export](#update-a-data-export), [Delete a data export](#delete-a-data-export), [Run an export now](#run-an-export-now), [Check the bucket and credentials](#check-the-bucket-and-credentials), [Run history](#run-history)
+- **Data exports**: [List scheduled data exports](#list-scheduled-data-exports), [Create a scheduled data export](#create-a-scheduled-data-export), [List export columns](#list-export-columns), [Download a file of an email export](#download-a-file-of-an-email-export), [Get a data export](#get-a-data-export), [Update a data export](#update-a-data-export), [Delete a data export](#delete-a-data-export), [Run an export now](#run-an-export-now), [Check the bucket and credentials](#check-the-bucket-and-credentials), [Run history](#run-history)
 - **Refund Control**: [Get policies and settings](#get-policies-and-settings), [Save settings and the ordered policies](#save-settings-and-the-ordered-policies), [Refund rate, amounts and counts](#refund-rate-amounts-and-counts), [List refund requests, newest first](#list-refund-requests-newest-first)
 - **Retention**: [List Customer Center retention offers](#list-customer-center-retention-offers), [Create a retention offer](#create-a-retention-offer), [Update a retention offer](#update-a-retention-offer), [Delete a retention offer](#delete-a-retention-offer), [Get Apple Retention Messaging settings](#get-apple-retention-messaging-settings), [Save messages, defaults and real-time rules](#save-messages-defaults-and-real-time-rules), [Upload to Apple and register the real-time URL](#upload-to-apple-and-register-the-real-time-url), [Apple's real-time Get Retention Message call](#apples-real-time-get-retention-message-call)
 - **Support**: [List Customer Center tickets, newest first](#list-customer-center-tickets-newest-first), [Get a ticket](#get-a-ticket), [Close or reopen a ticket](#close-or-reopen-a-ticket), [What a help desk sidebar shows about a customer](#what-a-help-desk-sidebar-shows-about-a-customer), [Look customers up by email](#look-customers-up-by-email), [Intercom inbox app: the customer's subscription as Canvas Kit components](#intercom-inbox-app-the-customers-subscription-as-canvas-kit-components)
@@ -5780,7 +5780,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports" -H "Autho
 
 `POST /v2/projects/{project_id}/integrations/exports` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
 
-CSV or Parquet files of transactions, customers, subscriptions and events, written daily or weekly to Amazon S3 (or any S3-compatible storage), Cloudflare R2 or Google Cloud Storage under `<prefix>/<YYYY-MM-DD>/<table>_<YYYYMMDDTHHMMSSZ>.<ext>`. Incremental exports write rows that changed since the previous run; each table's first run is complete.
+CSV or Parquet files of transactions, customers, subscriptions, events and paywall events, written every 4, 6, 8 or 12 hours, daily or weekly to Amazon S3 (or any S3-compatible storage), Cloudflare R2, Google Cloud Storage or Azure Blob Storage under `<prefix>/<YYYY-MM-DD>/<table>_<YYYYMMDDTHHMMSSZ>.<ext>`, or kept by RevenueDot for 7 days and emailed as download links to up to 25 members of the project (destination `email`). `columns` picks each table's columns. Incremental exports write rows that changed since the previous run; each table's first run is complete.
 
 **Path parameters**
 
@@ -5794,24 +5794,30 @@ CSV or Parquet files of transactions, customers, subscriptions and events, writt
 |---|---|---|---|
 | `name` | string | no |  |
 | `enabled` | boolean | no |  |
-| `destination` | `s3`, `r2`, `gcs` | yes |  |
-| `config` | object | yes |  |
+| `destination` | `s3`, `r2`, `gcs`, `azure`, `email` | yes |  |
+| `config` | object | yes | `bucket` is the container for Azure. Email exports have no bucket. |
 | `config.bucket` | string | no |  |
 | `config.prefix` | string or null | no |  |
 | `config.region` | string or null | no | S3 region (default us-east-1). |
 | `config.endpoint` | string or null | no | S3-compatible endpoint (MinIO and the like). |
 | `config.account_id` | string or null | no | Cloudflare account id (R2). |
-| `config.access_key_id` | string or null | no | S3 or R2 access key id. |
+| `config.access_key_id` | string or null | no | S3, R2 or GCS HMAC access key id. |
+| `config.credential_type` | `service_account`, `hmac`, null | no | GCS only: a service account JSON key (default) or an HMAC key. |
+| `config.recipients` | array of string | no | Email only: up to 25 addresses, each a member of the project. |
+| `config.subject_prefix` | string or null | no | Email only: put before the email subject (up to 200 characters). |
 | `credentials` | object | no |  |
 | `credentials.secret_access_key` | string or null | no |  |
 | `credentials.service_account_json` | string or null | no | The service account's JSON key as a string. |
+| `credentials.connection_string` | string or null | no | Azure: the storage account's connection string (account key or shared access signature). |
 | `format` | `csv`, `parquet` | no |  |
 | `compression` | `gzip`, `none` | no |  |
-| `schedule` | `daily`, `weekly` | no |  |
+| `schedule` | `daily`, `weekly`, `interval` | no |  |
 | `hour_utc` | integer | no |  |
 | `weekday` | integer or null | no |  |
+| `interval_hours` | integer or null | no | 4, 6, 8 or 12. |
 | `mode` | `incremental`, `full` | no |  |
-| `tables` | array of `transactions`, `customers`, `subscriptions`, `events` | no |  |
+| `tables` | array of `transactions`, `customers`, `subscriptions`, `events`, `paywall_events` | no |  |
+| `columns` | object | no | Table → the columns to write, in the catalog's order (see List export columns). A table left out, or an empty list, gets every column, columns added later included. |
 | `environment` | `production`, `sandbox`, null | no |  |
 
 **Example request**
@@ -5828,6 +5834,54 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports" -
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### List export columns
+
+`GET /v2/projects/{project_id}/integrations/exports/columns` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read`
+
+Every table an export can write, with its columns and their types, in the order files use. Pick columns per table with `columns`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/columns" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The tables.
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Download a file of an email export
+
+`GET /v2/data-exports/download/{token}` · Auth: none · RevenueDot extension
+
+One file of an email export run, as emailed to the recipients. The token is signed and is the only auth; it and the file last 7 days.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/data-exports/download/$TOKEN"
+```
+
+**Responses**
+
+- **200**: The file (`.csv.gz`, `.csv` or `.parquet`).
+- **404**: The link has expired or is not valid.
 
 ### Get a data export
 
@@ -5870,24 +5924,30 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$EXPORT_ID
 |---|---|---|---|
 | `name` | string | no |  |
 | `enabled` | boolean | no |  |
-| `destination` | `s3`, `r2`, `gcs` | no |  |
-| `config` | object | no |  |
+| `destination` | `s3`, `r2`, `gcs`, `azure`, `email` | no |  |
+| `config` | object | no | `bucket` is the container for Azure. Email exports have no bucket. |
 | `config.bucket` | string | no |  |
 | `config.prefix` | string or null | no |  |
 | `config.region` | string or null | no | S3 region (default us-east-1). |
 | `config.endpoint` | string or null | no | S3-compatible endpoint (MinIO and the like). |
 | `config.account_id` | string or null | no | Cloudflare account id (R2). |
-| `config.access_key_id` | string or null | no | S3 or R2 access key id. |
+| `config.access_key_id` | string or null | no | S3, R2 or GCS HMAC access key id. |
+| `config.credential_type` | `service_account`, `hmac`, null | no | GCS only: a service account JSON key (default) or an HMAC key. |
+| `config.recipients` | array of string | no | Email only: up to 25 addresses, each a member of the project. |
+| `config.subject_prefix` | string or null | no | Email only: put before the email subject (up to 200 characters). |
 | `credentials` | object | no |  |
 | `credentials.secret_access_key` | string or null | no |  |
 | `credentials.service_account_json` | string or null | no | The service account's JSON key as a string. |
+| `credentials.connection_string` | string or null | no | Azure: the storage account's connection string (account key or shared access signature). |
 | `format` | `csv`, `parquet` | no |  |
 | `compression` | `gzip`, `none` | no |  |
-| `schedule` | `daily`, `weekly` | no |  |
+| `schedule` | `daily`, `weekly`, `interval` | no |  |
 | `hour_utc` | integer | no |  |
 | `weekday` | integer or null | no |  |
+| `interval_hours` | integer or null | no | 4, 6, 8 or 12. |
 | `mode` | `incremental`, `full` | no |  |
-| `tables` | array of `transactions`, `customers`, `subscriptions`, `events` | no |  |
+| `tables` | array of `transactions`, `customers`, `subscriptions`, `events`, `paywall_events` | no |  |
+| `columns` | object | no | Table → the columns to write, in the catalog's order (see List export columns). A table left out, or an empty list, gets every column, columns added later included. |
 | `environment` | `production`, `sandbox`, null | no |  |
 
 **Example request**
@@ -5909,7 +5969,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$E
 
 `DELETE /v2/projects/{project_id}/integrations/exports/{export_id}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
 
-Files already written stay in the bucket.
+Files already written stay in the bucket. Files RevenueDot keeps for an email export are deleted.
 
 **Path parameters**
 
@@ -5968,7 +6028,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$E
 
 `POST /v2/projects/{project_id}/integrations/exports/{export_id}/actions/check` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:integrations:read_write`
 
-S3 and R2: HeadBucket. Google Cloud Storage: buckets.get.
+S3, R2 and GCS with an HMAC key: HeadBucket. GCS with a service account: buckets.get. Azure: Get Container Properties. Email: always ok.
 
 **Path parameters**
 
