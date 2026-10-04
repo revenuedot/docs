@@ -35,7 +35,7 @@ const integrationType = obj({
 }, ["object", "type", "name", "fields", "api", "connection"]);
 const integration = obj({
   object: en(["integration"]), id: str(), project_id: str(), type: en(TYPES), name: str(), enabled: bool(), environment: { type: ["string", "null"], enum: ["production", "sandbox", null], description: "Null sends both." },
-  app_id: nstr("Only this app's events; null for all."), event_types: arr(str(), { description: "Lower-case webhook event types; empty for all the integration sends. Opt-in types (`subscriber_alias`, the funnel types and the paywall types) are sent only when named here, and naming them adds them to the other events: they never narrow the filter." }),
+  app_id: nstr("Only this app's events; null for all."), event_types: arr(str(), { description: "Lower-case webhook event types; empty for all the integration sends. Opt-in types (`subscriber_alias`, the funnel types and the paywall types) are sent only when named here. Paywall types add to the other events and never narrow the filter; any other named type narrows it." }),
   settings: { type: "object", additionalProperties: true, description: "The non-secret settings." },
   secrets: { type: "object", additionalProperties: hint, description: "Each secret field: whether it is saved, and its hint. Secrets are never returned." },
   event_names: { type: "object", additionalProperties: str(), description: "Step → event name overrides." },

@@ -19,7 +19,7 @@ Open **Integrations** in the dashboard, pick the tool, paste its key and click *
 For your own warehouse, a **scheduled data export** writes CSV or Parquet files of transactions, customers, subscriptions and events to Amazon S3, Cloudflare R2 or Google Cloud Storage every day or week.
 
 ## How every integration behaves
-- **Which events:** each integration gets the events webhooks get, filtered by environment (production, sandbox or both), app and event type, the same filters as [webhooks](webhooks.md). Events a tool never takes (Slack gets no expirations, Meta no cancellations) are not queued.
+- **Which events:** each integration gets the events webhooks get, filtered by environment (production, sandbox or both), app and event type, the same filters as [webhooks](webhooks.md), with one difference: [paywall event types](#paywall-events) in the filter are added to the other events and never narrow it. Events a tool never takes (Slack gets no expirations, Meta no cancellations) are not queued.
 - **Trials apart from purchases:** an `INITIAL_PURCHASE` with `period_type` `TRIAL` is sent as a trial start, a `RENEWAL` with `is_trial_conversion` as a trial conversion, and a `CANCELLATION` during a trial as a trial cancellation.
 - **Revenue:** US dollars, either what the customer paid (**Gross revenue**) or what is left after the store's commission and taxes (**After store commission and taxes**). Refunds are negative where the tool accepts it.
 - **Keys stay secret:** API keys and tokens are encrypted on the server and never shown again; the dashboard shows their last four characters.
