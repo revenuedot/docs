@@ -1,0 +1,475 @@
+{
+ "set": "play-billing",
+ "pages": [
+  {
+   "slug": "play-billing-service-disconnected",
+   "label": "Play: SERVICE_DISCONNECTED",
+   "title": "What does Play Billing SERVICE_DISCONNECTED (-1) mean?",
+   "description": "SERVICE_DISCONNECTED (-1) means the app lost its connection to the Play Store service. Enable automatic reconnection, check isReady and retry with backoff.",
+   "answer": "Play Billing SERVICE_DISCONNECTED (-1) means the app is not connected to the Google Play Store service through the Billing Library.",
+   "symbol": "`BillingClient.BillingResponseCode.SERVICE_DISCONNECTED` (-1)",
+   "api": "Google Play Billing Library (`BillingResult.responseCode`)",
+   "definition": "The app is not connected to the Play Store service through the Google Play Billing Library.",
+   "causes": [
+    "Google lists two examples: the Play Store was updated in the background while the app ran and the library lost the connection, or `startConnection()` was never called or has not finished yet.",
+    "Google calls the state transient, so the right answer is a reconnect and a retry, not a message that a purchase failed.",
+    "Billing Library 8.0.0 added `enableAutoServiceReconnection()`, which reconnects when you make a call while disconnected."
+   ],
+   "fixes": [
+    "Enable automatic service reconnection when you build the `BillingClient`. Google strongly recommends it from version 8.0.0.",
+    "If you do not use it, check `billingClient.isReady` before every call and call `startConnection()` again after a disconnect.",
+    "If you still get the code after automatic reconnection, retry: simply for actions the person is waiting on, and with exponential backoff for background work.",
+    "Cap the number of retries: Google's own example stops after three attempts, two seconds apart."
+   ],
+   "snippet": {
+    "lang": "kotlin",
+    "check": "none",
+    "code": "import com.android.billingclient.api.BillingClient\nimport com.android.billingclient.api.PendingPurchasesParams\nimport com.android.billingclient.api.PurchasesUpdatedListener\n\n// Let the library reconnect for you; this is Google's recommended fix for SERVICE_DISCONNECTED (Billing Library 8.0.0 or later).\nfun buildClient(context: android.content.Context, listener: PurchasesUpdatedListener): BillingClient =\n    BillingClient.newBuilder(context)\n        .setListener(listener)\n        .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())\n        .enableAutoServiceReconnection()\n        .build()"
+   },
+   "sdk": "The RevenueDot `purchases-android` fork maps `SERVICE_DISCONNECTED` to `PurchasesErrorCode.StoreProblemError` (code 2). The SDK owns the `BillingClient` and reconnects on its own, so your app sees the error only when that fails. See [what storeProblemError means](sdk-store-problem-error.md).",
+   "related": [
+    "play-billing-service-unavailable",
+    "play-billing-error",
+    "sdk-store-problem-error"
+   ],
+   "sources": [
+    {
+     "label": "Google: BillingResponseCode.SERVICE_DISCONNECTED",
+     "url": "https://developer.android.com/reference/com/android/billingclient/api/BillingClient.BillingResponseCode"
+    },
+    {
+     "label": "Google: Handle BillingResult response codes",
+     "url": "https://developer.android.com/google/play/billing/errors"
+    },
+    {
+     "label": "RevenueDot purchases-android: google/errors.kt (how the SDK maps response codes)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "play-billing-service-unavailable",
+   "label": "Play: SERVICE_UNAVAILABLE",
+   "title": "What does Play Billing SERVICE_UNAVAILABLE (2) mean?",
+   "description": "SERVICE_UNAVAILABLE (2) means the Google Play billing service is unavailable right now. It is transient: retry the same call, with backoff in the background.",
+   "answer": "Play Billing SERVICE_UNAVAILABLE (2) means the Google Play billing service is temporarily unavailable.",
+   "symbol": "`BillingClient.BillingResponseCode.SERVICE_UNAVAILABLE` (2)",
+   "api": "Google Play Billing Library (`BillingResult.responseCode`)",
+   "definition": "The service is currently unavailable.",
+   "causes": [
+    "Google says the billing service is currently unavailable; in most cases a network problem between the device and Google Play billing is behind it.",
+    "From Billing Library 6.0.0 the code is no longer returned for network issues. Those now return `NETWORK_ERROR`, and `SERVICE_UNAVAILABLE` also replaces the deprecated `SERVICE_TIMEOUT`.",
+    "Unlike `SERVICE_DISCONNECTED`, the connection is still up, so only the operation needs a retry."
+   ],
+   "fixes": [
+    "Retry the same call. For something the person is waiting on, use a simple retry with a maximum number of attempts.",
+    "For background work such as acknowledging a purchase, retry with exponential backoff.",
+    "Do not call `startConnection()` again; the connection is not severed.",
+    "Keep the number of retries small while the person waits, and then show a message with a Try again button."
+   ],
+   "snippet": {
+    "lang": "kotlin",
+    "check": "none",
+    "code": "import com.android.billingclient.api.BillingClient\nimport com.android.billingclient.api.BillingResult\nimport kotlinx.coroutines.delay\n\n// Retry the same call: the connection is fine, the service was briefly unavailable (Google's guidance for code 2).\nsuspend fun <T> retryOnUnavailable(maxTries: Int = 3, call: suspend () -> Pair<BillingResult, T>): Pair<BillingResult, T> {\n    var delayMs = 2_000L\n    var result = call()\n    var tries = 1\n    while (result.first.responseCode == BillingClient.BillingResponseCode.SERVICE_UNAVAILABLE && tries < maxTries) {\n        delay(delayMs)\n        delayMs *= 2 // exponential backoff, for work the person is not waiting on\n        result = call()\n        tries++\n    }\n    return result\n}"
+   },
+   "sdk": "The RevenueDot `purchases-android` fork maps `SERVICE_UNAVAILABLE` to `PurchasesErrorCode.StoreProblemError` (code 2). Retrying once is reasonable. See [what storeProblemError means](sdk-store-problem-error.md).",
+   "related": [
+    "play-billing-service-disconnected",
+    "play-billing-network-error",
+    "sdk-store-problem-error"
+   ],
+   "sources": [
+    {
+     "label": "Google: BillingResponseCode.SERVICE_UNAVAILABLE",
+     "url": "https://developer.android.com/reference/com/android/billingclient/api/BillingClient.BillingResponseCode"
+    },
+    {
+     "label": "Google: Handle BillingResult response codes",
+     "url": "https://developer.android.com/google/play/billing/errors"
+    },
+    {
+     "label": "RevenueDot purchases-android: google/errors.kt (how the SDK maps response codes)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "play-billing-billing-unavailable",
+   "label": "Play: BILLING_UNAVAILABLE",
+   "title": "What does Play Billing BILLING_UNAVAILABLE (3) mean?",
+   "description": "BILLING_UNAVAILABLE (3) means Google Play cannot bill this user: an old Play Store, an unsupported country, a blocked account or a declined payment method.",
+   "answer": "Play Billing BILLING_UNAVAILABLE (3) means a billing problem on the user's side stopped the purchase.",
+   "symbol": "`BillingClient.BillingResponseCode.BILLING_UNAVAILABLE` (3)",
+   "api": "Google Play Billing Library (`BillingResult.responseCode`)",
+   "definition": "A user billing error occurred during processing.",
+   "causes": [
+    "Google lists these examples: the Play Store app on the device is out of date, the user is in an unsupported country, an enterprise administrator has turned purchases off, or Google Play cannot charge the user's payment method (for example an expired card).",
+    "Google also names a Play Store that the system blocks, for instance in an OEM kids mode, where the `BillingResult` debug message says the Play Store is blocked.",
+    "These are conditions on the device or the account, so an automatic retry does not fix them."
+   ],
+   "fixes": [
+    "Do not retry automatically. A manual retry works only after the user fixes the condition, for example by updating the Play Store.",
+    "Show a short message and a **Try again** button; Google notes the user probably saw the reason in the Play purchase screen.",
+    "Read `debugMessage` and log it, because it can name the cause, such as a blocked Play Store.",
+    "Do not unlock content."
+   ],
+   "snippet": {
+    "lang": "kotlin",
+    "check": "none",
+    "code": "import com.android.billingclient.api.BillingClient\nimport com.android.billingclient.api.BillingResult\n\n// No automatic retry: tell the person, and let them try again after they fix the account or update the Play Store.\nfun onPurchaseResult(result: BillingResult, showMessage: (String) -> Unit) {\n    if (result.responseCode == BillingClient.BillingResponseCode.BILLING_UNAVAILABLE) {\n        println(\"BILLING_UNAVAILABLE: ${result.debugMessage}\")\n        showMessage(\"Google Play cannot complete purchases right now. Check the Play Store and your payment method, then try again.\")\n    }\n}"
+   },
+   "sdk": "The RevenueDot `purchases-android` fork maps `BILLING_UNAVAILABLE` to `PurchasesErrorCode.PurchaseNotAllowedError` (code 3), the same code as `ITEM_NOT_OWNED` and `FEATURE_NOT_SUPPORTED`. See [what purchaseNotAllowedError means](sdk-purchase-not-allowed-error.md).",
+   "related": [
+    "storekit-purchase-error-purchase-not-allowed",
+    "sdk-purchase-not-allowed-error",
+    "play-billing-item-unavailable"
+   ],
+   "sources": [
+    {
+     "label": "Google: BillingResponseCode.BILLING_UNAVAILABLE",
+     "url": "https://developer.android.com/reference/com/android/billingclient/api/BillingClient.BillingResponseCode"
+    },
+    {
+     "label": "Google: Handle BillingResult response codes",
+     "url": "https://developer.android.com/google/play/billing/errors"
+    },
+    {
+     "label": "RevenueDot purchases-android: google/errors.kt (how the SDK maps response codes)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "play-billing-item-unavailable",
+   "label": "Play: ITEM_UNAVAILABLE",
+   "title": "What does Play Billing ITEM_UNAVAILABLE (4) mean?",
+   "description": "ITEM_UNAVAILABLE (4) means the product cannot be bought by this user. Check that it is active, the app is published and the product is sold in the user's country.",
+   "answer": "Play Billing ITEM_UNAVAILABLE (4) means the product you asked to buy is not available for purchase for this user.",
+   "symbol": "`BillingClient.BillingResponseCode.ITEM_UNAVAILABLE` (4)",
+   "api": "Google Play Billing Library (`BillingResult.responseCode`)",
+   "definition": "The requested product is not available for purchase.",
+   "causes": [
+    "Google says a product must be active, its app must be published and its app must be available in the user's country to be sold.",
+    "A product that is configured for another region than the user's returns this code. Google also says a change of country availability can take time to spread, so the code can appear after a correct change.",
+    "During testing, a correct configuration can still return it for a while because product details take time to propagate across Google's servers."
+   ],
+   "fixes": [
+    "Refresh product details with `queryProductDetailsAsync` and only sell products that it returns.",
+    "Check the product's state, the app's publishing state and the product's country availability in Play Console.",
+    "If you changed availability recently, wait and try again later.",
+    "Hide the buy button for a product that did not come back from `queryProductDetailsAsync`."
+   ],
+   "snippet": {
+    "lang": "kotlin",
+    "check": "none",
+    "code": "import com.android.billingclient.api.BillingClient\nimport com.android.billingclient.api.BillingResult\n\n// ITEM_UNAVAILABLE is a catalog problem: log the product ID and hide the button instead of retrying.\nfun onPurchaseResult(result: BillingResult, productId: String, hideProduct: (String) -> Unit) {\n    if (result.responseCode == BillingClient.BillingResponseCode.ITEM_UNAVAILABLE) {\n        println(\"ITEM_UNAVAILABLE for $productId: check it is active, the app is published and the country is allowed\")\n        hideProduct(productId)\n    }\n}"
+   },
+   "sdk": "The RevenueDot `purchases-android` fork maps `ITEM_UNAVAILABLE` to `PurchasesErrorCode.ProductNotAvailableForPurchaseError` (code 5). In RevenueDot, the product's store identifier must equal the Play product ID. See [what productNotAvailableForPurchaseError means](sdk-product-not-available-for-purchase-error.md).",
+   "related": [
+    "sdk-product-not-available-for-purchase-error",
+    "storekit-purchase-error-product-unavailable",
+    "play-billing-developer-error"
+   ],
+   "sources": [
+    {
+     "label": "Google: BillingResponseCode.ITEM_UNAVAILABLE",
+     "url": "https://developer.android.com/reference/com/android/billingclient/api/BillingClient.BillingResponseCode"
+    },
+    {
+     "label": "Google: Handle BillingResult response codes",
+     "url": "https://developer.android.com/google/play/billing/errors"
+    },
+    {
+     "label": "RevenueDot purchases-android: google/errors.kt (how the SDK maps response codes)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "play-billing-developer-error",
+   "label": "Play: DEVELOPER_ERROR",
+   "title": "What does Play Billing DEVELOPER_ERROR (5) mean?",
+   "description": "DEVELOPER_ERROR (5) means the app used the Play Billing API wrongly: bad arguments, an unsigned app or missing permissions. Read the debug message and fix the call.",
+   "answer": "Play Billing DEVELOPER_ERROR (5) means the app called the Play Billing API incorrectly.",
+   "symbol": "`BillingClient.BillingResponseCode.DEVELOPER_ERROR` (5)",
+   "api": "Google Play Billing Library (`BillingResult.responseCode`)",
+   "definition": "The error comes from incorrect use of the API.",
+   "causes": [
+    "Google's examples: invalid arguments such as an empty product list where one is required, or a misconfigured app, such as one that is not signed or lacks the permissions it needs in its manifest.",
+    "Google also says that wrong parameters passed to `launchBillingFlow` can cause it, and that the debug message gives more detail.",
+    "It is a fatal error for that call, so a retry with the same arguments fails again."
+   ],
+   "fixes": [
+    "Read `billingResult.debugMessage` and log it first; it usually names the problem.",
+    "Check the arguments of the failing call: a non-empty product list, product details from the same `BillingClient`, valid billing flow params.",
+    "Install a signed build: Google names an app that is not signed as one cause.",
+    "Check that the manifest has the permissions Google's integration guide requires, then rebuild."
+   ],
+   "snippet": {
+    "lang": "kotlin",
+    "check": "none",
+    "code": "import com.android.billingclient.api.BillingClient\nimport com.android.billingclient.api.BillingResult\n\n// DEVELOPER_ERROR is a bug in how the app calls the API: the debug message is the fastest clue.\nfun onBillingResult(result: BillingResult) {\n    if (result.responseCode == BillingClient.BillingResponseCode.DEVELOPER_ERROR) {\n        println(\"DEVELOPER_ERROR: ${result.debugMessage}\")\n    }\n}"
+   },
+   "sdk": "The RevenueDot `purchases-android` fork maps `DEVELOPER_ERROR` to `PurchasesErrorCode.PurchaseInvalidError` (code 4). See [what purchaseInvalidError means](sdk-purchase-invalid-error.md).",
+   "related": [
+    "sdk-purchase-invalid-error",
+    "play-billing-item-unavailable",
+    "sdk-configuration-error"
+   ],
+   "sources": [
+    {
+     "label": "Google: BillingResponseCode.DEVELOPER_ERROR",
+     "url": "https://developer.android.com/reference/com/android/billingclient/api/BillingClient.BillingResponseCode"
+    },
+    {
+     "label": "Google: Handle BillingResult response codes",
+     "url": "https://developer.android.com/google/play/billing/errors"
+    },
+    {
+     "label": "RevenueDot purchases-android: google/errors.kt (how the SDK maps response codes)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "play-billing-error",
+   "label": "Play: ERROR",
+   "title": "What does Play Billing ERROR (6) mean?",
+   "description": "ERROR (6) means Google Play failed internally during a billing call. It can be transient: retry with exponential backoff, and contact Google Play if it persists.",
+   "answer": "Play Billing ERROR (6) means a fatal error inside Google Play during the billing call.",
+   "symbol": "`BillingClient.BillingResponseCode.ERROR` (6)",
+   "api": "Google Play Billing Library (`BillingResult.responseCode`)",
+   "definition": "A fatal error occurred during the API action.",
+   "causes": [
+    "Google describes it as an internal Google Play error that may be transient or caused by an unexpected condition during processing.",
+    "The code does not say which call or condition failed, so the debug message and your own logs are the only detail.",
+    "It is not caused by your arguments (that is `DEVELOPER_ERROR`) or by the network (that is `NETWORK_ERROR`)."
+   ],
+   "fixes": [
+    "Retry with exponential backoff for background work; use a simple retry when the person is waiting.",
+    "Mind how long you retry during a user interaction, as Google advises.",
+    "Log the response code, debug message and Play Store version so you can report a persistent case.",
+    "Contact Google Play support if the error keeps coming back."
+   ],
+   "snippet": {
+    "lang": "kotlin",
+    "check": "none",
+    "code": "import com.android.billingclient.api.BillingClient\nimport com.android.billingclient.api.BillingResult\nimport kotlinx.coroutines.delay\n\n// Google: ERROR may be transient, so back off and retry a few times, then give up and report it.\nsuspend fun acknowledgeWithRetry(acknowledge: suspend () -> BillingResult): BillingResult {\n    var wait = 2_000L\n    var result = acknowledge()\n    repeat(2) {\n        if (result.responseCode != BillingClient.BillingResponseCode.ERROR) return result\n        delay(wait)\n        wait *= 2\n        result = acknowledge()\n    }\n    return result\n}"
+   },
+   "sdk": "The RevenueDot `purchases-android` fork maps `ERROR` to `PurchasesErrorCode.StoreProblemError` (code 2). See [what storeProblemError means](sdk-store-problem-error.md).",
+   "related": [
+    "play-billing-service-unavailable",
+    "play-billing-service-disconnected",
+    "sdk-store-problem-error"
+   ],
+   "sources": [
+    {
+     "label": "Google: BillingResponseCode.ERROR",
+     "url": "https://developer.android.com/reference/com/android/billingclient/api/BillingClient.BillingResponseCode"
+    },
+    {
+     "label": "Google: Handle BillingResult response codes",
+     "url": "https://developer.android.com/google/play/billing/errors"
+    },
+    {
+     "label": "RevenueDot purchases-android: google/errors.kt (how the SDK maps response codes)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "play-billing-item-already-owned",
+   "label": "Play: ITEM_ALREADY_OWNED",
+   "title": "What does Play Billing ITEM_ALREADY_OWNED (7) mean?",
+   "description": "ITEM_ALREADY_OWNED (7) means the user already owns the product. Query purchases, grant what they own and do not offer the product again.",
+   "answer": "Play Billing ITEM_ALREADY_OWNED (7) means the user already owns the subscription or one-time product they tried to buy.",
+   "symbol": "`BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED` (7)",
+   "api": "Google Play Billing Library (`BillingResult.responseCode`)",
+   "definition": "The purchase failed because the item is already owned.",
+   "causes": [
+    "Google says the Google Play user already owns the product. In most cases this is not transient, except when stale purchase data cached by Play causes it.",
+    "A stale cache is refreshed when you receive the error, so a retry after the refresh can succeed.",
+    "Your app offered a product the user owns because it did not check what the user already has."
+   ],
+   "fixes": [
+    "Call `queryPurchasesAsync()` after the error to see what the user owns, and process those purchases (grant access, acknowledge or consume).",
+    "If the user does not own the product after that, retry the purchase once; the cache has been updated.",
+    "Prevent it: check the user's entitlements when you list products, and do not offer products the user already owns.",
+    "Tell the person \"You already have this\" instead of showing a failure."
+   ],
+   "snippet": {
+    "lang": "kotlin",
+    "check": "none",
+    "code": "import com.android.billingclient.api.BillingClient\nimport com.android.billingclient.api.BillingResult\nimport com.android.billingclient.api.QueryPurchasesParams\n\n// Treat ITEM_ALREADY_OWNED as good news: fetch what the user owns and grant it (Google's recommended fix).\nfun onPurchaseResult(client: BillingClient, result: BillingResult) {\n    if (result.responseCode == BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED) {\n        val params = QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.SUBS).build()\n        client.queryPurchasesAsync(params) { queryResult, purchases ->\n            if (queryResult.responseCode == BillingClient.BillingResponseCode.OK) {\n                purchases.forEach { println(\"Already owned: ${it.products}\") }\n            }\n        }\n    }\n}"
+   },
+   "sdk": "The RevenueDot `purchases-android` fork maps `ITEM_ALREADY_OWNED` to `PurchasesErrorCode.ProductAlreadyPurchasedError` (code 6). Call `restorePurchases()` or `getCustomerInfo()` to give the customer the entitlement they already paid for. See [what productAlreadyPurchasedError means](sdk-product-already-purchased-error.md).",
+   "related": [
+    "play-billing-item-not-owned",
+    "sdk-product-already-purchased-error",
+    "play-billing-billing-unavailable"
+   ],
+   "sources": [
+    {
+     "label": "Google: BillingResponseCode.ITEM_ALREADY_OWNED",
+     "url": "https://developer.android.com/reference/com/android/billingclient/api/BillingClient.BillingResponseCode"
+    },
+    {
+     "label": "Google: Handle BillingResult response codes",
+     "url": "https://developer.android.com/google/play/billing/errors"
+    },
+    {
+     "label": "RevenueDot purchases-android: google/errors.kt (how the SDK maps response codes)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "play-billing-item-not-owned",
+   "label": "Play: ITEM_NOT_OWNED",
+   "title": "What does Play Billing ITEM_NOT_OWNED (8) mean?",
+   "description": "ITEM_NOT_OWNED (8) means the user does not own the product you tried to replace, acknowledge or consume. Query purchases first and reconcile.",
+   "answer": "Play Billing ITEM_NOT_OWNED (8) means the action failed because the user does not own the item it targeted.",
+   "symbol": "`BillingClient.BillingResponseCode.ITEM_NOT_OWNED` (8)",
+   "api": "Google Play Billing Library (`BillingResult.responseCode`)",
+   "definition": "The requested action on the item failed because the user does not own it.",
+   "causes": [
+    "Google says the user does not own the subscription or one-time product they tried to replace, acknowledge or consume. It is not transient in most cases, except when Google Play's cache is stale.",
+    "A stale cache is refreshed when the error is received, so the data is correct on the next call.",
+    "Google's own example: you try to consume an item and the updated purchase data says it is already consumed, so the error can be ignored."
+   ],
+   "fixes": [
+    "Call `queryPurchasesAsync()` after the error to get the current purchases.",
+    "If the updated purchase list shows the item is already consumed, ignore the error. If the user owns it, redo the action.",
+    "If the user does not own it at all, stop the action; do not grant access.",
+    "Make acknowledge and consume calls idempotent, keyed by the purchase token."
+   ],
+   "snippet": {
+    "lang": "kotlin",
+    "check": "none",
+    "code": "import com.android.billingclient.api.BillingClient\nimport com.android.billingclient.api.BillingResult\nimport com.android.billingclient.api.QueryPurchasesParams\n\n// After ITEM_NOT_OWNED, trust the fresh purchase list, not the purchase you held: it may already be consumed.\nfun onAcknowledgeResult(client: BillingClient, result: BillingResult) {\n    if (result.responseCode == BillingClient.BillingResponseCode.ITEM_NOT_OWNED) {\n        val params = QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build()\n        client.queryPurchasesAsync(params) { _, purchases ->\n            println(\"The user currently owns ${purchases.size} one-time products\")\n        }\n    }\n}"
+   },
+   "sdk": "The RevenueDot `purchases-android` fork maps `ITEM_NOT_OWNED` to `PurchasesErrorCode.PurchaseNotAllowedError` (code 3). See [what purchaseNotAllowedError means](sdk-purchase-not-allowed-error.md).",
+   "related": [
+    "play-billing-item-already-owned",
+    "sdk-purchase-not-allowed-error",
+    "play-billing-developer-error"
+   ],
+   "sources": [
+    {
+     "label": "Google: BillingResponseCode.ITEM_NOT_OWNED",
+     "url": "https://developer.android.com/reference/com/android/billingclient/api/BillingClient.BillingResponseCode"
+    },
+    {
+     "label": "Google: Handle BillingResult response codes",
+     "url": "https://developer.android.com/google/play/billing/errors"
+    },
+    {
+     "label": "RevenueDot purchases-android: google/errors.kt (how the SDK maps response codes)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "play-billing-network-error",
+   "label": "Play: NETWORK_ERROR",
+   "title": "What does Play Billing NETWORK_ERROR (12) mean?",
+   "description": "NETWORK_ERROR (12) means the device could not reach Google Play. Retry once the connection returns, with backoff for background calls. Billing Library 6 and later.",
+   "answer": "Play Billing NETWORK_ERROR (12) means a network problem stopped the device from reaching Google Play.",
+   "symbol": "`BillingClient.BillingResponseCode.NETWORK_ERROR` (12)",
+   "api": "Google Play Billing Library (`BillingResult.responseCode`)",
+   "definition": "A network error occurred during the operation.",
+   "causes": [
+    "Google says there was a problem with the network connection between the device and Play systems, which can also mean the user has no active connection.",
+    "The code is returned only by Billing Library 6 and later. Earlier versions returned `SERVICE_UNAVAILABLE` for network problems.",
+    "It comes from the connection, not from your product setup or your API arguments."
+   ],
+   "fixes": [
+    "Retry with a simple retry when the person is waiting, or exponential backoff for background calls such as acknowledging a purchase.",
+    "Show \"Check your connection and try again\" and keep the screen usable with cached data.",
+    "Do not unlock content from this error; unlock from a purchase the Play Store reports as purchased.",
+    "Update to Billing Library 6 or later if you still see `SERVICE_UNAVAILABLE` for network problems."
+   ],
+   "snippet": {
+    "lang": "kotlin",
+    "check": "none",
+    "code": "import com.android.billingclient.api.BillingClient\nimport com.android.billingclient.api.BillingResult\n\n// A dropped connection is retryable: ask the person to try again instead of showing a failure.\nfun onBillingResult(result: BillingResult, showMessage: (String) -> Unit) {\n    if (result.responseCode == BillingClient.BillingResponseCode.NETWORK_ERROR) {\n        showMessage(\"Check your connection and try again.\")\n    }\n}"
+   },
+   "sdk": "The RevenueDot `purchases-android` fork maps `NETWORK_ERROR` to `PurchasesErrorCode.NetworkError` (code 10). See [what networkError means](sdk-network-error.md).",
+   "related": [
+    "sdk-network-error",
+    "storekit-error-network-error",
+    "play-billing-service-unavailable"
+   ],
+   "sources": [
+    {
+     "label": "Google: BillingResponseCode.NETWORK_ERROR",
+     "url": "https://developer.android.com/reference/com/android/billingclient/api/BillingClient.BillingResponseCode"
+    },
+    {
+     "label": "Google: Handle BillingResult response codes",
+     "url": "https://developer.android.com/google/play/billing/errors"
+    },
+    {
+     "label": "RevenueDot purchases-android: google/errors.kt (how the SDK maps response codes)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt"
+    }
+   ],
+   "checked": "2026-10-03"
+  },
+  {
+   "slug": "play-billing-user-canceled",
+   "label": "Play: USER_CANCELED",
+   "title": "What does Play Billing USER_CANCELED (1) mean?",
+   "description": "USER_CANCELED (1) means the user left the Play billing screen without buying. It is not an error: show nothing and keep the paywall open.",
+   "answer": "Play Billing USER_CANCELED (1) means the user closed the billing flow before finishing the purchase.",
+   "symbol": "`BillingClient.BillingResponseCode.USER_CANCELED` (1)",
+   "api": "Google Play Billing Library (`BillingResult.responseCode`)",
+   "definition": "The transaction was canceled by the user.",
+   "causes": [
+    "Google lists it as a response that does not indicate an error: for actions that show a Play Store screen, it means the user left that screen without finishing.",
+    "Nothing was bought and nothing is broken; the person made a choice.",
+    "Google calls it informational and says the app can fail gracefully."
+   ],
+   "fixes": [
+    "Do not show an error dialog.",
+    "Leave the paywall open with its products loaded so the person can choose again.",
+    "Count cancels apart from failures in analytics.",
+    "Do not retry for the person and do not unlock anything."
+   ],
+   "snippet": {
+    "lang": "kotlin",
+    "check": "none",
+    "code": "import com.android.billingclient.api.BillingClient\nimport com.android.billingclient.api.BillingResult\n\n// A cancel is the person's choice: no dialog, no retry. Log it at info level so real failures stay visible.\nfun onPurchasesUpdated(result: BillingResult) {\n    when (result.responseCode) {\n        BillingClient.BillingResponseCode.USER_CANCELED -> println(\"Purchase cancelled by the user\")\n        BillingClient.BillingResponseCode.OK -> println(\"Purchase flow finished\")\n        else -> println(\"Billing result ${result.responseCode}: ${result.debugMessage}\")\n    }\n}"
+   },
+   "sdk": "The RevenueDot `purchases-android` fork maps `USER_CANCELED` to `PurchasesErrorCode.PurchaseCancelledError` (code 1) and sets the `userCancelled` flag in the purchase callback. See [what purchaseCancelledError means](sdk-purchase-cancelled-error.md).",
+   "related": [
+    "sdk-purchase-cancelled-error",
+    "storekit-error-user-cancelled",
+    "play-billing-item-already-owned"
+   ],
+   "sources": [
+    {
+     "label": "Google: BillingResponseCode.USER_CANCELED",
+     "url": "https://developer.android.com/reference/com/android/billingclient/api/BillingClient.BillingResponseCode"
+    },
+    {
+     "label": "Google: Handle BillingResult response codes",
+     "url": "https://developer.android.com/google/play/billing/errors"
+    },
+    {
+     "label": "RevenueDot purchases-android: google/errors.kt (how the SDK maps response codes)",
+     "url": "https://github.com/revenuedot/purchases-android/blob/revenuedot/main-patches/purchases/src/main/kotlin/com/revenuecat/purchases/google/errors.kt"
+    }
+   ],
+   "checked": "2026-10-03"
+  }
+ ]
+}

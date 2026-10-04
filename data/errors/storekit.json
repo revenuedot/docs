@@ -1,0 +1,754 @@
+{
+ "set": "storekit",
+ "pages": [
+  {
+   "slug": "storekit-error-not-available-in-storefront",
+   "label": "StoreKit: notAvailableInStorefront",
+   "title": "What does StoreKitError.notAvailableInStorefront mean?",
+   "description": "StoreKitError.notAvailableInStorefront means a StoreKit 2 call is not available on a device whose App Store storefront does not support it. Causes, fix and a Swift example.",
+   "answer": "StoreKitError.notAvailableInStorefront means StoreKit 2 refused a function because the device's App Store storefront does not support it.",
+   "symbol": "`StoreKitError.notAvailableInStorefront`",
+   "api": "StoreKit 2, Swift (`StoreKitError`)",
+   "definition": "The function is not available on devices configured for this storefront.",
+   "causes": [
+    "The device's App Store country or region (its storefront) is one where the requested function is not offered. Apple documents the case in one line and does not publish a list of the calls or storefronts that trigger it.",
+    "In-app products you create in App Store Connect are sold per region, and Apple says you keep your own list of product identifiers and the storefronts where you want them available ([Storefront](https://developer.apple.com/documentation/storekit/storefront)).",
+    "In the sandbox, changing the App Store Country or Region of a Sandbox Apple Account changes the storefront your app sees, so a tester can hit this error after a region change ([Storefront](https://developer.apple.com/documentation/storekit/storefront))."
+   ],
+   "fixes": [
+    "Read the storefront with `Storefront.current` and log its `countryCode` next to the error, so you know which region failed.",
+    "Check in App Store Connect that the product's availability includes that region, and check the app's own availability too.",
+    "Do not retry in a loop. The same call fails the same way until the storefront or the availability changes. Hide the product or show a short \"not available in your region\" message instead.",
+    "To reproduce it, change the region of a Sandbox Apple Account and run the same call again."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift",
+    "code": "import StoreKit\n\n// Load products, and explain a storefront problem instead of retrying: the same call keeps failing in that region.\nfunc loadProducts(ids: [String]) async -> [Product] {\n    do {\n        return try await Product.products(for: ids)\n    } catch StoreKitError.notAvailableInStorefront {\n        // Log the region so support can tell a storefront problem from a network problem.\n        let region = await Storefront.current?.countryCode ?? \"unknown\"\n        print(\"StoreKit says this function is not available in storefront \\(region)\")\n        return []\n    } catch {\n        print(\"Could not load products: \\(error)\")\n        return []\n    }\n}"
+   },
+   "sdk": "The RevenueDot `purchases-ios` fork converts `StoreKitError.notAvailableInStorefront` into `ErrorCode.productNotAvailableForPurchaseError` (code 5), the same mapping as the RevenueCat SDK it forks. On Android, Play Billing's `ITEM_UNAVAILABLE` maps to the same code. Read [what productNotAvailableForPurchaseError means](sdk-product-not-available-for-purchase-error.md) for the SDK side.",
+   "related": [
+    "sdk-product-not-available-for-purchase-error",
+    "storekit-purchase-error-product-unavailable",
+    "play-billing-item-unavailable"
+   ],
+   "sources": [
+    {
+     "label": "Apple: StoreKitError.notAvailableInStorefront",
+     "url": "https://developer.apple.com/documentation/storekit/storekiterror/notavailableinstorefront"
+    },
+    {
+     "label": "Apple: Storefront",
+     "url": "https://developer.apple.com/documentation/storekit/storefront"
+    },
+    {
+     "label": "RevenueDot purchases-ios: StoreKitError+Extensions.swift (how the SDK maps StoreKit 2 errors)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift"
+    }
+   ],
+   "checked": "2026-10-03",
+   "since": "iOS 15.0, iPadOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, visionOS 1.0"
+  },
+  {
+   "slug": "storekit-error-network-error",
+   "label": "StoreKit: networkError",
+   "title": "What does StoreKitError.networkError mean?",
+   "description": "StoreKitError.networkError wraps the URLError behind a failed StoreKit 2 request. Read the URLError code, retry once the connection returns, and see how the SDK maps it.",
+   "answer": "StoreKitError.networkError means a StoreKit 2 request could not finish because of a network problem, and it carries the underlying `URLError`.",
+   "symbol": "`StoreKitError.networkError(URLError)`",
+   "api": "StoreKit 2, Swift (`StoreKitError`)",
+   "definition": "A network error occurred.",
+   "causes": [
+    "A StoreKit 2 request to the App Store failed at the network layer. The case carries a `URLError`, so the real reason (offline, timeout, lost connection) is in its `code`.",
+    "Apple's documentation for the case is one line. The reason is not in the case name; it is in the associated `URLError`.",
+    "The error comes from the device or its connection, not from your app's product configuration."
+   ],
+   "fixes": [
+    "Read `urlError.code` first. `.notConnectedToInternet` means the device is offline; `.timedOut` and `.networkConnectionLost` are usually temporary.",
+    "Retry the action after a short pause, or when the connection returns. Do not retry in a tight loop.",
+    "Show a message such as \"Check your connection and try again\" and keep the paywall open.",
+    "Do not unlock content because of this error. Unlock from verified transactions only."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift",
+    "code": "import StoreKit\n\n// A purchase that fails on the network is safe to offer again: nothing was bought.\nfunc buy(_ product: Product) async {\n    do {\n        let result = try await product.purchase()\n        print(\"Purchase result: \\(result)\")\n    } catch StoreKitError.networkError(let urlError) {\n        // The URLError code says why: offline, timeout, lost connection.\n        print(\"Network problem (\\(urlError.code.rawValue)); ask the person to try again\")\n    } catch {\n        print(\"Purchase failed: \\(error)\")\n    }\n}"
+   },
+   "sdk": "The RevenueDot `purchases-ios` fork maps `StoreKitError.networkError` to `ErrorCode.networkError` (code 10) and passes the `URLError` along as the underlying error. A device that is offline surfaces as `offlineConnectionError` (code 35) when the SDK's own request fails the same way. See [what networkError means in the SDK](sdk-network-error.md).",
+   "related": [
+    "sdk-network-error",
+    "sdk-offline-connection-error",
+    "play-billing-network-error"
+   ],
+   "sources": [
+    {
+     "label": "Apple: StoreKitError.networkError(_:)",
+     "url": "https://developer.apple.com/documentation/storekit/storekiterror/networkerror%28_:%29"
+    },
+    {
+     "label": "Apple: URLError",
+     "url": "https://developer.apple.com/documentation/foundation/urlerror"
+    },
+    {
+     "label": "RevenueDot purchases-ios: StoreKitError+Extensions.swift (how the SDK maps StoreKit 2 errors)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift"
+    }
+   ],
+   "checked": "2026-10-03",
+   "since": "iOS 15.0, iPadOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, visionOS 1.0"
+  },
+  {
+   "slug": "storekit-error-system-error",
+   "label": "StoreKit: systemError",
+   "title": "What does StoreKitError.systemError mean?",
+   "description": "StoreKitError.systemError means the system failed a StoreKit 2 call, and it wraps the underlying error. How to read it, what to retry and how the SDK maps it.",
+   "answer": "StoreKitError.systemError means the operating system reported a failure during a StoreKit 2 call and passes the underlying error along.",
+   "symbol": "`StoreKitError.systemError(Error)`",
+   "api": "StoreKit 2, Swift (`StoreKitError`)",
+   "definition": "A system error occurred.",
+   "causes": [
+    "The system, not your app's request, failed the operation. The case carries the underlying `Error`, which is the only place the detail lives.",
+    "Apple does not list what triggers it. Treat it as a failure outside your code that may be temporary.",
+    "Because the cause is not documented, do not assume a product or configuration problem until the underlying error shows one."
+   ],
+   "fixes": [
+    "Log `underlying.localizedDescription` and its `NSError` domain and code, so you can group repeated failures.",
+    "Retry once after a short pause. If it keeps failing, check that the device has an App Store account signed in and that the App Store app works.",
+    "Test on a second device or account to separate a device problem from a setup problem.",
+    "Keep the paywall open and tell the person the store had a problem. Do not unlock content."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift",
+    "code": "import StoreKit\n\n// The underlying error is the only detail StoreKit gives you, so log it before you show a generic message.\nfunc refreshProducts(ids: [String]) async {\n    do {\n        let products = try await Product.products(for: ids)\n        print(\"Loaded \\(products.count) products\")\n    } catch StoreKitError.systemError(let underlying) {\n        let ns = underlying as NSError\n        print(\"StoreKit system error: domain \\(ns.domain), code \\(ns.code), \\(ns.localizedDescription)\")\n    } catch {\n        print(\"Other error: \\(error)\")\n    }\n}"
+   },
+   "sdk": "The RevenueDot `purchases-ios` fork maps `StoreKitError.systemError` to `ErrorCode.storeProblemError` (code 2) and keeps the system error as the underlying error. Retrying once is reasonable; see [what storeProblemError means](sdk-store-problem-error.md).",
+   "related": [
+    "sdk-store-problem-error",
+    "storekit-error-unknown",
+    "storekit-error-network-error"
+   ],
+   "sources": [
+    {
+     "label": "Apple: StoreKitError.systemError(_:)",
+     "url": "https://developer.apple.com/documentation/storekit/storekiterror/systemerror%28_:%29"
+    },
+    {
+     "label": "Apple: StoreKitError",
+     "url": "https://developer.apple.com/documentation/storekit/storekiterror"
+    },
+    {
+     "label": "RevenueDot purchases-ios: StoreKitError+Extensions.swift (how the SDK maps StoreKit 2 errors)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift"
+    }
+   ],
+   "checked": "2026-10-03",
+   "since": "iOS 15.0, iPadOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, visionOS 1.0"
+  },
+  {
+   "slug": "storekit-error-user-cancelled",
+   "label": "StoreKit: userCancelled",
+   "title": "What does StoreKitError.userCancelled mean?",
+   "description": "StoreKitError.userCancelled means the person cancelled a StoreKit 2 flow. It is not a failure: show no error and leave the paywall as it was.",
+   "answer": "StoreKitError.userCancelled means the person cancelled, so nothing was bought and nothing is broken.",
+   "symbol": "`StoreKitError.userCancelled`",
+   "api": "StoreKit 2, Swift (`StoreKitError`)",
+   "definition": "The user canceled.",
+   "causes": [
+    "The person dismissed a StoreKit flow, such as the purchase confirmation sheet, before finishing it.",
+    "A purchase made with `Product.purchase()` reports a cancel as the result `Product.PurchaseResult.userCancelled`, which Apple documents as the user cancelling the purchase. The error case is the same outcome in error form, so handle both the same way.",
+    "Apple documents no other cause. A cancel is the person's choice, not an App Store failure."
+   ],
+   "fixes": [
+    "Do not show an error. A cancel is a normal step in a purchase funnel.",
+    "Leave the paywall open with its products loaded, so the person can choose again.",
+    "Count cancels apart from failures in your analytics, so real errors stay visible.",
+    "Do not unlock anything and do not retry for the person."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift",
+    "code": "import StoreKit\n\n// Treat a cancel as an outcome, not an error: no alert, no retry, no unlock.\nfunc buy(_ product: Product) async {\n    do {\n        switch try await product.purchase() {\n        case .userCancelled:\n            print(\"Cancelled by the person; leave the paywall as it is\")\n        case .pending:\n            print(\"Waiting for approval; do not unlock yet\")\n        case .success(let verification):\n            print(\"Bought: \\(verification)\")\n        @unknown default:\n            break\n        }\n    } catch StoreKitError.userCancelled {\n        // The error form of the same outcome.\n        print(\"Cancelled by the person; leave the paywall as it is\")\n    } catch {\n        print(\"Purchase failed: \\(error)\")\n    }\n}"
+   },
+   "sdk": "The RevenueDot `purchases-ios` fork maps `StoreKitError.userCancelled` to `ErrorCode.purchaseCancelledError` (code 1) and sets `userCancelled` on the purchase result. RevenueDot's server never sees a cancelled purchase, because the SDK stops before it posts a receipt. See [what purchaseCancelledError means](sdk-purchase-cancelled-error.md).",
+   "related": [
+    "sdk-purchase-cancelled-error",
+    "play-billing-user-canceled",
+    "storekit-purchase-error-purchase-not-allowed"
+   ],
+   "sources": [
+    {
+     "label": "Apple: StoreKitError.userCancelled",
+     "url": "https://developer.apple.com/documentation/storekit/storekiterror/usercancelled"
+    },
+    {
+     "label": "Apple: Product.PurchaseResult.userCancelled",
+     "url": "https://developer.apple.com/documentation/storekit/product/purchaseresult/usercancelled"
+    },
+    {
+     "label": "RevenueDot purchases-ios: StoreKitError+Extensions.swift (how the SDK maps StoreKit 2 errors)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift"
+    }
+   ],
+   "checked": "2026-10-03",
+   "since": "iOS 15.0, iPadOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, visionOS 1.0"
+  },
+  {
+   "slug": "storekit-error-not-entitled",
+   "label": "StoreKit: notEntitled",
+   "title": "What does StoreKitError.notEntitled mean?",
+   "description": "StoreKitError.notEntitled means the app lacks the entitlements a StoreKit 2 function needs. What Apple documents, what to check in Xcode and how the SDK maps it.",
+   "answer": "StoreKitError.notEntitled means the app does not have the entitlements that the StoreKit function it called requires.",
+   "symbol": "`StoreKitError.notEntitled`",
+   "api": "StoreKit 2, Swift (`StoreKitError`)",
+   "definition": "The app does not have the appropriate entitlements to use the functionality.",
+   "causes": [
+    "The app is missing an entitlement that the called StoreKit function requires. Apple documents the case in one line and does not list which functions or entitlements trigger it.",
+    "Apple describes In-App Purchase as a capability: some app services need you to add a capability to the target in Xcode, which can edit the target's entitlements ([Adding capabilities to your app](https://developer.apple.com/documentation/xcode/adding-capabilities-to-your-app)).",
+    "The case exists only from iOS 15.4 and macOS 12.3, so older systems report a different failure."
+   ],
+   "fixes": [
+    "Open the target's **Signing & Capabilities** tab in Xcode and check that the capabilities your feature needs are present, including In-App Purchase.",
+    "Confirm the app ID's capabilities in your Apple Developer account match the target, then rebuild and reinstall.",
+    "If the failing call needs a special entitlement from Apple, request it first; the case name does not say which one.",
+    "Log the call that threw the error so you can tell which function needed the entitlement."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift",
+    "code": "import StoreKit\n\n// notEntitled is an app configuration problem, not a customer problem: log it for yourself and hide the feature.\nfunc syncPurchases() async {\n    do {\n        try await AppStore.sync()\n    } catch StoreKitError.notEntitled {\n        print(\"This build lacks an entitlement for this StoreKit call; check Signing & Capabilities\")\n    } catch {\n        print(\"Sync failed: \\(error)\")\n    }\n}"
+   },
+   "sdk": "The RevenueDot `purchases-ios` fork maps `StoreKitError.notEntitled` to `ErrorCode.storeProblemError` (code 2). Because that code also covers temporary store failures, read the underlying error to tell them apart. See [what storeProblemError means](sdk-store-problem-error.md).",
+   "related": [
+    "sdk-store-problem-error",
+    "storekit-error-unsupported",
+    "sdk-configuration-error"
+   ],
+   "sources": [
+    {
+     "label": "Apple: StoreKitError.notEntitled",
+     "url": "https://developer.apple.com/documentation/storekit/storekiterror/notentitled"
+    },
+    {
+     "label": "Apple: Adding capabilities to your app",
+     "url": "https://developer.apple.com/documentation/xcode/adding-capabilities-to-your-app"
+    },
+    {
+     "label": "RevenueDot purchases-ios: StoreKitError+Extensions.swift (how the SDK maps StoreKit 2 errors)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift"
+    }
+   ],
+   "checked": "2026-10-03",
+   "since": "iOS 15.4, iPadOS 15.4, macOS 12.3, tvOS 15.4, watchOS 8.5, visionOS 1.0"
+  },
+  {
+   "slug": "storekit-error-unknown",
+   "label": "StoreKit: unknown",
+   "title": "What does StoreKitError.unknown mean?",
+   "description": "StoreKitError.unknown is StoreKit 2's catch-all for an error it cannot name. Log the full error, retry once and see how the purchases SDK reports it.",
+   "answer": "StoreKitError.unknown is StoreKit 2's catch-all for a failure it has no better name for.",
+   "symbol": "`StoreKitError.unknown`",
+   "api": "StoreKit 2, Swift (`StoreKitError`)",
+   "definition": "An unknown error occurred.",
+   "causes": [
+    "StoreKit raised an error that none of the other `StoreKitError` cases describes. Apple gives no cause, and the case carries no underlying error.",
+    "The RevenueCat SDK source notes that `StoreKitError` does not conform to `CustomNSError` as of iOS 15.2, so no extra detail can be read from it ([StoreKitError+Extensions.swift](https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift)).",
+    "Because nothing more is known, the cause can be a device problem, a store problem or a configuration problem."
+   ],
+   "fixes": [
+    "Log the full error value, the product ID and the iOS version, so repeated cases can be grouped.",
+    "Retry once after a short pause, and test on a second device and account.",
+    "Check the basics: the device is signed in to the App Store, the product exists in App Store Connect and the app is the build you think it is.",
+    "Update to the newest SDK and Xcode, because a case Apple adds later can reach older code as unknown."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift",
+    "code": "import StoreKit\n\n// With no detail to read, log everything you have, then show a neutral message.\nfunc buy(_ product: Product) async {\n    do {\n        _ = try await product.purchase()\n    } catch StoreKitError.unknown {\n        print(\"StoreKit unknown error for \\(product.id) on \\(ProcessInfo.processInfo.operatingSystemVersionString)\")\n    } catch {\n        print(\"Purchase failed: \\(error)\")\n    }\n}"
+   },
+   "sdk": "The RevenueDot `purchases-ios` fork maps `StoreKitError.unknown` to `ErrorCode.storeProblemError` (code 2), not to `unknownError`. See [what storeProblemError means](sdk-store-problem-error.md) and [what unknownError means](sdk-unknown-error.md).",
+   "related": [
+    "sdk-store-problem-error",
+    "storekit-error-system-error",
+    "sdk-unknown-error"
+   ],
+   "sources": [
+    {
+     "label": "Apple: StoreKitError.unknown",
+     "url": "https://developer.apple.com/documentation/storekit/storekiterror/unknown"
+    },
+    {
+     "label": "RevenueDot purchases-ios: StoreKitError+Extensions.swift (how the SDK maps StoreKit 2 errors)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift"
+    }
+   ],
+   "checked": "2026-10-03",
+   "since": "iOS 15.0, iPadOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, visionOS 1.0"
+  },
+  {
+   "slug": "storekit-error-unsupported",
+   "label": "StoreKit: unsupported",
+   "title": "What does StoreKitError.unsupported mean?",
+   "description": "StoreKitError.unsupported means an operation does not support the product, for example an In-App Purchase not registered as a generic SKU. Cause, fix and example.",
+   "answer": "StoreKitError.unsupported means the operation you called does not support this product.",
+   "symbol": "`StoreKitError.unsupported`",
+   "api": "StoreKit 2, Swift (`StoreKitError`)",
+   "definition": "The operation does not support this product.",
+   "causes": [
+    "Apple says the system raises this error when the type that starts the request does not support the operation. Its example is creating an object with the product ID of an In-App Purchase that is not registered as a generic SKU in App Store Connect.",
+    "The case is new: it exists from iOS 18.4 and macOS 15.4, so you only see it on those systems or later, and only when you build with an Xcode that includes it.",
+    "Apple lists no other trigger, so check the product type before you blame the network.",
+    "Apple's page for the case shows the platform versions above, which is why the SDK guards it behind a newer compiler."
+   ],
+   "fixes": [
+    "Check how the product is registered in App Store Connect and whether the API you called is meant for that type of product.",
+    "Use a different API for the product, or register the product the way the API requires.",
+    "Build with an Xcode version that knows the case, or the error can arrive in old code as an unknown error.",
+    "Log the product ID and the call that threw the error."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift",
+    "code": "import StoreKit\n\n// Raised on iOS 18.4 and later when the call does not support the product; log the ID so you can fix the registration.\nfunc load(ids: [String]) async {\n    do {\n        let products = try await Product.products(for: ids)\n        print(\"Loaded \\(products.count) products\")\n    } catch StoreKitError.unsupported {\n        print(\"StoreKit says the operation does not support one of these products: \\(ids)\")\n    } catch {\n        print(\"Load failed: \\(error)\")\n    }\n}"
+   },
+   "sdk": "The RevenueDot `purchases-ios` fork maps `StoreKitError.unsupported` to `ErrorCode.purchaseInvalidError` (code 4) when it is built with Swift 6.1 or later. See [what purchaseInvalidError means in the SDK](sdk-purchase-invalid-error.md).",
+   "related": [
+    "sdk-purchase-invalid-error",
+    "storekit-error-not-entitled",
+    "storekit-purchase-error-product-unavailable"
+   ],
+   "sources": [
+    {
+     "label": "Apple: StoreKitError.unsupported",
+     "url": "https://developer.apple.com/documentation/storekit/storekiterror/unsupported"
+    },
+    {
+     "label": "RevenueDot purchases-ios: StoreKitError+Extensions.swift (how the SDK maps StoreKit 2 errors)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift"
+    }
+   ],
+   "checked": "2026-10-03",
+   "since": "iOS 18.4, iPadOS 18.4, macOS 15.4, tvOS 18.4, watchOS 11.4, visionOS 2.4"
+  },
+  {
+   "slug": "storekit-purchase-error-invalid-quantity",
+   "label": "StoreKit: invalidQuantity",
+   "title": "What does Product.PurchaseError.invalidQuantity mean?",
+   "description": "Product.PurchaseError.invalidQuantity means the quantity passed to a StoreKit 2 purchase is not valid. Quantity applies to consumables and non-renewing subscriptions only.",
+   "answer": "Product.PurchaseError.invalidQuantity means the quantity you passed to `purchase(options:)` is not valid.",
+   "symbol": "`Product.PurchaseError.invalidQuantity`",
+   "api": "StoreKit 2, Swift (`Product.purchase(options:)`)",
+   "definition": "The quantity to purchase is invalid.",
+   "causes": [
+    "The `.quantity(_:)` purchase option sets how many items the customer buys. Apple says the quantity applies to consumable In-App Purchases and non-renewing subscriptions ([PurchaseOption.quantity](https://developer.apple.com/documentation/storekit/product/purchaseoption/quantity%28_:%29)).",
+    "A quantity for a product of another type, or a value outside what the App Store accepts, is not a valid quantity. Apple does not publish the accepted range on the case page.",
+    "The error comes from the arguments your code passes, so it is reproducible and not a store outage."
+   ],
+   "fixes": [
+    "Remove the `.quantity` option unless the product is a consumable or a non-renewing subscription.",
+    "Pass a whole number of at least 1, and keep it small. Log the value you send.",
+    "Check the product's type in App Store Connect against what your code assumes.",
+    "Test the purchase in the sandbox or a StoreKit configuration file before you ship."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift",
+    "code": "import StoreKit\n\n// Quantity is for consumables and non-renewing subscriptions only; guard the value before you pass it.\nfunc buy(_ product: Product, quantity: Int) async {\n    guard quantity >= 1 else { return }\n    do {\n        let result = try await product.purchase(options: [.quantity(quantity)])\n        print(\"Result: \\(result)\")\n    } catch Product.PurchaseError.invalidQuantity {\n        print(\"The App Store rejected quantity \\(quantity) for \\(product.id)\")\n    } catch {\n        print(\"Purchase failed: \\(error)\")\n    }\n}"
+   },
+   "sdk": "The RevenueDot `purchases-ios` fork maps `Product.PurchaseError.invalidQuantity` to `ErrorCode.storeProblemError` (code 2). The SDK's own purchase API does not expose a quantity, so this error normally appears only when your code calls StoreKit directly. See [what storeProblemError means](sdk-store-problem-error.md).",
+   "related": [
+    "sdk-store-problem-error",
+    "storekit-purchase-error-product-unavailable",
+    "storekit-purchase-error-purchase-not-allowed"
+   ],
+   "sources": [
+    {
+     "label": "Apple: Product.PurchaseError.invalidQuantity",
+     "url": "https://developer.apple.com/documentation/storekit/product/purchaseerror/invalidquantity"
+    },
+    {
+     "label": "Apple: Product.PurchaseError",
+     "url": "https://developer.apple.com/documentation/storekit/product/purchaseerror"
+    },
+    {
+     "label": "RevenueDot purchases-ios: StoreKitError+Extensions.swift (how the SDK maps StoreKit 2 errors)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift"
+    }
+   ],
+   "checked": "2026-10-03",
+   "since": "iOS 15.0, iPadOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, visionOS 1.0"
+  },
+  {
+   "slug": "storekit-purchase-error-product-unavailable",
+   "label": "StoreKit: productUnavailable",
+   "title": "What does Product.PurchaseError.productUnavailable mean?",
+   "description": "Product.PurchaseError.productUnavailable means the product cannot be bought. Check its state in App Store Connect, its availability by region and its identifier.",
+   "answer": "Product.PurchaseError.productUnavailable means the App Store reports that this product is not available to buy.",
+   "symbol": "`Product.PurchaseError.productUnavailable`",
+   "api": "StoreKit 2, Swift (`Product.purchase(options:)`)",
+   "definition": "The product is not available.",
+   "causes": [
+    "The App Store has the product but will not sell it to this customer right now. Apple's page for the case gives no further reason.",
+    "Apple notes that if an identifier is invalid or the App Store cannot find it, `Product.products(for:)` leaves it out of the result instead of throwing ([products(for:)](https://developer.apple.com/documentation/storekit/product/products%28for:%29)). A product you hold but cannot buy is a different state from one that never loaded.",
+    "Products are sold per region, and Apple tells developers to keep their own list of identifiers and the storefronts where they are available ([Storefront](https://developer.apple.com/documentation/storekit/storefront))."
+   ],
+   "fixes": [
+    "Check the product in App Store Connect: it must exist, have complete metadata and be available in the customer's region.",
+    "Compare the identifier in your code character by character with the one in App Store Connect.",
+    "Reload products and compare the IDs you asked for with the IDs that came back, to see which one is missing.",
+    "Hide or disable the buy button for the product until it loads, and do not retry the same call in a loop."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift",
+    "code": "import StoreKit\n\n// Compare what you asked for with what came back, so a missing product is a log line instead of a silent dead button.\nfunc buy(id: String) async {\n    do {\n        guard let product = try await Product.products(for: [id]).first else {\n            print(\"The App Store returned no product for \\(id); check the identifier and availability\")\n            return\n        }\n        _ = try await product.purchase()\n    } catch Product.PurchaseError.productUnavailable {\n        print(\"\\(id) exists but cannot be bought right now\")\n    } catch {\n        print(\"Purchase failed: \\(error)\")\n    }\n}"
+   },
+   "sdk": "The RevenueDot `purchases-ios` fork maps `Product.PurchaseError.productUnavailable` to `ErrorCode.productNotAvailableForPurchaseError` (code 5). In RevenueDot, make sure the product's store identifier equals the App Store identifier. See [what productNotAvailableForPurchaseError means](sdk-product-not-available-for-purchase-error.md).",
+   "related": [
+    "sdk-product-not-available-for-purchase-error",
+    "storekit-error-not-available-in-storefront",
+    "play-billing-item-unavailable"
+   ],
+   "sources": [
+    {
+     "label": "Apple: Product.products(for:)",
+     "url": "https://developer.apple.com/documentation/storekit/product/products%28for:%29"
+    },
+    {
+     "label": "Apple: Product.PurchaseError.productUnavailable",
+     "url": "https://developer.apple.com/documentation/storekit/product/purchaseerror/productunavailable"
+    },
+    {
+     "label": "Apple: Product.PurchaseError",
+     "url": "https://developer.apple.com/documentation/storekit/product/purchaseerror"
+    },
+    {
+     "label": "RevenueDot purchases-ios: StoreKitError+Extensions.swift (how the SDK maps StoreKit 2 errors)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift"
+    }
+   ],
+   "checked": "2026-10-03",
+   "since": "iOS 15.0, iPadOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, visionOS 1.0"
+  },
+  {
+   "slug": "storekit-purchase-error-purchase-not-allowed",
+   "label": "StoreKit: purchaseNotAllowed",
+   "title": "What does Product.PurchaseError.purchaseNotAllowed mean?",
+   "description": "Product.PurchaseError.purchaseNotAllowed means the person is not allowed to make purchases. Screen Time limits or a device management profile can cause it.",
+   "answer": "Product.PurchaseError.purchaseNotAllowed means the person on this device is not allowed to make purchases.",
+   "symbol": "`Product.PurchaseError.purchaseNotAllowed`",
+   "api": "StoreKit 2, Swift (`Product.purchase(options:)`)",
+   "definition": "The user is not allowed to make purchases.",
+   "causes": [
+    "Apple's `AppStore.canMakePayments` page lists two conditions that make it `false`: Content & Privacy Restrictions in Screen Time that prevent purchases, and a mobile device management (MDM) profile that prevents purchases ([AppStore.canMakePayments](https://developer.apple.com/documentation/storekit/appstore/canmakepayments)).",
+    "Apple documents `purchaseNotAllowed` as the user not being allowed to make purchases, which is the state those two conditions put the device in. Apple does not list other triggers.",
+    "It is a setting on the device or account, so retrying does not help until the person or an administrator changes it."
+   ],
+   "fixes": [
+    "Check `AppStore.canMakePayments` before you show the buy button. Apple says that when it is `false` you should not offer In-App Purchases.",
+    "Tell the person purchases are turned off on this device, and point them to Screen Time or their administrator.",
+    "Show the paywall again on the next launch, because the setting can change.",
+    "Do not retry the purchase and do not unlock content."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift",
+    "code": "import StoreKit\n\n// Ask first: when the device cannot make payments, show a message instead of a buy button that always fails.\nfunc buy(_ product: Product) async {\n    guard AppStore.canMakePayments else {\n        print(\"Purchases are turned off on this device\")\n        return\n    }\n    do {\n        _ = try await product.purchase()\n    } catch Product.PurchaseError.purchaseNotAllowed {\n        print(\"The App Store says this person is not allowed to buy\")\n    } catch {\n        print(\"Purchase failed: \\(error)\")\n    }\n}"
+   },
+   "sdk": "The RevenueDot `purchases-ios` fork maps `Product.PurchaseError.purchaseNotAllowed` to `ErrorCode.purchaseNotAllowedError` (code 3). The SDK offers `Purchases.canMakePayments()` for the same check. See [what purchaseNotAllowedError means](sdk-purchase-not-allowed-error.md).",
+   "related": [
+    "sdk-purchase-not-allowed-error",
+    "storekit-error-user-cancelled",
+    "play-billing-billing-unavailable"
+   ],
+   "sources": [
+    {
+     "label": "Apple: AppStore.canMakePayments",
+     "url": "https://developer.apple.com/documentation/storekit/appstore/canmakepayments"
+    },
+    {
+     "label": "Apple: Product.PurchaseError.purchaseNotAllowed",
+     "url": "https://developer.apple.com/documentation/storekit/product/purchaseerror/purchasenotallowed"
+    },
+    {
+     "label": "Apple: Product.PurchaseError",
+     "url": "https://developer.apple.com/documentation/storekit/product/purchaseerror"
+    },
+    {
+     "label": "RevenueDot purchases-ios: StoreKitError+Extensions.swift (how the SDK maps StoreKit 2 errors)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift"
+    }
+   ],
+   "checked": "2026-10-03",
+   "since": "iOS 15.0, iPadOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, visionOS 1.0"
+  },
+  {
+   "slug": "storekit-purchase-error-ineligible-for-offer",
+   "label": "StoreKit: ineligibleForOffer",
+   "title": "What does Product.PurchaseError.ineligibleForOffer mean?",
+   "description": "Product.PurchaseError.ineligibleForOffer means the customer is not eligible for the offer you applied. Check eligibility before you show an introductory or promotional offer.",
+   "answer": "Product.PurchaseError.ineligibleForOffer means the customer is not eligible for the offer that the purchase tried to use.",
+   "symbol": "`Product.PurchaseError.ineligibleForOffer`",
+   "api": "StoreKit 2, Swift (`Product.purchase(options:)`)",
+   "definition": "The user is not eligible for the offer.",
+   "causes": [
+    "Apple says the App Store treats customers with an existing or expired subscription in the app as eligible for a promotional offer. A customer without one is not eligible ([Implementing promotional offers](https://developer.apple.com/documentation/storekit/implementing-promotional-offers-in-your-app)).",
+    "Introductory offers have their own rule: `isEligibleForIntroOffer` is true when the customer is eligible for an introductory offer on the subscription or on any subscription in the same group ([isEligibleForIntroOffer](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/iseligibleforintrooffer)).",
+    "A customer who already redeemed the introductory offer in that group is no longer eligible."
+   ],
+   "fixes": [
+    "Check eligibility before you show the offer: `Product.SubscriptionInfo.isEligibleForIntroOffer` for introductory offers, and your own rules plus the customer's subscription history for promotional offers.",
+    "Show the standard price when the customer is not eligible, instead of an offer that will fail.",
+    "Apple notes that eligibility can be true even when you have not set up an introductory offer, so also check that the offer exists on the product.",
+    "Do not retry. The result stays the same until the customer's eligibility changes."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift",
+    "code": "import StoreKit\n\n// Ask the App Store whether this customer can get the introductory offer before you advertise it.\nfunc showPrice(for product: Product) async {\n    guard let subscription = product.subscription else { return }\n    let eligible = await subscription.isEligibleForIntroOffer\n    print(eligible ? \"Show the introductory offer\" : \"Show the standard price\")\n}\n\nfunc buy(_ product: Product, options: Set<Product.PurchaseOption>) async {\n    do {\n        _ = try await product.purchase(options: options)\n    } catch Product.PurchaseError.ineligibleForOffer {\n        print(\"Not eligible for this offer; fall back to the standard price\")\n    } catch {\n        print(\"Purchase failed: \\(error)\")\n    }\n}"
+   },
+   "sdk": "The RevenueDot `purchases-ios` fork maps `Product.PurchaseError.ineligibleForOffer` to `ErrorCode.ineligibleError` (code 18). See [what ineligibleError means](https://revenuedot.app/errors/ineligible-error) for the SDK side.",
+   "related": [
+    "storekit-purchase-error-invalid-offer-identifier",
+    "storekit-purchase-error-invalid-offer-signature",
+    "storekit-purchase-error-purchase-not-allowed"
+   ],
+   "sources": [
+    {
+     "label": "Apple: Implementing promotional offers in your app",
+     "url": "https://developer.apple.com/documentation/storekit/implementing-promotional-offers-in-your-app"
+    },
+    {
+     "label": "Apple: isEligibleForIntroOffer",
+     "url": "https://developer.apple.com/documentation/storekit/product/subscriptioninfo/iseligibleforintrooffer"
+    },
+    {
+     "label": "Apple: Product.PurchaseError.ineligibleForOffer",
+     "url": "https://developer.apple.com/documentation/storekit/product/purchaseerror/ineligibleforoffer"
+    },
+    {
+     "label": "Apple: Product.PurchaseError",
+     "url": "https://developer.apple.com/documentation/storekit/product/purchaseerror"
+    },
+    {
+     "label": "RevenueDot purchases-ios: StoreKitError+Extensions.swift (how the SDK maps StoreKit 2 errors)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift"
+    }
+   ],
+   "checked": "2026-10-03",
+   "since": "iOS 15.0, iPadOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, visionOS 1.0"
+  },
+  {
+   "slug": "storekit-purchase-error-invalid-offer-identifier",
+   "label": "StoreKit: invalidOfferIdentifier",
+   "title": "What does Product.PurchaseError.invalidOfferIdentifier mean?",
+   "description": "Product.PurchaseError.invalidOfferIdentifier means the promotional offer ID in the purchase options is not valid. Match it to the offer in App Store Connect.",
+   "answer": "Product.PurchaseError.invalidOfferIdentifier means the promotional offer identifier you passed in the purchase options is not valid.",
+   "symbol": "`Product.PurchaseError.invalidOfferIdentifier`",
+   "api": "StoreKit 2, Swift (`Product.purchase(options:)`)",
+   "definition": "The promotional offer identifier provided in the purchase options is invalid.",
+   "causes": [
+    "The identifier in `.promotionalOffer(offerID:keyID:nonce:signature:timestamp:)` does not match a promotional offer the App Store knows for this product.",
+    "Apple says promotional offers must first be set up in App Store Connect, and the offers on a product appear in its `subscription.promotionalOffers` array ([promotionalOffer option](https://developer.apple.com/documentation/storekit/product/purchaseoption/promotionaloffer%28offerid:keyid:nonce:signature:timestamp:%29)).",
+    "A typo, an offer attached to another product or an offer you never created all produce this error."
+   ],
+   "fixes": [
+    "Read the offer ID from `product.subscription?.promotionalOffers` instead of typing it by hand.",
+    "Compare the ID with the offer in App Store Connect, character by character.",
+    "Make sure the offer belongs to the same subscription product you are buying.",
+    "Sign the offer on your server only after you have picked a valid offer ID, because the ID is part of the signed text."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift",
+    "code": "import StoreKit\n\n// Take the offer ID from the product itself, so the identifier you sign and send always exists.\nfunc offerID(for product: Product) -> String? {\n    product.subscription?.promotionalOffers.first?.id\n}\n\nfunc buy(_ product: Product, options: Set<Product.PurchaseOption>) async {\n    do {\n        _ = try await product.purchase(options: options)\n    } catch Product.PurchaseError.invalidOfferIdentifier {\n        print(\"The offer ID is not one of \\(product.id)'s promotional offers\")\n    } catch {\n        print(\"Purchase failed: \\(error)\")\n    }\n}"
+   },
+   "sdk": "The RevenueDot `purchases-ios` fork maps `invalidOfferIdentifier`, `invalidOfferPrice`, `invalidOfferSignature` and `missingOfferParameters` to one code, `ErrorCode.invalidPromotionalOfferError` (code 34). Read the underlying error to see which of the four it was.",
+   "related": [
+    "storekit-purchase-error-invalid-offer-signature",
+    "storekit-purchase-error-ineligible-for-offer",
+    "sdk-store-problem-error"
+   ],
+   "sources": [
+    {
+     "label": "Apple: promotionalOffer purchase option",
+     "url": "https://developer.apple.com/documentation/storekit/product/purchaseoption/promotionaloffer%28offerid:keyid:nonce:signature:timestamp:%29"
+    },
+    {
+     "label": "Apple: Product.PurchaseError.invalidOfferIdentifier",
+     "url": "https://developer.apple.com/documentation/storekit/product/purchaseerror/invalidofferidentifier"
+    },
+    {
+     "label": "Apple: Product.PurchaseError",
+     "url": "https://developer.apple.com/documentation/storekit/product/purchaseerror"
+    },
+    {
+     "label": "RevenueDot purchases-ios: StoreKitError+Extensions.swift (how the SDK maps StoreKit 2 errors)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift"
+    }
+   ],
+   "checked": "2026-10-03",
+   "since": "iOS 15.0, iPadOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, visionOS 1.0"
+  },
+  {
+   "slug": "storekit-purchase-error-invalid-offer-signature",
+   "label": "StoreKit: invalidOfferSignature",
+   "title": "What does Product.PurchaseError.invalidOfferSignature mean?",
+   "description": "Product.PurchaseError.invalidOfferSignature means the App Store rejected the signature of a promotional offer. Rebuild the signed text, use a fresh nonce and sign it with the right key.",
+   "answer": "Product.PurchaseError.invalidOfferSignature means the App Store could not validate the signature of the promotional offer.",
+   "symbol": "`Product.PurchaseError.invalidOfferSignature`",
+   "api": "StoreKit 2, Swift (`Product.purchase(options:)`)",
+   "definition": "The offer signature is not valid.",
+   "causes": [
+    "Apple says the signature is made from the product and offer parameters plus a nonce and timestamp your server generates, joined in a fixed order with the invisible separator U+2063, and signed with your PKCS #8 private key using ECDSA with SHA-256 ([Generating a signature](https://developer.apple.com/documentation/storekit/generating-a-signature-for-promotional-offers)).",
+    "Apple also says each payload, signature and nonce is valid for one buy request only, even if the buy fails, so reusing a signature after a failed attempt fails.",
+    "If you pass an app account token, Apple says it must be part of the signed text, and the UUID strings of the token and the nonce must be lowercase ([promotionalOffer option](https://developer.apple.com/documentation/storekit/product/purchaseoption/promotionaloffer%28offerid:keyid:nonce:signature:timestamp:%29))."
+   ],
+   "fixes": [
+    "Rebuild the signed string in the exact order Apple lists, with the separator between the parts.",
+    "Create a new nonce and timestamp for every attempt, and sign again after any failed purchase.",
+    "Sign with the private key whose key ID you send as `keyID`, and Base64-encode the DER signature.",
+    "Use lowercase UUID strings for the nonce and the app account token, and sign the same values you send.",
+    "Check the signature locally with the public key before you send it, as Apple suggests."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift",
+    "code": "import StoreKit\n\n// A signature works once. After a failed purchase, ask your server for a new nonce, timestamp and signature.\nfunc buy(_ product: Product, offerID: String, keyID: String, nonce: UUID, signature: Data, timestamp: Int) async {\n    let offer = Product.PurchaseOption.promotionalOffer(offerID: offerID, keyID: keyID, nonce: nonce, signature: signature, timestamp: timestamp)\n    do {\n        _ = try await product.purchase(options: [offer])\n    } catch Product.PurchaseError.invalidOfferSignature {\n        print(\"The App Store rejected the signature; request a fresh one from the server\")\n    } catch {\n        print(\"Purchase failed: \\(error)\")\n    }\n}"
+   },
+   "sdk": "The RevenueDot `purchases-ios` fork maps `Product.PurchaseError.invalidOfferSignature` to `ErrorCode.invalidPromotionalOfferError` (code 34). The SDK builds and signs the offer for you when you use its promotional offer API, so this error mostly appears when you sign offers yourself.",
+   "related": [
+    "storekit-purchase-error-invalid-offer-identifier",
+    "storekit-purchase-error-ineligible-for-offer",
+    "storekit-verification-error-invalid-signature"
+   ],
+   "sources": [
+    {
+     "label": "Apple: Generating a signature for promotional offers",
+     "url": "https://developer.apple.com/documentation/storekit/generating-a-signature-for-promotional-offers"
+    },
+    {
+     "label": "Apple: promotionalOffer purchase option",
+     "url": "https://developer.apple.com/documentation/storekit/product/purchaseoption/promotionaloffer%28offerid:keyid:nonce:signature:timestamp:%29"
+    },
+    {
+     "label": "Apple: Product.PurchaseError.invalidOfferSignature",
+     "url": "https://developer.apple.com/documentation/storekit/product/purchaseerror/invalidoffersignature"
+    },
+    {
+     "label": "Apple: Product.PurchaseError",
+     "url": "https://developer.apple.com/documentation/storekit/product/purchaseerror"
+    },
+    {
+     "label": "RevenueDot purchases-ios: StoreKitError+Extensions.swift (how the SDK maps StoreKit 2 errors)",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Error%20Handling/StoreKitError%2BExtensions.swift"
+    }
+   ],
+   "checked": "2026-10-03",
+   "since": "iOS 15.0, iPadOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, visionOS 1.0"
+  },
+  {
+   "slug": "storekit-refund-error-duplicate-request",
+   "label": "StoreKit: duplicateRequest",
+   "title": "What does Transaction.RefundRequestError.duplicateRequest mean?",
+   "description": "Transaction.RefundRequestError.duplicateRequest means the App Store already has a refund request for this purchase. Check the transaction first, then do not send it again.",
+   "answer": "Transaction.RefundRequestError.duplicateRequest means the App Store has already received a refund request for this In-App Purchase.",
+   "symbol": "`Transaction.RefundRequestError.duplicateRequest`",
+   "api": "StoreKit 2, Swift (`Transaction.beginRefundRequest`)",
+   "definition": "The App Store has already received a refund request for this In-App Purchase.",
+   "causes": [
+    "Apple says StoreKit returns this error when the App Store already holds a refund request for the transaction and the decision is still pending, was denied or was approved.",
+    "The person (or your code) called `beginRefundRequest` for a transaction that already has a request. Sending it again cannot change the outcome.",
+    "Apple suggests checking the transaction's refund state before you call the method, to see whether the App Store has already refunded it."
+   ],
+   "fixes": [
+    "Before you offer a refund request, check the transaction's `revocationDate` and `revocationReason`. If the App Store has already refunded the purchase there is nothing to request.",
+    "Tell the person a request already exists, and that Apple makes the decision.",
+    "Do not call the method again for the same transaction.",
+    "Test refund requests in the sandbox or in Xcode first, as Apple's refund testing guide describes."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift",
+    "code": "import StoreKit\nimport UIKit\n\n// A second request for the same transaction cannot work: say so, and stop.\n@MainActor\nfunc requestRefund(productID: String, in scene: UIWindowScene) async {\n    guard let result = await Transaction.latest(for: productID), case .verified(let transaction) = result else { return }\n    // Apple suggests checking the refund state first: a revoked transaction is already refunded.\n    if transaction.revocationDate != nil {\n        print(\"The App Store already refunded this purchase\")\n        return\n    }\n    do {\n        let status = try await transaction.beginRefundRequest(in: scene)\n        print(\"Refund request status: \\(status)\")\n    } catch Transaction.RefundRequestError.duplicateRequest {\n        print(\"A refund request for this purchase already exists; Apple decides it\")\n    } catch {\n        print(\"Refund request failed: \\(error)\")\n    }\n}",
+    "target": "ios"
+   },
+   "sdk": "The RevenueDot `purchases-ios` fork wraps this in `beginRefundRequest(forEntitlement:)`. It logs a message for `duplicateRequest` and reports the failure as `ErrorCode.beginRefundRequestError` (code 31).",
+   "related": [
+    "storekit-error-unknown",
+    "sdk-store-problem-error",
+    "storekit-verification-error-invalid-signature"
+   ],
+   "sources": [
+    {
+     "label": "Apple: Transaction.RefundRequestError.duplicateRequest",
+     "url": "https://developer.apple.com/documentation/storekit/transaction/refundrequesterror/duplicaterequest"
+    },
+    {
+     "label": "Apple: Transaction.RefundRequestError",
+     "url": "https://developer.apple.com/documentation/storekit/transaction/refundrequesterror"
+    },
+    {
+     "label": "RevenueDot purchases-ios: SK2BeginRefundRequestHelper.swift",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Purchasing/StoreKit2/SK2BeginRefundRequestHelper.swift"
+    }
+   ],
+   "checked": "2026-10-03",
+   "since": "iOS 15.0, iPadOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, visionOS 1.0",
+   "links": [
+    {
+     "label": "Apple: Testing refund requests",
+     "url": "https://developer.apple.com/documentation/storekit/testing-refund-requests"
+    }
+   ]
+  },
+  {
+   "slug": "storekit-verification-error-invalid-signature",
+   "label": "StoreKit: invalidSignature",
+   "title": "What does VerificationError.invalidSignature mean in StoreKit 2?",
+   "description": "VerificationResult.VerificationError.invalidSignature means a signed StoreKit 2 value failed its signature check. Do not unlock content from an unverified transaction.",
+   "answer": "VerificationResult.VerificationError.invalidSignature means the signature of a signed StoreKit 2 value did not match its header and payload.",
+   "symbol": "`VerificationResult.VerificationError.invalidSignature`",
+   "api": "StoreKit 2, Swift (`VerificationResult`)",
+   "definition": "The signature did not match the header and payload.",
+   "causes": [
+    "StoreKit 2 returns transactions, renewal information and the app transaction wrapped in a `VerificationResult`. It checks them automatically, and a value that fails is `.unverified`, with the reason as a `VerificationError` ([VerificationResult](https://developer.apple.com/documentation/storekit/verificationresult)).",
+    "`invalidSignature` is one of six reasons Apple lists, next to `invalidCertificateChain`, `invalidDeviceVerification`, `invalidEncoding`, `missingRequiredProperties` and `revokedCertificate`.",
+    "It means the signed text was altered or does not belong to the signature. Apple gives no further detail on the case page."
+   ],
+   "fixes": [
+    "Treat an `.unverified` result as untrusted. Do not unlock content from it.",
+    "Log the `VerificationError` and the transaction ID, then check the same transaction on your server with the App Store Server Library, as Apple suggests for the highest security.",
+    "Check that the test environment is set up correctly if you only see it in testing.",
+    "Do not call `finish()` on an unverified transaction until you have decided what to do with it."
+   ],
+   "snippet": {
+    "lang": "swift",
+    "check": "swift",
+    "code": "import StoreKit\n\n// Only a verified transaction may unlock content. Log the reason for an unverified one.\nfunc handle(_ result: VerificationResult<Transaction>) {\n    switch result {\n    case .verified(let transaction):\n        print(\"Unlock \\(transaction.productID)\")\n    case .unverified(let transaction, let error):\n        if case .invalidSignature = error {\n            print(\"Signature check failed for \\(transaction.productID); do not unlock\")\n        } else {\n            print(\"Verification failed: \\(error)\")\n        }\n    }\n}"
+   },
+   "sdk": "The RevenueDot `purchases-ios` fork turns an unverified transaction into `ErrorCode.storeProblemError` (code 2) with the `VerificationError` as the underlying error, and it does not unlock the purchase. RevenueDot's server also verifies the signed transaction on its side.",
+   "related": [
+    "sdk-invalid-receipt-error",
+    "storekit-purchase-error-invalid-offer-signature",
+    "sdk-store-problem-error"
+   ],
+   "sources": [
+    {
+     "label": "Apple: VerificationResult.VerificationError.invalidSignature",
+     "url": "https://developer.apple.com/documentation/storekit/verificationresult/verificationerror/invalidsignature"
+    },
+    {
+     "label": "Apple: VerificationResult",
+     "url": "https://developer.apple.com/documentation/storekit/verificationresult"
+    },
+    {
+     "label": "RevenueDot purchases-ios: StoreKit2TransactionListener.swift",
+     "url": "https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Purchasing/StoreKit2/StoreKit2TransactionListener.swift"
+    }
+   ],
+   "checked": "2026-10-03",
+   "since": "iOS 15.0, iPadOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, visionOS 1.0"
+  }
+ ]
+}
