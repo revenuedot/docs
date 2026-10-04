@@ -662,7 +662,7 @@ Google subscriptions without \`purchase_token\` are keyed \`needs_token_refresh:
             transactions: arr(obj({ id: str(), purchased_at: int(), expires_at: { type: ["integer", "null"] }, revenue_usd: { type: ["number", "null"] }, price: { type: ["object", "null"] } }, ["id", "purchased_at"])),
           }, ["store", "product_identifier", "starts_at", "current_period_starts_at", "status", "store_subscription_identifier"])),
           purchases: arr(obj({
-            source_id: str(), app_id: nstr(), store: str(), product_identifier: str("The store product id. Google Play `subscriptionId:basePlanId` and App Store `productId:monthly` (iOS 26.4 billing plan) are split into product and plan; `productId:upFront` is the bare App Store product."), environment: en(["production", "sandbox"]), purchased_at: int(), store_purchase_identifier: str(),
+            source_id: str(), app_id: nstr(), store: str(), product_identifier: str(), environment: en(["production", "sandbox"]), purchased_at: int(), store_purchase_identifier: str(),
             status: en(["owned", "refunded"]), refunded_at: { type: ["integer", "null"] }, consumable: bool(), price: { type: ["object", "null"] }, revenue_usd: { type: ["number", "null"] }, country: nstr(),
           }, ["store", "product_identifier", "purchased_at", "store_purchase_identifier"])),
         }, ["id"]), { minItems: 1, maxItems: 100 }),
