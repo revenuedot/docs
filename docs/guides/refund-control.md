@@ -42,7 +42,7 @@ RevenueDot sends `PUT https://api.storekit.apple.com/inApps/v2/transactions/cons
 | Field | How it is set |
 |---|---|
 | `customerConsented` | `true` (only sent after you confirm consent) |
-| `consumptionPercentage` | How much the customer used, in thousandths of a percent (40% is `40000`). Prepaid (non-renewing) subscriptions: the share of the period that has passed. Consumables that grant an in-app currency: the share of the granted currency that is spent. Lifetime purchases: `0` when the customer never opened the app after buying. Left out when RevenueDot cannot tell, and always left out for auto-renewable subscriptions, because Apple works that out from the time passed |
+| `consumptionPercentage` | How much the customer used, in thousandths of a percent (40% is `40000`). Prepaid (non-renewing) subscriptions: the share of the period that has passed, using the product's duration from your catalog, because Apple's transaction has no expiry date for them. Consumables that grant an in-app currency: the share of this purchase's currency that is spent, counting the oldest coins as spent first. Lifetime purchases: `0` when the customer never opened the app after buying. Left out when RevenueDot cannot tell, and always left out for auto-renewable subscriptions, because Apple works that out from the time passed |
 | `deliveryStatus` | `DELIVERED`: RevenueDot granted the purchase |
 | `refundPreference` | From the policy (table above) |
 | `sampleContentProvided` | `true` when the customer had a free trial of the product |

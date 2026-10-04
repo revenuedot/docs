@@ -122,7 +122,7 @@ The first policy whose conditions match the customer decides. The **default poli
 
 | Field | How it is set |
 |---|---|
-| `consumptionPercentage` | Prepaid subscriptions: the share of the period passed. Consumables that grant an in-app currency: the share spent. Left out for auto-renewable subscriptions (Apple computes it) and when RevenueDot cannot tell |
+| `consumptionPercentage` | Prepaid subscriptions: the share of the period passed, from the product's duration. Consumables that grant an in-app currency: the share of that purchase's currency spent, oldest coins first. Left out for auto-renewable subscriptions (Apple computes it) and when RevenueDot cannot tell |
 | `deliveryStatus` | `DELIVERED`, because RevenueDot granted the purchase |
 | `sampleContentProvided` | `true` when the customer had a free trial |
 | `refundPreference` | From the policy |
