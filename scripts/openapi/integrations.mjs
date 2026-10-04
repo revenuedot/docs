@@ -65,20 +65,20 @@ const exportOut = obj({
   object: en(["data_export"]), id: str(), project_id: str(), name: str(), enabled: bool(), destination: en(["s3", "r2", "gcs", "azure", "email"]), config,
   credentials: { type: "object", additionalProperties: hint, description: "`secret_access_key` (S3, R2, GCS with an HMAC key), `service_account_json` (GCS with a service account) or `connection_string` (Azure): whether it is saved, and its hint. Empty for email." },
   format: en(["csv", "parquet"]), compression: en(["gzip", "none"], "CSV only."), schedule: en(["daily", "weekly", "interval"]), hour_utc: int(undefined, { minimum: 0, maximum: 23 }),
-  weekday: nint("0 = Sunday; weekly only."), interval_hours: nint("4, 6, 8 or 12; schedule interval only. Runs at hour_utc and every interval from it."), mode: en(["incremental", "full"]), tables: arr(en(["transactions", "customers", "subscriptions", "events", "paywall_events"])), columns,
+  weekday: nint("0 = Sunday; weekly only."), interval_hours: nint("4, 6, 8 or 12; schedule interval only. Runs at hour_utc and every interval from it."), mode: en(["incremental", "full"]), split_files: bool("CSV only: false (default) writes one file per table; true splits it every 10,000 rows. Parquet is always split."), tables: arr(en(["transactions", "customers", "subscriptions", "events", "paywall_events", "virtual_currency"])), columns,
   environment: { type: ["string", "null"], enum: ["production", "sandbox", null] }, next_run_at: nms("Next scheduled run."), last_run_at: nms("Last successful run."),
   last_error: nstr(), consecutive_failures: int(), created_at: ms("Created."), updated_at: nms("Last changed."),
 }, ["object", "id", "name", "destination", "format", "schedule", "mode", "tables"]);
 const exportIn = obj({
   name: str(), enabled: bool(), destination: en(["s3", "r2", "gcs", "azure", "email"]), config,
   credentials: obj({ secret_access_key: nstr(), service_account_json: nstr("The service account's JSON key as a string."), connection_string: nstr("Azure: the storage account's connection string (account key or shared access signature).") }),
-  format: en(["csv", "parquet"]), compression: en(["gzip", "none"]), schedule: en(["daily", "weekly", "interval"]), hour_utc: int(), weekday: nint(), interval_hours: nint("4, 6, 8 or 12."), mode: en(["incremental", "full"]),
-  tables: arr(en(["transactions", "customers", "subscriptions", "events", "paywall_events"])), columns, environment: { type: ["string", "null"], enum: ["production", "sandbox", null] },
+  format: en(["csv", "parquet"]), compression: en(["gzip", "none"]), schedule: en(["daily", "weekly", "interval"]), hour_utc: int(), weekday: nint(), interval_hours: nint("4, 6, 8 or 12."), mode: en(["incremental", "full"]), split_files: bool("CSV only: split every 10,000 rows instead of one file per table."),
+  tables: arr(en(["transactions", "customers", "subscriptions", "events", "paywall_events", "virtual_currency"])), columns, environment: { type: ["string", "null"], enum: ["production", "sandbox", null] },
 });
 const run = obj({
   object: en(["data_export_run"]), id: str(), export_id: str(), status: en(["queued", "running", "succeeded", "failed"]), trigger: en(["schedule", "manual"]), mode: en(["incremental", "full"]),
   window_start: nms("Rows changed after this (null: everything)."), window_end: ms("Rows changed up to this."), attempts: int(), next_attempt_at: nms("Retry time, while queued."),
-  files: arr(obj({ table: str(), key: str("Object key in the bucket."), rows: int(), bytes: int() })), rows: int(), bytes: int(), error: nstr(),
+  files: arr(obj({ table: str(), key: str("Object key in the bucket."), rows: int(), bytes: int(), chunks: int("Email exports: how many pieces RevenueDot keeps the file in; the download link serves them as one file.") })), rows: int(), bytes: int(), error: nstr(),
   started_at: nms("Started."), finished_at: nms("Finished."), created_at: ms("Queued."),
 }, ["object", "id", "export_id", "status", "trigger", "mode", "window_end", "files"]);
 const deleted = (object) => ok("Deleted.", obj({ object: en([object]), id: str(), deleted_at: ms("When it was deleted.") }, ["object", "id", "deleted_at"]));
@@ -154,7 +154,7 @@ export const integrationPaths = {
   [`${P}/exports/columns`]: {
     get: op2({ id: "listDataExportColumns", tag: "Data exports", summary: "List export columns", source: RX, scopes: READ, parameters: [project],
       description: "Every table an export can write, with its columns and their types, in the order files use. Pick columns per table with `columns`.",
-      responses: { 200: ok("The tables.", listOf(obj({ object: en(["data_export_table"]), table: en(["transactions", "customers", "subscriptions", "events", "paywall_events"]), columns: arr(obj({ name: str(), type: en(["string", "bool", "int", "float", "timestamp", "json"]) }, ["name", "type"])) }, ["object", "table", "columns"]))), ...E(404) } }),
+      responses: { 200: ok("The tables.", listOf(obj({ object: en(["data_export_table"]), table: en(["transactions", "customers", "subscriptions", "events", "paywall_events", "virtual_currency"]), columns: arr(obj({ name: str(), type: en(["string", "bool", "int", "float", "timestamp", "json"]) }, ["name", "type"])) }, ["object", "table", "columns"]))), ...E(404) } }),
   },
   "/v2/data-exports/download/{token}": {
     get: op({ extension: true, security: NONE, id: "downloadDataExportFile", tag: "Data exports", summary: "Download a file of an email export", source: RD,

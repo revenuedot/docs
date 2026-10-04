@@ -6074,7 +6074,8 @@ CSV or Parquet files of transactions, customers, subscriptions, events and paywa
 | `weekday` | integer or null | no |  |
 | `interval_hours` | integer or null | no | 4, 6, 8 or 12. |
 | `mode` | `incremental`, `full` | no |  |
-| `tables` | array of `transactions`, `customers`, `subscriptions`, `events`, `paywall_events` | no |  |
+| `split_files` | boolean | no | CSV only: split every 10,000 rows instead of one file per table. |
+| `tables` | array of `transactions`, `customers`, `subscriptions`, `events`, `paywall_events`, `virtual_currency` | no |  |
 | `columns` | object | no | Table → the columns to write, in the catalog's order (see List export columns). A table left out, or an empty list, gets every column, columns added later included. |
 | `environment` | `production`, `sandbox`, null | no |  |
 
@@ -6204,7 +6205,8 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$EXPORT_ID
 | `weekday` | integer or null | no |  |
 | `interval_hours` | integer or null | no | 4, 6, 8 or 12. |
 | `mode` | `incremental`, `full` | no |  |
-| `tables` | array of `transactions`, `customers`, `subscriptions`, `events`, `paywall_events` | no |  |
+| `split_files` | boolean | no | CSV only: split every 10,000 rows instead of one file per table. |
+| `tables` | array of `transactions`, `customers`, `subscriptions`, `events`, `paywall_events`, `virtual_currency` | no |  |
 | `columns` | object | no | Table → the columns to write, in the catalog's order (see List export columns). A table left out, or an empty list, gets every column, columns added later included. |
 | `environment` | `production`, `sandbox`, null | no |  |
 
