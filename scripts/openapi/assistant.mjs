@@ -1,4 +1,4 @@
-// RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
+// RevenueDot: the open-source RevenueCat alternative. Same SDK API, free to start on RevenueDot Cloud.
 // This file: RevenueDot AI, the in-app assistant (conversations, streaming, files, mentions, settings) and the public first-sale share card. All are RevenueDot extensions.
 // Docs: https://revenuedot.app/docs/guides/revenuedot-ai   Migrate from RevenueCat: https://revenuedot.app/docs/migrate
 import { NONE, SECRET, SESSION, arr, body, bool, en, int, listOf, ms, nstr, num, obj, ok, op, param, str, v2Errors } from "./common.mjs";

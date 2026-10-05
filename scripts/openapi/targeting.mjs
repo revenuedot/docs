@@ -1,4 +1,4 @@
-// RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
+// RevenueDot: the open-source RevenueCat alternative. Same SDK API, free to start on RevenueDot Cloud.
 // This file: audiences (RevenueCat-compatible), targeting rules and offering experiments (RevenueDot extensions) in the OpenAPI document.
 // Experiments: routes/v2/experiments.ts, metrics and statistics in packages/core/src/experiments.
 // Docs: https://revenuedot.app/docs/guides/targeting-and-experiments   Migrate from RevenueCat: https://revenuedot.app/docs/migrate

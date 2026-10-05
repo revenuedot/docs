@@ -1,4 +1,4 @@
-// RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
+// RevenueDot: the open-source RevenueCat alternative. Same SDK API, free to start on RevenueDot Cloud.
 // This file: the last operations of RevenueCat's v2 API (restore by order id, create in store, subscriber tokens), the
 // RevenueCat Billing invoice operations RevenueDot answers on purpose, the win-back eligibility extension, and product import
 // from the store (extension).

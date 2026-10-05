@@ -1,4 +1,4 @@
-// RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
+// RevenueDot: the open-source RevenueCat alternative. Same SDK API, free to start on RevenueDot Cloud.
 // This file: store prices and status (read from App Store Connect and Google Play and cached per app) and the product
 // editor (a CSV of prices per territory, uploaded, reviewed and committed to the store). RevenueDot extensions.
 // Docs: https://revenuedot.app/docs/guides/product-editor   Migrate from RevenueCat: https://revenuedot.app/docs/migrate

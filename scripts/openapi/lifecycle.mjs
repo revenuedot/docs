@@ -1,4 +1,4 @@
-// RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
+// RevenueDot: the open-source RevenueCat alternative. Same SDK API, free to start on RevenueDot Cloud.
 // This file: Lifecycle (Refund Control, Retention, Support, Win-back) and Customers lists in the OpenAPI document. All are RevenueDot extensions.
 // Docs: https://revenuedot.app/docs/guides/refund-control   Migrate from RevenueCat: https://revenuedot.app/docs/migrate
 import { NONE, SECRET, arr, body, bool, en, int, listOf, ms, nint, nms, nstr, num, obj, ok, op, param, ref, str, v2Errors } from "./common.mjs";

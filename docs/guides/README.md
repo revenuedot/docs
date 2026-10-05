@@ -1,11 +1,11 @@
 ---
 title: Which guide do I need?
-description: Step-by-step guides for stores, web billing, webhooks, integrations, ads, attribution, benchmarks, growth insights, refunds, retention, support, testing, your team, Auth, moving, billing, Enterprise and its SLA, self-hosting and high availability.
+description: Step-by-step guides for stores, web billing, webhooks, integrations, ads, attribution, benchmarks, growth insights, refunds, retention, support, testing, your team, Auth, moving, billing, Enterprise and its SLA, and, for teams that run their own server, self-hosting and high availability.
 ---
 
 # Which guide do I need?
 
-Each guide is one task, start to finish. Connect a store first, then receive webhooks; run the server yourself with the self-hosting guides.
+Each guide is one task, start to finish. Connect a store first, then receive webhooks.
 
 | I want to | Guide |
 |---|---|
@@ -32,7 +32,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Have the SDK verify that responses come from my server | [Trusted Entitlements](trusted-entitlements.md) |
 | Test purchases without any store account | [Test Store](test-store.md) |
 | Test with App Store sandbox, Xcode or Google Play testers | [Sandbox testing](sandbox-testing.md) |
-| Run RevenueDot on my own servers | [Self-hosting](self-hosting.md) |
+| Run my own server (advanced) | [Self-hosting](self-hosting.md) |
 | Run several replicas behind a load balancer, on Kubernetes with Helm, or on AWS or Google Cloud with Terraform | [High availability](high-availability.md) |
 | Upgrade my server | [Upgrades](upgrades.md) |
 | Back up and restore | [Backups](backups.md) |

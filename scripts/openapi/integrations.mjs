@@ -1,4 +1,4 @@
-// RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
+// RevenueDot: the open-source RevenueCat alternative. Same SDK API, free to start on RevenueDot Cloud.
 // This file: third-party integrations (every entry of RevenueCat's integration catalogue plus BigQuery) and scheduled data
 // exports (S3, R2, Google Cloud Storage, Azure Blob Storage, email) in the OpenAPI document. RevenueDot extensions.
 // Docs: https://revenuedot.app/docs/guides/integrations   Migrate from RevenueCat: https://revenuedot.app/docs/migrate

@@ -1,4 +1,4 @@
-// RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
+// RevenueDot: the open-source RevenueCat alternative. Same SDK API, free to start on RevenueDot Cloud.
 // This file: shared schemas, parameters, responses and security schemes of the OpenAPI document.
 // Docs: https://revenuedot.app/docs/api   Migrate from RevenueCat: https://revenuedot.app/docs/migrate
 import { arr, bool, en, int, listOf, ms, nint, nms, nstr, num, obj, ok, ref, str } from "./common.mjs";

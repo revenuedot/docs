@@ -1,4 +1,4 @@
-// RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
+// RevenueDot: the open-source RevenueCat alternative. Same SDK API, free to start on RevenueDot Cloud.
 // This file: the two chart operations (RevenueCat-compatible) and the chart page's extensions (saved charts, customers,
 // annotations, share links) in the OpenAPI document.
 // Docs: https://revenuedot.app/docs/guides/charts   Migrate from RevenueCat: https://revenuedot.app/docs/migrate
