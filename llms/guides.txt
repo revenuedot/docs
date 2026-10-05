@@ -1,19 +1,19 @@
-# RevenueDot documentation: Guides: stores, web billing, webhooks, integrations, self-hosting
+# RevenueDot documentation: Guides: stores, web billing, webhooks, integrations, billing, team
 
-> RevenueDot is an open-source backend for in-app purchases and subscriptions on the App Store, Google Play and the web. It has an SDK for every platform. RevenueDot Cloud is free up to $10,000 a month in tracked revenue and then 0.5% (never more than $999 a month), and self-hosting is free (AGPL-3.0 server, MIT SDKs).
+> RevenueDot is an open-source backend for in-app purchases and subscriptions on the App Store, Google Play and the web. It has an SDK for every platform. RevenueDot Cloud is free up to $10,000 a month in tracked revenue and then 0.5% (never more than $999 a month). The server is AGPL-3.0 and the SDKs are MIT.
 > RevenueDot is also the open-source RevenueCat alternative: the first release is v2026.10.03, and it has run in production beside RevenueCat since 2026-10-02.
-> Start free on RevenueDot Cloud (https://app.revenuedot.app/signup, free up to $10,000 monthly tracked revenue) or self-host it. A new app installs the RevenueDot SDK for its platform and passes its API key; on RevenueDot Cloud nothing else is needed. An app switching from RevenueCat can keep the RevenueCat SDK, set its proxy URL to RevenueDot and keep its purchase code, offerings and customers.
+> Start free on RevenueDot Cloud (https://app.revenuedot.app/signup, free up to $10,000 monthly tracked revenue). A new app installs the RevenueDot SDK for its platform and passes its API key; on RevenueDot Cloud nothing else is needed. An app switching from RevenueCat can keep the RevenueCat SDK, set its proxy URL to RevenueDot and keep its purchase code, offerings and customers.
 > It verifies App Store and Google Play purchases on the server, keeps each customer's entitlements current from store notifications, and sends webhooks in RevenueCat's payload format.
-> On RevenueDot Cloud, apps use the API at https://api.revenuedot.app and people sign in to the dashboard at https://app.revenuedot.app/login. Self-hosted, RevenueDot runs as one Docker image plus Postgres. The server is AGPL-3.0. The RevenueDot SDKs are MIT, built from RevenueCat's open-source SDKs, and keep RevenueCat's class and method names, so code imports RevenueCat and calls Purchases. RevenueDot is not affiliated with RevenueCat, Inc.
+> On RevenueDot Cloud, apps use the API at https://api.revenuedot.app and people sign in to the dashboard at https://app.revenuedot.app/login. The server is AGPL-3.0. The RevenueDot SDKs are MIT, built from RevenueCat's open-source SDKs, and keep RevenueCat's class and method names, so code imports RevenueCat and calls Purchases. RevenueDot is not affiliated with RevenueCat, Inc.
 
 Generated from https://github.com/revenuedot/docs by scripts/gen-llms.mjs. Index: https://raw.githubusercontent.com/revenuedot/docs/main/llms.txt
 
 # Which guide do I need?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/README.md
-Description: Step-by-step guides for stores, web billing, webhooks, integrations, ads, attribution, benchmarks, growth insights, refunds, retention, support, testing, your team, Auth, moving, billing, Enterprise and its SLA, self-hosting and high availability.
+Description: Step-by-step guides for stores, web billing, webhooks, integrations, ads, attribution, benchmarks, growth insights, refunds, retention, support, testing, your team, Auth, moving, billing, Enterprise and its SLA, and, for teams that run their own server, self-hosting and high availability.
 
-Each guide is one task, start to finish. Connect a store first, then receive webhooks; run the server yourself with the self-hosting guides.
+Each guide is one task, start to finish. Connect a store first, then receive webhooks.
 
 | I want to | Guide |
 |---|---|
@@ -40,7 +40,7 @@ Each guide is one task, start to finish. Connect a store first, then receive web
 | Have the SDK verify that responses come from my server | [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md) |
 | Test purchases without any store account | [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md) |
 | Test with App Store sandbox, Xcode or Google Play testers | [Sandbox testing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/sandbox-testing.md) |
-| Run RevenueDot on my own servers | [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md) |
+| Run my own server (advanced) | [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md) |
 | Run several replicas behind a load balancer, on Kubernetes with Helm, or on AWS or Google Cloud with Terraform | [High availability](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/high-availability.md) |
 | Upgrade my server | [Upgrades](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/upgrades.md) |
 | Back up and restore | [Backups](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/backups.md) |
@@ -2271,6 +2271,8 @@ Purchases made with a StoreKit configuration file in Xcode are signed by Xcode, 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md
 Description: Run the published image ghcr.io/revenuedot/revenuedot (API plus dashboard) next to Postgres with docker compose. Configure it with a .env file, put HTTPS in front, and set REVENUEDOT_SIGNING_KEY if you sign responses.
 
+Most apps should use [RevenueDot Cloud](https://app.revenuedot.app/signup), which is free up to $10,000 a month in tracked revenue and needs no server. This guide is for teams that run their own.
+
 Clone the repository, copy `.env.example` to `.env`, and run `docker compose up -d`. You get one container that serves the SDK API, the REST API, store notifications and the dashboard on port 8787, next to Postgres 16 with a persistent volume. The server applies database migrations itself when it starts, so upgrades are a pull and a restart.
 
 ```bash
@@ -2778,9 +2780,9 @@ Moving from RevenueCat instead? See [Migrate from RevenueCat](https://raw.github
 # How does RevenueDot Cloud billing work?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/cloud-billing.md
-Description: RevenueDot Cloud is free up to $10,000 of tracked revenue a month. Cloud Standard costs 0.5% of the tracked revenue above $10,000, never more than $999 a month. Self-hosting is free and unmetered. See your usage, upgrade and manage your card on the Billing page.
+Description: RevenueDot Cloud is free up to $10,000 of tracked revenue a month. Cloud Standard costs 0.5% of the tracked revenue above $10,000, never more than $999 a month. See your usage, upgrade and manage your card on the Billing page.
 
-RevenueDot Cloud measures the **tracked revenue** of the projects you own each calendar month. Up to $10,000 a month is free. Above that, Cloud Standard costs 0.5% of the part above $10,000, and never more than $999 a month. A self-hosted RevenueDot has no billing, no meter and no limits. For a quick look at the whole product, including pricing, watch the [2:32 platform demo](https://revenuedot.app/watch/revenuedot-platform-demo).
+RevenueDot Cloud measures the **tracked revenue** of the projects you own each calendar month. Up to $10,000 a month is free. Above that, Cloud Standard costs 0.5% of the part above $10,000, and never more than $999 a month. For a quick look at the whole product, including pricing, watch the [2:32 platform demo](https://revenuedot.app/watch/revenuedot-platform-demo).
 
 ## Plans
 
@@ -2844,9 +2846,9 @@ Open your account menu → **Billing** (`/account/billing`). It shows:
 
 Billing never changes what your apps get. A failed payment, a cancelled plan or a month above the free limit does not block SDK calls, purchases, webhooks, integrations or the REST API. The limits decide which plan fits; they are not switches.
 
-## Self-hosting is free
+## Billing on a server you run yourself
 
-On a self-hosted RevenueDot the Billing page says billing is only on RevenueDot Cloud, and `/v2/billing` answers 404. There is no metering and nothing is sent anywhere. See [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md), and [Move between self-host and Cloud](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/move-projects.md) to switch either way.
+On a self-hosted RevenueDot the Billing page says billing is only on RevenueDot Cloud, and `/v2/billing` answers 404. There is no metering. See [Self-hosting](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md), and [Move between self-host and Cloud](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/move-projects.md) to switch either way.
 
 ## API
 
@@ -5721,30 +5723,30 @@ curl https://api.revenuedot.app/v2/projects/$PROJECT_ID/auth/identities/$PROVIDE
 # Which RevenueDot plan has organizations, SSO and the other team features, and how do I turn them on?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/enterprise.md
-Description: Cloud Standard adds organizations, custom roles and single sign-on. Enterprise adds SCIM, audit retention, compliance exports, data location, the SLA and the licence for self-hosting. Self-hosted servers turn these features on with a licence key, as before.
+Description: Cloud Standard adds organizations, custom roles and single sign-on. Enterprise adds SCIM, audit retention, compliance exports, data location and the SLA. Servers you run yourself turn these features on with a licence key.
 
-**Cloud Standard adds organizations, custom roles and single sign-on. Enterprise adds everything else: SCIM, audit retention, signed compliance exports, data location, the SLA and the licence for self-hosting.** The open-source core (projects, the SDK API, the dashboard, the REST API, the built-in Admin, Developer and Viewer roles) is in every plan, and self-hosting it is free under AGPL-3.0 with no limits.
+**Cloud Standard adds organizations, custom roles and single sign-on. Enterprise adds everything else: SCIM, audit retention, signed compliance exports, data location, the SLA and the licence for self-hosting.** The open-source core (projects, the SDK API, the dashboard, the REST API, the built-in Admin, Developer and Viewer roles) is in every plan. [Start free on Cloud](https://app.revenuedot.app/signup).
 
 The team features are the code in the `ee/` folder of the server. It is under the RevenueDot Enterprise License, not AGPL-3.0. **On a self-hosted server, every `ee/` feature needs an Enterprise licence key** in `REVENUEDOT_LICENSE_KEY`, exactly as before. Without the key, the server never loads `ee/`: no route, page or response changes. `REVENUEDOT_EE_DEV=true` turns them on for development and testing only. On RevenueDot Cloud you set no key: your plan decides.
 
 ## What each plan includes
 
-| Feature | Self-host | Cloud Free | Cloud Standard | Enterprise |
+| Feature | Cloud Free | Cloud Standard | Enterprise | Self-host (advanced) |
 |---|---|---|---|---|
-| Price | Free | $0 | 0.5% of tracked revenue above $10,000 a month, at most $999 a month | From $50,000 a year |
-| Tracked revenue | No limit | Up to $10,000 a month | Up to $1,000,000 a month | No limit |
+| Price | $0 | 0.5% of tracked revenue above $10,000 a month, at most $999 a month | From $50,000 a year | Free |
+| Tracked revenue | Up to $10,000 a month | Up to $1,000,000 a month | No limit | No limit |
 | Open-source core: projects, SDK API, dashboard, REST API | Yes | Yes | Yes | Yes |
 | Admin, Developer and Viewer roles | Yes | Yes | Yes | Yes |
-| Project audit log | Kept forever | Kept 90 days | Kept 90 days | Kept as long as you choose |
-| Organizations | With an Enterprise licence key | No | Yes | Yes |
-| Custom roles | With an Enterprise licence key | No | Yes | Yes |
-| Single sign-on (SAML 2.0, OpenID Connect, verified domains, required SSO) | With an Enterprise licence key | No | Yes | Yes |
-| SCIM provisioning | With an Enterprise licence key | No | No | Yes |
-| Audit retention from 30 days to 10 years, or forever | With an Enterprise licence key | No | No | Yes |
-| Signed compliance exports | With an Enterprise licence key | No | No | Yes |
-| Data location settings (US or EU) | With an Enterprise licence key | No | No | Yes; Cloud runs in the US only today |
-| Support | Community | Community and email | Email, first reply within 2 business days | The [SLA](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/sla.md) response times |
-| Uptime and support SLA | No | No | No | Yes ([SLA](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/sla.md)) |
+| Project audit log | Kept 90 days | Kept 90 days | Kept as long as you choose | Kept forever |
+| Organizations | No | Yes | Yes | With an Enterprise licence key |
+| Custom roles | No | Yes | Yes | With an Enterprise licence key |
+| Single sign-on (SAML 2.0, OpenID Connect, verified domains, required SSO) | No | Yes | Yes | With an Enterprise licence key |
+| SCIM provisioning | No | No | Yes | With an Enterprise licence key |
+| Audit retention from 30 days to 10 years, or forever | No | No | Yes | With an Enterprise licence key |
+| Signed compliance exports | No | No | Yes | With an Enterprise licence key |
+| Data location settings (US or EU) | No | No | Yes; Cloud runs in the US only today | With an Enterprise licence key |
+| Support | Community and email | Email, first reply within 2 business days | The [SLA](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/sla.md) response times | Community |
+| Uptime and support SLA | No | No | Yes ([SLA](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/sla.md)) | No |
 
 Cloud prices and the billing rules are on [Cloud billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/cloud-billing.md). Enterprise is a contract: [contact sales](https://revenuedot.app/contact-sales) or write to [sales@revenuedot.app](mailto:sales@revenuedot.app).
 
@@ -6237,9 +6239,9 @@ Token and group endpoints take a dashboard session of an organization owner or a
 # Where is my RevenueDot data stored, and can I keep it in the EU?
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/data-location.md
-Description: Self-hosted, your data stays wherever you run the server. Enterprise records a US or EU region on each organization and project; on Cloud each region is its own deployment that refuses other regions' projects. Cloud has no EU region yet.
+Description: RevenueDot Cloud runs in the US today and has no EU region yet. Enterprise records a US or EU region on each organization and project; on Cloud each region is its own deployment that refuses other regions' projects. A server you run yourself keeps data wherever you run it.
 
-**Self-hosted, your data is wherever you run RevenueDot and its Postgres.** Nothing leaves your servers, so you choose the country. **RevenueDot Cloud runs in the US today.** It has no EU region yet.
+**RevenueDot Cloud runs in the US today.** It has no EU region yet. A server you run yourself keeps its data wherever you run RevenueDot and its Postgres, so you choose the country.
 
 Data location is part of [RevenueDot Enterprise](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/enterprise.md) (the `data_location` feature). It records a region, **United States** (`us`) or **European Union** (`eu`), on each organization and each of its projects. RevenueCat stores data in the US ([DPA](https://www.revenuecat.com/dpa)).
 

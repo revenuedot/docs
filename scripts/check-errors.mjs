@@ -1,4 +1,4 @@
-// RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
+// RevenueDot: the open-source RevenueCat alternative. Same SDK API, free to start on RevenueDot Cloud.
 // This file: the quality gate for the generated reference pages (docs/errors, docs/notifications, docs/webhooks). Fails a page that has no
 // source link, no code block, a first sentence or code block shared with another page, no cause or fix, a missing compile or run note,
 // an unchecked snippet where this repo has the toolchain, thin content, a webhook event that api/webhook-events.md does not list, or

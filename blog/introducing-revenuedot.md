@@ -1,13 +1,13 @@
 ---
 title: Introducing RevenueDot, an open-source backend for in-app purchases
-description: RevenueDot is an open-source, self-hostable backend for in-app purchases that works with the RevenueCat SDK. Here is why we built it, and what it does today.
+description: RevenueDot is an open-source backend for in-app purchases that works with the RevenueCat SDK, free to start on RevenueDot Cloud. Here is why we built it, and what it does today.
 date: 2026-09-30
 author: RevenueDot team
 ---
 
 # Introducing RevenueDot, an open-source backend for in-app purchases
 
-RevenueDot is an open-source (AGPL-3.0), self-hostable backend for in-app purchases and subscriptions. It speaks the same API as RevenueCat's backend, so an app that already uses the RevenueCat SDK can talk to a RevenueDot server by changing one setting: the SDK's proxy URL. Your purchase code, your offerings and your customers stay where they are.
+RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions, free to start on [RevenueDot Cloud](https://app.revenuedot.app/signup). It speaks the same API as RevenueCat's backend, so an app that already uses the RevenueCat SDK can talk to RevenueDot by changing one setting: the SDK's proxy URL. Your purchase code, your offerings and your customers stay where they are.
 
 **Update, 2026-10-02: the RevenueDot SDK is published for every platform.** New apps install it and pass their app's key. On RevenueDot Cloud nothing else is needed. [Which SDKs does RevenueDot have?](../docs/sdks/README.md) lists the install line for each platform. The rest of this post describes RevenueDot on launch day.
 
@@ -16,7 +16,7 @@ This post says what we built, why, and exactly what it does today.
 ## Why we built it
 Subscription apps need a backend that checks store receipts, tracks who has access, follows renewals and refunds, and tells the app's own server what happened. RevenueCat made that easy, and its SDKs are some of the best-maintained open-source code in mobile. We wanted three things that a hosted service cannot give.
 
-**No share of revenue.** RevenueCat's Pro plan is free up to $2,500 in monthly tracked revenue, then charges 1% of tracked revenue ([RevenueCat pricing](https://www.revenuecat.com/pricing)). At $50,000 a month that is roughly $500 a month. At $500,000 a month it is roughly $5,000 a month, or $60,000 a year. A self-hosted RevenueDot costs what your server and database cost.
+**No share of revenue.** RevenueCat's Pro plan is free up to $2,500 in monthly tracked revenue, then charges 1% of tracked revenue ([RevenueCat pricing](https://www.revenuecat.com/pricing)). At $50,000 a month that is roughly $500 a month. At $500,000 a month it is roughly $5,000 a month, or $60,000 a year. RevenueDot Cloud is free up to $10,000 a month, then 0.5% with a cap of $999 a month.
 
 **Your own data, in your own region.** Purchases, customers, receipts and events live in your Postgres database. You choose where it runs, who can read it and how long it keeps things. Nothing leaves your infrastructure unless you send it.
 
@@ -79,17 +79,7 @@ The full list, with a workaround for each item, is in [Known issues](../docs/hel
 ## How to try it
 The fastest way is RevenueDot Cloud: [create a free account](https://app.revenuedot.app/signup) (free up to $10,000 in monthly tracked revenue), then install the RevenueDot SDK for your platform and pass your app's key ([SDK guides](../docs/sdks/README.md)). An app that already ships the RevenueCat SDK can instead point its proxy URL at `https://api.revenuedot.app`.
 
-To run it yourself you need Docker, `curl` and `jq`. The quickstart takes about five minutes, and most of that is the first image build:
-
-```bash
-git clone https://github.com/revenuedot/examples.git
-cd examples/selfhost/docker-compose
-cp .env.example .env          # set POSTGRES_PASSWORD
-docker compose up -d
-./seed.sh                     # prints a Test Store key and a secret key
-```
-
-Then point the [purchases-js example](https://github.com/revenuedot/examples/tree/main/web/purchases-js-vite) at `http://localhost:8787` and buy something. The [quickstart](../docs/getting-started/quickstart.md) walks through each step.
+The [quickstart](../docs/getting-started/quickstart.md) walks through each step.
 
 If you already use RevenueCat, read [Migrate from RevenueCat](../docs/migrate/README.md) before you touch production. The order of steps matters.
 
@@ -102,4 +92,4 @@ RevenueDot Cloud is already live, with [open sign-up](https://app.revenuedot.app
 
 The build plan is public in the repository. RevenueDot is not affiliated with RevenueCat. "RevenueCat" is a trademark of RevenueCat, Inc., and we use it only to describe compatibility.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

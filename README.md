@@ -10,7 +10,7 @@
 **Every docs page, the API reference, the help center, the blog and `llms.txt` for [RevenueDot](https://revenuedot.app), the open-source RevenueCat alternative.**<br>
 Published at [revenuedot.app/docs](https://revenuedot.app/docs); the source of truth is this repository.
 
-[Docs](https://revenuedot.app/docs) · [API reference](https://revenuedot.app/docs/api) · [Migrate from RevenueCat](https://revenuedot.app/docs/migrate) · [Self-host](https://revenuedot.app/docs/guides/self-hosting) · [Main repository](https://github.com/revenuedot/revenuedot)
+[Docs](https://revenuedot.app/docs) · [API reference](https://revenuedot.app/docs/api) · [Migrate from RevenueCat](https://revenuedot.app/docs/migrate) · [Sign up](https://app.revenuedot.app/signup) · [Main repository](https://github.com/revenuedot/revenuedot)
 
 [![Text: CC BY 4.0](https://img.shields.io/badge/text-CC%20BY%204.0-0A0A0A)](LICENSE)
 [![Code: MIT](https://img.shields.io/badge/code-MIT-0A0A0A)](LICENSE)
@@ -19,7 +19,7 @@ Published at [revenuedot.app/docs](https://revenuedot.app/docs); the source of t
 
 </div>
 
-**Open documentation for [RevenueDot](https://revenuedot.app), the open-source backend for in-app purchases and subscriptions, with an SDK for every platform.** Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Everything here is public Markdown: getting started, concepts, SDK guides, store setup, webhooks, self-hosting, migration from RevenueCat, the API reference, a help center and a blog.
+**Open documentation for [RevenueDot](https://revenuedot.app), the open-source backend for in-app purchases and subscriptions, with an SDK for every platform.** Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Everything here is public Markdown: getting started, concepts, SDK guides, store setup, webhooks, self-hosting, migration from RevenueCat, the API reference, a help center and a blog.
 
 > Every page says what works today and what is planned.
 
@@ -27,7 +27,7 @@ The pages are published at [revenuedot.app/docs](https://revenuedot.app/docs) an
 
 ## Start here
 - [What is RevenueDot?](docs/getting-started/README.md) and the [5-minute quickstart](docs/getting-started/quickstart.md) on RevenueDot Cloud
-- [Self-hosting](docs/guides/self-hosting.md): run the same server with Docker and Postgres
+- [Self-hosting](docs/guides/self-hosting.md): reference for people who run their own server
 - [Connect your app](docs/getting-started/connect-your-app.md): install the RevenueDot SDK, or, when you switch from RevenueCat, keep its SDK and change one line
 - [SDK guides](docs/sdks/README.md): the RevenueDot SDK for every platform
 - [Migrate from RevenueCat](docs/migrate/README.md)

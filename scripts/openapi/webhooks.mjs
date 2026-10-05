@@ -1,4 +1,4 @@
-// RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
+// RevenueDot: the open-source RevenueCat alternative. Same SDK API, free to start on RevenueDot Cloud.
 // This file: the webhook events (OpenAPI `webhooks`) with example payloads recorded from a RevenueDot server.
 // Docs: https://revenuedot.app/docs/guides/webhooks   Migrate from RevenueCat: https://revenuedot.app/docs/migrate
 import { readFileSync } from "node:fs";

@@ -1,4 +1,4 @@
-// RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
+// RevenueDot: the open-source RevenueCat alternative. Same SDK API, free to start on RevenueDot Cloud.
 // This file: helpers and shared components for the OpenAPI document (api/openapi.yaml).
 // Docs: https://revenuedot.app/docs/api   Migrate from RevenueCat: https://revenuedot.app/docs/migrate
 

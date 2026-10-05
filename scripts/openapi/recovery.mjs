@@ -1,4 +1,4 @@
-// RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
+// RevenueDot: the open-source RevenueCat alternative. Same SDK API, free to start on RevenueDot Cloud.
 // This file: "Connect with Stripe" (Stripe Connect OAuth and Account Links) and payment recovery (failed payments) in the
 // OpenAPI document. Both are RevenueDot extensions.
 // Docs: https://revenuedot.app/docs/guides/stripe-connect   https://revenuedot.app/docs/guides/payment-recovery   Migrate from RevenueCat: https://revenuedot.app/docs/migrate

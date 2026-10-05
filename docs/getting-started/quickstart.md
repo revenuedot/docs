@@ -1,13 +1,11 @@
 ---
 title: How do I make a first purchase with RevenueDot in 5 minutes?
-description: Create a free RevenueDot Cloud account, add a Test Store app with a product and an entitlement, make a test purchase from the dashboard, then install the RevenueDot SDK in your app and pass your key. You can also run the same server yourself with Docker.
+description: Create a free RevenueDot Cloud account, add a Test Store app with a product and an entitlement, make a test purchase from the dashboard, then install the RevenueDot SDK in your app and pass your key.
 ---
 
 # How do I make a first purchase with RevenueDot in 5 minutes?
 
 Create a free account on **RevenueDot Cloud**, add a Test Store app with one product and one entitlement, make a test purchase from the dashboard, then install the RevenueDot SDK in your app and pass it your key. You need no server, no App Store account and no Google Play account. Cloud is free until your app makes $10,000 a month in tracked revenue.
-
-To run the server on your own machine instead, skip to [Run it yourself](#run-it-yourself).
 
 [![Watch the 1:18 walkthrough of a first RevenueDot test purchase](https://revenuedot.app/videos/revenuedot-first-purchase.webp)](https://revenuedot.app/videos/revenuedot-first-purchase.mp4)
 
@@ -105,8 +103,8 @@ npm run dev                    # open http://localhost:5199, click Buy, then "Te
 
 Give each Test Store product a price in the dashboard (Product catalog, Edit product, Test Store price) so the paywall shows it. A product without one shows 0. Real prices come from the App Store and Google Play. See [Test Store](../guides/test-store.md).
 
-## Run it yourself
-RevenueDot is open source, and the server on Cloud is the same code you can run. You need Docker with Compose v2, plus `git`, `curl` and `jq`. Most of the 5 minutes is the first image build.
+## Run your own server (advanced)
+Most people should use RevenueDot Cloud above. If your company requires its own server, the server on Cloud is the same open-source code. You need Docker with Compose v2, plus `git`, `curl` and `jq`. Most of the 5 minutes is the first image build.
 
 ### 1. Start RevenueDot
 ```bash

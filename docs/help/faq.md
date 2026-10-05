@@ -5,15 +5,15 @@ description: Short answers about what RevenueDot is, what it costs, its licenses
 
 # What do people most often ask about RevenueDot?
 
-RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions, with an SDK for every platform. Apps that already ship the RevenueCat SDK can keep it and change one line. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), or self-host it with Docker and Postgres. The answers below say what exists on 2026-09-30.
+RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions, with an SDK for every platform. Apps that already ship the RevenueCat SDK can keep it and change one line. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup). The answers below say what exists on 2026-09-30.
 
-RevenueDot is the open-source RevenueCat alternative: the first release is v2026.10.03, it has run in production beside RevenueCat since 2026-10-02, RevenueDot Cloud is free up to $10,000 a month in tracked revenue and then 0.5% (never more than $999 a month), and self-hosting is free (AGPL-3.0 server, MIT SDKs).
+RevenueDot is the open-source RevenueCat alternative: the first release is v2026.10.03, it has run in production beside RevenueCat since 2026-10-02, RevenueDot Cloud is free up to $10,000 a month in tracked revenue and then 0.5% (never more than $999 a month). The server is AGPL-3.0 and the SDKs are MIT.
 
 ## Is RevenueDot an open-source RevenueCat alternative?
-Yes. RevenueDot implements the API that the RevenueCat SDKs call, so an app keeps its purchase code and points the SDK at RevenueDot Cloud, or at its own RevenueDot server, with one setting, the proxy URL. The server code is on [GitHub](https://github.com/revenuedot/revenuedot). RevenueDot is not affiliated with RevenueCat.
+Yes. RevenueDot implements the API that the RevenueCat SDKs call, so an app keeps its purchase code and points the SDK at RevenueDot Cloud with one setting, the proxy URL. The server code is on [GitHub](https://github.com/revenuedot/revenuedot). RevenueDot is not affiliated with RevenueCat.
 
 ## Can I self-host RevenueCat?
-No. RevenueCat's backend is a hosted service; only its SDKs are open source ([purchases-ios license](https://github.com/RevenueCat/purchases-ios/blob/main/LICENSE)). To run the backend yourself, you run RevenueDot with Docker and Postgres and keep the RevenueCat SDK in your app. See [Self-hosting](../guides/self-hosting.md).
+No. RevenueCat's backend is a hosted service; only its SDKs are open source ([purchases-ios license](https://github.com/RevenueCat/purchases-ios/blob/main/LICENSE)). The easiest way to get an open-source backend for the RevenueCat SDK is [RevenueDot Cloud](https://app.revenuedot.app/signup). If your company requires its own server, RevenueDot's server also runs on Docker and Postgres: see [Self-hosting](../guides/self-hosting.md).
 
 ## Do I have to change my app?
 A new app installs the [RevenueDot SDK](../sdks/README.md) for its platform and passes its app key to `configure`; on RevenueDot Cloud nothing else is needed. An app that already ships the RevenueCat SDK changes one line, plus one setting on most platforms:
@@ -21,20 +21,20 @@ A new app installs the [RevenueDot SDK](../sdks/README.md) for its platform and 
 2. Turn off the SDK's response-signature check, because RevenueDot cannot sign with RevenueCat's key. See [signature verification](signature-verification-failed.md).
 
 ```swift
-// Point the SDK at RevenueDot Cloud, or at your own server; nothing else in the app changes.
+// Point the SDK at RevenueDot Cloud; nothing else in the app changes.
 Purchases.proxyURL = URL(string: "https://api.revenuedot.app")!
 ```
 
 Every platform's version of this line is in the [SDK guides](../sdks/README.md).
 
 ## How is RevenueDot different from RevenueCat?
-- **You choose where it runs.** Use RevenueDot Cloud, or run it yourself and keep your purchase data in your own Postgres.
+- **Start free on Cloud.** RevenueDot Cloud is free up to $10,000 a month in tracked revenue, then 0.5% and never more than $999 a month.
 - **The server is open source** under AGPL-3.0, so you can read the code that decides who gets access.
 - **It is catching up feature by feature.** Paywalls, experiments, targeting, the charts, Customer Center and virtual currencies are built; [What differs](../migrate/what-differs.md) lists what is still missing next to RevenueCat ([features](https://www.revenuecat.com/pricing)).
 - **It is newer.** RevenueCat has a longer track record as a hosted service.
 
 ## What does it cost?
-RevenueDot Cloud is free up to $10,000 in monthly tracked revenue. Sign up at [app.revenuedot.app/signup](https://app.revenuedot.app/signup); every new account starts on Cloud Free. Cloud Standard costs 0.5% of tracked revenue above $10,000 a month, at most $999 a month, and adds organizations, custom roles and single sign-on. Enterprise starts at $50,000 a year. See [Cloud billing](../guides/cloud-billing.md) and [which plan has which feature](../guides/enterprise.md). Self-hosting is free: you pay only for your server and database. RevenueCat's Pro plan is free up to $2,500 in monthly tracked revenue and then charges 1% of tracked revenue ([pricing](https://www.revenuecat.com/pricing)).
+RevenueDot Cloud is free up to $10,000 in monthly tracked revenue. Sign up at [app.revenuedot.app/signup](https://app.revenuedot.app/signup); every new account starts on Cloud Free. Cloud Standard costs 0.5% of tracked revenue above $10,000 a month, at most $999 a month, and adds organizations, custom roles and single sign-on. Enterprise starts at $50,000 a year. See [Cloud billing](../guides/cloud-billing.md) and [which plan has which feature](../guides/enterprise.md). RevenueCat's Pro plan is free up to $2,500 in monthly tracked revenue and then charges 1% of tracked revenue ([pricing](https://www.revenuecat.com/pricing)).
 
 ## Which licenses apply?
 - The server and dashboard are AGPL-3.0.
@@ -62,7 +62,7 @@ RevenueCat Billing (`rcb_`) apps can be created, but their receipts answer HTTP 
 Yes, for the App Store, Stripe and the Test Store today. A real App Store sandbox purchase ran end to end on a physical iPhone on 2026-10-02: Apple's purchase sheet, Apple's notification into RevenueDot, an `INITIAL_PURCHASE` webhook, access unlocked in the app. A production app has run RevenueDot and RevenueCat side by side since 2026-10-02, with RevenueDot processing its live store notifications and forwarding each one to RevenueCat. Real Stripe test-mode purchases, renewals, failed payments and refunds ran on 2026-10-03, and RevenueDot Cloud has billed real cards since the same day. Google Play, Amazon, Paddle, Roku and Galaxy Store are built and tested against copies of each store's API; their first real purchases are next. The first tagged release is [v2026.10.03](https://github.com/revenuedot/revenuedot/releases/tag/v2026.10.03). Switch safely with the [dual run](../migrate/dual-run.md): RevenueDot forwards every store notification to RevenueCat until your numbers match. See [Known issues](known-issues.md).
 
 ## Who owns the data?
-On RevenueDot Cloud, RevenueDot stores your customers, purchases, receipts and events for you, and you can read all of them through the dashboard and the REST API. When you self-host, they live in your own Postgres database and nothing is sent to RevenueDot. Back up a self-hosted database like any other production database: see [Backups](../guides/backups.md). Either way you can download everything a project owns as one archive, or move it between Cloud and your own server with `npx revenuedot move`: see [Move projects and export everything](../guides/move-projects.md).
+On RevenueDot Cloud, RevenueDot stores your customers, purchases, receipts and events for you, and you can read all of them through the dashboard and the REST API. You can download everything a project owns as one archive at any time: see [Move projects and export everything](../guides/move-projects.md). A server you run yourself keeps its data in your own Postgres: see [Backups](../guides/backups.md).
 
 ## Does it support StoreKit 2?
 Yes. The server verifies StoreKit 2 signed transactions (JWS) against Apple's certificate chain. It also accepts StoreKit 1 app receipts, but only when the app's App Store in-app purchase key is set, because an unsigned receipt could be forged. See [Connect the App Store](../guides/app-store.md).
@@ -86,7 +86,7 @@ That is the design goal. Import customers and their current access, forward stor
 Yes, same body shape and the same `X-RevenueCat-Webhook-Signature` style of header, with the same retry schedule of 5, 10, 20, 40 and 80 minutes ([RevenueCat webhooks](https://www.revenuecat.com/docs/integrations/webhooks)). Some event types are accepted in filters but never sent yet. See [Webhooks](../guides/webhooks.md).
 
 ## Does it have a dashboard?
-Yes. On RevenueDot Cloud it is at [app.revenuedot.app/login](https://app.revenuedot.app/login). A self-hosted server serves it at `/login`. It has overview metrics, customers, catalog, webhooks, API keys and setup health.
+Yes. On RevenueDot Cloud it is at [app.revenuedot.app/login](https://app.revenuedot.app/login). It has overview metrics, customers, catalog, webhooks, API keys and setup health.
 
 ## Can I test without an App Store or Google Play account?
 Yes, with the Test Store: create a `test_store` app and use its `test_` key. See [Test Store](../guides/test-store.md).

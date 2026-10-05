@@ -10,7 +10,7 @@ image: /blog/assets/migrate-from-adapty/cover.svg
 
 You can move an app from Adapty to RevenueDot in four steps: rebuild the catalog, swap the Adapty SDK for the RevenueDot SDK, send store notifications to RevenueDot, and let active subscribers re-sync when the updated app posts their store receipts. There is no one-command import. RevenueDot's importer reads RevenueCat projects only, so an Adapty move is an SDK swap with a side-by-side run, not a data copy.
 
-This post gives the order of work, what to rebuild by hand, and how to run both systems until the last old app version fades out. It is for apps that use Adapty today and want an open-source backend they can self-host. Facts about Adapty come from its public docs and were checked in October 2026.
+This post gives the order of work, what to rebuild by hand, and how to run both systems until the last old app version fades out. It is for apps that use Adapty today and want an open-source backend that works with the RevenueCat SDK. Facts about Adapty come from its public docs and were checked in October 2026.
 
 ![Four steps to leave Adapty: rebuild the catalog, swap the SDK, route store notifications, re-sync receipts](assets/migrate-from-adapty/cover.svg)
 
@@ -20,7 +20,7 @@ This post gives the order of work, what to rebuild by hand, and how to run both 
 - **Subscribers move by receipt.** Adapty's own migration guide says users move when they open a version with the new SDK ([Adapty docs](https://adapty.io/docs/migrate-to-adapty-from-another-solutions.md)). The same mechanism works in the other direction: the updated app posts each customer's store purchases to RevenueDot.
 - **Apple allows two notification URLs per app**, one for production and one for sandbox ([Apple](https://developer.apple.com/help/app-store-connect/configure-in-app-purchase-settings/enter-server-urls-for-app-store-server-notifications)). Point them at RevenueDot and forward the body to Adapty while old app versions remain.
 - **Your code changes.** Adapty's `getProfile()` and access levels become the RevenueDot SDK's customer info and entitlements, and your webhook handler reads RevenueCat's payload shape.
-- **Cost.** Adapty is free while you earn under $5K a month, then 1% of monthly revenue ([Adapty pricing](https://adapty.io/pricing/)). RevenueDot Cloud is free up to $10,000 of monthly tracked revenue, and self-hosting is free.
+- **Cost.** Adapty is free while you earn under $5K a month, then 1% of monthly revenue ([Adapty pricing](https://adapty.io/pricing/)). RevenueDot Cloud is free up to $10,000 of monthly tracked revenue.
 
 ## What does RevenueDot import from Adapty?
 
@@ -106,7 +106,7 @@ Adapty is a hosted growth suite and RevenueDot is an open-source backend, so eac
 | Area | Adapty | RevenueDot |
 |---|---|---|
 | Compliance | SOC 2 Type II attestation, available under NDA ([Adapty](https://adapty.io/security-and-compliance/)) | No SOC 2 report yet |
-| Source code | SDKs on GitHub (MIT), hosted backend | Server and dashboard open source (AGPL-3.0), self-hostable |
+| Source code | SDKs on GitHub (MIT), hosted backend | Server and dashboard open source (AGPL-3.0) |
 | Client SDK | Adapty's own SDKs | The RevenueDot SDK, built from RevenueCat's open-source SDK (MIT) |
 | Paywalls and A/B tests | Flow and paywall builder with A/B testing and segmentation ([Adapty pricing](https://adapty.io/pricing/)) | Ten paywall templates, a visual editor, audiences and two-offering experiments |
 | Add-ons | Refund Saver, Ads Manager, Mail and attribution are priced separately | Refund Control and win-back are included |
@@ -145,4 +145,4 @@ If they are Adapty-built, yes. Rebuild them from a RevenueDot template or keep y
 
 The RevenueDot SDK. It is published for every platform (2026-10-02), calls RevenueDot by default and needs no RevenueCat account. RevenueDot implements the API the RevenueCat SDKs call, so the stock RevenueCat SDK also works if you set its proxy URL to RevenueDot.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

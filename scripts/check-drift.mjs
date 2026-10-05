@@ -1,4 +1,4 @@
-// RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
+// RevenueDot: the open-source RevenueCat alternative. Same SDK API, free to start on RevenueDot Cloud.
 // This file: fails when api/openapi.yaml and the server's route files disagree (paths, methods, source files, field names).
 // It reads the core (apps/server/src) and, when the checkout has it, RevenueDot Enterprise (ee/server). Core files keep
 // x-source values relative to apps/server/src (routes/v2/apps.ts); enterprise files use the path from the repo root

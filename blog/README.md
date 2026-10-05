@@ -1,13 +1,13 @@
 ---
 title: RevenueDot blog
-description: Posts from the RevenueDot team about building an open-source, self-hostable backend for in-app purchases that works with the RevenueCat SDK.
+description: Posts from the RevenueDot team about building RevenueDot Cloud, an open-source backend for in-app purchases that works with the RevenueCat SDK.
 date: 2026-09-30
 author: RevenueDot team
 ---
 
 # RevenueDot blog
 
-Posts from the team building RevenueDot, an open-source (AGPL-3.0), self-hostable backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Newest first.
+Posts from the team building RevenueDot, an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK, free to start on [RevenueDot Cloud](https://app.revenuedot.app/signup). Newest first.
 
 ## 2026-10-02
 - [react-native-iap vs expo-iap vs react-native-purchases: which to use](react-native-iap-vs-expo-iap-vs-react-native-purchases.md): what each React Native package does, which ones run in Expo Go, the server each one needs, code side by side, cost, and when each one fits.
@@ -51,11 +51,11 @@ Posts from the team building RevenueDot, an open-source (AGPL-3.0), self-hostabl
 - [Server-side in-app purchase validation](server-side-receipt-validation.md): the App Store Server API, Google's subscriptionsv2, and when to build or use a server.
 - [Apple refund requests and CONSUMPTION_REQUEST](apple-refund-requests-consumption-info.md): what Apple asks for, the deadline, and how to answer automatically.
 - [Selling iOS subscriptions on the web with Stripe](web-checkout-for-ios-apps-stripe.md): the US ruling, the web-to-app flow and unlocking web purchases in the app.
-- [Self-hosting an in-app purchase backend](self-hosted-in-app-purchase-server.md): when it makes sense, what it costs, and how to run it.
+- [Running your own in-app purchase server](self-hosted-in-app-purchase-server.md): for teams that must run their own server.
 
 ## 2026-09-30
 - [Introducing RevenueDot](introducing-revenuedot.md): what we are building, why, and what it does today.
 - [How RevenueCat compatibility works](how-revenuecat-compatible-works.md): the SDK endpoints, the error-code rule that protects purchases, the contract tests, and response signing byte by byte.
 - [Migrating from RevenueCat without losing a subscriber](migrating-from-revenuecat-without-data-loss.md): import, keep your public keys, run both side by side, verify, then switch.
-- [Self-host RevenueDot in 5 minutes](self-host-revenuedot-in-5-minutes.md): Docker Compose, a seeded project, a first Test Store purchase with `curl` and a webhook to your laptop.
+- [Run RevenueDot locally in 5 minutes](self-host-revenuedot-in-5-minutes.md): Docker Compose, a seeded project, a first Test Store purchase with `curl` and a webhook to your laptop.
 - [Why we forked the RevenueCat SDKs](why-we-forked-the-revenuecat-sdks.md): ten MIT forks, what the patches change, why import names stay the same, and how the forks keep up with upstream.

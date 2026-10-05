@@ -1,11 +1,11 @@
 ---
 title: What is RevenueDot?
-description: RevenueDot is an open-source backend for in-app purchases and subscriptions on the App Store, Google Play, Amazon, Stripe and the web. Install the RevenueDot SDK, then start free on RevenueDot Cloud or self-host it.
+description: RevenueDot is an open-source backend for in-app purchases and subscriptions on the App Store, Google Play, Amazon, Stripe and the web. Install the RevenueDot SDK and start free on RevenueDot Cloud.
 ---
 
 # What is RevenueDot?
 
-RevenueDot is an open-source backend for in-app purchases and subscriptions on the App Store, Google Play, Amazon, Stripe and the web. You install the RevenueDot SDK in your app. RevenueDot then checks every purchase with the store, keeps each customer's access in sync and tells your backend what happened. The quickest start is **RevenueDot Cloud**: [create a free account](https://app.revenuedot.app/signup). Cloud is free until your app makes $10,000 a month in tracked revenue. You can also run the same server yourself with Docker and Postgres.
+RevenueDot is an open-source backend for in-app purchases and subscriptions on the App Store, Google Play, Amazon, Stripe and the web. You install the RevenueDot SDK in your app. RevenueDot then checks every purchase with the store, keeps each customer's access in sync and tells your backend what happened. The quickest start is **RevenueDot Cloud**: [create a free account](https://app.revenuedot.app/signup). Cloud is free until your app makes $10,000 a month in tracked revenue.
 
 ```swift
 // iOS: install the RevenueDot SDK, then pass your app's key. On RevenueDot Cloud that is all the setup.
@@ -35,10 +35,10 @@ The RevenueDot SDK is built from RevenueCat's open-source SDK (MIT license), so 
 | | RevenueDot |
 |---|---|
 | Source code | Open source: the server and dashboard are AGPL-3.0 ([repository](https://github.com/revenuedot/revenuedot)), and the SDKs are MIT |
-| Where it runs | RevenueDot Cloud at `https://api.revenuedot.app`, or your own servers (one Docker image plus Postgres) |
-| Price | RevenueDot Cloud is free until your app makes $10,000 a month in tracked revenue (store revenue before Apple and Google take their cut). Above that, Cloud Standard is 0.5% of the revenue above $10,000, capped at $999 a month. Self-hosting is free. Enterprise starts at $50,000 a year |
-| App changes | Install the RevenueDot SDK and pass your app's key. A self-hosted server needs one more line of setup: the server's address |
-| Data | On Cloud, RevenueDot runs the database for you. Self-hosted, purchases, customers and receipts stay in your own Postgres |
+| Where it runs | RevenueDot Cloud at `https://api.revenuedot.app` |
+| Price | RevenueDot Cloud is free until your app makes $10,000 a month in tracked revenue (store revenue before Apple and Google take their cut). Above that, Cloud Standard is 0.5% of the revenue above $10,000, capped at $999 a month. Enterprise starts at $50,000 a year |
+| App changes | Install the RevenueDot SDK and pass your app's key. |
+| Data | RevenueDot runs the database for you |
 
 ## Your app talks to RevenueDot, and RevenueDot talks to the stores
 ```text
@@ -75,5 +75,5 @@ RevenueDot is not affiliated with, endorsed by or sponsored by RevenueCat, Inc. 
 - **Learn the model:** [Concepts](../concepts/README.md).
 - **Already selling with your own StoreKit or Google Play Billing code?** [Import your products](../guides/import-products.md) from App Store Connect, Google Play or Stripe, install the RevenueDot SDK, and call `syncPurchases()` once so current subscribers keep access. See [How do I connect my app?](connect-your-app.md).
 - **Switching from RevenueCat? Keep your SDK and change one line:** [Migrate from RevenueCat](../migrate/README.md).
-- **Run it yourself:** [Self-hosting](../guides/self-hosting.md) and [Going to production](../guides/going-to-production.md).
+- **Run your own server (advanced):** [Self-hosting](../guides/self-hosting.md) and [Going to production](../guides/going-to-production.md).
 - **Look something up:** [API reference](../../api/README.md), [Help center](../help/README.md), [Blog](../../blog/README.md).

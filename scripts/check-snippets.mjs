@@ -1,4 +1,4 @@
-// RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
+// RevenueDot: the open-source RevenueCat alternative. Same SDK API, free to start on RevenueDot Cloud.
 // This file: checks the snippets of the generated reference pages, so a page that says "Compile-checked" or "Run-checked" is true.
 // "swift" snippets are type-checked with swiftc against the Apple SDK (macOS only); "swift-sdk" also against ErrorCode.swift of the purchases-ios fork.
 // "node" snippets are run with Node (any platform) and their output must contain the entry's "expect" text.

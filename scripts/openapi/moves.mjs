@@ -1,4 +1,4 @@
-// RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
+// RevenueDot: the open-source RevenueCat alternative. Same SDK API, free to start on RevenueDot Cloud.
 // This file: full exports and moves between RevenueDot servers (source and target side), and RevenueDot Cloud billing. All are RevenueDot extensions.
 // Docs: https://revenuedot.app/docs/guides/move-projects   https://revenuedot.app/docs/guides/cloud-billing
 import { NONE, SECRET, SESSION, arr, body, bool, en, int, listOf, ms, nms, nstr, num, obj, ok, op, param, str, v2Errors } from "./common.mjs";

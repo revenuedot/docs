@@ -1,4 +1,4 @@
-// RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
+// RevenueDot: the open-source RevenueCat alternative. Same SDK API, free to start on RevenueDot Cloud.
 // This file: assembles the OpenAPI 3.1 document for the RevenueDot server (SDK endpoints, REST v1, REST v2, extensions, webhooks).
 // Docs: https://revenuedot.app/docs/api   Migrate from RevenueCat: https://revenuedot.app/docs/migrate
 import { parameters, responses, schemas, securitySchemes } from "./components.mjs";
@@ -118,9 +118,9 @@ export function buildDocument() {
     info: {
       title: "RevenueDot API",
       version: "0.1.0",
-      summary: "Open-source, self-hostable backend for in-app purchases that works with the RevenueCat SDK.",
+      summary: "Open-source backend for in-app purchases that works with the RevenueCat SDK, free to start on RevenueDot Cloud.",
       description: [
-        "RevenueDot is an open-source (AGPL-3.0), self-hostable backend for in-app purchases and subscriptions that works with the RevenueCat SDK.",
+        "RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on RevenueDot Cloud: https://app.revenuedot.app/signup",
         "One server answers four APIs: the SDK endpoints the RevenueCat SDKs call (`/v1`, public app keys), REST API v1 (`/v1`, secret keys), REST API v2 (`/v2`, secret keys or a dashboard session) with RevenueDot extensions, and store notification endpoints.",
         "Paths, fields and error formats follow RevenueCat's public API so existing SDKs, backends and scripts keep working. Operations marked `x-revenuedot-extension` exist only in RevenueDot.",
         "RevenueDot is not affiliated with RevenueCat, Inc. Docs: https://revenuedot.app/docs",
