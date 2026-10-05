@@ -29,10 +29,10 @@ const SECTIONS = [
 
 const INTRO = [
   "RevenueDot is the open-source RevenueCat alternative: the first release is v2026.10.03, it has run in production beside RevenueCat since 2026-10-02, RevenueDot Cloud is free up to $10,000 a month in tracked revenue and then 0.5% (never more than $999 a month), and self-hosting is free (AGPL-3.0 server, MIT SDKs).",
-  "RevenueDot is an open-source backend for in-app purchases and subscriptions that works with the RevenueCat SDK.",
-  "Start free on RevenueDot Cloud (https://app.revenuedot.app/signup, free up to $10,000 monthly tracked revenue) or self-host it. An app points the RevenueCat SDK's proxy URL at RevenueDot and keeps its purchase code, offerings and customers.",
+  "RevenueDot is an open-source backend for in-app purchases and subscriptions, with an SDK for every platform.",
+  "Start free on RevenueDot Cloud (https://app.revenuedot.app/signup, free up to $10,000 monthly tracked revenue) or self-host it. A new app installs the RevenueDot SDK for its platform and passes its API key; on RevenueDot Cloud nothing else is needed. An app switching from RevenueCat can keep the RevenueCat SDK, set its proxy URL to RevenueDot and keep its purchase code, offerings and customers.",
   "It verifies App Store and Google Play purchases on the server, keeps each customer's entitlements current from store notifications, and sends webhooks in RevenueCat's payload format.",
-  "On RevenueDot Cloud, apps use the API at https://api.revenuedot.app and people sign in to the dashboard at https://app.revenuedot.app/login. Self-hosted, RevenueDot runs as one Docker image plus Postgres. The server is AGPL-3.0. The SDK forks are MIT and keep RevenueCat's class and method names. RevenueDot is not affiliated with RevenueCat, Inc.",
+  "On RevenueDot Cloud, apps use the API at https://api.revenuedot.app and people sign in to the dashboard at https://app.revenuedot.app/login. Self-hosted, RevenueDot runs as one Docker image plus Postgres. The server is AGPL-3.0. The RevenueDot SDKs are MIT, built from RevenueCat's open-source SDKs, and keep RevenueCat's class and method names, so code imports RevenueCat and calls Purchases. RevenueDot is not affiliated with RevenueCat, Inc.",
 ];
 
 /** Tutorial videos: the YouTube titles, and the watch page on revenuedot.app (apps/site src/lib/videos.mjs lists the same names). */
@@ -96,7 +96,7 @@ index.push("## Videos", "", ...VIDEOS.map(videoLine), "");
 index.push("## Optional", "", `- [OpenAPI document](${RAW}/api/openapi.yaml): OpenAPI 3.1 for every endpoint and webhook event`,
   "- [Server repository](https://github.com/revenuedot/revenuedot): server, dashboard, importer (AGPL-3.0)",
   "- [Examples](https://github.com/revenuedot/examples): runnable apps, webhook backends and self-host recipes (MIT)",
-  "- [SDK forks](https://github.com/revenuedot): MIT forks of all ten RevenueCat SDKs, for example [purchases-ios](https://github.com/revenuedot/purchases-ios)",
+  "- [RevenueDot SDKs](https://github.com/revenuedot): the MIT SDK for every platform, built from RevenueCat's open-source SDKs, for example [purchases-ios](https://github.com/revenuedot/purchases-ios)",
   "- [MCP server](https://github.com/revenuedot/mcp) (hosted at https://mcp.revenuedot.app/mcp) and [agent skills](https://github.com/revenuedot/agent-skills)", "");
 writeFileSync(join(ROOT, "llms.txt"), index.join("\n"));
 

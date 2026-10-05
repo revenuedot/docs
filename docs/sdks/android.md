@@ -1,62 +1,52 @@
 ---
-title: How do I use RevenueDot with the Android SDK?
-description: Set Purchases.proxyURL before configure and set EntitlementVerificationMode.DISABLED. The stock SDK still sends diagnostics, paywall and ad events to RevenueCat; the fork fixes that.
+title: How do I add in-app purchases to an Android app with RevenueDot?
+description: Add app.revenuedot.purchases:purchases from Maven Central and call Purchases.configure with your app's key in Application.onCreate(). On RevenueDot Cloud nothing else is needed, and diagnostics and events go to RevenueDot too.
 ---
 
-# How do I use RevenueDot with the Android SDK?
+# How do I add in-app purchases to an Android app with RevenueDot?
 
-Set `Purchases.proxyURL` to your RevenueDot server before `Purchases.configure`, and set `EntitlementVerificationMode.DISABLED`. Purchases, customer info and offerings then go to RevenueDot. **The stock Android SDK still sends diagnostics, paywall events and ad events to RevenueCat's hosts**, even with a proxy URL; the RevenueDot fork sends them to your server.
+Add the RevenueDot SDK, `app.revenuedot.purchases:purchases`, from Maven Central, then call `Purchases.configure` in `Application.onCreate()` with your app's key from RevenueDot. On RevenueDot Cloud nothing else is needed. Purchases, customer info, offerings, diagnostics, paywall events and ad events all go to RevenueDot.
 
-## Use the RevenueCat SDK you already ship (proxy mode)
+## Install the RevenueDot SDK and pass your key
+**It is on Maven Central** under the group `app.revenuedot.purchases`, with upstream's artifact ids and version numbers (10.23.3 is the newest; 10.23.0 and 10.22.1 are there for the wrappers that pin them). The source is [github.com/revenuedot/purchases-android](https://github.com/revenuedot/purchases-android).
 ```kotlin
-import com.revenuecat.purchases.EntitlementVerificationMode
+// build.gradle.kts
+implementation("app.revenuedot.purchases:purchases:10.23.3")
+implementation("app.revenuedot.purchases:purchases-ui:10.23.3") // only for paywalls
+```
+```kotlin
 import com.revenuecat.purchases.Purchases
 import com.revenuecat.purchases.PurchasesConfiguration
-import java.net.URL
 
 class MainApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        // Point the SDK at your RevenueDot server; nothing else in the app changes.
-        Purchases.proxyURL = URL("https://revenuedot.example.com")
-        Purchases.configure(
-            PurchasesConfiguration.Builder(this, "goog_...")
-                // The default (INFORMATIONAL) logs every RevenueDot response as a failed signature check.
-                .entitlementVerificationMode(EntitlementVerificationMode.DISABLED)
-                .build()
-        )
+        Purchases.configure(PurchasesConfiguration.Builder(this, "goog_...").build())
     }
 }
 ```
-- Set `proxyURL` **before** `configure`.
-- Use the app's `goog_...` key from RevenueDot, or your old RevenueCat key if the [importer](../migrate/importer.md) kept it. See [Which key goes where](../concepts/projects-and-apps.md#which-key-goes-where).
+- The RevenueDot SDK is built from RevenueCat's open-source SDK (MIT license), so your code imports `com.revenuecat.purchases.*` and calls `Purchases`. It sends every request to RevenueDot and needs no RevenueCat account.
+- Use the app's `goog_...` key from RevenueDot, or `test_...` for the Test Store. See [Which key goes where](../concepts/projects-and-apps.md#which-key-goes-where).
+- **On RevenueDot Cloud** the SDK already calls `https://api.revenuedot.app`, so there is nothing else to set. It trusts RevenueDot Cloud's response-signing key.
+
+**Self-hosting:** set `Purchases.proxyURL` to your server **before** `configure`, and set `EntitlementVerificationMode.DISABLED`. Your server signs with its own key, which this build does not trust. Diagnostics, paywall events and ad events follow the proxy URL to your server.
+```kotlin
+import com.revenuecat.purchases.EntitlementVerificationMode
+import java.net.URL
+
+Purchases.proxyURL = URL("https://revenuedot.example.com")
+Purchases.configure(
+    PurchasesConfiguration.Builder(this, "goog_...")
+        // A self-hosted server signs with its own key; keep DISABLED (or INFORMATIONAL) unless you build the SDK with that key.
+        .entitlementVerificationMode(EntitlementVerificationMode.DISABLED)
+        .build()
+)
+```
 - The Android emulator reaches your computer at `http://10.0.2.2:8787`. Plain `http` also needs a network security config that allows cleartext traffic to that host.
-
-**After you migrate from RevenueCat, call `syncPurchases()` once** on the first launch of the update. It sends the device's Google Play purchases, with their purchase tokens, to RevenueDot. That is also how RevenueDot gets any purchase token the importer could not find.
-```kotlin
-// Once, after this update: send purchases made while the app talked to RevenueCat.
-Purchases.sharedInstance.syncPurchases()
-```
-
-## Use the RevenueDot fork
-The fork is [github.com/revenuedot/purchases-android](https://github.com/revenuedot/purchases-android). Kotlin packages stay `com.revenuecat.purchases.*`, so imports do not change. On top of the new default host and signing key, it makes **diagnostics, paywall events and ad events follow `proxyURL`**.
-
-**It is on Maven Central** under the group `app.revenuedot.purchases`, with upstream's artifact ids and version numbers (10.23.3 is the newest; 10.23.0 and 10.22.1 are there for the wrappers that pin them):
-```kotlin
-// build.gradle.kts
-implementation("app.revenuedot.purchases:purchases:10.23.3")
-implementation("app.revenuedot.purchases:purchases-ui:10.23.3") // only if you use RevenueCat UI
-```
-The fork's default host is RevenueDot Cloud, so a Cloud project needs no `Purchases.proxyURL`. When you self-host, keep setting it to your server.
-
-## Trusted Entitlements
-- **Stock SDK:** it checks signatures with RevenueCat's key, so RevenueDot responses read as failed. The default, `INFORMATIONAL`, logs the failure and still grants access. Set `DISABLED`. **Never use `ENFORCED` with the stock SDK**: every request would fail.
-- **Fork:** it trusts RevenueDot Cloud's key. A self-hosted server signs with its own key, so keep `DISABLED` or `INFORMATIONAL`, or build the fork with your own public key.
-
-See [Trusted Entitlements](../guides/trusted-entitlements.md).
+- To get verified responses from your own server, build the SDK with your public key. See [Trusted Entitlements](../guides/trusted-entitlements.md).
 
 ## Check an entitlement and make a purchase
-The API is RevenueCat's, unchanged. These are the coroutine helpers.
+Check the entitlement your app unlocks, here `pro`, then buy a package from the current offering, the set of products your paywall shows. These are the coroutine helpers.
 ```kotlin
 val customerInfo = Purchases.sharedInstance.awaitCustomerInfo()
 val isPro = customerInfo.entitlements["pro"]?.isActive == true
@@ -96,7 +86,41 @@ Create a `test_store` app in RevenueDot and pass its `test_...` key to `configur
 
 More: [Test Store](../guides/test-store.md).
 
-## Migrate from RevenueCat
+## Switching from RevenueCat? Keep your SDK and change one line
+An app that ships RevenueCat's Android SDK can keep it. Set `Purchases.proxyURL` to RevenueDot before `Purchases.configure` (`https://api.revenuedot.app` on RevenueDot Cloud, or your own server), and set `EntitlementVerificationMode.DISABLED`. Purchases, customer info and offerings then go to RevenueDot. **RevenueCat's Android SDK still sends diagnostics, paywall events and ad events to RevenueCat's hosts**, even with a proxy URL; the RevenueDot SDK sends them to RevenueDot.
+
+```kotlin
+import com.revenuecat.purchases.EntitlementVerificationMode
+import com.revenuecat.purchases.Purchases
+import com.revenuecat.purchases.PurchasesConfiguration
+import java.net.URL
+
+class MainApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        // Point the SDK at your RevenueDot server; nothing else in the app changes.
+        Purchases.proxyURL = URL("https://revenuedot.example.com")
+        Purchases.configure(
+            PurchasesConfiguration.Builder(this, "goog_...")
+                // The default (INFORMATIONAL) logs every RevenueDot response as a failed signature check.
+                .entitlementVerificationMode(EntitlementVerificationMode.DISABLED)
+                .build()
+        )
+    }
+}
+```
+- Set `proxyURL` **before** `configure`.
+- Use the app's `goog_...` key from RevenueDot, or your old RevenueCat key if the [importer](../migrate/importer.md) kept it.
+- **Turn entitlement verification off.** RevenueCat's SDK checks signatures with RevenueCat's key, so RevenueDot responses read as failed. The default, `INFORMATIONAL`, logs the failure and still grants access. Set `DISABLED`. **Never use `ENFORCED` with RevenueCat's SDK**: every request would fail. See [Trusted Entitlements](../guides/trusted-entitlements.md).
+- **Or install the RevenueDot SDK in the same release.** Kotlin packages stay `com.revenuecat.purchases.*`, so imports do not change. See [Install the RevenueDot SDK](#install-the-revenuedot-sdk-and-pass-your-key).
+
+**Call `syncPurchases()` once** on the first launch of the update. It sends the device's Google Play purchases, with their purchase tokens, to RevenueDot. That is also how RevenueDot gets any purchase token the importer could not find.
+```kotlin
+// Once, after this update: send purchases made while the app talked to RevenueCat.
+Purchases.sharedInstance.syncPurchases()
+```
+
+The whole app change fits in one diff:
 ```diff
  override fun onCreate() {
      super.onCreate()

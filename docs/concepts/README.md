@@ -31,7 +31,8 @@ Project "Scanner"
 ## Words used across the docs
 | Word | Meaning |
 |---|---|
-| **Proxy URL** | The SDK setting that sends every SDK request to your RevenueDot server instead of RevenueCat's API |
+| **RevenueDot SDK** | The SDK your app installs for its platform. It calls RevenueDot Cloud by default. See [SDK guides](../sdks/README.md) |
+| **Proxy URL** | The SDK setting that names the server the SDK calls. You set it when you self-host, or when you switch an app that ships the RevenueCat SDK to RevenueDot |
 | **Public app key** | A per-app key the SDK sends (`appl_`, `goog_`, `test_` …). Safe to ship in an app |
 | **Secret key** | A per-project key (`sk_…`) for the REST API and your backend. Never ship it in an app |
 | **App user ID** | The ID the SDK uses for the current user: either your own ID or an anonymous `$RCAnonymousID:…` |

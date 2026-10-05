@@ -1,37 +1,14 @@
 ---
-title: How do I use RevenueDot with Flutter?
-description: Await Purchases.setProxyURL before configure on iOS and Android. Flutter web ignores the proxy URL in the stock purchases_flutter package; the RevenueDot fork fixes it.
+title: How do I add in-app purchases to a Flutter app with RevenueDot?
+description: Add the RevenueDot SDK to pubspec.yaml as a git dependency, then call Purchases.configure with your app's key. On RevenueDot Cloud nothing else is needed. It works on iOS, Android and Flutter web.
 ---
 
-# How do I use RevenueDot with Flutter?
+# How do I add in-app purchases to a Flutter app with RevenueDot?
 
-Call `await Purchases.setProxyURL('https://revenuedot.example.com')` before `Purchases.configure`. Verification is already `disabled` by default in `purchases_flutter`, so there is nothing else to change on iOS and Android. **Flutter web does not work in proxy mode with the stock package**: its web plugin ignores `setProxyURL`, so web calls still go to RevenueCat. The RevenueDot fork fixes this.
+Add the RevenueDot SDK for Flutter to `pubspec.yaml` as a git dependency, then call `Purchases.configure` with your app's key from RevenueDot. On RevenueDot Cloud nothing else is needed. It works on iOS, Android and Flutter web. It is a git dependency because the pub.dev names belong to RevenueCat.
 
-## Use the RevenueCat SDK you already ship (proxy mode)
-```dart
-import 'dart:io' show Platform;
-import 'package:purchases_flutter/purchases_flutter.dart';
-
-Future<void> initPurchases() async {
-  // Point the SDK at your RevenueDot server; nothing else in the app changes.
-  await Purchases.setProxyURL('https://revenuedot.example.com');
-  await Purchases.configure(
-    PurchasesConfiguration(Platform.isIOS ? 'appl_...' : 'goog_...'),
-    // entitlementVerificationMode stays at its default, EntitlementVerificationMode.disabled.
-  );
-}
-```
-- Await `setProxyURL` before `configure`.
-- Use each app's public key from RevenueDot, or your old RevenueCat keys if the [importer](../migrate/importer.md) kept them. See [Which key goes where](../concepts/projects-and-apps.md#which-key-goes-where).
-
-**After you migrate from RevenueCat, sync once** on the first launch of the update, so current subscribers keep access:
-```dart
-// Once, after this update: send purchases made while the app talked to RevenueCat.
-await Purchases.syncPurchases();
-```
-
-## Use the RevenueDot fork
-The fork is [github.com/revenuedot/purchases-flutter](https://github.com/revenuedot/purchases-flutter). The package names stay `purchases_flutter` and `purchases_ui_flutter`, so every `import 'package:purchases_flutter/purchases_flutter.dart'` keeps working. It ships as a git dependency with release tags `<version>-revenuedot`, because the pub.dev names belong to RevenueCat:
+## Install the RevenueDot SDK and pass your key
+The source is [github.com/revenuedot/purchases-flutter](https://github.com/revenuedot/purchases-flutter). Release tags are `<version>-revenuedot`.
 ```yaml
 # pubspec.yaml
 dependencies:
@@ -45,17 +22,33 @@ dependencies:
       path: purchases_ui_flutter
       ref: 10.13.2-revenuedot
 ```
-Its native side comes from RevenueDot's [hybrid common](hybrid-common.md) 19.4.1: the `RevenueDotPurchasesHybridCommon` pod (or its Swift package) on iOS and `app.revenuedot.purchases:purchases-hybrid-common` on Android. **`Purchases.setProxyURL` works on Flutter web with the fork.** Its web bundle is built from RevenueDot's purchases-js 1.67.0.
+```dart
+import 'dart:io' show Platform;
+import 'package:purchases_flutter/purchases_flutter.dart';
+
+Future<void> initPurchases() async {
+  await Purchases.configure(
+    PurchasesConfiguration(Platform.isIOS ? 'appl_...' : 'goog_...'),
+  );
+}
+```
+- The RevenueDot SDK is built from RevenueCat's open-source SDK (MIT license), so your code imports `package:purchases_flutter/purchases_flutter.dart` and calls `Purchases`. It sends every request to RevenueDot and needs no RevenueCat account.
+- Use each app's public key from RevenueDot, or the `test_...` key for the Test Store. See [Which key goes where](../concepts/projects-and-apps.md#which-key-goes-where).
+- **On RevenueDot Cloud** the SDK already calls `https://api.revenuedot.app`, so there is nothing else to set.
+- **Entitlement verification is off by default** (`EntitlementVerificationMode.disabled`).
+- Its native side comes from RevenueDot's [hybrid common](hybrid-common.md) 19.4.1: the `RevenueDotPurchasesHybridCommon` pod (or its Swift package) on iOS and `app.revenuedot.purchases:purchases-hybrid-common` on Android. Its web bundle is built from RevenueDot's purchases-js 1.67.0.
 
 Checked with the [Flutter example](https://github.com/revenuedot/examples/tree/main/mobile/flutter) on this tag: a Flutter web build bought the monthly package through the Test Store against a RevenueDot server and the server shows `pro` active, and iOS simulator builds succeed with both CocoaPods and Swift Package Manager.
 
-## Trusted Entitlements are off by default
-- **Stock package:** `entitlementVerificationMode` defaults to `EntitlementVerificationMode.disabled`, which is right for RevenueDot. `informational` logs every response as a failed signature check, and **`enforced` would fail every request**.
-- **Fork:** it trusts RevenueDot Cloud's key. A self-hosted server signs with its own key, so keep `disabled`, or build the forks with your own public key.
-
-See [Trusted Entitlements](../guides/trusted-entitlements.md).
+**Self-hosting:** await `Purchases.setProxyURL` with your server's address before `configure`. It works on iOS, Android and Flutter web. Leave the verification mode at its default, `disabled`, because your server signs with its own key, which this build does not trust.
+```dart
+await Purchases.setProxyURL('https://revenuedot.example.com');
+await Purchases.configure(PurchasesConfiguration(Platform.isIOS ? 'appl_...' : 'goog_...'));
+```
+To verify responses from your own server, build the SDKs with your public key. See [Trusted Entitlements](../guides/trusted-entitlements.md).
 
 ## Check an entitlement and make a purchase
+Check the entitlement your app unlocks, here `pro`, then buy a package from the current offering, the set of products your paywall shows.
 ```dart
 import 'package:flutter/services.dart' show PlatformException;
 
@@ -79,12 +72,39 @@ if (package != null) {
 Create a `test_store` app in RevenueDot and use its `test_...` key. The Test Store dialog replaces the store sheet; tap **Test valid purchase**.
 - **Native builds** accept `test_` keys only in debug builds. Ship with the `appl_` and `goog_` keys.
 - **iOS:** servers older than the 2026-09-30 fix could not serve Test Store products to the native iOS SDK. See [iOS](ios.md#test-store).
-- **Flutter web** needs the fork, because the stock web plugin ignores the proxy URL.
+- **Flutter web** needs the RevenueDot SDK, because RevenueCat's web plugin ignores the proxy URL.
 - Test Store prices come from each product's Test Store price. Set it in the dashboard (Product catalog, Edit product) or with `test_store_price` on `POST /v2/projects/{project_id}/products`; a product without one shows 0.
 
 More: [Test Store](../guides/test-store.md).
 
-## Migrate from RevenueCat
+## Switching from RevenueCat? Keep your SDK and change one line
+An app that ships RevenueCat's `purchases_flutter` from pub.dev can keep it on iOS and Android. Call `await Purchases.setProxyURL('https://revenuedot.example.com')` before `Purchases.configure` (`https://api.revenuedot.app` on RevenueDot Cloud). Verification is already `disabled` by default in `purchases_flutter`, so there is nothing else to change. **Flutter web does not work with RevenueCat's package**: its web plugin ignores `setProxyURL`, so web calls still go to RevenueCat. The RevenueDot SDK fixes this.
+
+```dart
+import 'dart:io' show Platform;
+import 'package:purchases_flutter/purchases_flutter.dart';
+
+Future<void> initPurchases() async {
+  // Point the SDK at your RevenueDot server; nothing else in the app changes.
+  await Purchases.setProxyURL('https://revenuedot.example.com');
+  await Purchases.configure(
+    PurchasesConfiguration(Platform.isIOS ? 'appl_...' : 'goog_...'),
+    // entitlementVerificationMode stays at its default, EntitlementVerificationMode.disabled.
+  );
+}
+```
+- Await `setProxyURL` before `configure`.
+- Use each app's public key from RevenueDot, or your old RevenueCat keys if the [importer](../migrate/importer.md) kept them.
+- **Keep entitlement verification off.** RevenueCat's package checks signatures with RevenueCat's key. `disabled`, the default, is right for RevenueDot. `informational` logs every response as a failed signature check, and **`enforced` would fail every request**. See [Trusted Entitlements](../guides/trusted-entitlements.md).
+- **Or install the RevenueDot SDK in the same release.** The package names stay `purchases_flutter` and `purchases_ui_flutter`, so every import keeps working. See [Install the RevenueDot SDK](#install-the-revenuedot-sdk-and-pass-your-key).
+
+**Sync once** on the first launch of the update, so current subscribers keep access:
+```dart
+// Once, after this update: send purchases made while the app talked to RevenueCat.
+await Purchases.syncPurchases();
+```
+
+The whole app change fits in one diff:
 ```diff
  import 'package:purchases_flutter/purchases_flutter.dart';
 

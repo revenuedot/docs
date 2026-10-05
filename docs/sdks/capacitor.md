@@ -1,38 +1,21 @@
 ---
-title: How do I use RevenueDot with Capacitor and Ionic?
-description: Await Purchases.setProxyURL({ url }) before configure, and pass entitlementVerificationMode DISABLED, because the Capacitor plugin passes no default and the native informational default applies.
+title: How do I add in-app purchases to a Capacitor or Ionic app with RevenueDot?
+description: Install the RevenueDot SDK for Capacitor through its npm alias, run npx cap sync, then call Purchases.configure with your app's key. On RevenueDot Cloud nothing else is needed.
 ---
 
-# How do I use RevenueDot with Capacitor and Ionic?
+# How do I add in-app purchases to a Capacitor or Ionic app with RevenueDot?
 
-Call `await Purchases.setProxyURL({ url: "https://revenuedot.example.com" })` before `Purchases.configure`, and pass `entitlementVerificationMode: ENTITLEMENT_VERIFICATION_MODE.DISABLED`. The Capacitor plugin passes no default of its own, so without it the native iOS and Android default (informational) applies and logs every RevenueDot response as a failed signature check.
+Install the RevenueDot SDK for Capacitor through its npm alias, run `npx cap sync`, then call `Purchases.configure` with your app's key from RevenueDot. On RevenueDot Cloud nothing else is needed. The SDK works in Capacitor's iOS and Android apps; it has no web implementation.
 
-## Use the RevenueCat SDK you already ship (proxy mode)
-```ts
-import { Capacitor } from "@capacitor/core";
-import { ENTITLEMENT_VERIFICATION_MODE, Purchases } from "@revenuecat/purchases-capacitor";
-
-// Point the SDK at your RevenueDot server; nothing else in the app changes.
-await Purchases.setProxyURL({ url: "https://revenuedot.example.com" });
-await Purchases.configure({
-  apiKey: Capacitor.getPlatform() === "ios" ? "appl_..." : "goog_...",
-  // Capacitor passes no default, so the native default (informational signature checks) would apply.
-  entitlementVerificationMode: ENTITLEMENT_VERIFICATION_MODE.DISABLED,
-});
+## Install the RevenueDot SDK and pass your key
+**Version 13.6.1 is on npm** as `@revenuedot/purchases-capacitor`. Install it **only through the alias** below. Capacitor derives the native pod and Swift package names from the npm package name, so the alias keeps them as `RevenuecatPurchasesCapacitor`.
+```bash
+npm install @revenuecat/purchases-capacitor@npm:@revenuedot/purchases-capacitor@13.6.1
+# Only for paywalls:
+npm install @revenuecat/purchases-capacitor-ui@npm:@revenuedot/purchases-capacitor-ui@13.6.1
+npx cap sync
 ```
-- `setProxyURL` takes an object `{ url }`, not a string. Await it before `configure`.
-- Use each app's public key from RevenueDot, or your old RevenueCat keys if the [importer](../migrate/importer.md) kept them. See [Which key goes where](../concepts/projects-and-apps.md#which-key-goes-where).
-
-**After you migrate from RevenueCat, sync once** on the first launch of the update, so current subscribers keep access:
-```ts
-// Once, after this update: send purchases made while the app talked to RevenueCat.
-await Purchases.syncPurchases();
-```
-
-## Use the RevenueDot fork
-The fork is [github.com/revenuedot/purchases-capacitor](https://github.com/revenuedot/purchases-capacitor). It depends on RevenueDot's [hybrid common](hybrid-common.md) 19.4.1, which is published.
-
-**Version 13.6.1 is on npm.** Install it **only through the alias** below. Capacitor derives the native pod and Swift package names from the npm package name, so the alias keeps them as `RevenuecatPurchasesCapacitor`:
+Your `package.json` then reads:
 ```json
 {
   "dependencies": {
@@ -41,15 +24,34 @@ The fork is [github.com/revenuedot/purchases-capacitor](https://github.com/reven
   }
 }
 ```
-Then run `npx cap sync`. Installed from npm, it builds into a Capacitor 8 iOS app: Swift Package Manager resolves `revenuedot/purchases-hybrid-common` 19.4.1 and `revenuedot/purchases-ios` 5.91.0, and the app binary carries `api.revenuedot.app` and RevenueDot's signing key. The plugin has no web implementation, as upstream.
+```ts
+import { Capacitor } from "@capacitor/core";
+import { Purchases } from "@revenuecat/purchases-capacitor";
 
-## Trusted Entitlements
-- **Stock plugin:** pass `DISABLED`. The native default, `INFORMATIONAL`, logs every RevenueDot response as a failed check but still grants access. **`ENFORCED` would fail every request.**
-- **Fork:** it trusts RevenueDot Cloud's key. A self-hosted server signs with its own key, so keep `DISABLED`, or build the forks with your own public key.
+await Purchases.configure({
+  apiKey: Capacitor.getPlatform() === "ios" ? "appl_..." : "goog_...",
+});
+```
+- The RevenueDot SDK is built from RevenueCat's open-source SDK (MIT license), so your code imports `@revenuecat/purchases-capacitor` and calls `Purchases`. It sends every request to RevenueDot and needs no RevenueCat account.
+- Use each app's public key from RevenueDot, or the `test_...` key for the Test Store. See [Which key goes where](../concepts/projects-and-apps.md#which-key-goes-where).
+- **On RevenueDot Cloud** the SDK already calls `https://api.revenuedot.app`, so there is nothing else to set. It trusts RevenueDot Cloud's response-signing key.
+- The source is [github.com/revenuedot/purchases-capacitor](https://github.com/revenuedot/purchases-capacitor). It depends on RevenueDot's [hybrid common](hybrid-common.md) 19.4.1, which is published. Installed from npm, it builds into a Capacitor 8 iOS app: Swift Package Manager resolves `revenuedot/purchases-hybrid-common` 19.4.1 and `revenuedot/purchases-ios` 5.91.0, and the app binary carries `api.revenuedot.app` and RevenueDot's signing key.
 
-See [Trusted Entitlements](../guides/trusted-entitlements.md).
+**Self-hosting:** await `Purchases.setProxyURL({ url })` with your server's address before `configure`, and pass `entitlementVerificationMode: ENTITLEMENT_VERIFICATION_MODE.DISABLED`. Your server signs with its own key, which this build does not trust. The Capacitor plugin passes no verification mode of its own, so without this line the native default (informational) logs every response from your server as a failed check.
+```ts
+import { ENTITLEMENT_VERIFICATION_MODE, Purchases } from "@revenuecat/purchases-capacitor";
+
+// setProxyURL takes an object { url }, not a string. Await it before configure.
+await Purchases.setProxyURL({ url: "https://revenuedot.example.com" });
+await Purchases.configure({
+  apiKey: Capacitor.getPlatform() === "ios" ? "appl_..." : "goog_...",
+  entitlementVerificationMode: ENTITLEMENT_VERIFICATION_MODE.DISABLED,
+});
+```
+To verify responses from your own server, build the SDKs with your public key. See [Trusted Entitlements](../guides/trusted-entitlements.md).
 
 ## Check an entitlement and make a purchase
+Check the entitlement your app unlocks, here `pro`, then buy a package from the current offering, the set of products your paywall shows.
 ```ts
 const { customerInfo } = await Purchases.getCustomerInfo();
 const isPro = customerInfo.entitlements.active["pro"] !== undefined;
@@ -71,7 +73,33 @@ Create a `test_store` app in RevenueDot and use its `test_...` key on a debug bu
 
 More: [Test Store](../guides/test-store.md).
 
-## Migrate from RevenueCat
+## Switching from RevenueCat? Keep your SDK and change one line
+An app that ships RevenueCat's `@revenuecat/purchases-capacitor` can keep it. Call `await Purchases.setProxyURL({ url: "https://revenuedot.example.com" })` before `Purchases.configure` (`https://api.revenuedot.app` on RevenueDot Cloud), and pass `entitlementVerificationMode: ENTITLEMENT_VERIFICATION_MODE.DISABLED`.
+
+```ts
+import { Capacitor } from "@capacitor/core";
+import { ENTITLEMENT_VERIFICATION_MODE, Purchases } from "@revenuecat/purchases-capacitor";
+
+// Point the SDK at your RevenueDot server; nothing else in the app changes.
+await Purchases.setProxyURL({ url: "https://revenuedot.example.com" });
+await Purchases.configure({
+  apiKey: Capacitor.getPlatform() === "ios" ? "appl_..." : "goog_...",
+  // Capacitor passes no default, so the native default (informational signature checks) would apply.
+  entitlementVerificationMode: ENTITLEMENT_VERIFICATION_MODE.DISABLED,
+});
+```
+- `setProxyURL` takes an object `{ url }`, not a string. Await it before `configure`.
+- Use each app's public key from RevenueDot, or your old RevenueCat keys if the [importer](../migrate/importer.md) kept them.
+- **Turn entitlement verification off.** RevenueCat's plugin checks signatures with RevenueCat's key. The native default, `INFORMATIONAL`, logs every RevenueDot response as a failed check but still grants access. **`ENFORCED` would fail every request.** See [Trusted Entitlements](../guides/trusted-entitlements.md).
+- **Or install the RevenueDot SDK in the same release.** The npm alias keeps every import and the native names. See [Install the RevenueDot SDK](#install-the-revenuedot-sdk-and-pass-your-key).
+
+**Sync once** on the first launch of the update, so current subscribers keep access:
+```ts
+// Once, after this update: send purchases made while the app talked to RevenueCat.
+await Purchases.syncPurchases();
+```
+
+The whole app change fits in one diff:
 ```diff
 -import { Purchases } from "@revenuecat/purchases-capacitor";
 +import { ENTITLEMENT_VERIFICATION_MODE, Purchases } from "@revenuecat/purchases-capacitor";
