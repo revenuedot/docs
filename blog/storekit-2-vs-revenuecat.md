@@ -82,7 +82,7 @@ Where RevenueCat is stronger today: RevenueDot launched in September 2026, and R
 
 | | Build it | RevenueCat | RevenueDot |
 |---|---|---|---|
-| Cost | Your engineering time | Free to $2,500 in monthly tracked revenue, then 1% of all of it | Cloud free to $10,000, a paid plan is planned. Self-host free (AGPL-3.0) |
+| Cost | Your engineering time | Free to $2,500 in monthly tracked revenue, then 1% of all of it | Cloud free to $10,000, then 0.5% above it, capped at $999 a month. Self-host free (AGPL-3.0) |
 | Server | You write and run it | Hosted by RevenueCat | Hosted by RevenueDot, or run it yourself |
 | Your app code | StoreKit 2 and Play Billing | RevenueCat SDK | The same RevenueCat SDK, with a proxy URL |
 | Stronger at | Full control, no vendor | An established product with SOC 2 | Open source, you own the data, no revenue share on Cloud's free tier |
@@ -136,4 +136,4 @@ RevenueCat's page says nothing is due up to $2,500 in monthly tracked revenue, t
 
 Yes. RevenueDot imports your data and works with the same SDK, so the app change is the proxy URL. See [migrating without losing a subscriber](migrating-from-revenuecat-without-data-loss.md).
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

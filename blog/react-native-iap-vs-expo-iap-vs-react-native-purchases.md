@@ -158,7 +158,7 @@ The first list is code you maintain. The second is setup you do once.
 |---|---|---|---|
 | `expo-iap` or `react-native-iap` + your server | Free (MIT) | You build and run it | Engineering time, hosting and upkeep |
 | `react-native-purchases` + RevenueCat | Free (MIT) | Hosted by RevenueCat | Free to $2,500 in monthly tracked revenue, then 1% ([RevenueCat](https://www.revenuecat.com/pricing/)) |
-| `react-native-purchases` + RevenueDot Cloud | Free (MIT) | Hosted by RevenueDot | Free to $10,000 in monthly tracked revenue; a paid plan is planned ([pricing](https://revenuedot.app/pricing)) |
+| `react-native-purchases` + RevenueDot Cloud | Free (MIT) | Hosted by RevenueDot | Free to $10,000 in monthly tracked revenue, then 0.5% above it, capped at $999 a month ([pricing](https://revenuedot.app/pricing)) |
 | `react-native-purchases` + RevenueDot self-hosted | Free (MIT) | You run the open-source server (AGPL-3.0) | Your hosting, no revenue share |
 
 At $50,000 in monthly tracked revenue, RevenueCat's fee is $500 a month. The [fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator) works it out for your numbers. Our [RevenueCat pricing explainer](revenuecat-pricing-explained.md) shows worked bills.
@@ -197,7 +197,7 @@ An app that already ships RevenueCat's package can keep it and add one `setProxy
 
 RevenueDot's build is version 10.10.2 on npm as `@revenuedot/react-native-purchases`. The npm alias keeps every `import ... from "react-native-purchases"` as it is, and the package calls RevenueDot by default ([React Native docs](../docs/sdks/react-native.md)). It has passed a Test Store purchase on the web, and native builds are not verified yet. [Why we forked the RevenueCat SDKs](why-we-forked-the-revenuecat-sdks.md) explains the reasons.
 
-The limits matter. No real store purchase has run end to end against RevenueDot yet, so test each store in its [sandbox](sandbox-testing-in-app-purchases.md) before launch. The [RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) lists the other differences.
+The limits matter. A real App Store sandbox purchase has run end to end against RevenueDot (2026-10-02), but Google Play has not yet, so test each store in its [sandbox](sandbox-testing-in-app-purchases.md) before launch. The [RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) lists the other differences.
 
 [Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue).
 
@@ -219,4 +219,4 @@ Yes, if you want to trust the purchase. The docs say to validate each receipt wi
 
 Yes. Replace the purchase code, configure the backend, and call `Purchases.syncPurchases()` once on the first launch of the update so existing subscribers are recorded ([React Native docs](../docs/sdks/react-native.md)). Do not run both packages at once.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

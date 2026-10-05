@@ -57,7 +57,7 @@ This table uses RevenueCat's published rule (1% of all MTR once MTR is above $2,
 Three notes on the RevenueDot column:
 
 - **Free to $10,000 is live.** RevenueDot Cloud is free while your app tracks up to $10,000 a month.
-- **The paid plan is planned.** The planned price is 0.5% of tracked revenue above $10,000, never more than $999 a month. It is not billing anyone yet. Treat it as a plan, not a contract.
+- **The paid plan is live.** Cloud Standard is 0.5% of tracked revenue above $10,000, never more than $999 a month, and you upgrade from Billing in the dashboard ([pricing](https://revenuedot.app/pricing)).
 - **Self-host costs your servers.** The software is free (AGPL-3.0). DigitalOcean's [Droplet pricing](https://www.digitalocean.com/pricing/droplets) lists a 2 GiB server at $12 a month, and its [managed PostgreSQL](https://www.digitalocean.com/pricing/managed-databases) starts at $15.15 a month. Prices change, so check them before you plan.
 
 Over a year, the gap at $50,000 a month is $6,000 for RevenueCat against $2,400 for the planned RevenueDot Cloud price. At $1,000,000 a month it is $120,000 against $11,988.
@@ -91,7 +91,7 @@ The pricing page says the Enterprise plan has custom pricing and usage terms for
 
 RevenueDot is an open-source backend that speaks the same API as RevenueCat's. You keep the RevenueCat SDK in your app and change one setting, the proxy URL, to `https://api.revenuedot.app`. Your offerings, entitlements and purchase code stay as they are. See [Connect your app](https://revenuedot.app/docs/getting-started/connect-your-app) for the exact call in each SDK.
 
-Cloud is free up to $10,000 of monthly tracked revenue today. The planned paid price above that is 0.5%, capped at $999 a month. Because it is not live, do not budget on it until it ships.
+Cloud is free up to $10,000 of monthly tracked revenue. Above that, Cloud Standard is 0.5% of the revenue above $10,000, capped at $999 a month, and the rate never rises.
 
 Be clear about what you give up. RevenueDot launched in 2026, so it has far less production history than RevenueCat. You can keep the RevenueCat SDK in proxy mode, or swap in the RevenueDot SDK, which is published for every platform (2026-10-02) and keeps the same imports ([SDK guides](https://revenuedot.app/docs/sdks)). Test in sandbox before you ship. The [migration guide](https://revenuedot.app/blog/migrating-from-revenuecat-without-data-loss) shows how to run both systems side by side so that a customer never loses access.
 
@@ -141,4 +141,4 @@ Self-hosting RevenueDot costs only your server, about $12 to $30 a month at Digi
 
 RevenueCat's pricing page lists an Enterprise plan with custom pricing for high-volume apps. Contact them with your tracked revenue and ask for terms in writing.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

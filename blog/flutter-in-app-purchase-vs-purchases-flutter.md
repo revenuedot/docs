@@ -149,7 +149,7 @@ The first list is code you maintain forever. The second list is setup you get ri
 |---|---|---|---|
 | `in_app_purchase` + your server | Free (BSD-3-Clause) | You build and run it | Engineering time, hosting and upkeep |
 | `purchases_flutter` + RevenueCat | Free (MIT) | Hosted by RevenueCat | Free to $2,500 in monthly tracked revenue, then 1% ([RevenueCat](https://www.revenuecat.com/pricing/)) |
-| `purchases_flutter` + RevenueDot Cloud | Free (MIT) | Hosted by RevenueDot | Free to $10,000 in monthly tracked revenue; a paid plan is planned ([pricing](https://revenuedot.app/pricing)) |
+| `purchases_flutter` + RevenueDot Cloud | Free (MIT) | Hosted by RevenueDot | Free to $10,000 in monthly tracked revenue, then 0.5% above it, capped at $999 a month ([pricing](https://revenuedot.app/pricing)) |
 | `purchases_flutter` + RevenueDot self-hosted | Free (MIT) | You run the open-source server (AGPL-3.0) | Your hosting, no revenue share |
 
 At $50,000 in monthly tracked revenue, RevenueCat's fee is $500 a month. The [fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator) works it out for your numbers, and our [RevenueCat pricing explainer](revenuecat-pricing-explained.md) shows worked bills.
@@ -190,7 +190,7 @@ An app that already ships RevenueCat's package can keep it on iOS and Android an
 - [Webhooks](https://revenuedot.app/features/webhooks), [charts](https://revenuedot.app/charts/mrr), [paywalls](https://revenuedot.app/features/paywalls) and [experiments](https://revenuedot.app/features/experiments).
 - The [Flutter SDK page](https://revenuedot.app/sdks/flutter) and the [Flutter docs](../docs/sdks/flutter.md) with every setup detail.
 
-The limits matter. RevenueDot's build installs from git because the pub.dev name belongs to RevenueCat. Flutter web works only with RevenueDot's build, because the web plugin in RevenueCat's package ignores `setProxyURL` ([Flutter docs](../docs/sdks/flutter.md)). No real store purchase has run end to end against RevenueDot yet, so test each store in its sandbox before launch. The [RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) lists the other differences.
+The limits matter. RevenueDot's build installs from git because the pub.dev name belongs to RevenueCat. Flutter web works only with RevenueDot's build, because the web plugin in RevenueCat's package ignores `setProxyURL` ([Flutter docs](../docs/sdks/flutter.md)). A real App Store sandbox purchase has run end to end against RevenueDot (2026-10-02), but Google Play has not yet, so test each store in its sandbox before launch. The [RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) lists the other differences.
 
 [Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue).
 
@@ -216,4 +216,4 @@ You can, but most apps should not. Both listen to the same store transactions. I
 
 Yes. Replace the purchase code with `purchases_flutter`, configure the backend, and call `syncPurchases` once on the first launch of the update so existing subscribers are recorded. See [restore purchases on iOS and Android](restore-purchases-ios-android.md) for when to use `syncPurchases` and when to use `restorePurchases`.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
