@@ -52220,8 +52220,8 @@ paths:
       operationId: pickWelcomePath
       tags:
         - Account settings
-      summary: Follow a welcome email's path link
-      description: "Records which path the reader picked in the welcome email (starting fresh or moving from RevenueCat), so later emails fit it, then redirects to that guide: the [migration guide](https://revenuedot.app/docs/migrate) or the [quickstart](https://revenuedot.app/docs/getting-started/quickstart). An unknown token still redirects and records nothing."
+      summary: Open a welcome email's path link
+      description: With `path=revenuecat`, an HTML page with a **Yes, show me how to switch** button. Opening the link changes nothing, because mail scanners open links too. Any other path redirects to the [quickstart](https://revenuedot.app/docs/getting-started/quickstart), which is where links from older emails land.
       security: []
       parameters:
         - name: token
@@ -52238,15 +52238,59 @@ paths:
             enum:
               - new
               - revenuecat
-          description: "`revenuecat` for moving from RevenueCat; anything else counts as `new`."
+          description: "`revenuecat` for moving from RevenueCat; anything else opens the quickstart."
+      responses:
+        "200":
+          description: The page.
+          content:
+            application/json:
+              schema:
+                type: string
+                description: text/html
+        "302":
+          description: Redirect to the quickstart.
+          headers:
+            Location:
+              schema:
+                type: string
+              description: The quickstart URL with `utm_` parameters.
+        "404":
+          description: Unknown link (an HTML page).
+          content:
+            application/json:
+              schema:
+                type: string
+                description: text/html
+      x-source: routes/account.ts
+      x-revenuedot-extension: true
+    post:
+      operationId: recordWelcomePath
+      tags:
+        - Account settings
+      summary: Record that the reader is switching from RevenueCat
+      description: Records the switching path for the account the email was sent to, without a session, so later emails are the switching steps (import, a side-by-side run, turning RevenueCat off) and not the new-app ones. Then redirects to the [migration guide](https://revenuedot.app/docs/migrate).
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         "302":
-          description: Redirect to the guide.
+          description: Redirect to the migration guide.
           headers:
             Location:
               schema:
                 type: string
               description: The guide URL with `utm_` parameters.
+        "404":
+          description: Unknown link (an HTML page).
+          content:
+            application/json:
+              schema:
+                type: string
+                description: text/html
       x-source: routes/account.ts
       x-revenuedot-extension: true
   /auth/journeys/feedback/{token}:
