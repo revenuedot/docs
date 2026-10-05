@@ -1,11 +1,11 @@
 ---
 title: How do I make a first purchase with RevenueDot in 5 minutes?
-description: Create a free RevenueDot Cloud account, add a Test Store app with a product and an entitlement, make a test purchase from the dashboard, then point the RevenueCat SDK at https://api.revenuedot.app.
+description: Create a free RevenueDot Cloud account, add a Test Store app with a product and an entitlement, make a test purchase from the dashboard, then install the RevenueDot SDK in your app and pass your key.
 ---
 
 # How do I make a first purchase with RevenueDot in 5 minutes?
 
-Create a free account on **RevenueDot Cloud**, add a Test Store app with one product and one entitlement, make a test purchase from the dashboard, then point an SDK at `https://api.revenuedot.app`. You do not need a server, an App Store account or a Google Play account. Cloud is free up to $10,000 in monthly tracked revenue.
+Create a free account on **RevenueDot Cloud**, add a Test Store app with one product and one entitlement, make a test purchase from the dashboard, then install the RevenueDot SDK in your app and pass it your key. You need no server, no App Store account and no Google Play account. Cloud is free until your app makes $10,000 a month in tracked revenue.
 
 [![Watch the 1:18 walkthrough of a first RevenueDot test purchase](https://revenuedot.app/videos/revenuedot-first-purchase.webp)](https://revenuedot.app/videos/revenuedot-first-purchase.mp4)
 
@@ -41,35 +41,65 @@ On **Overview**, click **Make a test purchase**. Keep the app user ID `test_user
 
 The purchase runs through the same steps as a real one. Open **Customers** and click `test_user_1`: the customer has the `pro` entitlement, active for one month, and the purchase events are listed.
 
-## 4. Point an SDK at RevenueDot Cloud
-Copy the Test Store key (it starts with `test_`) from **API keys**. Use it as the SDK's API key, and use `https://api.revenuedot.app` as the SDK's proxy URL. Set the proxy URL before you configure the SDK, and turn off the response-signature check where the SDK has one.
+## 4. Install the RevenueDot SDK and pass your key
+Copy the Test Store key (it starts with `test_`) from **API keys**. Install the RevenueDot SDK for your platform and pass the key to `configure`. On RevenueDot Cloud that is all the setup, because the SDK already sends its requests to `https://api.revenuedot.app`.
 
+The RevenueDot SDK is built from RevenueCat's open-source SDK (MIT license), so your code imports `RevenueCat` and calls `Purchases`. It sends every request to RevenueDot and needs no RevenueCat account.
+
+**iOS.** In Xcode, choose **File > Add Package Dependencies**, enter `https://github.com/revenuedot/purchases-ios`, pick the exact version `5.91.0-revenuedot` and add the `RevenueCat` product. With CocoaPods, add `pod 'RevenueDotPurchases', '5.91.0'` instead.
 ```swift
-// iOS: Point the SDK at RevenueDot Cloud; nothing else in the app changes.
-Purchases.proxyURL = URL(string: "https://api.revenuedot.app")!
-Purchases.configure(with: Configuration.Builder(withAPIKey: "test_...").with(entitlementVerificationMode: .disabled).build())
+import RevenueCat
+
+Purchases.configure(withAPIKey: "test_...")
+```
+
+**Android.** Add the package from Maven Central, then configure the SDK in `Application.onCreate()`.
+```kotlin
+// build.gradle.kts
+implementation("app.revenuedot.purchases:purchases:10.23.3")
 ```
 ```kotlin
-// Android: Point the SDK at RevenueDot Cloud; nothing else in the app changes.
-Purchases.proxyURL = URL("https://api.revenuedot.app")
-Purchases.configure(PurchasesConfiguration.Builder(context, "test_...").entitlementVerificationMode(EntitlementVerificationMode.DISABLED).build())
+Purchases.configure(PurchasesConfiguration.Builder(this, "test_...").build())
+```
+
+**React Native and Expo.** The npm alias installs the RevenueDot SDK under the name `react-native-purchases`, so your code imports `Purchases` from `"react-native-purchases"`.
+```bash
+npm install react-native-purchases@npm:@revenuedot/react-native-purchases@10.10.2
 ```
 ```ts
-// React Native / Expo: Point the SDK at RevenueDot Cloud; nothing else in the app changes.
-await Purchases.setProxyURL("https://api.revenuedot.app");
+import Purchases from "react-native-purchases";
+
 Purchases.configure({ apiKey: "test_..." });
 ```
 
-The shortest way to see it in an app is the [purchases-js web example](https://github.com/revenuedot/examples/tree/main/web/purchases-js-vite), which runs in a browser:
+**Flutter.** Add the SDK as a git dependency. The pub.dev names belong to RevenueCat, so the RevenueDot SDK comes from GitHub.
+```yaml
+# pubspec.yaml
+dependencies:
+  purchases_flutter:
+    git:
+      url: https://github.com/revenuedot/purchases-flutter.git
+      ref: 10.13.2-revenuedot
+```
+```dart
+import 'package:purchases_flutter/purchases_flutter.dart';
+
+await Purchases.configure(PurchasesConfiguration('test_...'));
+```
+
+The install lines for the web, Capacitor, Kotlin Multiplatform, Unity and Cordova are in the [SDK guides](../sdks/README.md). Native SDKs accept `test_` keys only in debug builds. Ship with the `appl_` and `goog_` keys from your App Store and Google Play apps.
+
+The shortest way to see a purchase in an app is the [purchases-js web example](https://github.com/revenuedot/examples/tree/main/web/purchases-js-vite), which runs in a browser. The second `npm install` swaps in the RevenueDot SDK for the web through an npm alias, so the example's imports stay as they are. The example reads the server address from `VITE_REVENUEDOT_URL`.
 
 ```bash
 git clone https://github.com/revenuedot/examples.git && cd examples/web/purchases-js-vite
 npm install
+npm install @revenuecat/purchases-js@npm:@revenuedot/purchases-js@1.67.0
 printf "VITE_REVENUEDOT_URL=https://api.revenuedot.app\nVITE_REVENUEDOT_API_KEY=test_...\n" > .env.local
 npm run dev                    # open http://localhost:5199, click Buy, then "Test valid purchase"
 ```
 
-Per-platform details, including Flutter, Capacitor, Kotlin Multiplatform, Unity and Cordova, are in the [SDK guides](../sdks/README.md). To use the RevenueDot fork packages instead, see [How do I connect my app?](connect-your-app.md).
+> **Switching from RevenueCat?** Keep the RevenueCat SDK your app already ships. Set its proxy URL to `https://api.revenuedot.app` before `configure`, and turn off its response-signature check. See [How do I connect my app?](connect-your-app.md#switching-from-revenuecat-keep-your-sdk-and-set-one-line) and [Migrate from RevenueCat](../migrate/README.md).
 
 Give each Test Store product a price in the dashboard (Product catalog, Edit product, Test Store price) so the paywall shows it. A product without one shows 0. Real prices come from the App Store and Google Play. See [Test Store](../guides/test-store.md).
 
@@ -157,8 +187,31 @@ curl -s -H "Authorization: Bearer $SECRET_KEY" \
 
 The same `curl` calls work on Cloud: replace `http://localhost:8787` with `https://api.revenuedot.app`.
 
-### 5. Point an SDK at your server
-Use the code from [step 4 above](#4-point-an-sdk-at-revenuedot-cloud) with your server's address as the proxy URL, for example `http://localhost:8787`. On the Android emulator, use `http://10.0.2.2:8787`, because the emulator reaches your computer at `10.0.2.2`. In the purchases-js example, set `VITE_REVENUEDOT_URL=http://localhost:8787`.
+### 5. Set the SDK's proxy URL to your server
+Install the RevenueDot SDK as in [step 4 above](#4-install-the-revenuedot-sdk-and-pass-your-key). Then add one line of setup before `configure`: the SDK's proxy URL, which is your server's address, for example `http://localhost:8787`. Then set entitlement verification to `disabled`. The RevenueDot SDK trusts RevenueDot Cloud's response-signing key, and your server signs with its own key. iOS and Android default to informational mode, so the code below sets `disabled`. React Native and Flutter already default to `disabled`. See [Trusted Entitlements](../guides/trusted-entitlements.md).
+
+```swift
+// iOS: set your server's address before configure.
+Purchases.proxyURL = URL(string: "http://localhost:8787")!
+Purchases.configure(with: Configuration.Builder(withAPIKey: "test_...").with(entitlementVerificationMode: .disabled).build())
+```
+```kotlin
+// Android: the emulator reaches your computer at 10.0.2.2.
+Purchases.proxyURL = URL("http://10.0.2.2:8787")
+Purchases.configure(PurchasesConfiguration.Builder(this, "test_...").entitlementVerificationMode(EntitlementVerificationMode.DISABLED).build())
+```
+```ts
+// React Native / Expo: verification is already disabled by default.
+await Purchases.setProxyURL("http://localhost:8787");
+Purchases.configure({ apiKey: "test_..." });
+```
+```dart
+// Flutter: verification is already disabled by default.
+await Purchases.setProxyURL('http://localhost:8787');
+await Purchases.configure(PurchasesConfiguration('test_...'));
+```
+
+On the Android emulator, use `http://10.0.2.2:8787`, because the emulator reaches your computer at `10.0.2.2`. In the purchases-js example, set `VITE_REVENUEDOT_URL=http://localhost:8787`. The same lines work with the RevenueCat SDK if your app already ships it.
 
 To run it for real customers, read [Self-hosting](../guides/self-hosting.md) and [Going to production](../guides/going-to-production.md).
 
@@ -167,4 +220,5 @@ To run it for real customers, read [Self-hosting](../guides/self-hosting.md) and
 - Simulate renewals, cancellations and refunds without waiting: [Test Store](../guides/test-store.md).
 - Learn how entitlements, offerings and customers fit together: [Concepts](../concepts/README.md).
 - Connect a real store: [App Store](../guides/app-store.md), [Google Play](../guides/google-play.md).
-- Move an existing app: [Migrate from RevenueCat](../migrate/README.md).
+- Show a paywall: [Paywalls](../guides/paywalls.md).
+- Switching from RevenueCat? Keep your SDK and change one line: [Migrate from RevenueCat](../migrate/README.md).

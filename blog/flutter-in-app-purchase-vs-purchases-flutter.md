@@ -97,15 +97,19 @@ Future<void> restore() => iap.restorePurchases();
 ### With purchases_flutter and RevenueDot
 
 ```dart
-import 'dart:io' show Platform;
+// purchases_flutter from RevenueDot's git tag 10.13.2-revenuedot (see "Do it with RevenueDot" below)
+import 'package:flutter/foundation.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
 Future<void> startStore() async {
-  // One line of setup sends the SDK to RevenueDot instead of RevenueCat.
-  await Purchases.setProxyURL('https://api.revenuedot.app');
-  await Purchases.configure(
-    PurchasesConfiguration(Platform.isIOS ? 'appl_YourKey' : 'goog_YourKey'),
-  );
+  // RevenueDot's build of the package calls RevenueDot by default, so only the keys are needed.
+  // kIsWeb and defaultTargetPlatform also work on Flutter web, where Platform from dart:io throws.
+  final apiKey = kIsWeb
+      ? 'test_YourKey' // the web buys only with Test Store keys today
+      : defaultTargetPlatform == TargetPlatform.iOS
+          ? 'appl_YourKey'
+          : 'goog_YourKey';
+  await Purchases.configure(PurchasesConfiguration(apiKey));
 }
 
 Future<bool> buyPro() async {
@@ -123,7 +127,7 @@ Future<bool> restore() async {
 }
 ```
 
-There is no `verify` function to write. The backend verifies the purchase with Apple or Google, acknowledges Google purchases, receives store notifications, and answers with the customer's entitlements. Drop the `setProxyURL` line and the same code talks to RevenueCat. Our [Flutter tutorial](flutter-in-app-purchases-tutorial.md) builds a full paywall with this package.
+There is no `verify` function to write. The backend verifies the purchase with Apple or Google, acknowledges Google purchases, receives store notifications, and answers with the customer's entitlements. With RevenueCat's package from pub.dev, the same code talks to RevenueCat, or to RevenueDot on iOS and Android once you add `await Purchases.setProxyURL('https://api.revenuedot.app')` before `configure`. Our [Flutter tutorial](flutter-in-app-purchases-tutorial.md) builds a full paywall with this package.
 
 ## What goes wrong most often?
 
@@ -137,8 +141,8 @@ Each package has its own traps. Knowing them up front saves a rejected build or 
 
 **With `purchases_flutter` against RevenueDot, from our [Flutter docs](../docs/sdks/flutter.md):**
 
-1. **Calling `configure` before `setProxyURL` finishes.** Await `setProxyURL` first, or the first requests go to RevenueCat.
-2. **Turning on enforced entitlement verification.** The stock package checks signatures against RevenueCat's key, so `EntitlementVerificationMode.enforced` fails every request. The default, disabled, is correct.
+1. **With RevenueCat's package, calling `configure` before `setProxyURL` finishes.** Await `setProxyURL` first, or the first requests go to RevenueCat.
+2. **With RevenueCat's package, turning on enforced entitlement verification.** It checks signatures against RevenueCat's key, so `EntitlementVerificationMode.enforced` fails every request. The default, disabled, is correct.
 3. **Shipping a Test Store key.** `test_` keys work only in debug builds. Release builds need the `appl_` and `goog_` keys.
 
 The first list is code you maintain forever. The second list is setup you get right once.
@@ -149,7 +153,7 @@ The first list is code you maintain forever. The second list is setup you get ri
 |---|---|---|---|
 | `in_app_purchase` + your server | Free (BSD-3-Clause) | You build and run it | Engineering time, hosting and upkeep |
 | `purchases_flutter` + RevenueCat | Free (MIT) | Hosted by RevenueCat | Free to $2,500 in monthly tracked revenue, then 1% ([RevenueCat](https://www.revenuecat.com/pricing/)) |
-| `purchases_flutter` + RevenueDot Cloud | Free (MIT) | Hosted by RevenueDot | Free to $10,000 in monthly tracked revenue, then 0.5% capped at $999 a month ([pricing](https://revenuedot.app/pricing)) |
+| `purchases_flutter` + RevenueDot Cloud | Free (MIT) | Hosted by RevenueDot | Free to $10,000 in monthly tracked revenue, then 0.5% above it, capped at $999 a month ([pricing](https://revenuedot.app/pricing)) |
 
 At $50,000 in monthly tracked revenue, RevenueCat's fee is $500 a month. The [fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator) works it out for your numbers, and our [RevenueCat pricing explainer](revenuecat-pricing-explained.md) shows worked bills.
 
@@ -171,14 +175,25 @@ If you already ship `in_app_purchase` and want a backend's records without rewri
 
 ## Do it with RevenueDot
 
-RevenueDot is an open-source server that speaks the RevenueCat SDK's API. You install the stock `purchases_flutter` package, add one `setProxyURL` line, and get:
+RevenueDot is an open-source server that speaks the RevenueCat SDK's API. A new app installs RevenueDot's build of `purchases_flutter` from its git tag and passes its keys to `configure`:
+
+```yaml
+# pubspec.yaml
+dependencies:
+  purchases_flutter:
+    git:
+      url: https://github.com/revenuedot/purchases-flutter.git
+      ref: 10.13.2-revenuedot
+```
+
+An app that already ships RevenueCat's package can keep it on iOS and Android and add one `setProxyURL` line instead. Either way you get:
 
 - Purchase verification and Google acknowledgement for the [App Store](https://revenuedot.app/stores/app-store) and [Google Play](https://revenuedot.app/stores/google-play).
 - One customer and one entitlement across platforms, with your own user IDs through `logIn`.
 - [Webhooks](https://revenuedot.app/features/webhooks), [charts](https://revenuedot.app/charts/mrr), [paywalls](https://revenuedot.app/features/paywalls) and [experiments](https://revenuedot.app/features/experiments).
 - The [Flutter SDK page](https://revenuedot.app/sdks/flutter) and the [Flutter docs](../docs/sdks/flutter.md) with every setup detail.
 
-The limits matter. Flutter web does not work against RevenueDot with the stock package, because its web plugin ignores `setProxyURL`. RevenueDot's fork of `purchases_flutter` fixes this; it installs as a git dependency at tag `10.13.2-revenuedot`, because the pub.dev name belongs to RevenueCat ([Flutter docs](../docs/sdks/flutter.md)). No real store purchase has run end to end against RevenueDot yet, so test each store in its sandbox before launch. The [RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) lists the other differences.
+The limits matter. RevenueDot's build installs from git because the pub.dev name belongs to RevenueCat. Flutter web works only with RevenueDot's build, because the web plugin in RevenueCat's package ignores `setProxyURL` ([Flutter docs](../docs/sdks/flutter.md)). A real App Store sandbox purchase has run end to end against RevenueDot (2026-10-02), but Google Play has not yet, so test each store in its sandbox before launch. The [RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) lists the other differences.
 
 [Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue).
 
@@ -190,7 +205,7 @@ It is enough to sell them. It is not enough to trust them: the README leaves rec
 
 ### Do I need a RevenueCat account to use purchases_flutter?
 
-No. The package is MIT-licensed and works with any backend that speaks RevenueCat's API. With RevenueDot you create a RevenueDot project, use its `appl_` and `goog_` keys, and call `setProxyURL` before `configure`.
+No. The package is MIT-licensed and works with any backend that speaks RevenueCat's API. With RevenueDot you create a RevenueDot project, install RevenueDot's build of the package and pass its `appl_` and `goog_` keys to `configure`.
 
 ### Can I use in_app_purchase and purchases_flutter together?
 
@@ -204,4 +219,4 @@ You can, but most apps should not. Both listen to the same store transactions. I
 
 Yes. Replace the purchase code with `purchases_flutter`, configure the backend, and call `syncPurchases` once on the first launch of the update so existing subscribers are recorded. See [restore purchases on iOS and Android](restore-purchases-ios-android.md) for when to use `syncPurchases` and when to use `restorePurchases`.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

@@ -5,7 +5,7 @@ description: Short answers about what RevenueDot is, what it costs, its licenses
 
 # What do people most often ask about RevenueDot?
 
-RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup). The answers below say what exists on 2026-09-30.
+RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions, with an SDK for every platform. Apps that already ship the RevenueCat SDK can keep it and change one line. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup). The answers below say what exists on 2026-09-30.
 
 RevenueDot is the open-source RevenueCat alternative: the first release is v2026.10.03, it has run in production beside RevenueCat since 2026-10-02, RevenueDot Cloud is free up to $10,000 a month in tracked revenue and then 0.5% (never more than $999 a month). The server is AGPL-3.0 and the SDKs are MIT.
 
@@ -16,8 +16,8 @@ Yes. RevenueDot implements the API that the RevenueCat SDKs call, so an app keep
 No. RevenueCat's backend is a hosted service; only its SDKs are open source ([purchases-ios license](https://github.com/RevenueCat/purchases-ios/blob/main/LICENSE)). The easiest way to get an open-source backend for the RevenueCat SDK is [RevenueDot Cloud](https://app.revenuedot.app/signup). If your company requires its own server, RevenueDot's server also runs on Docker and Postgres: see [Self-hosting](../guides/self-hosting.md).
 
 ## Do I have to change my app?
-One line, plus one setting on most platforms:
-1. Set the SDK's proxy URL before you configure the SDK: `https://api.revenuedot.app` for RevenueDot Cloud.
+A new app installs the [RevenueDot SDK](../sdks/README.md) for its platform and passes its app key to `configure`; on RevenueDot Cloud nothing else is needed. An app that already ships the RevenueCat SDK changes one line, plus one setting on most platforms:
+1. Set the SDK's proxy URL before you configure the SDK: `https://api.revenuedot.app` on RevenueDot Cloud, or your own server's URL.
 2. Turn off the SDK's response-signature check, because RevenueDot cannot sign with RevenueCat's key. See [signature verification](signature-verification-failed.md).
 
 ```swift
@@ -68,13 +68,13 @@ On RevenueDot Cloud, RevenueDot stores your customers, purchases, receipts and e
 Yes. The server verifies StoreKit 2 signed transactions (JWS) against Apple's certificate chain. It also accepts StoreKit 1 app receipts, but only when the app's App Store in-app purchase key is set, because an unsigned receipt could be forged. See [Connect the App Store](../guides/app-store.md).
 
 ## Does it support Expo?
-Yes, through `react-native-purchases`, the same package you use with RevenueCat. Call `Purchases.setProxyURL` before `configure`. Test Store purchases work in Expo Go and on the web today. See the [React Native guide](../sdks/react-native.md).
+Yes. Install the RevenueDot SDK for React Native, `@revenuedot/react-native-purchases`, through an npm alias, so your code imports `react-native-purchases`. An app that ships RevenueCat's `react-native-purchases` can keep it and call `Purchases.setProxyURL` before `configure`. Test Store purchases work in Expo Go and on the web today. See the [React Native guide](../sdks/react-native.md).
 
 ## Does it support current Google Play Billing?
-The server reads subscriptions through the Play Developer API (`subscriptionsv2`) and acknowledges purchases, which Google requires within 3 days ([Google docs](https://developer.android.com/google/play/billing/integrate#process)). Which Play Billing Library your app uses is decided by the RevenueCat Android SDK version you ship. See [Connect Google Play](../guides/google-play.md).
+The server reads subscriptions through the Play Developer API (`subscriptionsv2`) and acknowledges purchases, which Google requires within 3 days ([Google docs](https://developer.android.com/google/play/billing/integrate#process)). Which Play Billing Library your app uses is decided by the Android SDK version you ship, whether it is the RevenueDot SDK or RevenueCat's. See [Connect Google Play](../guides/google-play.md).
 
 ## Do I need a RevenueDot SDK?
-No. The stock RevenueCat SDKs work in proxy mode. The MIT forks exist to close gaps proxy mode cannot fix, such as response signing and Android diagnostics going to RevenueCat's servers. The forks are not published to any package registry yet. See [Connect your app](../getting-started/connect-your-app.md).
+A new app installs the RevenueDot SDK for its platform; it is released for every platform (2026-10-02) and needs no RevenueCat account. An app that already ships the RevenueCat SDK can keep it in proxy mode. The RevenueDot SDKs (MIT) also close gaps proxy mode cannot fix, such as response signing and Android diagnostics going to RevenueCat's servers. See [Connect your app](../getting-started/connect-your-app.md) and the [SDK guides](../sdks/README.md).
 
 ## Can I keep my RevenueCat API keys?
 Yes. The importer can copy your existing public app keys, so apps already in your users' hands keep working when they switch to your server. See [The importer](../migrate/importer.md).

@@ -1,39 +1,20 @@
 ---
-title: How do I use RevenueDot with React Native and Expo?
-description: Await Purchases.setProxyURL before configure. Verification is already off by default in react-native-purchases, and Expo Go and web work with a Test Store key.
+title: How do I add in-app purchases to a React Native or Expo app with RevenueDot?
+description: Install the RevenueDot SDK with an npm alias, so your code imports react-native-purchases, then call Purchases.configure with your app's key. On RevenueDot Cloud nothing else is needed. Expo Go and web buy with a Test Store key.
 ---
 
-# How do I use RevenueDot with React Native and Expo?
+# How do I add in-app purchases to a React Native or Expo app with RevenueDot?
 
-Call `await Purchases.setProxyURL("https://revenuedot.example.com")` before `Purchases.configure`. That is the whole change: `react-native-purchases` already defaults to `ENTITLEMENT_VERIFICATION_MODE.DISABLED`. It works on iOS and Android builds, and in Expo Go and on the web with a Test Store (`test_`) key.
+Install the RevenueDot SDK for React Native with an npm alias, so your code imports `Purchases` from `"react-native-purchases"`, then call `Purchases.configure` with your app's key from RevenueDot. On RevenueDot Cloud nothing else is needed. It runs in iOS and Android builds. In Expo Go and on the web it runs in browser mode, which buys with a Test Store (`test_`) key.
 
-## Use the RevenueCat SDK you already ship (proxy mode)
-```ts
-import { Platform } from "react-native";
-import Purchases from "react-native-purchases";
-
-// Point the SDK at your RevenueDot server; nothing else in the app changes.
-await Purchases.setProxyURL("https://revenuedot.example.com");
-Purchases.configure({
-  apiKey: Platform.OS === "ios" ? "appl_..." : "goog_...",
-  // Leave entitlementVerificationMode unset: DISABLED is the React Native default.
-});
+## Install the RevenueDot SDK and pass your key
+**Version 10.10.2 is on npm** as `@revenuedot/react-native-purchases`. The npm alias installs it under the name `react-native-purchases`, so every `import ... from "react-native-purchases"` works. Run the same command in an Expo app.
+```bash
+npm install react-native-purchases@npm:@revenuedot/react-native-purchases@10.10.2
+# Only for paywalls:
+npm install react-native-purchases-ui@npm:@revenuedot/react-native-purchases-ui@10.10.2
 ```
-- `setProxyURL` returns a promise. Await it before `configure`.
-- If your code sets `entitlementVerificationMode: ENTITLEMENT_VERIFICATION_MODE.INFORMATIONAL` or `ENFORCED`, remove it. See [Trusted Entitlements](#trusted-entitlements-are-off-by-default).
-- Use each app's public key from RevenueDot, or your old RevenueCat keys if the [importer](../migrate/importer.md) kept them. See [Which key goes where](../concepts/projects-and-apps.md#which-key-goes-where).
-
-**After you migrate from RevenueCat, sync once** on the first launch of the update. It sends the device's store purchases to RevenueDot, so current subscribers keep access.
-```ts
-// Once, after this update: send purchases made while the app talked to RevenueCat.
-await Purchases.syncPurchasesForResult();
-```
-`Purchases.syncPurchases()` does the same and returns nothing.
-
-## Use the RevenueDot fork
-The fork is [github.com/revenuedot/react-native-purchases](https://github.com/revenuedot/react-native-purchases). It depends on RevenueDot's [hybrid common](hybrid-common.md) 19.4.1, which is published (CocoaPods `RevenueDotPurchasesHybridCommon`, Maven `app.revenuedot.purchases:purchases-hybrid-common`, npm `@revenuedot/purchases-typescript-internal`).
-
-**Version 10.10.2 is on npm.** The install uses npm aliases, so every `import ... from "react-native-purchases"` stays as it is:
+Your `package.json` then reads:
 ```json
 {
   "dependencies": {
@@ -42,16 +23,35 @@ The fork is [github.com/revenuedot/react-native-purchases](https://github.com/re
   }
 }
 ```
+```ts
+import { Platform } from "react-native";
+import Purchases from "react-native-purchases";
+
+Purchases.configure({
+  apiKey: Platform.OS === "ios" ? "appl_..." : "goog_...",
+});
+```
+- The RevenueDot SDK is built from RevenueCat's open-source SDK (MIT license), so your code imports `react-native-purchases` and calls `Purchases`. It sends every request to RevenueDot and needs no RevenueCat account.
+- Use each app's public key from RevenueDot, or the `test_...` key for the Test Store. See [Which key goes where](../concepts/projects-and-apps.md#which-key-goes-where).
+- **On RevenueDot Cloud** the SDK already calls `https://api.revenuedot.app`, so there is nothing else to set.
+- **Entitlement verification is off by default** (`ENTITLEMENT_VERIFICATION_MODE.DISABLED`). In Expo Go and on the web, the SDK runs in browser mode and does not check signatures.
+- The source is [github.com/revenuedot/react-native-purchases](https://github.com/revenuedot/react-native-purchases). It depends on RevenueDot's [hybrid common](hybrid-common.md) 19.4.1, which is published (CocoaPods `RevenueDotPurchasesHybridCommon`, Maven `app.revenuedot.purchases:purchases-hybrid-common`, npm `@revenuedot/purchases-typescript-internal`).
+
 Installed from npm into the [Expo example](https://github.com/revenuedot/examples/tree/main/mobile/react-native-expo) and run on the web against a RevenueDot server, it passes configure, customer info, offerings, a Test Store purchase and the `pro` entitlement turning active, with every request going to the server.
 
-## Trusted Entitlements are off by default
-- **Stock SDK:** the default is `DISABLED`, which is what you want against RevenueDot. `INFORMATIONAL` logs every response as a failed signature check. **`ENFORCED` would fail every request.**
-- **Fork:** it trusts RevenueDot Cloud's key. A self-hosted server signs with its own key, so keep `DISABLED`, or build the forks with your own public key.
-- In Expo Go and on the web, the SDK runs in browser mode and does not check signatures.
+**Self-hosting:** await `Purchases.setProxyURL` with your server's address before `configure`. Leave the verification mode at its default, `DISABLED`, because your server signs with its own key, which this build does not trust.
+```ts
+import { Platform } from "react-native";
+import Purchases from "react-native-purchases";
 
-See [Trusted Entitlements](../guides/trusted-entitlements.md).
+// setProxyURL returns a promise. Await it before configure.
+await Purchases.setProxyURL("https://revenuedot.example.com");
+Purchases.configure({ apiKey: Platform.OS === "ios" ? "appl_..." : "goog_..." });
+```
+To verify responses from your own server, build the SDKs with your public key. See [Trusted Entitlements](../guides/trusted-entitlements.md).
 
 ## Check an entitlement and make a purchase
+Check the entitlement your app unlocks, here `pro`, then buy a package from the current offering, the set of products your paywall shows.
 ```ts
 const customerInfo = await Purchases.getCustomerInfo();
 const isPro = customerInfo.entitlements.active["pro"] !== undefined;
@@ -77,8 +77,35 @@ Create a `test_store` app in RevenueDot and use its `test_...` key.
 
 More: [Test Store](../guides/test-store.md).
 
-## Migrate from RevenueCat
+## Switching from RevenueCat? Keep your SDK and change one line
+An app that ships RevenueCat's `react-native-purchases` can keep it. Call `await Purchases.setProxyURL("https://revenuedot.example.com")` before `Purchases.configure` (`https://api.revenuedot.app` on RevenueDot Cloud). That is the whole change: `react-native-purchases` already defaults to `ENTITLEMENT_VERIFICATION_MODE.DISABLED`. It works on iOS and Android builds, and in Expo Go and on the web with a Test Store (`test_`) key.
+
+```ts
+import { Platform } from "react-native";
+import Purchases from "react-native-purchases";
+
+// Point the SDK at your RevenueDot server; nothing else in the app changes.
+await Purchases.setProxyURL("https://revenuedot.example.com");
+Purchases.configure({
+  apiKey: Platform.OS === "ios" ? "appl_..." : "goog_...",
+  // Leave entitlementVerificationMode unset: DISABLED is the React Native default.
+});
+```
+- `setProxyURL` returns a promise. Await it before `configure`.
+- Use each app's public key from RevenueDot, or your old RevenueCat keys if the [importer](../migrate/importer.md) kept them.
+- **Keep entitlement verification off.** RevenueCat's SDK checks signatures with RevenueCat's key. `DISABLED`, the default, is what you want against RevenueDot. `INFORMATIONAL` logs every response as a failed signature check, and **`ENFORCED` would fail every request**. If your code sets either one, remove it. See [Trusted Entitlements](../guides/trusted-entitlements.md).
+- **Or install the RevenueDot SDK in the same release.** The npm alias keeps every import. See [Install the RevenueDot SDK](#install-the-revenuedot-sdk-and-pass-your-key).
+
+**Sync once** on the first launch of the update. It sends the device's store purchases to RevenueDot, so current subscribers keep access.
+```ts
+// Once, after this update: send purchases made while the app talked to RevenueCat.
+await Purchases.syncPurchasesForResult();
+```
+`Purchases.syncPurchases()` does the same and returns nothing.
+
+The whole app change fits in one diff:
 ```diff
+ import { Platform } from "react-native";
  import Purchases from "react-native-purchases";
 
 +// Point the SDK at your RevenueDot server; nothing else in the app changes. Await it before configure.

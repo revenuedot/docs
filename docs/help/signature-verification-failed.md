@@ -73,7 +73,7 @@ RevenueDot can sign responses exactly the way the SDKs check them. It signs ever
    You can also set `REVENUEDOT_FORK_API_HOST` and `REVENUEDOT_FORK_SIGNING_PUBLIC_KEY`. Then build the fork for your platform and ship it in your app.
 5. **Turn verification back on** (informational) in the app, and check that `verification` reads `VERIFIED`.
 
-The official RevenueDot forks trust RevenueDot Cloud's key (`gXdn2hmqR/TbdtQwK02laE0YgFz0Rtf918LICLrgZhg=`). A self-hosted server cannot sign with that key, so the official builds still report `FAILED` against your server. The forks are not published to any registry yet as of 2026-09-30. Full details are in [Trusted Entitlements](../guides/trusted-entitlements.md).
+The official RevenueDot forks trust RevenueDot Cloud's key (`gXdn2hmqR/TbdtQwK02laE0YgFz0Rtf918LICLrgZhg=`). A self-hosted server cannot sign with that key, so the official builds still report `FAILED` against your server. The RevenueDot SDKs are published for every platform (2026-10-02); install lines are in the [SDK guides](../sdks/README.md). Full details are in [Trusted Entitlements](../guides/trusted-entitlements.md).
 
 ## Related
 - [Trusted Entitlements](../guides/trusted-entitlements.md)

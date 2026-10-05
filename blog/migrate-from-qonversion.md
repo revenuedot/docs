@@ -8,7 +8,7 @@ image: /blog/assets/migrate-from-qonversion/cover.svg
 
 # Migrate from Qonversion to an open-source backend (RevenueDot)
 
-The move from Qonversion to RevenueDot is an SDK swap with a side-by-side run. You rebuild the catalog in RevenueDot, replace the Qonversion SDK with the RevenueCat SDK pointed at RevenueDot, forward store notifications to Qonversion while old app versions remain, and let active subscribers re-sync when the updated app posts their store receipts. RevenueDot's importer reads RevenueCat projects only, so it cannot read a Qonversion project.
+The move from Qonversion to RevenueDot is an SDK swap with a side-by-side run. You rebuild the catalog in RevenueDot, replace the Qonversion SDK with the RevenueDot SDK, forward store notifications to Qonversion while old app versions remain, and let active subscribers re-sync when the updated app posts their store receipts. RevenueDot's importer reads RevenueCat projects only, so it cannot read a Qonversion project.
 
 This post covers the order of work, what Qonversion's own migration guide teaches you in reverse, and the checks that keep entitlements correct. Facts about Qonversion come from its public pricing page and docs, checked in October 2026.
 
@@ -30,7 +30,7 @@ RevenueDot has the same two tracks with different names.
 
 | Track | In Qonversion's guide | In RevenueDot |
 |---|---|---|
-| Client | Install the SDK, call `syncHistoricalData()` | Install the RevenueCat SDK with the proxy URL, call `syncPurchases()` once |
+| Client | Install the SDK, call `syncHistoricalData()` | Install the RevenueDot SDK, call `syncPurchases()` once |
 | Server | Send receipt files to Qonversion support | Add store credentials, so RevenueDot verifies receipts and Google purchase tokens itself |
 | Result | Entitlements granted on app launch | Entitlements granted when the app posts the receipt |
 
@@ -51,27 +51,22 @@ RevenueDot has no Qonversion reader, so the catalog is yours to recreate. It is 
 
 ## How do you swap the SDK?
 
-Replace Qonversion's calls with the RevenueCat SDK and set its proxy URL to RevenueDot. The RevenueDot forks of the SDKs are not on package registries yet (October 2026), so use the stock RevenueCat SDK in proxy mode.
+Replace Qonversion's calls with the RevenueDot SDK. It is published for every platform (2026-10-02), and on RevenueDot Cloud it needs only your app's key. The [SDK guides](https://revenuedot.app/docs/sdks) give the install line for each platform.
 
 ```swift
 // Before: Qonversion
 Qonversion.shared().purchase(product) { result in /* ... */ }
 Qonversion.shared().restore { entitlements, error in /* ... */ }
 
-// After: the RevenueCat SDK talking to RevenueDot
-Purchases.proxyURL = URL(string: "https://api.revenuedot.app")!
-Purchases.configure(
-    with: Configuration.Builder(withAPIKey: "appl_...")
-        .with(entitlementVerificationMode: .disabled)
-        .build()
-)
+// After: the RevenueDot SDK (import RevenueCat)
+Purchases.configure(withAPIKey: "appl_...")
 let result = try await Purchases.shared.purchase(package: package)
 let customerInfo = try await Purchases.shared.restorePurchases()
 ```
 
-Qonversion's method names are from its [purchase docs](https://documentation.qonversion.io/docs/making-purchases.md). Set the proxy URL before `configure`, and turn off signature checks, because the stock SDK verifies responses against RevenueCat's key. The diffs for all ten SDKs are in the [SDK changes guide](https://revenuedot.app/docs/migrate/sdk-changes).
+Qonversion's method names are from its [purchase docs](https://documentation.qonversion.io/docs/making-purchases.md). The RevenueDot SDK is built from RevenueCat's open-source SDK (MIT license), so your code imports `RevenueCat` and calls `Purchases`. It sends every request to RevenueDot and needs no RevenueCat account. If you self-host, set `Purchases.proxyURL` to your server before `configure` and turn entitlement verification off, as the [iOS guide](https://revenuedot.app/docs/sdks/ios) shows.
 
-**Identity.** Qonversion's `identify("your_custom_user_id")` links accounts across devices and stores, and it asks you to call `logout()` when the user signs out ([Qonversion docs](https://documentation.qonversion.io/docs/user-identifiers.md)). The RevenueCat equivalents are `Purchases.logIn` and `Purchases.logOut`. Pass the same id you passed to `identify`, and purchases follow the customer ([customers and app user ids](https://revenuedot.app/docs/concepts/customers-and-app-user-ids)).
+**Identity.** Qonversion's `identify("your_custom_user_id")` links accounts across devices and stores, and it asks you to call `logout()` when the user signs out ([Qonversion docs](https://documentation.qonversion.io/docs/user-identifiers.md)). The RevenueDot SDK's equivalents are `Purchases.logIn` and `Purchases.logOut`. Pass the same id you passed to `identify`, and purchases follow the customer ([customers and app user ids](https://revenuedot.app/docs/concepts/customers-and-app-user-ids)).
 
 **Sync once.** Call `syncPurchases()` on the first launch after the update. It sends the device's store purchases to RevenueDot, so active subscribers keep access without any imported history.
 
@@ -117,7 +112,7 @@ See the [RevenueDot vs Qonversion comparison](https://revenuedot.app/compare/rev
 
 1. Create a free project and add your store credentials ([connect your app](https://revenuedot.app/docs/getting-started/connect-your-app)).
 2. Recreate entitlements, products and offerings.
-3. Ship the update with the proxy URL, `logIn` and `syncPurchases()`.
+3. Ship the update with the RevenueDot SDK, `logIn` and `syncPurchases()`.
 4. Move the Apple URLs to RevenueDot and forward to Qonversion.
 5. Compare for a cycle, then cut over.
 
@@ -135,7 +130,7 @@ No file handoff is needed. You add your App Store in-app purchase key and Google
 
 ### What replaces Qonversion's identify call?
 
-`Purchases.logIn` in the RevenueCat SDK. Pass the same custom user id you gave `identify`, and call `Purchases.logOut` where you called Qonversion's `logout`.
+`Purchases.logIn` in the RevenueDot SDK. Pass the same custom user id you gave `identify`, and call `Purchases.logOut` where you called Qonversion's `logout`.
 
 ### Will users lose premium access during the move?
 
@@ -145,4 +140,4 @@ Not if both backends stay on until old app versions fade out. Apple and Google k
 
 For revenue under $7K a month both are free. Above it, Qonversion charges 0.8% of all tracked revenue, while RevenueDot Cloud is free up to $10,000.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

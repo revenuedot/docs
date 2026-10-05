@@ -1,10 +1,10 @@
 # RevenueDot documentation: Guides: stores, web billing, webhooks, integrations, billing, team
 
-> RevenueDot is the open-source RevenueCat alternative: the first release is v2026.10.03, it has run in production beside RevenueCat since 2026-10-02, RevenueDot Cloud is free up to $10,000 a month in tracked revenue and then 0.5% (never more than $999 a month). The server is AGPL-3.0 and the SDKs are MIT.
-> RevenueDot is an open-source backend for in-app purchases and subscriptions that works with the RevenueCat SDK.
-> Start free on RevenueDot Cloud (https://app.revenuedot.app/signup, free up to $10,000 monthly tracked revenue). An app points the RevenueCat SDK's proxy URL at RevenueDot and keeps its purchase code, offerings and customers.
+> RevenueDot is an open-source backend for in-app purchases and subscriptions on the App Store, Google Play and the web. It has an SDK for every platform. RevenueDot Cloud is free up to $10,000 a month in tracked revenue and then 0.5% (never more than $999 a month). The server is AGPL-3.0 and the SDKs are MIT.
+> RevenueDot is also the open-source RevenueCat alternative: the first release is v2026.10.03, and it has run in production beside RevenueCat since 2026-10-02.
+> Start free on RevenueDot Cloud (https://app.revenuedot.app/signup, free up to $10,000 monthly tracked revenue). A new app installs the RevenueDot SDK for its platform and passes its API key; on RevenueDot Cloud nothing else is needed. An app switching from RevenueCat can keep the RevenueCat SDK, set its proxy URL to RevenueDot and keep its purchase code, offerings and customers.
 > It verifies App Store and Google Play purchases on the server, keeps each customer's entitlements current from store notifications, and sends webhooks in RevenueCat's payload format.
-> On RevenueDot Cloud, apps use the API at https://api.revenuedot.app and people sign in to the dashboard at https://app.revenuedot.app/login. The server is AGPL-3.0. The SDK forks are MIT and keep RevenueCat's class and method names. RevenueDot is not affiliated with RevenueCat, Inc.
+> On RevenueDot Cloud, apps use the API at https://api.revenuedot.app and people sign in to the dashboard at https://app.revenuedot.app/login. The server is AGPL-3.0. The RevenueDot SDKs are MIT, built from RevenueCat's open-source SDKs, and keep RevenueCat's class and method names, so code imports RevenueCat and calls Purchases. RevenueDot is not affiliated with RevenueCat, Inc.
 
 Generated from https://github.com/revenuedot/docs by scripts/gen-llms.mjs. Index: https://raw.githubusercontent.com/revenuedot/docs/main/llms.txt
 
@@ -3253,9 +3253,9 @@ Everything the page does is in the [API reference](https://raw.githubusercontent
 # Paywalls
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md
-Description: Build a native paywall from a template, with the visual editor or with AI, translate it, publish it to an offering, and show it in your app with RevenueCatUI's PaywallView.
+Description: Build a native paywall from a template, with the visual editor or with AI, translate it, publish it to an offering, and show it in your app with the paywall view in the RevenueDot UI SDK.
 
-A paywall is the screen that sells your offering. RevenueDot serves paywalls in the format the RevenueCat SDKs render natively (paywall components, also called Paywalls V2). You build and change a paywall in the dashboard, and your app shows it with one view, without an app release.
+A paywall is the screen that sells your offering. You build and change a paywall in the dashboard, and your app shows it with one view from the RevenueDot UI SDK, without an app release. RevenueDot serves paywalls in the format the RevenueCat SDKs also render natively (paywall components, also called Paywalls V2), so apps that keep RevenueCat's SDK show them too.
 
 The dashboard has three ways to start, a visual editor, translations, and a server check that every published paywall decodes in the SDK.
 
@@ -3334,7 +3334,16 @@ Open the **Localizations** tab. Add a language, then fill in its strings next to
 
 ## Show it in your app
 
-Add the RevenueCatUI library next to the SDK, then present the paywall. `PaywallView()` shows the current offering's paywall; pass an offering to show another one.
+Add the RevenueDot UI SDK next to the RevenueDot SDK, then present the paywall. The UI SDK is built from RevenueCat's open-source paywall library, so its module is still called `RevenueCatUI` in code. `PaywallView()` shows the current offering's paywall; pass an offering to show another one.
+
+| Platform | RevenueDot UI SDK |
+|---|---|
+| iOS | Product `RevenueCatUI` of the Swift package `https://github.com/revenuedot/purchases-ios` (`5.91.0-revenuedot`), or `pod 'RevenueDotPurchasesUI', '5.91.0'` |
+| Android | `implementation("app.revenuedot.purchases:purchases-ui:10.23.3")` |
+| React Native and Expo | `npm install react-native-purchases-ui@npm:@revenuedot/react-native-purchases-ui@10.10.2` |
+| Flutter | `purchases_ui_flutter` from the git dependency `https://github.com/revenuedot/purchases-flutter.git` (`path: purchases_ui_flutter`, `ref: 10.13.2-revenuedot`) |
+
+Install lines for every platform are in the [SDK guides](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md). Apps that keep RevenueCat's SDK use RevenueCat's UI library with the same code.
 
 ```swift
 import RevenueCatUI
@@ -3343,18 +3352,18 @@ import RevenueCatUI
 ```
 
 ```kotlin
-// Jetpack Compose, com.revenuecat.purchases:purchases-ui
+// Jetpack Compose, app.revenuedot.purchases:purchases-ui (package com.revenuecat.purchases.ui.revenuecatui)
 PaywallDialog(PaywallDialogOptions.Builder().build())
 ```
 
 ```tsx
-// React Native, react-native-purchases-ui
+// React Native, react-native-purchases-ui (the alias of @revenuedot/react-native-purchases-ui)
 import RevenueCatUI from "react-native-purchases-ui";
 await RevenueCatUI.presentPaywall();
 ```
 
 ```dart
-// Flutter, purchases_ui_flutter
+// Flutter, purchases_ui_flutter from the RevenueDot git dependency
 await RevenueCatUI.presentPaywall();
 ```
 

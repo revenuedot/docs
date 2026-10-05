@@ -1,6 +1,6 @@
 ---
 title: "React Native and Expo subscriptions with react-native-purchases"
-description: "Add subscriptions to a React Native or Expo app with react-native-purchases and a RevenueDot backend: dev build, setProxyURL, purchase, restore and testing."
+description: "Add subscriptions to a React Native or Expo app with the RevenueDot SDK (react-native-purchases): dev build, configure, purchase, restore and testing."
 date: 2026-10-01
 author: RevenueDot team
 image: /blog/assets/react-native-expo-subscriptions-tutorial/cover.svg
@@ -8,7 +8,7 @@ image: /blog/assets/react-native-expo-subscriptions-tutorial/cover.svg
 
 # React Native and Expo subscriptions with react-native-purchases
 
-To add subscriptions to a React Native or Expo app, install `react-native-purchases`, build a development build (Expo Go cannot make real store purchases), call `await Purchases.setProxyURL("https://api.revenuedot.app")` before `Purchases.configure`, then call `getOfferings`, `purchasePackage` and read `customerInfo.entitlements.active`. RevenueDot is the backend that verifies purchases with Apple and Google. Your TypeScript code is the same as it would be with RevenueCat.
+To add subscriptions to a React Native or Expo app, install the RevenueDot SDK with `npm install react-native-purchases@npm:@revenuedot/react-native-purchases@10.10.2`, build a development build (Expo Go cannot make real store purchases), call `Purchases.configure` with your app's keys, then call `getOfferings`, `purchasePackage` and read `customerInfo.entitlements.active`. RevenueDot is the backend that verifies purchases with Apple and Google. On RevenueDot Cloud the keys are the only setup.
 
 ![Architecture: a React Native or Expo app talks to RevenueDot, which talks to the App Store and Google Play](assets/react-native-expo-subscriptions-tutorial/cover.svg)
 
@@ -34,15 +34,15 @@ Then create the product on each app, an entitlement `pro` with both products att
 
 ![RevenueDot dashboard page listing an offering with its packages and attached products](assets/react-native-expo-subscriptions-tutorial/offerings.png)
 
-## Step 3: Install the SDK and make a development build
+## Step 3: Install the RevenueDot SDK and make a development build
 
-Install with Expo's tooling. RevenueCat's [Expo guide](https://www.revenuecat.com/docs/getting-started/installation/expo) gives this command:
+Install the RevenueDot SDK under the name `react-native-purchases` with an npm alias. Use the same command in an Expo app and in a bare React Native app:
 
 ```bash
-npx expo install react-native-purchases
+npm install react-native-purchases@npm:@revenuedot/react-native-purchases@10.10.2
 ```
 
-(For a bare React Native project, RevenueCat's [installation guide](https://www.revenuecat.com/docs/getting-started/installation/reactnative) uses `npm install --save react-native-purchases`.)
+Your `package.json` then lists `"react-native-purchases": "npm:@revenuedot/react-native-purchases@10.10.2"`, so every `import Purchases from "react-native-purchases"` works. The RevenueDot SDK is built from RevenueCat's open-source SDK (MIT license), so your code imports `react-native-purchases` and calls `Purchases`. It sends every request to RevenueDot and needs no RevenueCat account. The [React Native SDK guide](https://revenuedot.app/docs/sdks/react-native) has the details.
 
 **Set your identifiers.** In `app.json`, the bundle ID and the Android package must match the apps you made in the stores and in RevenueDot:
 
@@ -66,17 +66,15 @@ npx expo run:android                                        # local Android buil
 eas build --platform ios --profile development              # EAS cloud build
 ```
 
-RevenueCat's guide says the SDK detects Expo Go by itself and swaps native calls for JavaScript mocks, and that you need a development build to test real purchases.
+RevenueCat's [Expo guide](https://www.revenuecat.com/docs/getting-started/installation/expo) says the SDK detects Expo Go by itself and swaps native calls for JavaScript mocks, and that you need a development build to test real purchases.
 
 ![Table showing which React Native runtimes support real store purchases and the Test Store key: Expo Go and web accept only a Test Store key, while development builds and bare React Native make real purchases](assets/react-native-expo-subscriptions-tutorial/runtime-matrix.svg)
 
 With RevenueDot, Expo Go and the web run in a browser mode that accepts only a Test Store key (`test_...`). That is useful for building a paywall before you have any store account. Real purchases need a development build.
 
-The RevenueDot [fork](https://revenuedot.app/docs/sdks/react-native) installs through an npm alias, `"react-native-purchases": "npm:@revenuedot/react-native-purchases@10.10.2"`. Version 10.10.2 is on npm, and the stock SDK in proxy mode works too.
+## Step 4: Configure the SDK with your app's keys
 
-## Step 4: Configure the SDK with the proxy URL
-
-`setProxyURL` returns a promise. Await it before `configure`. `react-native-purchases` already defaults to `ENTITLEMENT_VERIFICATION_MODE.DISABLED`, which RevenueDot needs, so leave it unset.
+Call `configure` once at startup with each store's public key from RevenueDot. On RevenueDot Cloud there is nothing else to set, because the SDK already sends its requests to `https://api.revenuedot.app`. Entitlement verification is off by default (`ENTITLEMENT_VERIFICATION_MODE.DISABLED`), so leave it unset.
 
 ```ts
 // revenuedot.ts
@@ -88,8 +86,6 @@ let configured: Promise<void> | null = null;
 export function configurePurchases(): Promise<void> {
   configured ??= (async () => {
     if (__DEV__) Purchases.setLogLevel(LOG_LEVEL.DEBUG);
-    // Point the SDK at RevenueDot. Await it before configure.
-    await Purchases.setProxyURL("https://api.revenuedot.app");
     Purchases.configure({
       apiKey: Platform.OS === "ios" ? "appl_YourKey" : "goog_YourKey",
     });
@@ -100,9 +96,9 @@ export function configurePurchases(): Promise<void> {
 
 Call it once at startup, for example in your root component's effect, and wait for it before you read offerings.
 
-If your code sets `entitlementVerificationMode` to `INFORMATIONAL` or `ENFORCED`, remove it. `INFORMATIONAL` logs every response as a failed signature check, and `ENFORCED` fails every request. See [Trusted Entitlements](https://revenuedot.app/docs/guides/trusted-entitlements).
-
 **Expected output:** with debug logging on, Metro shows the SDK's requests going to `api.revenuedot.app`.
+
+**Self-hosting?** Await `Purchases.setProxyURL` with your own server's address before `configure`, and keep the verification mode at its default, `DISABLED`, because your server signs its responses with its own key. The [React Native SDK guide](https://revenuedot.app/docs/sdks/react-native) shows the code.
 
 ## Step 5: Build the paywall
 
@@ -187,11 +183,12 @@ await Purchases.logOut();
 
 RevenueDot keeps one customer record per app user ID and lists the old anonymous ID as an alias. If two accounts restore the same store purchase, the project's transfer behavior decides who owns it. See [customers and app user IDs](https://revenuedot.app/docs/concepts/customers-and-app-user-ids). Use the same ID on iOS, Android and the web, and never put a secret in it, because it appears in dashboards and webhooks.
 
-## Optional: move an existing RevenueCat app to RevenueDot
+## Already ship the RevenueCat SDK? Keep it and add one line
 
-If your app already ships `react-native-purchases` with RevenueCat's backend, the change is small. Add the proxy URL before `configure`, remove any verification mode setting, and sync once on the first launch of the update.
+If your app already ships RevenueCat's `react-native-purchases` with RevenueCat's backend, you can keep it. Add the proxy URL before `configure`, remove any verification mode setting, and sync once on the first launch of the update.
 
 ```diff
+ import { Platform } from "react-native";
  import Purchases from "react-native-purchases";
 
 +await Purchases.setProxyURL("https://api.revenuedot.app");
@@ -202,7 +199,7 @@ If your app already ships `react-native-purchases` with RevenueCat's backend, th
 +await Purchases.syncPurchasesForResult();
 ```
 
-Keep your existing public keys if you ran the [importer](https://revenuedot.app/docs/migrate/importer). Old app versions keep calling RevenueCat until their owners update, so run both systems side by side for a while. The [migration post](https://revenuedot.app/blog/migrating-from-revenuecat-without-data-loss) gives the order of steps.
+Keep your existing public keys if you ran the [importer](https://revenuedot.app/docs/migrate/importer). Keep the verification mode at its default, `DISABLED`, because RevenueCat's package checks signatures against RevenueCat's key and `ENFORCED` would fail every request. Old app versions keep calling RevenueCat until their owners update, so run both systems side by side for a while. [Connect your app](https://revenuedot.app/docs/getting-started/connect-your-app) shows the code, and [Migrate from RevenueCat](https://revenuedot.app/migrate-from-revenuecat) gives the order of steps.
 
 ## Step 6: Test
 
@@ -220,7 +217,7 @@ Before you ship, run one sandbox purchase on each store from a development build
 | "Wrong API Key" or the app stops in release | A `test_` key in a release build | Ship with `appl_` and `goog_` keys |
 | Purchases never complete in Expo Go | Expo Go cannot run native store code | Use a development build |
 | Offerings are empty | Offering not current, or product IDs differ from the store | Make the offering current and match the IDs |
-| Requests fail with a signature error | `ENFORCED` verification mode | Remove it. `DISABLED` is the default |
+| Requests fail with a signature error | `ENFORCED` verification mode with RevenueCat's package or a self-hosted server | Remove it. `DISABLED` is the default |
 | Android purchase retries | Google Play app has no service account (RevenueDot answers 503, code 7101) | Add it, then the SDK's retry succeeds |
 | Native iOS Test Store shows "No base price found" | A server older than the 2026-09-30 fix | Update your server. Cloud already has it |
 
@@ -229,7 +226,7 @@ Before you ship, run one sandbox purchase on each store from a development build
 1. [Create a free account](https://app.revenuedot.app/signup). Cloud is free up to $10,000 in monthly tracked revenue.
 2. Add your App Store and Google Play apps with their credentials.
 3. Create the product, the `pro` entitlement and the `default` offering.
-4. Add `await Purchases.setProxyURL("https://api.revenuedot.app")` before `configure`.
+4. Install the RevenueDot SDK and call `Purchases.configure` with your `appl_` and `goog_` keys.
 5. Build a development build and make a sandbox purchase.
 
 [Start free on RevenueDot Cloud](https://app.revenuedot.app/signup)
@@ -250,10 +247,10 @@ Each store has its own public key from RevenueDot: `appl_...` for the App Store 
 
 ### Does react-native-purchases work with a RevenueCat alternative?
 
-Yes. The SDK has a proxy URL setting, and RevenueDot answers the same API. Set `await Purchases.setProxyURL("https://api.revenuedot.app")` before `configure` and your other code stays the same.
+Yes. RevenueDot publishes its own build of `react-native-purchases`, which calls RevenueDot by default, so you pass only your keys. RevenueCat's own package works too: set `await Purchases.setProxyURL("https://api.revenuedot.app")` before `configure`, and your other code stays the same.
 
 ### How do I migrate an Expo app from RevenueCat to RevenueDot?
 
 Add the proxy URL line, remove any verification mode setting, and call `syncPurchases` once on the first launch of the update. The [migration guide](https://revenuedot.app/blog/migrating-from-revenuecat-without-data-loss) covers importing customers and running both systems side by side.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

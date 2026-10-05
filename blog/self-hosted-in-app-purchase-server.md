@@ -124,7 +124,7 @@ Purchases.configure(
 )
 ```
 
-Every SDK has the same setting. The [SDK guides](https://revenuedot.app/docs/sdks) show each one. A self-hosted server signs responses with its own key, so the stock SDKs should keep verification disabled.
+Every SDK has the same setting. The [SDK guides](https://revenuedot.app/docs/sdks) show each one. A self-hosted server signs responses with its own key, which neither the RevenueDot SDK nor RevenueCat's SDK trusts. So set entitlement verification to disabled, as above. The iOS and Android SDKs default to informational mode and need the setting.
 
 ### Step 5: Back up
 
@@ -199,4 +199,4 @@ Yes. Cloud and self-host run the same code and the same API, so you can start on
 
 Not yet. Run one RevenueDot container per database. The background job has no lock across processes, so two containers could send a webhook twice.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

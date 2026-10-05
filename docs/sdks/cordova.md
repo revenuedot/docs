@@ -1,40 +1,30 @@
 ---
-title: How do I use RevenueDot with Cordova?
-description: Call Purchases.setProxyURL before configureWith. Cordova has no option to turn off signature checks, so it logs a verification failure for every response and still grants access.
+title: How do I add in-app purchases to a Cordova app with RevenueDot?
+description: Add the RevenueDot SDK with cordova plugin add @revenuedot/cordova-plugin-purchases, then call Purchases.configureWith with your app's key. On RevenueDot Cloud nothing else is needed, and the native SDK verifies each response.
 ---
 
-# How do I use RevenueDot with Cordova?
+# How do I add in-app purchases to a Cordova app with RevenueDot?
 
-Call `Purchases.setProxyURL("https://revenuedot.example.com")` before `Purchases.configureWith`. **The Cordova plugin has no option to turn off signature checks**, so the native SDKs log "failed verification" for every RevenueDot response. Access is still granted, because the native default mode is informational.
+Add the RevenueDot SDK with `cordova plugin add @revenuedot/cordova-plugin-purchases`, then call `Purchases.configureWith` with your app's key from RevenueDot. On RevenueDot Cloud nothing else is needed. The native SDK checks each Cloud response against RevenueDot's signing key.
 
-## Use the RevenueCat SDK you already ship (proxy mode)
+## Install the RevenueDot SDK and pass your key
+**Version 8.2.3 is on npm.** The source is [github.com/revenuedot/cordova-plugin-purchases](https://github.com/revenuedot/cordova-plugin-purchases).
+```bash
+cordova plugin add @revenuedot/cordova-plugin-purchases@8.2.3
+```
 ```js
 document.addEventListener("deviceready", () => {
-  // Point the SDK at your RevenueDot server; nothing else in the app changes.
-  Purchases.setProxyURL("https://revenuedot.example.com");
   Purchases.configureWith({
     apiKey: device.platform === "iOS" ? "appl_..." : "goog_...",
   });
 });
 ```
-- `setProxyURL` returns nothing. Call it before `configureWith`.
+- The RevenueDot SDK is built from RevenueCat's open-source SDK (MIT license), so the plugin id stays `cordova-plugin-purchases` and your code calls the global `Purchases`. It sends every request to RevenueDot and needs no RevenueCat account.
 - `device.platform` comes from `cordova-plugin-device`.
-- Use each app's public key from RevenueDot, or your old RevenueCat keys if the [importer](../migrate/importer.md) kept them. See [Which key goes where](../concepts/projects-and-apps.md#which-key-goes-where).
+- Use each app's public key from RevenueDot, or the `test_...` key for the Test Store. See [Which key goes where](../concepts/projects-and-apps.md#which-key-goes-where).
+- **On RevenueDot Cloud** the SDK already calls `https://api.revenuedot.app`, so there is nothing else to set. `configureWith` takes no verification mode, so the native default, informational, applies, and the SDK trusts RevenueDot Cloud's signing key.
 
-**After you migrate from RevenueCat, sync once** on the first launch of the update, so current subscribers keep access:
-```js
-// Once, after this update: send purchases made while the app talked to RevenueCat.
-Purchases.syncPurchases();
-```
-
-## Use the RevenueDot fork
-The fork is [github.com/revenuedot/cordova-plugin-purchases](https://github.com/revenuedot/cordova-plugin-purchases). The plugin id stays `cordova-plugin-purchases` and the global stays `Purchases`, so `config.xml` and your code do not change.
-
-**Version 8.2.3 is on npm:**
-```bash
-cordova plugin add @revenuedot/cordova-plugin-purchases@8.2.3
-```
-Its native side is RevenueDot's [hybrid common](hybrid-common.md) 19.4.1, which is published. Installed from npm, it builds into a cordova-ios 8 app with the `RevenueDotPurchasesHybridCommon` 19.4.1 pod from CocoaPods trunk, and the app carries `api.revenuedot.app` and RevenueDot's signing key. **Xcode 27** rejects pods that target iOS 13, which the stock plugin's pods do too. Set `<preference name="deployment-target" value="15.0" />` in `config.xml`, and raise the pod targets with a `post_install` block in `platforms/ios/Podfile` (or a Cordova `after_prepare` hook, because `cordova prepare` rewrites the Podfile):
+Its native side is RevenueDot's [hybrid common](hybrid-common.md) 19.4.1, which is published. Installed from npm, it builds into a cordova-ios 8 app with the `RevenueDotPurchasesHybridCommon` 19.4.1 pod from CocoaPods trunk, and the app carries `api.revenuedot.app` and RevenueDot's signing key. **Xcode 27** rejects pods that target iOS 13, which RevenueCat's own plugin pods do too. Set `<preference name="deployment-target" value="15.0" />` in `config.xml`, and raise the pod targets with a `post_install` block in `platforms/ios/Podfile` (or a Cordova `after_prepare` hook, because `cordova prepare` rewrites the Podfile):
 ```ruby
 post_install do |installer|
   installer.pods_project.targets.each do |t|
@@ -43,14 +33,16 @@ post_install do |installer|
 end
 ```
 
-## Trusted Entitlements
-- **Stock plugin:** `configureWith` takes no verification mode, so the native default, informational, applies. Every RevenueDot response is logged as a failed check, and access is still granted. You cannot turn this off from JavaScript.
-- **Fork:** it trusts RevenueDot Cloud's key. A self-hosted server signs with its own key, so the log noise stays unless you build the forks with your own public key.
-
-See [Trusted Entitlements](../guides/trusted-entitlements.md).
+**Self-hosting:** call `Purchases.setProxyURL` with your server's address before `configureWith`. It returns nothing. **The Cordova plugin has no option to turn off signature checks.** Your server signs with its own key, which this build does not trust, so the native SDKs log "failed verification" for every response from your server. Access is still granted, because the native default mode is informational. The log noise stays unless you build the SDKs with your own public key; see [Trusted Entitlements](../guides/trusted-entitlements.md).
+```js
+document.addEventListener("deviceready", () => {
+  Purchases.setProxyURL("https://revenuedot.example.com");
+  Purchases.configureWith({ apiKey: device.platform === "iOS" ? "appl_..." : "goog_..." });
+});
+```
 
 ## Check an entitlement and make a purchase
-The plugin uses callbacks.
+Check the entitlement your app unlocks, here `pro`, then buy a package from the current offering, the set of products your paywall shows. The plugin uses callbacks.
 ```js
 Purchases.getCustomerInfo(
   (customerInfo) => {
@@ -83,7 +75,30 @@ Create a `test_store` app in RevenueDot and use its `test_...` key on a debug bu
 
 More: [Test Store](../guides/test-store.md).
 
-## Migrate from RevenueCat
+## Switching from RevenueCat? Keep your SDK and change one line
+An app that ships RevenueCat's `cordova-plugin-purchases` can keep it. Call `Purchases.setProxyURL("https://revenuedot.example.com")` before `Purchases.configureWith` (`https://api.revenuedot.app` on RevenueDot Cloud). **RevenueCat's plugin has no option to turn off signature checks**, so the native SDKs log "failed verification" for every RevenueDot response. Access is still granted, because the native default mode is informational.
+
+```js
+document.addEventListener("deviceready", () => {
+  // Point the SDK at your RevenueDot server; nothing else in the app changes.
+  Purchases.setProxyURL("https://revenuedot.example.com");
+  Purchases.configureWith({
+    apiKey: device.platform === "iOS" ? "appl_..." : "goog_...",
+  });
+});
+```
+- `setProxyURL` returns nothing. Call it before `configureWith`.
+- Use each app's public key from RevenueDot, or your old RevenueCat keys if the [importer](../migrate/importer.md) kept them.
+- **The verification log noise cannot be turned off from JavaScript.** `configureWith` takes no verification mode, so the native default, informational, applies. RevenueCat's SDK checks signatures with RevenueCat's key, so every RevenueDot response is logged as a failed check, and access is still granted. See [Signature verification failed](../help/signature-verification-failed.md).
+- **Or install the RevenueDot SDK in the same release.** The plugin id stays `cordova-plugin-purchases` and the global stays `Purchases`, so `config.xml` and your code do not change. On RevenueDot Cloud its checks pass. See [Install the RevenueDot SDK](#install-the-revenuedot-sdk-and-pass-your-key).
+
+**Sync once** on the first launch of the update, so current subscribers keep access:
+```js
+// Once, after this update: send purchases made while the app talked to RevenueCat.
+Purchases.syncPurchases();
+```
+
+The whole app change fits in one diff:
 ```diff
  document.addEventListener("deviceready", () => {
 +  // Point the SDK at your RevenueDot server; nothing else in the app changes. Call it before configure.

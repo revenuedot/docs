@@ -19,7 +19,7 @@ Published at [revenuedot.app/docs](https://revenuedot.app/docs); the source of t
 
 </div>
 
-**Open documentation for [RevenueDot](https://revenuedot.app), the open-source backend for in-app purchases that works with the RevenueCat SDK.** Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Everything here is public Markdown: getting started, concepts, SDK guides, store setup, webhooks, self-hosting, migration from RevenueCat, the API reference, a help center and a blog.
+**Open documentation for [RevenueDot](https://revenuedot.app), the open-source backend for in-app purchases and subscriptions, with an SDK for every platform.** Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Everything here is public Markdown: getting started, concepts, SDK guides, store setup, webhooks, self-hosting, migration from RevenueCat, the API reference, a help center and a blog.
 
 > Every page says what works today and what is planned.
 
@@ -28,7 +28,8 @@ The pages are published at [revenuedot.app/docs](https://revenuedot.app/docs) an
 ## Start here
 - [What is RevenueDot?](docs/getting-started/README.md) and the [5-minute quickstart](docs/getting-started/quickstart.md) on RevenueDot Cloud
 - [Self-hosting](docs/guides/self-hosting.md): reference for people who run their own server
-- [Connect your app](docs/getting-started/connect-your-app.md): proxy mode, fork packages, or your existing keys
+- [Connect your app](docs/getting-started/connect-your-app.md): install the RevenueDot SDK, or, when you switch from RevenueCat, keep its SDK and change one line
+- [SDK guides](docs/sdks/README.md): the RevenueDot SDK for every platform
 - [Migrate from RevenueCat](docs/migrate/README.md)
 - [API reference](api/README.md), generated from [api/openapi.yaml](api/openapi.yaml)
 - [Help center](docs/help/README.md) and [blog](blog/README.md)
@@ -69,7 +70,7 @@ npm run check      # OpenAPI validation, drift against the server code, page fro
 | `check:links` | Fails on a broken internal link or anchor (`node scripts/check-links.mjs --external` also fetches external links) |
 
 ## Writing rules
-Question-style titles, one topic per page, the answer first, code before prose, real responses, stable URLs. Every page starts with frontmatter (`title`, `description`). Plain English: active voice, one idea per sentence, no jargon. Say "works with the RevenueCat SDK"; never imply an affiliation. Every claim about RevenueCat or another vendor links to its source. Every blog post ends with the same "About RevenueDot" paragraph. API reference pages are generated: edit `scripts/openapi/*.mjs`, then run `npm run build`.
+Question-style titles, one topic per page, the answer first, code before prose, real responses, stable URLs. Every page starts with frontmatter (`title`, `description`). Plain English: active voice, one idea per sentence, no jargon. Write for a developer who has never heard of RevenueCat: lead with the RevenueDot SDK, and put switching from RevenueCat in a marked "Switching from RevenueCat?" note. When you describe compatibility, say "works with the RevenueCat SDK"; never imply an affiliation. Every claim about RevenueCat or another vendor links to its source. Every blog post ends with the same "About RevenueDot" paragraph. API reference pages are generated: edit `scripts/openapi/*.mjs`, then run `npm run build`.
 
 ## Use with your coding agent
 
