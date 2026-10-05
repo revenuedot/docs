@@ -5,7 +5,7 @@ description: Connect RevenueDot to ChatGPT, Claude, Cursor or Claude Code with O
 
 # Connect ChatGPT, Claude and other AI assistants
 
-RevenueDot has one connector for every assistant: `https://mcp.revenuedot.app/mcp`. It has 34 tools to set up your catalog, find customers, grant or extend access, cancel or refund, add and debug webhooks, check your store connections and read revenue. The same server is the RevenueDot plugin for ChatGPT and Codex and the RevenueDot connector for Claude.
+RevenueDot has one connector for every assistant: `https://mcp.revenuedot.app/mcp`. It has 38 tools to set up your catalog, find customers, grant or extend access, cancel or refund, add and debug webhooks, check your store connections and read revenue. The same server is the RevenueDot plugin for ChatGPT and Codex and the RevenueDot connector for Claude.
 
 [![Watch the 87-second demo of RevenueDot in ChatGPT](https://revenuedot.app/videos/revenuedot-chatgpt-demo.webp)](https://revenuedot.app/videos/revenuedot-chatgpt-demo.mp4)
 
@@ -55,3 +55,4 @@ Send `Authorization: Bearer sk_...` with a secret key from **API keys**. Give th
 - [Webhooks](webhooks.md)
 - [Going to production](going-to-production.md)
 - [Skills for coding agents](https://github.com/revenuedot/agent-skills)
+- [RevenueCat MCP server, official and open source](https://revenuedot.app/revenuecat-mcp): config blocks for six clients, the tool table and RevenueCat's own MCP server
