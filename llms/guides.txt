@@ -2147,6 +2147,28 @@ Attach the products to your entitlement and offering like any other app's produc
 - **The product's `subscription.duration` is the period.** A `P1M` product expires one month after purchase. Without a duration, one month is used.
 - **The price is the product's Test Store price.** Set it in the dashboard (New product and the app page ask for it; Edit product changes it) or with `"test_store_price":{"amount_micros":9990000,"currency":"USD"}` in the create or update call. A product without one shows 0. The price the SDK posts with the purchase is recorded. Use an ISO 4217 code that has an exchange rate to USD (every App Store and Google Play currency does); other codes are refused, because their purchases would count as no revenue.
 
+## Prices in several currencies
+A Test Store product can have one price per currency. One of them is the default: it is what `indicative_price` shows and what a customer sees when their currency has no price.
+
+- **Dashboard.** Edit product lists one row per currency. **Add currency** adds a row, the **Default** radio picks the default, and the × button removes a currency. The product page lists every price, the default first.
+- **API.** The same endpoints as RevenueCat, with the bodies its CLI sends:
+
+```bash
+# Add prices (an existing currency gets the new amount)
+curl -s -X POST "$B/products/$PRODUCT_ID/test_store_prices" -H "$H" -H "Content-Type: application/json" \
+  -d '{"prices":[{"currency":"EUR","amount_micros":8990000},{"currency":"GBP","amount_micros":7990000}]}'
+# List them: a JSON array of {"id","currency","amount_micros"}, the default first
+curl -s "$B/products/$PRODUCT_ID/prices" -H "$H"
+# Change one
+curl -s -X PATCH "$B/products/$PRODUCT_ID/prices/EUR" -H "$H" -H "Content-Type: application/json" -d '{"amount_micros":9490000}'
+# Remove one (RevenueDot extension)
+curl -s -X DELETE "$B/products/$PRODUCT_ID/prices/GBP" -H "$H"
+```
+
+  `test_store_price` on product create and update sets the default price and keeps the other currencies; `null` clears every price. See [List a product's prices](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-products-prices).
+- **Which price the SDK shows.** The price in the currency purchases-js asks for; else in the currency of the store country the SDK sends (the App Store storefront on iOS, the Play country on Android); else in the currency of the country the customer was last seen in; else the default. A customer in Germany sees the EUR price, a customer in Japan sees the default when there is no JPY price.
+- **What a purchase records.** The native SDKs post the price they showed, and it is recorded as sent. purchases-js posts only the currency, so the product's price in that currency is recorded. A [simulated purchase](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md#simulate-a-lifecycle) without `price` uses the price in `currency` (or in `country_code`'s currency), else the default.
+
 ## Buy in the app
 Configure the SDK with the `test_` key and your server as the proxy URL, then call `purchase` as usual. The SDK shows its Test Store dialog; choose the successful purchase. The SDK posts `fetch_token = test_<purchase time in ms>_<id>` to `POST /v1/receipts`, and RevenueDot accepts any token of that form.
 
@@ -2187,7 +2209,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/test_purchases" \
 - `offset_days` (0 to 730) moves the start into the past, for example `"offset_days": 95` with `renewal` on a monthly product gives three renewals. Or send `purchased_at` in epoch milliseconds.
 - `product_id` is the product's id or store identifier; it must belong to a Test Store app (`app_id` picks one when the project has several).
 - One-time products support `purchase` and `refund` only.
-- `price`, `currency` (default USD) and `country_code` are recorded like a real purchase.
+- `price`, `currency` (default USD) and `country_code` are recorded like a real purchase. Without `price`, the product's price in `currency` (or in `country_code`'s currency) is used, else its default price.
 
 ## Related
 - [Sandbox and production](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/sandbox.md)

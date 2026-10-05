@@ -211,6 +211,10 @@ export const schemas = {
     failed: arr(obj({ store_identifier: str(), reason: { type: "string", enum: ["not_in_store", "not_importable"] }, message: str() }, ["store_identifier", "reason", "message"]), { description: "Requested identifiers the store does not have, or that cannot be imported." }),
     entitlement_ids: arr(str(), { description: "The entitlements every created and existing product is attached to." }),
   }, ["object", "app_id", "created", "existing", "failed", "entitlement_ids"]),
+  ProductPrice: obj({
+    id: nstr("Price id (prc...); null for a price saved before prices by currency existed, until it is changed. The Stripe price id for a web product."),
+    currency: str("ISO 4217 code."), amount_micros: int("Price in micros: 9.99 is 9990000."),
+  }, ["id", "currency", "amount_micros"]),
   IndicativePrice: obj({
     object: { type: "string", const: "indicative_price" }, currency: str("ISO 4217 code."), country: nstr("`US` for a United States store price, the region code for another Google Play region, else null (Test Store and Stripe prices, other App Store territories)."), amount_micros: int("Price in micros: 9.99 is 9990000."),
   }, ["object", "currency", "country", "amount_micros"]),

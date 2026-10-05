@@ -13,11 +13,11 @@ RevenueDot-only endpoints are on [Extensions](extensions.md).
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (176)
+## Operations on this page (181)
 
 - **Projects**: [List projects](#list-projects), [Create a project](#create-a-project)
 - **Apps**: [List apps](#list-apps), [Create an app](#create-an-app), [Get an app](#get-an-app), [Update an app and its store credentials](#update-an-app-and-its-store-credentials), [Delete an app](#delete-an-app), [Get an app's public SDK key](#get-an-apps-public-sdk-key), [Get a StoreKit configuration file](#get-a-storekit-configuration-file), [Issue a subscriber access token](#issue-a-subscriber-access-token), [List the products in the app's store](#list-the-products-in-the-apps-store), [Import products from the app's store](#import-products-from-the-apps-store)
-- **Products**: [List products](#list-products), [Create a product](#create-a-product), [Get a product](#get-a-product), [Update a product](#update-a-product), [Delete a product](#delete-a-product), [Archive a product](#archive-a-product), [Unarchive a product](#unarchive-a-product), [Create the product in its store](#create-the-product-in-its-store)
+- **Products**: [List products](#list-products), [Create a product](#create-a-product), [Get a product](#get-a-product), [Update a product](#update-a-product), [Delete a product](#delete-a-product), [List a product's prices](#list-a-products-prices), [List a product's prices (old path)](#list-a-products-prices-old-path), [Add Test Store prices](#add-test-store-prices), [Change a Test Store price](#change-a-test-store-price), [Remove a Test Store price](#remove-a-test-store-price), [Archive a product](#archive-a-product), [Unarchive a product](#unarchive-a-product), [Create the product in its store](#create-the-product-in-its-store)
 - **Entitlements**: [List entitlements](#list-entitlements), [Create an entitlement](#create-an-entitlement), [Get an entitlement](#get-an-entitlement), [Rename an entitlement](#rename-an-entitlement), [Delete an entitlement](#delete-an-entitlement), [Archive an entitlement](#archive-an-entitlement), [Unarchive an entitlement](#unarchive-an-entitlement), [List an entitlement's products](#list-an-entitlements-products), [Attach products to an entitlement](#attach-products-to-an-entitlement), [Detach products from an entitlement](#detach-products-from-an-entitlement)
 - **Offerings**: [List offerings](#list-offerings), [Create an offering](#create-an-offering), [Get an offering](#get-an-offering), [Update an offering or make it current](#update-an-offering-or-make-it-current), [Delete an offering](#delete-an-offering), [Duplicate an offering](#duplicate-an-offering), [Archive an offering](#archive-an-offering), [Unarchive an offering](#unarchive-an-offering)
 - **Packages**: [List an offering's packages](#list-an-offerings-packages), [Create a package](#create-a-package), [Get a package](#get-a-package), [Update a package](#update-a-package), [Delete a package](#delete-a-package), [List a package's products](#list-a-packages-products), [Attach products to a package](#attach-products-to-a-package), [Detach products from a package](#detach-products-from-a-package)
@@ -611,7 +611,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products" -H "Authorization: Be
 | `price_identifier` | string or null | no | Accepted and ignored. |
 | `subscription` | object or null | no |  |
 | `subscription.duration` | string or null | no | ISO 8601 period such as P1W, P1M, P1Y or P3D. |
-| `test_store_price` | object or null | no | RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`. |
+| `test_store_price` | object or null | no | RevenueDot extension. The default Test Store price (Test Store products only): it adds or updates the price in this currency and keeps the other currencies. Null clears every price. Read it back with `expand=indicative_price`; list every currency with `GET …/prices`. |
 | `test_store_price.amount_micros` | integer | yes | Price in micros: 9.99 is 9990000. |
 | `test_store_price.currency` | string | yes | ISO 4217 code such as USD or EUR. A code with no exchange rate to USD is refused (its purchases would record no revenue). |
 
@@ -728,7 +728,7 @@ RevenueDot also lets you correct `type` and `subscription.duration` (null clears
 | `type` | `subscription`, `one_time`, `consumable`, `non_consumable`, `non_renewing_subscription` | no |  |
 | `subscription` | object | no |  |
 | `subscription.duration` | string or null | no |  |
-| `test_store_price` | object or null | no | RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`. |
+| `test_store_price` | object or null | no | RevenueDot extension. The default Test Store price (Test Store products only): it adds or updates the price in this currency and keeps the other currencies. Null clears every price. Read it back with `expand=indicative_price`; list every currency with `GET …/prices`. |
 | `test_store_price.amount_micros` | integer | yes | Price in micros: 9.99 is 9990000. |
 | `test_store_price.currency` | string | yes | ISO 4217 code such as USD or EUR. A code with no exchange rate to USD is refused (its purchases would record no revenue). |
 
@@ -779,6 +779,214 @@ Example 200 response:
 {
   "object": "product",
   "id": "…",
+  "deleted_at": 1790801342625
+}
+```
+
+### List a product's prices
+
+`GET /v2/projects/{project_id}/products/{product_id}/prices` · Auth: secret key or dashboard session · Permissions: `project_configuration:products:read`
+
+Every price of a Test Store product, one per currency, the default first (the default is what `indicative_price` shows and what a customer whose currency has no price sees). For a Stripe web product, its Stripe price (`id` is the Stripe price id). Other products answer 400. The answer is a JSON array, not a list object, as in RevenueCat.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `product_id` | string | yes | Product id. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products/$PRODUCT_ID/prices" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The prices.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+[
+  {
+    "id": "prcx8k2m4q9w1z7d",
+    "currency": "USD",
+    "amount_micros": 9990000
+  },
+  {
+    "id": "prc3n6p0r8t2v4b5",
+    "currency": "EUR",
+    "amount_micros": 8990000
+  }
+]
+```
+
+### List a product's prices (old path)
+
+`GET /v2/projects/{project_id}/products/{product_id}/test_store_prices` · Auth: secret key or dashboard session · Permissions: `project_configuration:products:read`
+
+The same as `GET …/prices`. Deprecated in RevenueCat; use `…/prices`.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `product_id` | string | yes | Product id. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products/$PRODUCT_ID/test_store_prices" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: The prices.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+### Add Test Store prices
+
+`POST /v2/projects/{project_id}/products/{product_id}/test_store_prices` · Auth: secret key or dashboard session · Permissions: `project_configuration:products:read_write`
+
+Adds a price in each currency (Test Store products only; other products answer 400). Each currency once per request. A currency the product already has gets the new amount. A product without a price gets USD as its default when USD is among them, else the first one. The SDK shows each customer the price in their storefront's currency, else the default. Answers the prices it wrote, as an array.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `product_id` | string | yes | Product id. |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `prices` | array of object | yes |  |
+| `prices[].currency` | string | yes | ISO 4217 code such as EUR. A code with no exchange rate to USD is refused. |
+| `prices[].amount_micros` | integer | yes | Price in micros: 8.99 is 8990000. |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products/$PRODUCT_ID/test_store_prices" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"prices":[{"currency":"EUR","amount_micros":8990000},{"currency":"GBP","amount_micros":7990000}]}'
+```
+
+**Responses**
+
+- **201**: The prices written.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 201 response:
+
+```json
+[
+  {
+    "id": "prc3n6p0r8t2v4b5",
+    "currency": "EUR",
+    "amount_micros": 8990000
+  },
+  {
+    "id": "prc9d1f3h5j7l2c4",
+    "currency": "GBP",
+    "amount_micros": 7990000
+  }
+]
+```
+
+### Change a Test Store price
+
+`PATCH /v2/projects/{project_id}/products/{product_id}/prices/{currency}` · Auth: secret key or dashboard session · Permissions: `project_configuration:products:read_write`
+
+Sets the amount of the product's price in this currency. 404 when the product has no price in it (add one with `POST …/test_store_prices`).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `product_id` | string | yes | Product id. |
+| `currency` | string | yes | ISO 4217 code of the price, such as EUR. |
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `amount_micros` | integer | yes | Price in micros. |
+
+**Example request**
+
+```bash
+curl -s -X PATCH "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products/$PRODUCT_ID/prices/$CURRENCY" -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" -d '{"amount_micros":9490000}'
+```
+
+**Responses**
+
+- **200**: The price. Returns [ProductPrice](#productprice).
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "id": "prc3n6p0r8t2v4b5",
+  "currency": "EUR",
+  "amount_micros": 9490000
+}
+```
+
+### Remove a Test Store price
+
+`DELETE /v2/projects/{project_id}/products/{product_id}/prices/{currency}` · Auth: secret key or dashboard session · RevenueDot extension · Permissions: `project_configuration:products:read_write`
+
+RevenueDot extension (RevenueCat has no way to remove a currency). Removing the default price makes USD, else the first remaining currency, the default; removing the last price leaves the product without one.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project id (proj...). |
+| `product_id` | string | yes | Product id. |
+| `currency` | string | yes | ISO 4217 code of the price. |
+
+**Example request**
+
+```bash
+curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products/$PRODUCT_ID/prices/$CURRENCY" -H "Authorization: Bearer $SECRET_KEY"
+```
+
+**Responses**
+
+- **200**: Removed.
+- **400**: The request is invalid. Returns [V2Error](#v2error).
+- **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
+- **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
+
+Example 200 response:
+
+```json
+{
+  "object": "product_price",
+  "id": "prcx8k2m4n7q1z",
+  "currency": "GBP",
   "deleted_at": 1790801342625
 }
 ```
@@ -7281,6 +7489,14 @@ Counts and totals carry only `value`. The control has no `lift` or `chance_to_be
 | `app` | App | no | Only the object for the app's own `type` is present. Store secrets are never returned. |
 | `indicative_price` | IndicativePrice or null | no | With `expand=indicative_price`: the Test Store price; else the App Store or Google Play price in the United States from the last store price read (or the in-app purchase's base territory, or the first territory with a price); else the Stripe web product's price. Null when none is known. |
 | `store_details` | StoreDetails or null | no | RevenueDot extension, with `expand=store_details`: the store's status and price from the last store price read. Null when the product was never read from App Store Connect or Google Play (other stores, or no read yet). |
+
+### ProductPrice
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `id` | string or null | yes | Price id (prc...); null for a price saved before prices by currency existed, until it is changed. The Stripe price id for a web product. |
+| `currency` | string | yes | ISO 4217 code. |
+| `amount_micros` | integer | yes | Price in micros: 9.99 is 9990000. |
 
 ### Project
 

@@ -9,7 +9,7 @@ const page = [param("Limit"), param("StartingAfter")];
 const pathParam = (name, description) => ({ name, in: "path", required: true, schema: str(), description });
 const expand = (values, description) => ({ name: "expand", in: "query", schema: arr(en(values)), style: "form", explode: true, description });
 const testStorePrice = { type: ["object", "null"], required: ["amount_micros", "currency"], properties: { amount_micros: int("Price in micros: 9.99 is 9990000."), currency: str("ISO 4217 code such as USD or EUR. A code with no exchange rate to USD is refused (its purchases would record no revenue).") },
-  description: "RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`." };
+  description: "RevenueDot extension. The default Test Store price (Test Store products only): it adds or updates the price in this currency and keeps the other currencies. Null clears every price. Read it back with `expand=indicative_price`; list every currency with `GET …/prices`." };
 const priceExpand = "`indicative_price` adds RevenueCat's IndicativePrice: the Test Store price; else the App Store or Google Play price in the United States from the last store price read (or the in-app purchase's base territory, or the first territory with a price); else the Stripe web product's price; null when none is known. `store_details` (RevenueDot extension) adds the store's status, base price, number of priced territories and when they were read."
 const E = (...c) => v2Errors(401, 403, ...c);
 const list = (schema, description = "A page of results.", example) => ok(description, listOf(schema), example);
@@ -129,6 +129,31 @@ RevenueDot extensions in the store object: \`notification_forward_url\` (copy st
       responses: { 200: ok("The product.", ref("Product")), ...v2Errors(400, 401, 403, 404) } }),
     delete: op({ id: "deleteProduct", tag: "Products", summary: "Delete a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read_write"], parameters: [project, pathParam("product_id", "Product id.")],
       description: "Detaches it from entitlements and packages. Purchase history keeps the store id.", responses: { 200: del("product"), ...E(404) } }),
+  },
+  // Test Store prices by currency: RevenueCat's beta endpoints, with the bodies its CLI sends and reads.
+  [`${P}/products/{product_id}/prices`]: {
+    get: op({ id: "listProductPrices", tag: "Products", summary: "List a product's prices", security: SECRET, source: R.products, scopes: ["project_configuration:products:read"], parameters: [project, pathParam("product_id", "Product id.")],
+      description: "Every price of a Test Store product, one per currency, the default first (the default is what `indicative_price` shows and what a customer whose currency has no price sees). For a Stripe web product, its Stripe price (`id` is the Stripe price id). Other products answer 400. The answer is a JSON array, not a list object, as in RevenueCat.",
+      responses: { 200: ok("The prices.", arr(ref("ProductPrice")), [{ id: "prcx8k2m4q9w1z7d", currency: "USD", amount_micros: 9990000 }, { id: "prc3n6p0r8t2v4b5", currency: "EUR", amount_micros: 8990000 }]), ...v2Errors(400, 401, 403, 404) } }),
+  },
+  [`${P}/products/{product_id}/test_store_prices`]: {
+    get: op({ id: "listTestStorePrices", tag: "Products", summary: "List a product's prices (old path)", security: SECRET, source: R.products, scopes: ["project_configuration:products:read"], deprecated: true, parameters: [project, pathParam("product_id", "Product id.")],
+      description: "The same as `GET …/prices`. Deprecated in RevenueCat; use `…/prices`.",
+      responses: { 200: ok("The prices.", arr(ref("ProductPrice"))), ...v2Errors(400, 401, 403, 404) } }),
+    post: op({ id: "createTestStorePrices", tag: "Products", summary: "Add Test Store prices", security: SECRET, source: R.products, scopes: ["project_configuration:products:read_write"], parameters: [project, pathParam("product_id", "Product id.")],
+      description: "Adds a price in each currency (Test Store products only; other products answer 400). Each currency once per request. A currency the product already has gets the new amount. A product without a price gets USD as its default when USD is among them, else the first one. The SDK shows each customer the price in their storefront's currency, else the default. Answers the prices it wrote, as an array.",
+      requestBody: body(obj({ prices: arr(obj({ currency: str("ISO 4217 code such as EUR. A code with no exchange rate to USD is refused."), amount_micros: int("Price in micros: 8.99 is 8990000.", { minimum: 0 }) }, ["currency", "amount_micros"]), { minItems: 1, maxItems: 200 }) }, ["prices"]),
+        { prices: [{ currency: "EUR", amount_micros: 8990000 }, { currency: "GBP", amount_micros: 7990000 }] }),
+      responses: { 201: ok("The prices written.", arr(ref("ProductPrice")), [{ id: "prc3n6p0r8t2v4b5", currency: "EUR", amount_micros: 8990000 }, { id: "prc9d1f3h5j7l2c4", currency: "GBP", amount_micros: 7990000 }]), ...v2Errors(400, 401, 403, 404) } }),
+  },
+  [`${P}/products/{product_id}/prices/{currency}`]: {
+    patch: op({ id: "updateProductPrice", tag: "Products", summary: "Change a Test Store price", security: SECRET, source: R.products, scopes: ["project_configuration:products:read_write"], parameters: [project, pathParam("product_id", "Product id."), pathParam("currency", "ISO 4217 code of the price, such as EUR.")],
+      description: "Sets the amount of the product's price in this currency. 404 when the product has no price in it (add one with `POST …/test_store_prices`).",
+      requestBody: body(obj({ amount_micros: int("Price in micros.", { minimum: 0 }) }, ["amount_micros"]), { amount_micros: 9490000 }),
+      responses: { 200: ok("The price.", ref("ProductPrice"), { id: "prc3n6p0r8t2v4b5", currency: "EUR", amount_micros: 9490000 }), ...v2Errors(400, 401, 403, 404) } }),
+    delete: op({ id: "deleteProductPrice", tag: "Products", summary: "Remove a Test Store price", security: SECRET, source: R.products, extension: true, scopes: ["project_configuration:products:read_write"], parameters: [project, pathParam("product_id", "Product id."), pathParam("currency", "ISO 4217 code of the price.")],
+      description: "RevenueDot extension (RevenueCat has no way to remove a currency). Removing the default price makes USD, else the first remaining currency, the default; removing the last price leaves the product without one.",
+      responses: { 200: ok("Removed.", obj({ object: str(), id: str("Id of the removed price."), currency: str(), deleted_at: ms("When it was removed.") }), { object: "product_price", id: "prcx8k2m4n7q1z", currency: "GBP", deleted_at: 1790801342625 }), ...v2Errors(400, 401, 403, 404) } }),
   },
   ...archive("Products", "Product", "product", R.products, ["project_configuration:products:read_write"]),
   [`${P}/products/{product_id}/actions/unarchive`]: { post: op({ id: "unarchiveProduct", tag: "Products", summary: "Unarchive a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read_write"], parameters: [project, pathParam("product_id", "Product id.")], responses: { 200: ok("The product.", ref("Product")), ...E(404) } }) },

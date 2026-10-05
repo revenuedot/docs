@@ -5288,7 +5288,7 @@ paths:
                     currency:
                       type: string
                       description: ISO 4217 code such as USD or EUR. A code with no exchange rate to USD is refused (its purchases would record no revenue).
-                  description: RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`.
+                  description: "RevenueDot extension. The default Test Store price (Test Store products only): it adds or updates the price in this currency and keeps the other currencies. Null clears every price. Read it back with `expand=indicative_price`; list every currency with `GET …/prices`."
               required:
                 - store_identifier
                 - app_id
@@ -5460,7 +5460,7 @@ paths:
                     currency:
                       type: string
                       description: ISO 4217 code such as USD or EUR. A code with no exchange rate to USD is refused (its purchases would record no revenue).
-                  description: RevenueDot extension. The Test Store price the SDK shows for this product (Test Store products only). Null clears it. Read it back with `expand=indicative_price`.
+                  description: "RevenueDot extension. The default Test Store price (Test Store products only): it adds or updates the price in this currency and keeps the other currencies. Null clears every price. Read it back with `expand=indicative_price`; list every currency with `GET …/prices`."
             example:
               display_name: Pro (monthly)
               test_store_price:
@@ -5521,6 +5521,286 @@ paths:
       x-source: routes/v2/products.ts
       x-scopes:
         - project_configuration:products:read_write
+  /v2/projects/{project_id}/products/{product_id}/prices:
+    get:
+      operationId: listProductPrices
+      tags:
+        - Products
+      summary: List a product's prices
+      description: Every price of a Test Store product, one per currency, the default first (the default is what `indicative_price` shows and what a customer whose currency has no price sees). For a Stripe web product, its Stripe price (`id` is the Stripe price id). Other products answer 400. The answer is a JSON array, not a list object, as in RevenueCat.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product id.
+      responses:
+        "200":
+          description: The prices.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProductPrice"
+              example:
+                - id: prcx8k2m4q9w1z7d
+                  currency: USD
+                  amount_micros: 9990000
+                - id: prc3n6p0r8t2v4b5
+                  currency: EUR
+                  amount_micros: 8990000
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/products.ts
+      x-scopes:
+        - project_configuration:products:read
+  /v2/projects/{project_id}/products/{product_id}/test_store_prices:
+    get:
+      operationId: listTestStorePrices
+      tags:
+        - Products
+      summary: List a product's prices (old path)
+      description: The same as `GET …/prices`. Deprecated in RevenueCat; use `…/prices`.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product id.
+      responses:
+        "200":
+          description: The prices.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProductPrice"
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      deprecated: true
+      x-source: routes/v2/products.ts
+      x-scopes:
+        - project_configuration:products:read
+    post:
+      operationId: createTestStorePrices
+      tags:
+        - Products
+      summary: Add Test Store prices
+      description: Adds a price in each currency (Test Store products only; other products answer 400). Each currency once per request. A currency the product already has gets the new amount. A product without a price gets USD as its default when USD is among them, else the first one. The SDK shows each customer the price in their storefront's currency, else the default. Answers the prices it wrote, as an array.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product id.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                prices:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      currency:
+                        type: string
+                        description: ISO 4217 code such as EUR. A code with no exchange rate to USD is refused.
+                      amount_micros:
+                        type: integer
+                        description: "Price in micros: 8.99 is 8990000."
+                        minimum: 0
+                    required:
+                      - currency
+                      - amount_micros
+                  minItems: 1
+                  maxItems: 200
+              required:
+                - prices
+            example:
+              prices:
+                - currency: EUR
+                  amount_micros: 8990000
+                - currency: GBP
+                  amount_micros: 7990000
+      responses:
+        "201":
+          description: The prices written.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProductPrice"
+              example:
+                - id: prc3n6p0r8t2v4b5
+                  currency: EUR
+                  amount_micros: 8990000
+                - id: prc9d1f3h5j7l2c4
+                  currency: GBP
+                  amount_micros: 7990000
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/products.ts
+      x-scopes:
+        - project_configuration:products:read_write
+  /v2/projects/{project_id}/products/{product_id}/prices/{currency}:
+    patch:
+      operationId: updateProductPrice
+      tags:
+        - Products
+      summary: Change a Test Store price
+      description: Sets the amount of the product's price in this currency. 404 when the product has no price in it (add one with `POST …/test_store_prices`).
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product id.
+        - name: currency
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ISO 4217 code of the price, such as EUR.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount_micros:
+                  type: integer
+                  description: Price in micros.
+                  minimum: 0
+              required:
+                - amount_micros
+            example:
+              amount_micros: 9490000
+      responses:
+        "200":
+          description: The price.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductPrice"
+              example:
+                id: prc3n6p0r8t2v4b5
+                currency: EUR
+                amount_micros: 9490000
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/products.ts
+      x-scopes:
+        - project_configuration:products:read_write
+    delete:
+      operationId: deleteProductPrice
+      tags:
+        - Products
+      summary: Remove a Test Store price
+      description: RevenueDot extension (RevenueCat has no way to remove a currency). Removing the default price makes USD, else the first remaining currency, the default; removing the last price leaves the product without one.
+      security:
+        - secretApiKey: []
+        - dashboardSession: []
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product id.
+        - name: currency
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ISO 4217 code of the price.
+      responses:
+        "200":
+          description: Removed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                  id:
+                    type: string
+                    description: Id of the removed price.
+                  currency:
+                    type: string
+                  deleted_at:
+                    type: integer
+                    format: int64
+                    description: When it was removed. Epoch milliseconds.
+              example:
+                object: product_price
+                id: prcx8k2m4n7q1z
+                currency: GBP
+                deleted_at: 1790801342625
+        "400":
+          $ref: "#/components/responses/V2Error400"
+        "401":
+          $ref: "#/components/responses/V2Error401"
+        "403":
+          $ref: "#/components/responses/V2Error403"
+        "404":
+          $ref: "#/components/responses/V2Error404"
+      x-source: routes/v2/products.ts
+      x-scopes:
+        - project_configuration:products:read_write
+      x-revenuedot-extension: true
   /v2/projects/{project_id}/products/{product_id}/actions/archive:
     post:
       operationId: archiveProduct
@@ -63622,6 +63902,24 @@ components:
         - existing
         - failed
         - entitlement_ids
+    ProductPrice:
+      type: object
+      properties:
+        id:
+          type:
+            - string
+            - "null"
+          description: Price id (prc...); null for a price saved before prices by currency existed, until it is changed. The Stripe price id for a web product.
+        currency:
+          type: string
+          description: ISO 4217 code.
+        amount_micros:
+          type: integer
+          description: "Price in micros: 9.99 is 9990000."
+      required:
+        - id
+        - currency
+        - amount_micros
     IndicativePrice:
       type: object
       properties:
