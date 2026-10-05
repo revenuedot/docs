@@ -188,6 +188,7 @@ RevenueDot keeps one customer record per app user ID and lists the old anonymous
 If your app already ships RevenueCat's `react-native-purchases` with RevenueCat's backend, you can keep it. Add the proxy URL before `configure`, remove any verification mode setting, and sync once on the first launch of the update.
 
 ```diff
+ import { Platform } from "react-native";
  import Purchases from "react-native-purchases";
 
 +await Purchases.setProxyURL("https://api.revenuedot.app");

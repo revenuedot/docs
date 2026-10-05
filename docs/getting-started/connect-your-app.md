@@ -7,11 +7,11 @@ description: Install the RevenueDot SDK for your platform and pass your app's ke
 
 Install the RevenueDot SDK for your platform and pass your app's API key to `configure`. On RevenueDot Cloud that is all the setup, because the SDK already calls `https://api.revenuedot.app`. This is the way for new apps. It is also the way for any app that wants the SDK to verify that each response came from RevenueDot and to send nothing to RevenueCat's hosts. An app that already ships the RevenueCat SDK can instead keep it and set one line, the **proxy URL**. When such an app switches, the importer lets versions already in users' hands keep their **RevenueCat API keys**.
 
-| Way | What you change in the app | What you get | Status (2026-10-02) |
-|---|---|---|---|
-| [Install the RevenueDot SDK](#install-the-revenuedot-sdk-and-pass-your-key) | Add the package and pass your app's key | Signed responses verify against RevenueDot Cloud; no traffic to RevenueCat's hosts | Released for all ten SDKs |
-| [Keep the RevenueCat SDK and set one line](#switching-from-revenuecat-keep-your-sdk-and-set-one-line) | One setting, the proxy URL, plus the verification mode | Every SDK call goes to RevenueDot | Works with every RevenueCat app SDK |
-| [Keep your RevenueCat keys](#keep-your-revenuecat-api-keys) | Nothing | App versions already in users' hands keep working | Works (importer) |
+| Way | Who it is for | What you change in the app | What you get | Status (2026-10-02) |
+|---|---|---|---|---|
+| [Install the RevenueDot SDK](#install-the-revenuedot-sdk-and-pass-your-key) | **Every new app (the default)** | Add the package and pass your app's key | Signed responses verify against RevenueDot Cloud; no traffic to RevenueCat's hosts | Released for all ten SDKs |
+| [Keep the RevenueCat SDK and set one line](#switching-from-revenuecat-keep-your-sdk-and-set-one-line) | Apps switching from RevenueCat | One setting, the proxy URL, plus the verification mode | Purchases, customer info and offerings go to RevenueDot. Some diagnostics and analytics still go to RevenueCat ([known limits](../help/known-issues.md#sdk-features)) | Works with every RevenueCat app SDK |
+| [Keep your RevenueCat keys](#keep-your-revenuecat-api-keys) | Apps switching from RevenueCat | Nothing | App versions already in users' hands keep working | Works (importer) |
 
 ## Install the RevenueDot SDK and pass your key
 ```swift
@@ -26,20 +26,22 @@ Purchases.configure(PurchasesConfiguration.Builder(this, "goog_...").build())
 ```
 ```ts
 // React Native and Expo: npm install react-native-purchases@npm:@revenuedot/react-native-purchases@10.10.2
+import { Platform } from "react-native";
 import Purchases from "react-native-purchases";
 
 Purchases.configure({ apiKey: Platform.OS === "ios" ? "appl_..." : "goog_..." });
 ```
 
-The RevenueDot SDK is built from RevenueCat's open-source SDK (MIT license), so your code imports `RevenueCat` and calls `Purchases`. It sends every request to RevenueDot and needs no RevenueCat account. It keeps the names your code imports (`import RevenueCat`, `com.revenuecat.purchases.*`, `package:purchases_flutter`). Each SDK:
+The RevenueDot SDK is built from RevenueCat's open-source SDK (MIT license), so your code imports `RevenueCat` and calls `Purchases`. It sends every request to RevenueDot and needs no RevenueCat account. It keeps the names your code imports (`import RevenueCat`, `com.revenuecat.purchases.*`, `package:purchases_flutter`). These changes matter to your app:
 
-- trusts RevenueDot's response-signing key, so entitlement verification reports `VERIFIED` against RevenueDot Cloud;
-- sends diagnostics and events to RevenueDot too (Android, purchases-js), and makes the proxy URL work on Flutter web;
-- calls `https://api.revenuedot.app` (RevenueDot Cloud) by default, so Cloud projects need no proxy URL.
+- Each SDK calls `https://api.revenuedot.app` (RevenueDot Cloud) by default, so a Cloud project needs no proxy URL.
+- Each SDK trusts RevenueDot's response-signing key, so entitlement verification reports `VERIFIED` against RevenueDot Cloud.
+- The Android SDK and purchases-js send their diagnostics and events to RevenueDot too.
+- The proxy URL works on Flutter web.
 
 There is a RevenueDot SDK for iOS, Android, React Native and Expo, Flutter, the web, Capacitor and Ionic, Kotlin Multiplatform, Unity and Cordova. The install line for each one is in [Which SDKs does RevenueDot have?](../sdks/README.md): CocoaPods and Swift packages for iOS, Maven Central for Android and Kotlin Multiplatform, npm for the web, React Native, Capacitor and Cordova, a git tag for Flutter, and OpenUPM for Unity.
 
-**Self-hosting:** also set the SDK's proxy URL to your server before `configure`, and keep entitlement verification `disabled`. A self-hosted server signs with its own key, so the official builds only verify against RevenueDot Cloud. To verify against your own server, build the SDKs with your key; see [Trusted Entitlements](../guides/trusted-entitlements.md#verify-against-your-own-server).
+**Self-hosting:** also set the SDK's proxy URL to your server before `configure`, and set entitlement verification to `disabled`. A self-hosted server signs with its own key, so the official builds only verify against RevenueDot Cloud. The iOS, Android, Capacitor and Unity SDKs default to informational mode, which would log every response from your server as a failed check, so they need the setting. React Native, Flutter and Kotlin Multiplatform already default to `disabled`. Cordova has no setting for it, so it logs the failed checks and still grants access. Each [SDK guide](../sdks/README.md) shows the code. To verify against your own server, build the SDKs with your key; see [Trusted Entitlements](../guides/trusted-entitlements.md#verify-against-your-own-server).
 
 ## Switching from RevenueCat? Keep your SDK and set one line
 An app that already ships the RevenueCat SDK can keep it. Set the SDK's proxy URL to RevenueDot (`https://api.revenuedot.app` for RevenueDot Cloud, or your own server) and turn its signature check off. That is **proxy mode**, and it works with every RevenueCat app SDK.
@@ -60,6 +62,9 @@ Purchases.configure(PurchasesConfiguration.Builder(context, "goog_...").entitlem
 ```
 ```ts
 // React Native and Expo. Keep the RevenueCat SDK and point it at your RevenueDot server; nothing else in the app changes.
+import { Platform } from "react-native";
+import Purchases from "react-native-purchases";
+
 await Purchases.setProxyURL("https://revenuedot.example.com");
 Purchases.configure({ apiKey: Platform.OS === "ios" ? "appl_..." : "goog_..." });
 ```
@@ -86,9 +91,9 @@ Old app versions still call RevenueCat's API until they update, because the prox
 ## New apps install the RevenueDot SDK; switching apps can start with one line
 - **New app, or new to in-app purchases:** install the RevenueDot SDK and test with the Test Store. See the [Quickstart](quickstart.md).
 - **Already selling with your own StoreKit or Google Play Billing code:** [import your products](../guides/import-products.md) from App Store Connect, Google Play or Stripe, install the RevenueDot SDK, and call `syncPurchases()` once on the first launch of the update. It sends the device's existing store purchases to RevenueDot, so current subscribers keep access. Store notifications keep them current after that.
-- **You rely on entitlement verification:** the RevenueDot SDK, built with your server's key when you self-host.
-- **Self-hosting:** the RevenueDot SDK with the proxy URL set to your server and verification off.
-- **Moving a live app from RevenueCat:** proxy mode or the RevenueDot SDK in the next release, your RevenueCat keys through the importer, and a [dual run](../migrate/dual-run.md) until most users have updated.
+- **You rely on entitlement verification:** install the RevenueDot SDK. When you self-host, build it with your server's key.
+- **Self-hosting:** install the RevenueDot SDK, set its proxy URL to your server and set entitlement verification to `disabled`.
+- **Moving a live app from RevenueCat:** use proxy mode or the RevenueDot SDK in the next release, keep your RevenueCat keys through the importer, and run both systems side by side in a [dual run](../migrate/dual-run.md) until most users have updated.
 
 ## Related
 - [Quickstart](quickstart.md)

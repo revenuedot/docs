@@ -81,7 +81,7 @@ const purchases = Purchases.configure({
     }
   }
   ```
-  The [purchases-js Vite example](https://github.com/revenuedot/examples/tree/main/web/purchases-js-vite), installed with this alias from npm, passes its four Playwright tests against a RevenueDot server: a Test Store purchase that unlocks `pro` on the server, sign-in keeping `pro`, a cancelled purchase, and the preview plans.
+  The [purchases-js Vite example](https://github.com/revenuedot/examples/tree/main/web/purchases-js-vite), installed with this alias from npm, passes its four Playwright tests against a RevenueDot server: a Test Store purchase that unlocks `pro` on the server, sign-in keeping `pro`, a canceled purchase, and the preview plans.
 
 The whole app change fits in one diff:
 ```diff

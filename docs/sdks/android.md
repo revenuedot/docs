@@ -37,7 +37,7 @@ import java.net.URL
 Purchases.proxyURL = URL("https://revenuedot.example.com")
 Purchases.configure(
     PurchasesConfiguration.Builder(this, "goog_...")
-        // A self-hosted server signs with its own key; keep DISABLED (or INFORMATIONAL) unless you build the SDK with that key.
+        // A self-hosted server signs with its own key. The default, INFORMATIONAL, would log every response as a failed check, so set DISABLED unless you build the SDK with your key.
         .entitlementVerificationMode(EntitlementVerificationMode.DISABLED)
         .build()
 )

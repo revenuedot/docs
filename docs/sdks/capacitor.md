@@ -39,6 +39,7 @@ await Purchases.configure({
 
 **Self-hosting:** await `Purchases.setProxyURL({ url })` with your server's address before `configure`, and pass `entitlementVerificationMode: ENTITLEMENT_VERIFICATION_MODE.DISABLED`. Your server signs with its own key, which this build does not trust. The Capacitor plugin passes no verification mode of its own, so without this line the native default (informational) logs every response from your server as a failed check.
 ```ts
+import { Capacitor } from "@capacitor/core";
 import { ENTITLEMENT_VERIFICATION_MODE, Purchases } from "@revenuecat/purchases-capacitor";
 
 // setProxyURL takes an object { url }, not a string. Await it before configure.

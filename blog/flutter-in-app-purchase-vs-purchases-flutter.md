@@ -98,14 +98,18 @@ Future<void> restore() => iap.restorePurchases();
 
 ```dart
 // purchases_flutter from RevenueDot's git tag 10.13.2-revenuedot (see "Do it with RevenueDot" below)
-import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
 Future<void> startStore() async {
   // RevenueDot's build of the package calls RevenueDot by default, so only the keys are needed.
-  await Purchases.configure(
-    PurchasesConfiguration(Platform.isIOS ? 'appl_YourKey' : 'goog_YourKey'),
-  );
+  // kIsWeb and defaultTargetPlatform also work on Flutter web, where Platform from dart:io throws.
+  final apiKey = kIsWeb
+      ? 'test_YourKey' // the web buys only with Test Store keys today
+      : defaultTargetPlatform == TargetPlatform.iOS
+          ? 'appl_YourKey'
+          : 'goog_YourKey';
+  await Purchases.configure(PurchasesConfiguration(apiKey));
 }
 
 Future<bool> buyPro() async {

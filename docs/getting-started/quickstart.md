@@ -190,7 +190,7 @@ curl -s -H "Authorization: Bearer $SECRET_KEY" \
 The same `curl` calls work on Cloud: replace `http://localhost:8787` with `https://api.revenuedot.app`.
 
 ### 5. Set the SDK's proxy URL to your server
-Install the RevenueDot SDK as in [step 4 above](#4-install-the-revenuedot-sdk-and-pass-your-key). Then add one line of setup before `configure`: the SDK's proxy URL, which is your server's address, for example `http://localhost:8787`. Keep entitlement verification `disabled`. The RevenueDot SDK trusts RevenueDot Cloud's response-signing key, and your server signs with its own key. See [Trusted Entitlements](../guides/trusted-entitlements.md).
+Install the RevenueDot SDK as in [step 4 above](#4-install-the-revenuedot-sdk-and-pass-your-key). Then add one line of setup before `configure`: the SDK's proxy URL, which is your server's address, for example `http://localhost:8787`. Then set entitlement verification to `disabled`. The RevenueDot SDK trusts RevenueDot Cloud's response-signing key, and your server signs with its own key. iOS and Android default to informational mode, so the code below sets `disabled`. React Native and Flutter already default to `disabled`. See [Trusted Entitlements](../guides/trusted-entitlements.md).
 
 ```swift
 // iOS: set your server's address before configure.

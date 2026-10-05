@@ -122,7 +122,7 @@ Purchases.configure(
 )
 ```
 
-Every SDK has the same setting. The [SDK guides](https://revenuedot.app/docs/sdks) show each one. A self-hosted server signs responses with its own key, so the stock SDKs should keep verification disabled.
+Every SDK has the same setting. The [SDK guides](https://revenuedot.app/docs/sdks) show each one. A self-hosted server signs responses with its own key, which neither the RevenueDot SDK nor RevenueCat's SDK trusts. So set entitlement verification to disabled, as above. The iOS and Android SDKs default to informational mode and need the setting.
 
 ### Step 5: Back up
 

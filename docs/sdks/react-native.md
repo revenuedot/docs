@@ -41,6 +41,9 @@ Installed from npm into the [Expo example](https://github.com/revenuedot/example
 
 **Self-hosting:** await `Purchases.setProxyURL` with your server's address before `configure`. Leave the verification mode at its default, `DISABLED`, because your server signs with its own key, which this build does not trust.
 ```ts
+import { Platform } from "react-native";
+import Purchases from "react-native-purchases";
+
 // setProxyURL returns a promise. Await it before configure.
 await Purchases.setProxyURL("https://revenuedot.example.com");
 Purchases.configure({ apiKey: Platform.OS === "ios" ? "appl_..." : "goog_..." });
@@ -102,6 +105,7 @@ await Purchases.syncPurchasesForResult();
 
 The whole app change fits in one diff:
 ```diff
+ import { Platform } from "react-native";
  import Purchases from "react-native-purchases";
 
 +// Point the SDK at your RevenueDot server; nothing else in the app changes. Await it before configure.

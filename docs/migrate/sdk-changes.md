@@ -65,6 +65,7 @@ Guide: [Android](../sdks/android.md).
 
 ## React Native and Expo
 ```diff
+ import { Platform } from "react-native";
  import Purchases from "react-native-purchases";
 
 +// Point the SDK at your RevenueDot server; nothing else in the app changes. Await it before configure.

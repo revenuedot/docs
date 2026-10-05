@@ -9,14 +9,17 @@ Add the RevenueDot SDK for Unity from OpenUPM, put the **Purchases** component o
 
 ## Install the RevenueDot SDK and pass your key
 **Version 9.11.1 is on [OpenUPM](https://openupm.com/packages/com.revenuedot.purchases-unity/).** The source is [github.com/revenuedot/purchases-unity](https://github.com/revenuedot/purchases-unity).
+
+Add Google's [External Dependency Manager for Unity](https://openupm.com/packages/com.google.external-dependency-manager/) (EDM4U) first, then the SDK. EDM4U downloads the native iOS and Android libraries the SDK calls. The SDK's package declares no dependencies, so it does not install EDM4U for you. RevenueCat's [Unity install guide](https://www.revenuecat.com/docs/getting-started/installation/unity) has the same step.
 ```bash
+openupm add com.google.external-dependency-manager
 openupm add com.revenuedot.purchases-unity
 ```
-Or, without OpenUPM, open **Window > Package Manager > + > Add package from git URL** and enter:
+Or, without OpenUPM, import EDM4U from its [releases](https://github.com/googlesamples/unity-jar-resolver/releases), then open **Window > Package Manager > + > Add package from git URL** and enter:
 ```
 https://github.com/revenuedot/purchases-unity.git?path=RevenueCat#9.11.1-revenuedot
 ```
-The paywall package (`RevenueCatUI` folder) installs from git, as upstream. The External Dependency Manager pulls the native side, RevenueDot's [hybrid common](hybrid-common.md) 19.4.1: the `RevenueDotPurchasesHybridCommon` pod and `app.revenuedot.purchases:purchases-hybrid-common`. We have not run the package in the Unity editor yet.
+The paywall package (`RevenueCatUI` folder) installs from git, as upstream. EDM4U pulls the native side, RevenueDot's [hybrid common](hybrid-common.md) 19.4.1: the `RevenueDotPurchasesHybridCommon` pod and `app.revenuedot.purchases:purchases-hybrid-common`. We have not run the package in the Unity editor yet.
 
 Then, on the GameObject with the **Purchases** component, set these Inspector fields:
 

@@ -23,13 +23,18 @@ dependencies:
       ref: 10.13.2-revenuedot
 ```
 ```dart
-import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
+// kIsWeb and defaultTargetPlatform work on every platform. Platform from dart:io throws on Flutter web.
+final apiKey = kIsWeb
+    ? 'test_...' // purchases-js buys only with Test Store keys today
+    : defaultTargetPlatform == TargetPlatform.iOS
+        ? 'appl_...'
+        : 'goog_...';
+
 Future<void> initPurchases() async {
-  await Purchases.configure(
-    PurchasesConfiguration(Platform.isIOS ? 'appl_...' : 'goog_...'),
-  );
+  await Purchases.configure(PurchasesConfiguration(apiKey));
 }
 ```
 - The RevenueDot SDK is built from RevenueCat's open-source SDK (MIT license), so your code imports `package:purchases_flutter/purchases_flutter.dart` and calls `Purchases`. It sends every request to RevenueDot and needs no RevenueCat account.
@@ -42,8 +47,9 @@ Checked with the [Flutter example](https://github.com/revenuedot/examples/tree/m
 
 **Self-hosting:** await `Purchases.setProxyURL` with your server's address before `configure`. It works on iOS, Android and Flutter web. Leave the verification mode at its default, `disabled`, because your server signs with its own key, which this build does not trust.
 ```dart
+// apiKey as above: kIsWeb and defaultTargetPlatform pick the key on every platform.
 await Purchases.setProxyURL('https://revenuedot.example.com');
-await Purchases.configure(PurchasesConfiguration(Platform.isIOS ? 'appl_...' : 'goog_...'));
+await Purchases.configure(PurchasesConfiguration(apiKey));
 ```
 To verify responses from your own server, build the SDKs with your public key. See [Trusted Entitlements](../guides/trusted-entitlements.md).
 
@@ -84,6 +90,7 @@ An app that ships RevenueCat's `purchases_flutter` from pub.dev can keep it on i
 import 'dart:io' show Platform;
 import 'package:purchases_flutter/purchases_flutter.dart';
 
+// iOS and Android only: RevenueCat's package ignores the proxy URL on Flutter web, so Platform from dart:io is fine here.
 Future<void> initPurchases() async {
   // Point the SDK at your RevenueDot server; nothing else in the app changes.
   await Purchases.setProxyURL('https://revenuedot.example.com');

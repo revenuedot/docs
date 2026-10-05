@@ -80,13 +80,18 @@ The RevenueDot SDK is built from RevenueCat's open-source SDK (MIT license), so 
 Call `configure` once, before `runApp`. On RevenueDot Cloud there is nothing else to set, because the SDK already sends its requests to `https://api.revenuedot.app`.
 
 ```dart
-import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
+// kIsWeb and defaultTargetPlatform work on every platform, including Flutter web.
+final apiKey = kIsWeb
+    ? 'test_YourKey'
+    : defaultTargetPlatform == TargetPlatform.iOS
+        ? 'appl_YourKey'
+        : 'goog_YourKey';
+
 Future<void> initPurchases() async {
-  await Purchases.configure(
-    PurchasesConfiguration(Platform.isIOS ? 'appl_YourKey' : 'goog_YourKey'),
-  );
+  await Purchases.configure(PurchasesConfiguration(apiKey));
 }
 
 Future<void> main() async {
@@ -98,11 +103,7 @@ Future<void> main() async {
 
 ![Five steps in order: add the SDK, configure, getOfferings, purchase, then check entitlements](assets/flutter-in-app-purchases-tutorial/startup-order.svg)
 
-**Flutter web works too.** The SDK's web part is built from RevenueDot's purchases-js, which buys only with Test Store (`test_`) keys today ([web SDK guide](https://revenuedot.app/docs/sdks/web)). `Platform` from `dart:io` does not work on the web, so check `kIsWeb` from `package:flutter/foundation.dart` first:
-
-```dart
-final apiKey = kIsWeb ? 'test_YourKey' : (Platform.isIOS ? 'appl_YourKey' : 'goog_YourKey');
-```
+**Flutter web works too, with the `test_` key.** The SDK's web part is built from RevenueDot's purchases-js, which buys only with Test Store (`test_`) keys today ([web SDK guide](https://revenuedot.app/docs/sdks/web)). The code picks the key with `kIsWeb` and `defaultTargetPlatform` from `package:flutter/foundation.dart`, because `Platform` from `dart:io` throws on the web.
 
 **Self-hosting?** Await `Purchases.setProxyURL` with your own server's address before `configure`, and keep the verification mode at its default, `disabled`, because your server signs its responses with its own key. It works on iOS, Android and Flutter web. The [Flutter SDK guide](https://revenuedot.app/docs/sdks/flutter) shows the code.
 
@@ -204,6 +205,7 @@ Use the same user ID on every platform, and never put a secret in it. The ID app
 If your Flutter app already ships RevenueCat's `purchases_flutter` from pub.dev with RevenueCat's backend, you can keep it on iOS and Android. The change is three lines. Add the proxy URL before `configure`, keep your current keys if you ran the [importer](https://revenuedot.app/docs/migrate/importer), and call `syncPurchases` once on the first launch of the update, so subscribers who bought while the app talked to RevenueCat keep access.
 
 ```dart
+// iOS and Android only: RevenueCat's package ignores the proxy URL on Flutter web.
 await Purchases.setProxyURL('https://api.revenuedot.app');
 await Purchases.configure(PurchasesConfiguration(Platform.isIOS ? 'appl_YourKey' : 'goog_YourKey'));
 // Once, after this update:
@@ -230,7 +232,7 @@ Before you ship, run one sandbox purchase on each store and check that it reache
 | Web calls reach RevenueCat | RevenueCat's `purchases_flutter` from pub.dev is installed, and its web plugin ignores `setProxyURL` | Install the RevenueDot SDK from its git tag (Step 4) |
 | Every request fails with a signature error | `enforced` verification mode with RevenueCat's package or a self-hosted server | Remove it. Disabled is the default |
 | Purchase succeeds on Android, entitlement missing | No service account on the Google Play app | Add it. RevenueDot answers 503 (code 7101) until then and the SDK retries |
-| `Unsupported operation` error on the web | `Platform` from `dart:io` does not work on the web | Check `kIsWeb` before `Platform`, as Step 5 shows |
+| `Unsupported operation` error on the web | `Platform` from `dart:io` does not work on the web | Pick the key with `kIsWeb` and `defaultTargetPlatform` from `package:flutter/foundation.dart`, as Step 5 shows |
 
 ## Do it with RevenueDot
 

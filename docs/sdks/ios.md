@@ -39,7 +39,7 @@ import RevenueCat
 Purchases.proxyURL = URL(string: "https://revenuedot.example.com")!
 Purchases.configure(
     with: Configuration.Builder(withAPIKey: "appl_...")
-        // A self-hosted server signs with its own key; keep .disabled (or .informational) unless you build the SDK with that key.
+        // A self-hosted server signs with its own key. The default, .informational, would log every response as a failed check, so set .disabled unless you build the SDK with your key.
         .with(entitlementVerificationMode: .disabled)
         .build()
 )

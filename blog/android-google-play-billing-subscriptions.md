@@ -119,7 +119,7 @@ class MainApplication : Application() {
 
 The RevenueDot SDK is built from RevenueCat's open-source SDK (MIT license), so your code imports `com.revenuecat.purchases.*` and calls `Purchases`. It sends every request to RevenueDot, including diagnostics, paywall events and ad events, and needs no RevenueCat account. The [Android SDK guide](https://revenuedot.app/docs/sdks/android) has the details.
 
-Register the class with `android:name=".MainApplication"` in the manifest. RevenueCat's [Android guide](https://www.revenuecat.com/docs/getting-started/installation/android) also says to set the purchasing Activity's `launchMode` to `standard` or `singleTop`, so a purchase is not cancelled when the customer must authenticate in another app.
+Register the class with `android:name=".MainApplication"` in the manifest. RevenueCat's [Android guide](https://www.revenuecat.com/docs/getting-started/installation/android) also says to set the purchasing Activity's `launchMode` to `standard` or `singleTop`, so a purchase is not canceled when the customer must authenticate in another app.
 
 **Self-hosting?** Set `Purchases.proxyURL` to your own server before `configure`, and set `EntitlementVerificationMode.DISABLED`, because your server signs its responses with its own key. The [Android SDK guide](https://revenuedot.app/docs/sdks/android) shows the code.
 
