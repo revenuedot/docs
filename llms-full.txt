@@ -9207,12 +9207,12 @@ Each command asks for the RevenueCat and RevenueDot secret keys and hides what y
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/sdk-changes.md
 Description: In proxy mode, set the proxy URL before configure, turn off signature checks and sync purchases once. With a fork, swap the package and keep your code. Diffs for all ten SDKs.
 
-In **proxy mode** you add a few lines: set the proxy URL before `configure`, turn off signature checks, and call `syncPurchases()` once after the update. With a **fork**, you swap the package in your manifest and keep every line of code. Proxy mode works today; the forks are not published yet (2026-09-30).
+In **proxy mode** you add a few lines: set the proxy URL before `configure`, turn off signature checks, and call `syncPurchases()` once after the update. With a **fork**, you swap the package in your manifest and keep every line of code. Both work today: the RevenueDot SDK forks for all ten SDKs are published on CocoaPods, Swift Package Manager, Maven Central, npm, OpenUPM and git tags (checked 2026-10-05).
 
 ## Proxy mode or fork swap
 | | Proxy mode | Fork swap |
 |---|---|---|
-| Works today | Yes | No: not on any registry yet |
+| Works today | Yes | Yes: published for every platform (versions in each SDK guide) |
 | Code change | 2 to 5 lines at startup | None; the manifest changes |
 | Signature checks | Must be off (or informational); they would fail | Verify against RevenueDot Cloud's key; self-hosters use their own build or keep them off |
 | Android diagnostics, paywall and ad events | Still go to RevenueCat | Go to your server |
@@ -9240,7 +9240,7 @@ In **proxy mode** you add a few lines: set the proxy URL before `configure`, tur
 +// Once, after this update: send purchases made while the app talked to RevenueCat.
 +_ = try? await Purchases.shared.syncPurchases()
 ```
-Fork swap (planned): `pod 'RevenueCat'` becomes `pod 'RevenueDotPurchases'`, or the SPM URL becomes `https://github.com/revenuedot/purchases-ios`. `import RevenueCat` stays. Guide: [iOS](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/ios.md).
+Fork swap: `pod 'RevenueCat'` becomes `pod 'RevenueDotPurchases', '5.91.0'`, or the SPM URL becomes `https://github.com/revenuedot/purchases-ios` at exact version `5.91.0-revenuedot`. `import RevenueCat` stays. Guide: [iOS](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/ios.md).
 
 ## Android
 ```diff
@@ -9258,10 +9258,10 @@ Fork swap (planned): `pod 'RevenueCat'` becomes `pod 'RevenueDotPurchases'`, or 
 +    Purchases.sharedInstance.syncPurchases()
  }
 ```
-Fork swap (planned):
+Fork swap:
 ```diff
 -implementation("com.revenuecat.purchases:purchases:<version>")
-+implementation("app.revenuedot.purchases:purchases:<version>")
++implementation("app.revenuedot.purchases:purchases:10.23.3")
 ```
 Guide: [Android](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/android.md).
 
@@ -9279,10 +9279,10 @@ Guide: [Android](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdk
 +// Once, after this update: send purchases made while the app talked to RevenueCat.
 +await Purchases.syncPurchasesForResult();
 ```
-Fork swap (planned), in `package.json`:
+Fork swap, in `package.json`:
 ```diff
 -"react-native-purchases": "<version>",
-+"react-native-purchases": "npm:@revenuedot/react-native-purchases@<version>",
++"react-native-purchases": "npm:@revenuedot/react-native-purchases@10.10.2",
 ```
 Guide: [React Native](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/react-native.md).
 
@@ -9298,13 +9298,13 @@ Guide: [React Native](https://raw.githubusercontent.com/revenuedot/docs/main/doc
 +  await Purchases.syncPurchases();
  }
 ```
-Flutter web cannot use a proxy URL with the stock package. Fork swap (planned), in `pubspec.yaml`:
+Flutter web cannot use a proxy URL with the stock package. Fork swap, in `pubspec.yaml`:
 ```diff
 -  purchases_flutter: ^<version>
 +  purchases_flutter:
 +    git:
 +      url: https://github.com/revenuedot/purchases-flutter.git
-+      ref: <version>-revenuedot
++      ref: 10.13.2-revenuedot
 ```
 Guide: [Flutter](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/flutter.md).
 
@@ -9319,10 +9319,10 @@ Guide: [Flutter](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdk
 +  flags: { collectAnalyticsEvents: false },
  });
 ```
-Only Test Store (`test_`) keys buy inside purchases-js against RevenueDot; RevenueCat Billing (`rcb_`) and Paddle do not. For real web payments, use RevenueDot's hosted checkout on your Stripe account ([web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md)), or post purchases from your own Stripe checkout from your backend ([Stripe guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md)). Fork swap (planned):
+Only Test Store (`test_`) keys buy inside purchases-js against RevenueDot; RevenueCat Billing (`rcb_`) and Paddle do not. For real web payments, use RevenueDot's hosted checkout on your Stripe account ([web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md)), or post purchases from your own Stripe checkout from your backend ([Stripe guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md)). Fork swap:
 ```diff
 -"@revenuecat/purchases-js": "<version>",
-+"@revenuecat/purchases-js": "npm:@revenuedot/purchases-js@<version>",
++"@revenuecat/purchases-js": "npm:@revenuedot/purchases-js@1.67.0",
 ```
 Guide: [Web](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/web.md).
 
@@ -9341,10 +9341,10 @@ Guide: [Web](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/we
 +// Once, after this update: send purchases made while the app talked to RevenueCat.
 +await Purchases.syncPurchases();
 ```
-Fork swap (planned), only through the alias so Capacitor's native names stay:
+Fork swap, only through the alias so Capacitor's native names stay:
 ```diff
 -"@revenuecat/purchases-capacitor": "<version>",
-+"@revenuecat/purchases-capacitor": "npm:@revenuedot/purchases-capacitor@<version>",
++"@revenuecat/purchases-capacitor": "npm:@revenuedot/purchases-capacitor@13.6.1",
 ```
 Guide: [Capacitor](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/capacitor.md).
 
@@ -9359,10 +9359,10 @@ Guide: [Capacitor](https://raw.githubusercontent.com/revenuedot/docs/main/docs/s
      })
  }
 ```
-Then call `Purchases.sharedInstance.awaitSyncPurchases()` once from a coroutine. Fork swap (planned):
+Then call `Purchases.sharedInstance.awaitSyncPurchases()` once from a coroutine. Fork swap:
 ```diff
 -implementation("com.revenuecat.purchases:purchases-kmp-core:<version>")
-+implementation("app.revenuedot.purchases:purchases-kmp-core:<version>")
++implementation("app.revenuedot.purchases:purchases-kmp-core:3.10.1")
 ```
 Guide: [Kotlin Multiplatform](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/kotlin-multiplatform.md).
 
@@ -9384,7 +9384,7 @@ There is no public `SetProxyURL` method; the field applies also when you configu
 +// Once, after this update: send purchases made while the app talked to RevenueCat.
 +purchases.SyncPurchases();
 ```
-Fork swap (planned): OpenUPM package `com.revenuecat.purchases-unity` becomes `com.revenuedot.purchases-unity`. Guide: [Unity](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/unity.md).
+Fork swap: OpenUPM package `com.revenuecat.purchases-unity` becomes `com.revenuedot.purchases-unity`. Guide: [Unity](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/unity.md).
 
 ## Cordova
 ```diff
@@ -9396,7 +9396,7 @@ Fork swap (planned): OpenUPM package `com.revenuecat.purchases-unity` becomes `c
 +  Purchases.syncPurchases();
  });
 ```
-Cordova has no option to turn off signature checks, so the SDK logs a verification failure for every RevenueDot response and still grants access. Fork swap (planned): `cordova plugin add @revenuedot/cordova-plugin-purchases`; the plugin id stays `cordova-plugin-purchases`. Guide: [Cordova](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/cordova.md).
+Cordova has no option to turn off signature checks, so the SDK logs a verification failure for every RevenueDot response and still grants access. Fork swap: `cordova plugin add @revenuedot/cordova-plugin-purchases`; the plugin id stays `cordova-plugin-purchases`. Guide: [Cordova](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/cordova.md).
 
 ## purchases-hybrid-common
 No change. Apps never depend on it directly: the React Native, Flutter, Capacitor, Unity and Cordova packages bring it in, and their fork packages bring in RevenueDot's build. See [Hybrid common](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/hybrid-common.md).
@@ -9561,8 +9561,7 @@ Source: [`prd/migration/PRD.md`](https://github.com/revenuedot/revenuedot/blob/m
 Built since the first release: [paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md) with a visual editor and an AI generator, [targeting and experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/targeting-and-experiments.md), 43 [charts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md) (RevenueCat's 42 plus App Store Save Outcomes), the [Customer Center editor](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/customer-center.md), virtual currencies, the [Amazon Appstore](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/amazon-appstore.md) and [Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/stripe.md) stores, [web billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/web-billing.md), [Refund Control](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/refund-control.md), [retention offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/retention.md), [win-back campaigns](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-campaigns.md), the [support view](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/support-integrations.md), [ads](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/ads.md), all 37 [integrations](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md) and [RevenueDot AI](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/revenuedot-ai.md).
 
 **Tier 1 (the current build), not finished**
-- SDK fork packages are partly published: `@revenuedot/purchases-js`, `@revenuedot/purchases-typescript-internal` and `@revenuedot/purchases-js-hybrid-mappings` on npm, `app.revenuedot.purchases` on Maven Central and `RevenueDotPurchases` and `RevenueDotPurchasesUI` on CocoaPods. The React Native, Flutter, Capacitor, Cordova, Unity and Kotlin Multiplatform packages are not published yet.
-- Real App Store, Google Play, Amazon Appstore and Stripe sandbox purchases have not run end to end. Store handling is tested against mocked store APIs, and Test Store purchases pass with the unmodified RevenueCat iOS and Android SDKs on a simulator and an emulator.
+- Google Play, Amazon Appstore and Stripe sandbox purchases have not run end to end yet. A real App Store sandbox purchase ran end to end on an iPhone on 2026-10-02, and the RevenueDot SDK is published for every platform (see [SDK guides](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md)). Store handling is tested against mocked store APIs, and Test Store purchases pass with the unmodified RevenueCat iOS and Android SDKs on a simulator and an emulator.
 
 **Tier 2, still planned**
 - Paywalls with several screens and navigation between them. Today a multi-page paywall is one screen with swipeable pages. Video uploads are not built (a video takes a URL), and exit offers and custom variables have no editor yet; they pass through the API.
@@ -49085,15 +49084,15 @@ The list below is complete as of **2026-10-03**. A real App Store sandbox purcha
 6. **Paywalls built in RevenueCat are not imported.** Paywalls, Customer Center, virtual currencies, targeting and experiments work with the stock SDKs, but the importer does not copy RevenueCat paywalls, targeting rules or experiments (item 14).
    - Workaround: rebuild the paywall in the [paywall editor](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md), and recreate rules and experiments on the [Targeting and Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md) pages.
 7. **The stock Android SDK sends some traffic to RevenueCat.** Diagnostics, paywall events and ad events ignore the proxy URL.
-   - Workaround: the RevenueDot Android fork fixes it, but it is not published yet. You can build it from the `revenuedot/main-patches` branch of [revenuedot/purchases-android](https://github.com/revenuedot/purchases-android).
+   - Workaround: use the RevenueDot Android SDK (`app.revenuedot.purchases:purchases` on Maven Central), which sends them to RevenueDot. See [Android](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/android.md).
 8. **The stock web SDK sends analytics events to RevenueCat.**
    - Workaround: configure purchases-js with `flags: { collectAnalyticsEvents: false }`.
 9. **Flutter web ignores the proxy URL with the stock SDK.** Flutter on iOS and Android works.
     - Workaround: the RevenueDot Flutter fork fixes it; use it as a git dependency on [revenuedot/purchases-flutter](https://github.com/revenuedot/purchases-flutter).
 10. **The stock SDK reports signature verification FAILED.** RevenueDot cannot sign with RevenueCat's key.
     - Workaround: turn verification off, never use ENFORCED. See [signature verification](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/signature-verification-failed.md).
-11. **The SDK forks are not published to any registry.** npm, CocoaPods, Maven Central and OpenUPM releases need publishing credentials that are not set up yet. The forks' default host, `https://api.revenuedot.app`, is RevenueDot Cloud and is live.
-    - Workaround: use the stock RevenueCat SDK with a proxy URL, or build a fork from its `revenuedot/main-patches` branch.
+11. **Resolved on 2026-10-02: the RevenueDot SDKs are published.** Every platform's RevenueDot SDK is on its registry (CocoaPods, Swift Package Manager, Maven Central, npm, OpenUPM, and git tags for Flutter), and its default host, `https://api.revenuedot.app`, is RevenueDot Cloud.
+    - Install lines and versions: [SDK guides](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md).
 
 ## Webhooks and events
 12. **Two event types are never sent:** `TEMPORARY_ENTITLEMENT_GRANT` and `INVOICE_ISSUANCE`, because RevenueDot never has the facts behind them. You can select them in filters. `SUBSCRIBER_ALIAS` and the funnel types (`FUNNEL_VIEWED`, `FUNNEL_STEP_COMPLETED`, `FUNNEL_PURCHASE`) are sent only to webhooks whose filter names them.
@@ -49439,7 +49438,7 @@ RevenueDot can sign responses exactly the way the SDKs check them. It signs ever
    You can also set `REVENUEDOT_FORK_API_HOST` and `REVENUEDOT_FORK_SIGNING_PUBLIC_KEY`. Then build the fork for your platform and ship it in your app.
 5. **Turn verification back on** (informational) in the app, and check that `verification` reads `VERIFIED`.
 
-The official RevenueDot forks trust RevenueDot Cloud's key (`gXdn2hmqR/TbdtQwK02laE0YgFz0Rtf918LICLrgZhg=`). A self-hosted server cannot sign with that key, so the official builds still report `FAILED` against your server. The forks are not published to any registry yet as of 2026-09-30. Full details are in [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md).
+The official RevenueDot forks trust RevenueDot Cloud's key (`gXdn2hmqR/TbdtQwK02laE0YgFz0Rtf918LICLrgZhg=`). A self-hosted server cannot sign with that key, so the official builds still report `FAILED` against your server. The RevenueDot SDKs are published for every platform (2026-10-02); install lines are in the [SDK guides](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md). Full details are in [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md).
 
 ## Related
 - [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md)

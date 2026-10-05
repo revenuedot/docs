@@ -261,15 +261,15 @@ The list below is complete as of **2026-10-03**. A real App Store sandbox purcha
 6. **Paywalls built in RevenueCat are not imported.** Paywalls, Customer Center, virtual currencies, targeting and experiments work with the stock SDKs, but the importer does not copy RevenueCat paywalls, targeting rules or experiments (item 14).
    - Workaround: rebuild the paywall in the [paywall editor](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md), and recreate rules and experiments on the [Targeting and Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md) pages.
 7. **The stock Android SDK sends some traffic to RevenueCat.** Diagnostics, paywall events and ad events ignore the proxy URL.
-   - Workaround: the RevenueDot Android fork fixes it, but it is not published yet. You can build it from the `revenuedot/main-patches` branch of [revenuedot/purchases-android](https://github.com/revenuedot/purchases-android).
+   - Workaround: use the RevenueDot Android SDK (`app.revenuedot.purchases:purchases` on Maven Central), which sends them to RevenueDot. See [Android](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/android.md).
 8. **The stock web SDK sends analytics events to RevenueCat.**
    - Workaround: configure purchases-js with `flags: { collectAnalyticsEvents: false }`.
 9. **Flutter web ignores the proxy URL with the stock SDK.** Flutter on iOS and Android works.
     - Workaround: the RevenueDot Flutter fork fixes it; use it as a git dependency on [revenuedot/purchases-flutter](https://github.com/revenuedot/purchases-flutter).
 10. **The stock SDK reports signature verification FAILED.** RevenueDot cannot sign with RevenueCat's key.
     - Workaround: turn verification off, never use ENFORCED. See [signature verification](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/signature-verification-failed.md).
-11. **The SDK forks are not published to any registry.** npm, CocoaPods, Maven Central and OpenUPM releases need publishing credentials that are not set up yet. The forks' default host, `https://api.revenuedot.app`, is RevenueDot Cloud and is live.
-    - Workaround: use the stock RevenueCat SDK with a proxy URL, or build a fork from its `revenuedot/main-patches` branch.
+11. **Resolved on 2026-10-02: the RevenueDot SDKs are published.** Every platform's RevenueDot SDK is on its registry (CocoaPods, Swift Package Manager, Maven Central, npm, OpenUPM, and git tags for Flutter), and its default host, `https://api.revenuedot.app`, is RevenueDot Cloud.
+    - Install lines and versions: [SDK guides](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md).
 
 ## Webhooks and events
 12. **Two event types are never sent:** `TEMPORARY_ENTITLEMENT_GRANT` and `INVOICE_ISSUANCE`, because RevenueDot never has the facts behind them. You can select them in filters. `SUBSCRIBER_ALIAS` and the funnel types (`FUNNEL_VIEWED`, `FUNNEL_STEP_COMPLETED`, `FUNNEL_PURCHASE`) are sent only to webhooks whose filter names them.
@@ -615,7 +615,7 @@ RevenueDot can sign responses exactly the way the SDKs check them. It signs ever
    You can also set `REVENUEDOT_FORK_API_HOST` and `REVENUEDOT_FORK_SIGNING_PUBLIC_KEY`. Then build the fork for your platform and ship it in your app.
 5. **Turn verification back on** (informational) in the app, and check that `verification` reads `VERIFIED`.
 
-The official RevenueDot forks trust RevenueDot Cloud's key (`gXdn2hmqR/TbdtQwK02laE0YgFz0Rtf918LICLrgZhg=`). A self-hosted server cannot sign with that key, so the official builds still report `FAILED` against your server. The forks are not published to any registry yet as of 2026-09-30. Full details are in [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md).
+The official RevenueDot forks trust RevenueDot Cloud's key (`gXdn2hmqR/TbdtQwK02laE0YgFz0Rtf918LICLrgZhg=`). A self-hosted server cannot sign with that key, so the official builds still report `FAILED` against your server. The RevenueDot SDKs are published for every platform (2026-10-02); install lines are in the [SDK guides](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md). Full details are in [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md).
 
 ## Related
 - [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md)
