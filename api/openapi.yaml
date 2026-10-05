@@ -52249,6 +52249,83 @@ paths:
               description: The guide URL with `utm_` parameters.
       x-source: routes/account.ts
       x-revenuedot-extension: true
+  /auth/journeys/feedback/{token}:
+    get:
+      operationId: showJourneyFeedback
+      tags:
+        - Account settings
+      summary: Open a one-click answer link from an email
+      description: An HTML page that shows the answer with a comment box and a **Send** button. Opening the link records nothing, because mail scanners open links too.
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+          description: From the rating or reason link of an onboarding or Cloud Standard email.
+        - name: kind
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - nps
+              - cancel
+          description: "`nps` for a 0 to 10 rating, `cancel` for the reason for leaving Cloud Standard."
+        - name: value
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "The answer: a whole number from 0 to 10 for `nps`, or a reason of at most 80 characters for `cancel`."
+      responses:
+        "200":
+          description: The page.
+          content:
+            application/json:
+              schema:
+                type: string
+                description: text/html
+        "404":
+          description: Unknown link or invalid answer (an HTML page).
+          content:
+            application/json:
+              schema:
+                type: string
+                description: text/html
+      x-source: routes/account.ts
+      x-revenuedot-extension: true
+    post:
+      operationId: recordJourneyFeedback
+      tags:
+        - Account settings
+      summary: Record a one-click answer from an email
+      description: Records the answer (form fields `kind`, `value` and an optional `comment` of up to 2,000 characters) for the account the email was sent to, without a session. The latest answer of each kind replaces the earlier one.
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Recorded (an HTML page).
+          content:
+            application/json:
+              schema:
+                type: string
+                description: text/html
+        "404":
+          description: Unknown link or invalid answer (an HTML page).
+          content:
+            application/json:
+              schema:
+                type: string
+                description: text/html
+      x-source: routes/account.ts
+      x-revenuedot-extension: true
   /auth/notifications/{project_id}:
     put:
       operationId: updateNotificationSettings

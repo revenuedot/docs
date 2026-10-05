@@ -11,10 +11,10 @@ These endpoints exist only in RevenueDot. They use the same auth, errors and lis
 
 Base URL: your server, for example `http://localhost:8787` or `https://revenuedot.example.com`. The examples read `REVENUEDOT_URL`, `PUBLIC_KEY`, `SECRET_KEY` and `PROJECT_ID` from your shell.
 
-## Operations on this page (297)
+## Operations on this page (299)
 
 - **Dashboard auth**: [Whether sign-up is open](#whether-sign-up-is-open), [Create a dashboard account](#create-a-dashboard-account), [Sign in](#sign-in), [Sign out](#sign-out), [The signed-in user and their projects](#the-signed-in-user-and-their-projects), [Update account settings](#update-account-settings), [Email a password reset link](#email-a-password-reset-link), [Check a password reset link](#check-a-password-reset-link), [Set a new password from a reset link](#set-a-new-password-from-a-reset-link), [Confirm an email address](#confirm-an-email-address), [Send a new confirmation email](#send-a-new-confirmation-email), [Look up an invite](#look-up-an-invite), [Accept an invite](#accept-an-invite)
-- **Account settings**: [Finish a sign-in with a two-factor code](#finish-a-sign-in-with-a-two-factor-code), [Sign out of every session](#sign-out-of-every-session), [Change the account's email](#change-the-accounts-email), [Cancel a waiting email change](#cancel-a-waiting-email-change), [Confirm an email change](#confirm-an-email-change), [Change the password](#change-the-password), [List signed-in sessions](#list-signed-in-sessions), [Sign out one session](#sign-out-one-session), [Sign out every other session](#sign-out-every-other-session), [Start two-factor setup](#start-two-factor-setup), [Turn two-factor authentication on](#turn-two-factor-authentication-on), [Turn two-factor authentication off](#turn-two-factor-authentication-off), [Make new recovery codes](#make-new-recovery-codes), [List OAuth tokens you granted](#list-oauth-tokens-you-granted), [Revoke an OAuth token](#revoke-an-oauth-token), [List connected Stripe accounts](#list-connected-stripe-accounts), [List your projects with role and plan](#list-your-projects-with-role-and-plan), [What deleting the account would do](#what-deleting-the-account-would-do), [Delete the account](#delete-the-account), [Get notification choices](#get-notification-choices), [Open an email's unsubscribe link](#open-an-emails-unsubscribe-link), [Unsubscribe from one email](#unsubscribe-from-one-email), [Open a product email's unsubscribe link](#open-a-product-emails-unsubscribe-link), [Unsubscribe from product emails](#unsubscribe-from-product-emails), [Follow a welcome email's path link](#follow-a-welcome-emails-path-link), [Choose a project's emails](#choose-a-projects-emails), [The display currency's exchange rate](#the-display-currencys-exchange-rate)
+- **Account settings**: [Finish a sign-in with a two-factor code](#finish-a-sign-in-with-a-two-factor-code), [Sign out of every session](#sign-out-of-every-session), [Change the account's email](#change-the-accounts-email), [Cancel a waiting email change](#cancel-a-waiting-email-change), [Confirm an email change](#confirm-an-email-change), [Change the password](#change-the-password), [List signed-in sessions](#list-signed-in-sessions), [Sign out one session](#sign-out-one-session), [Sign out every other session](#sign-out-every-other-session), [Start two-factor setup](#start-two-factor-setup), [Turn two-factor authentication on](#turn-two-factor-authentication-on), [Turn two-factor authentication off](#turn-two-factor-authentication-off), [Make new recovery codes](#make-new-recovery-codes), [List OAuth tokens you granted](#list-oauth-tokens-you-granted), [Revoke an OAuth token](#revoke-an-oauth-token), [List connected Stripe accounts](#list-connected-stripe-accounts), [List your projects with role and plan](#list-your-projects-with-role-and-plan), [What deleting the account would do](#what-deleting-the-account-would-do), [Delete the account](#delete-the-account), [Get notification choices](#get-notification-choices), [Open an email's unsubscribe link](#open-an-emails-unsubscribe-link), [Unsubscribe from one email](#unsubscribe-from-one-email), [Open a product email's unsubscribe link](#open-a-product-emails-unsubscribe-link), [Unsubscribe from product emails](#unsubscribe-from-product-emails), [Follow a welcome email's path link](#follow-a-welcome-emails-path-link), [Open a one-click answer link from an email](#open-a-one-click-answer-link-from-an-email), [Record a one-click answer from an email](#record-a-one-click-answer-from-an-email), [Choose a project's emails](#choose-a-projects-emails), [The display currency's exchange rate](#the-display-currencys-exchange-rate)
 - **Members and invites**: [List open invites](#list-open-invites), [Invite someone by email](#invite-someone-by-email), [Resend an invite](#resend-an-invite), [Revoke an invite](#revoke-an-invite), [Change a member's role](#change-a-members-role), [Remove a member, or leave the project](#remove-a-member-or-leave-the-project)
 - **Project settings**: [Get a project with its settings](#get-a-project-with-its-settings), [Update a project's name, transfer behaviour and sandbox testing access](#update-a-projects-name-transfer-behaviour-and-sandbox-testing-access), [Delete a project and everything in it](#delete-a-project-and-everything-in-it), [Get the Customer Center configuration of the project](#get-the-customer-center-configuration-of-the-project), [Set the Customer Center configuration](#set-the-customer-center-configuration), [Transfer project ownership to an admin](#transfer-project-ownership-to-an-admin)
 - **Brand**: [Colour and gradient presets](#colour-and-gradient-presets), [Replace colour or gradient presets](#replace-colour-or-gradient-presets)
@@ -1164,6 +1164,59 @@ curl -s "$REVENUEDOT_URL/auth/journeys/path/$TOKEN"
 **Responses**
 
 - **302**: Redirect to the guide.
+
+### Open a one-click answer link from an email
+
+`GET /auth/journeys/feedback/{token}` · Auth: none · RevenueDot extension
+
+An HTML page that shows the answer with a comment box and a **Send** button. Opening the link records nothing, because mail scanners open links too.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes | From the rating or reason link of an onboarding or Cloud Standard email. |
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `kind` | `nps`, `cancel` | yes | `nps` for a 0 to 10 rating, `cancel` for the reason for leaving Cloud Standard. |
+| `value` | string | yes | The answer: a whole number from 0 to 10 for `nps`, or a reason of at most 80 characters for `cancel`. |
+
+**Example request**
+
+```bash
+curl -s "$REVENUEDOT_URL/auth/journeys/feedback/$TOKEN"
+```
+
+**Responses**
+
+- **200**: The page.
+- **404**: Unknown link or invalid answer (an HTML page).
+
+### Record a one-click answer from an email
+
+`POST /auth/journeys/feedback/{token}` · Auth: none · RevenueDot extension
+
+Records the answer (form fields `kind`, `value` and an optional `comment` of up to 2,000 characters) for the account the email was sent to, without a session. The latest answer of each kind replaces the earlier one.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `token` | string | yes |  |
+
+**Example request**
+
+```bash
+curl -s -X POST "$REVENUEDOT_URL/auth/journeys/feedback/$TOKEN"
+```
+
+**Responses**
+
+- **200**: Recorded (an HTML page).
+- **404**: Unknown link or invalid answer (an HTML page).
 
 ### Choose a project's emails
 
