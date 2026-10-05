@@ -19,7 +19,7 @@ const condition = obj({ field: str("A customer field such as `country`, `appVers
   operator: en(["is", "isNot", "isAnyOf", "isNotAnyOf", "greaterThan", "greaterThanOrEqual", "lessThan", "lessThanOrEqual", "equal", "notEqual", "contains", "doesNotContain", "containsAnyOf", "before", "beforeOrOn", "on", "after", "afterOrOn", "within", "between", "notBetween", "isEmpty", "isNotEmpty"]),
   value: str("Comma-separated for multi-value operators; a duration such as `7d` for `within`."), currency: str() }, ["field", "operator"]);
 const rules = obj({ groups: arr(obj({ conditions: arr(condition) }, ["conditions"]), { description: "Groups are OR-ed; conditions in a group are AND-ed." }) }, ["groups"]);
-const stats = obj({ total_customers: int(), active_subscriptions: int(), active_trials: int(), total_revenue: num(), currency: str(), is_approximate: bool("True when more than 5,000 customers were sampled.") });
+const stats = obj({ total_customers: int(), active_subscriptions: int(), active_trials: int(), total_revenue: num(), currency: str(), is_approximate: bool("True only while a project above 5,000 customers is counted in the background for the first time (the totals are 0 until then). Otherwise the stats are exact over every customer.") });
 const sample = obj({ object: en(["audience_member"]), app_user_id: str(), app_uuid: str(), email: nstr(), first_seen_at: nms("First seen."), last_seen_at: nms("Last seen."), status: str(), total_spent: { type: ["number", "null"] }, currency: str(), latest_product_name: nstr() });
 const audience = obj({
   object: en(["audience"]), id: str(), project_id: str(), customer_list_id: str(), name: str(), rules, created_at: ms("Created."), updated_at: nms("Last updated."),

@@ -19,11 +19,11 @@ const preference = en(PREF, "Send Consumption Information (V2): `prefer_refund` 
 const settings = obj({ default_preference: preference, customer_consented: bool("You confirm customers agreed to share consumption data. Apple requires it; without it nothing is sent.") });
 const policy = obj({
   object: en(["refund_policy"]), id: str(), name: str(), template: en(["first_purchase_date", "platform", "recent_renewal", "custom"]), rules, preference,
-  position: int("0 is evaluated first."), customer_count: int("Customers this policy decides for (first match wins), among the 10,000 most recently seen."), created_at: ms("Created."), updated_at: nms("Updated."),
+  position: int("0 is evaluated first."), customer_count: int("Customers this policy decides for (first match wins), counted over every customer of the project. 0 while `counts_are_counting`."), created_at: ms("Created."), updated_at: nms("Updated."),
 });
 const refundControl = obj({
   object: en(["refund_control"]), settings, default_policy: obj({ customer_count: int() }), policies: arr(policy),
-  templates: { type: "object", additionalProperties: rules, description: "The conditions each template starts with." }, counts_are_approximate: bool(),
+  templates: { type: "object", additionalProperties: rules, description: "The conditions each template starts with." }, counts_are_approximate: bool("Always false: counts are exact."), counts_are_counting: bool("True while a project above 5,000 customers is counted in the background for the first time; the counts are 0 until then."), counts_counted_at: nms("When the counts were made (now for a project counted in the request)."),
 }, ["object", "settings", "policies"]);
 const consumptionV1 = obj({
   accountTenure: int(), appAccountToken: str(), consumptionStatus: int(), customerConsented: bool(), deliveryStatus: int(), lifetimeDollarsPurchased: int(),
@@ -216,7 +216,7 @@ Set this URL as the **initialize** URL of an Intercom Canvas Kit app for the Inb
   },
   [`${P}/winback_campaigns/{campaign_id}/actions/preview`]: {
     post: op({ ...x, id: "previewWinbackCampaign", tag: "Win-back", summary: "Who would get the email now", source: WB, scopes: PR, parameters: [project, id("campaign_id")],
-      responses: { 200: ok("Count and sample.", obj({ object: en(["winback_preview"]), eligible: int(), is_approximate: bool(), sample: arr(obj({ app_user_id: str(), email: str(), churned_at: ms("Access ended."), product_id: str(), store: str() })) })), ...E(404) } }),
+      responses: { 200: ok("Count and sample.", obj({ object: en(["winback_preview"]), eligible: int("Exact, over every customer. 0 while `is_counting`."), is_approximate: bool("Always false."), is_counting: bool("True while a project above 5,000 customers is counted in the background for the first time."), counted_at: nms("When the count was made."), sample: arr(obj({ app_user_id: str(), email: str(), churned_at: ms("Access ended."), product_id: str(), store: str() })) })), ...E(404) } }),
   },
   [`${P}/winback_campaigns/{campaign_id}/actions/send_test`]: {
     post: op({ ...x, id: "sendWinbackTest", tag: "Win-back", summary: "Send a test email", source: WB, scopes: PW, parameters: [project, id("campaign_id")],
@@ -236,8 +236,8 @@ Set this URL as the **initialize** URL of an Intercom Canvas Kit app for the Inb
   },
   [`${P}/customer_lists`]: {
     get: op({ ...x, id: "listCustomerList", tag: "Customer lists", summary: "Customers in a list, with the summary cards", source: CL, scopes: CR, parameters: [project, ...listQuery, ...page],
-      description: "Built-in lists or a saved audience, optionally filtered by audience rules and a search. Looks at the 10,000 most recently seen customers (`summary.is_approximate` when there are more).",
-      responses: { 200: ok("Rows and the summary.", { ...listOf(listRow), properties: { ...listOf(listRow).properties, summary: obj({ object: str(), customers: int(), trialing_subscribers: int(), paid_subscribers: int(), total_revenue_in_usd: num(), is_approximate: bool() }) } }), ...v2Errors(400, 401, 403, 404) } }),
+      description: "Built-in lists or a saved audience, optionally filtered by audience rules and a search. Covers every customer of the project. Built-in lists, search and sorting are SQL; audience rules are checked a page of customers at a time. The summary is exact: a project above 5,000 customers with audience rules is counted in the background (`summary.is_counting` until the first count, then `summary.counted_at`).",
+      responses: { 200: ok("Rows and the summary.", { ...listOf(listRow), properties: { ...listOf(listRow).properties, summary: obj({ object: str(), customers: int(), trialing_subscribers: int(), paid_subscribers: int(), total_revenue_in_usd: num(), is_approximate: bool("Always false: the cards are exact."), is_counting: bool("True while the first background count runs; the cards are 0 until then."), counted_at: nms("When the cards were counted.") }) } }), ...v2Errors(400, 401, 403, 404) } }),
   },
   [`${P}/customer_lists/export`]: {
     get: op({ ...x, id: "exportCustomerList", tag: "Customer lists", summary: "Export a list as CSV", source: CL, scopes: CR, parameters: [project, ...listQuery],
