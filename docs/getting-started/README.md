@@ -1,11 +1,11 @@
 ---
 title: What is RevenueDot?
-description: RevenueDot is an open-source backend for in-app purchases and subscriptions on the App Store, Google Play, Amazon, Stripe and the web. Install the RevenueDot SDK and start free on RevenueDot Cloud.
+description: RevenueDot is an open-source backend for in-app purchases and subscriptions on the App Store, Google Play, Amazon, Stripe and the web. Install the RevenueDot SDK and start for free on RevenueDot Cloud.
 ---
 
 # What is RevenueDot?
 
-RevenueDot is an open-source backend for in-app purchases and subscriptions on the App Store, Google Play, Amazon, Stripe and the web. You install the RevenueDot SDK in your app. RevenueDot then checks every purchase with the store, keeps each customer's access in sync and tells your backend what happened. The quickest start is **RevenueDot Cloud**: [create a free account](https://app.revenuedot.app/signup). Cloud is free until your app makes $10,000 a month in tracked revenue.
+RevenueDot is an open-source backend for in-app purchases and subscriptions on the App Store, Google Play, Amazon, Stripe and the web. You install the RevenueDot SDK in your app. RevenueDot then checks every purchase with the store, keeps each customer's access in sync and tells your backend what happened. The quickest start is **RevenueDot Cloud**: [start for free](https://app.revenuedot.app/signup). Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month.
 
 ```swift
 // iOS: install the RevenueDot SDK, then pass your app's key. On RevenueDot Cloud that is all the setup.
@@ -31,12 +31,12 @@ The RevenueDot SDK is built from RevenueCat's open-source SDK (MIT license), so 
 - **It sells beyond the app stores.** [Web checkout](../guides/web-billing.md) runs on your own Stripe account, and in-app currencies let you sell credits.
 - **It gives you APIs and a dashboard.** REST APIs (v1 and v2) and a web dashboard manage the catalog, customers, apps, API keys and webhooks.
 
-## RevenueDot is open source, and Cloud is free until $10,000 a month
+## RevenueDot is open source, and Cloud Pro is free until your apps make $10,000 a month
 | | RevenueDot |
 |---|---|
 | Source code | Open source: the server and dashboard are AGPL-3.0 ([repository](https://github.com/revenuedot/revenuedot)), and the SDKs are MIT |
 | Where it runs | RevenueDot Cloud at `https://api.revenuedot.app` |
-| Price | RevenueDot Cloud is free until your app makes $10,000 a month in tracked revenue (store revenue before Apple and Google take their cut). Above that, Cloud Standard is 0.5% of the revenue above $10,000, capped at $999 a month. Enterprise starts at $50,000 a year |
+| Price | RevenueDot Cloud Pro is free until your apps make $10,000 a month, then 0.5% of revenue above that, never more than $999 a month; Enterprise is custom. See [Cloud billing](../guides/cloud-billing.md) |
 | App changes | Install the RevenueDot SDK and pass your app's key. |
 | Data | RevenueDot runs the database for you |
 

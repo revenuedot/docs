@@ -5,7 +5,7 @@ description: Create a SCIM token, paste it and the base URL into Okta or Microso
 
 # How do I provision RevenueDot users and groups with SCIM?
 
-SCIM is part of [RevenueDot Enterprise](enterprise.md), on Cloud and self-hosted. Cloud Standard does not include it. Your identity provider creates people in your RevenueDot organization, keeps their details current, pushes groups, and deactivates people when they leave. **Group role mappings** turn those groups into project roles. Deactivating someone removes their access to the organization's projects and signs them out at once.
+SCIM is part of [RevenueDot Enterprise](enterprise.md), on Cloud and self-hosted. Pro includes single sign-on; SCIM needs Enterprise. Your identity provider creates people in your RevenueDot organization, keeps their details current, pushes groups, and deactivates people when they leave. **Group role mappings** turn those groups into project roles. Deactivating someone removes their access to the organization's projects and signs them out at once.
 
 RevenueDot follows SCIM 2.0 ([RFC 7643](https://datatracker.ietf.org/doc/html/rfc7643), [RFC 7644](https://datatracker.ietf.org/doc/html/rfc7644)) and accepts the request forms Okta and Microsoft Entra ID send. RevenueCat offers SCIM only on its Enterprise plan, through WorkOS ([SSO](https://www.revenuecat.com/docs/projects/sso)).
 

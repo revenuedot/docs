@@ -136,7 +136,7 @@ Details that matter:
 
 Status today: the signature format is checked by contract tests that verify it with the key's public half, and no promotional offer has been redeemed on a real device against RevenueDot yet. Run one sandbox purchase before you ship ([sandbox testing](sandbox-testing-in-app-purchases.md)).
 
-[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue). See the [App Store store page](https://revenuedot.app/stores/app-store), [win-back feature page](https://revenuedot.app/features/win-back) and [iOS SDK guide](https://revenuedot.app/sdks/ios).
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Pro costs $0 until your apps make $10,000 a month. See the [App Store store page](https://revenuedot.app/stores/app-store), [win-back feature page](https://revenuedot.app/features/win-back) and [iOS SDK guide](https://revenuedot.app/sdks/ios).
 
 ## FAQ
 
@@ -160,4 +160,4 @@ Up to 10 active at once ([Apple](https://developer.apple.com/help/app-store-conn
 
 No. A win-back offer is for lapsed subscribers on iOS 18 and later, Apple shows it in several places, and it needs no signature. A promotional offer is shown by your app and needs one ([RevenueDot](https://revenuedot.app/docs/guides/win-back-offers)).
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

@@ -133,7 +133,7 @@ Example 200 response:
 
 `POST /v2/organizations` · Auth: dashboard session · RevenueDot extension
 
-You become its owner. On RevenueDot Cloud this needs Cloud Standard or Enterprise. `region` defaults to this deployment's region; another region needs data location in the licence or plan and must be one of `selectable_regions` (403 or 400 otherwise). A licence with an organization limit answers 403 once the server has that many organizations.
+You become its owner. On RevenueDot Cloud this needs Pro or Enterprise. `region` defaults to this deployment's region; another region needs data location in the licence or plan and must be one of `selectable_regions` (403 or 400 otherwise). A licence with an organization limit answers 403 once the server has that many organizations.
 
 **Request body** (`application/json`)
 
@@ -2921,11 +2921,11 @@ The shapes the operations above send and return.
 |---|---|---|---|
 | `object` | `"enterprise"` | yes |  |
 | `mode` | `licensed`, `development`, `invalid`, `cloud` | yes | `licensed`: a valid licence key. `development`: `REVENUEDOT_EE_DEV=true`, for development and testing only. `invalid`: a key that failed or expired more than 14 days ago; no feature is on. `cloud`: RevenueDot Cloud, where the account's plan decides the features. |
-| `plan` | `free`, `standard`, `enterprise` | no | RevenueDot Cloud only: the signed-in account's plan. Absent on a self-hosted server. |
+| `plan` | `none`, `pro`, `enterprise` | no | RevenueDot Cloud only: the signed-in account's plan; `none` until it starts Pro. Absent on a self-hosted server. |
 | `features` | array of `organizations`, `custom_roles`, `sso`, `scim`, `data_location`, `audit_retention`, `compliance_exports` | yes | The features that are on. On RevenueDot Cloud, the features of the account's plan. |
 | `locked` | array of object | no | Features that are off, each with the plan that has it. |
 | `locked[].feature` | `organizations`, `custom_roles`, `sso`, `scim`, `data_location`, `audit_retention`, `compliance_exports` | yes |  |
-| `locked[].plan` | `standard`, `enterprise` | yes | The cheapest plan that has the feature: `standard` (upgrade in Billing) or `enterprise` (contact sales). Always `enterprise` on a self-hosted server. |
+| `locked[].plan` | `pro`, `enterprise` | yes | The cheapest plan that has the feature: `pro` (Start Pro in Billing) or `enterprise` (contact sales). Always `enterprise` on a self-hosted server. |
 | `licensee` | string or null | no | Who the licence is for. |
 | `expires_at` | integer or null | no | When the licence expires. Features keep working for 14 days after it. Epoch milliseconds, or null. |
 | `message` | string or null | no | Why the licence is invalid, or a renewal warning. |
@@ -2951,10 +2951,10 @@ The shapes the operations above send and return.
 | `member_count` | integer | no | Active members. |
 | `project_count` | integer | no |  |
 | `features` | array of string | no | The enterprise features this organization has: the licence's on a self-hosted server, its plan's on RevenueDot Cloud. |
-| `plan` | `free`, `standard`, `enterprise` | no | RevenueDot Cloud only: the best plan among the organization's owners, which decides its features. Absent on a self-hosted server. |
+| `plan` | `none`, `pro`, `enterprise` | no | RevenueDot Cloud only: the best plan among the organization's owners, which decides its features; `none` when no owner has Pro or Enterprise. Absent on a self-hosted server. |
 | `locked` | array of object | no | Features the organization lacks (its plan on RevenueDot Cloud, the licence on a self-hosted server), each with the plan that has it. The dashboard still shows them, with that note. |
 | `locked[].feature` | `organizations`, `custom_roles`, `sso`, `scim`, `data_location`, `audit_retention`, `compliance_exports` | yes |  |
-| `locked[].plan` | `standard`, `enterprise` | yes | The cheapest plan that has the feature: `standard` (upgrade in Billing) or `enterprise` (contact sales). Always `enterprise` on a self-hosted server. |
+| `locked[].plan` | `pro`, `enterprise` | yes | The cheapest plan that has the feature: `pro` (Start Pro in Billing) or `enterprise` (contact sales). Always `enterprise` on a self-hosted server. |
 | `created_at` | integer | no | Creation time. Epoch milliseconds. |
 | `updated_at` | integer | no | Last change. Epoch milliseconds. |
 
@@ -3180,11 +3180,12 @@ A SCIM 2.0 User (RFC 7643). Other attributes you send, such as `phoneNumbers` an
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `object` | `"error"` | yes |  |
-| `type` | `parameter_error`, `resource_already_exists`, `resource_missing`, `idempotency_error`, `rate_limit_error`, `authentication_error`, `authorization_error`, `store_error`, `server_error`, `resource_locked_error`, `unprocessable_entity_error`, `invalid_request`, `entity_references_archived_entities` | yes |  |
+| `type` | `parameter_error`, `resource_already_exists`, `resource_missing`, `idempotency_error`, `rate_limit_error`, `authentication_error`, `authorization_error`, `store_error`, `server_error`, `resource_locked_error`, `unprocessable_entity_error`, `invalid_request`, `entity_references_archived_entities`, `plan_required` | yes |  |
 | `message` | string | yes | What went wrong. |
 | `param` | string | no | The request field at fault, when there is one. |
 | `doc_url` | string | yes | Link to the error's section of the errors page. |
 | `retryable` | boolean | yes | True when retrying the same request can succeed. |
+| `upgrade_url` | string | no | Only on `plan_required`: the Billing page where the owner starts Pro. |
 
 ## Related
 

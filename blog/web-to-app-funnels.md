@@ -21,7 +21,7 @@ This post covers the flow, how to build each step in RevenueDot, how redemption 
 - **Attribution:** every funnel event carries the ad click ids from the landing URL (`fbclid`, `gclid`, `ttclid` and others), and RevenueDot builds Meta's `fbc` value from `fbclid`.
 - **TikTok:** RevenueDot records `ttclid` but has no TikTok connector. Send the event to TikTok's Events API from a webhook handler.
 - **Rules:** inside an app, Apple's guideline 3.1.1(a) decides where you may link to the web. In the US storefront no entitlement is needed.
-- **Cost:** RevenueDot Cloud is free up to $10,000 of monthly tracked revenue. Stripe charges its own fees.
+- **Cost:** RevenueDot Cloud Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. Stripe charges its own fees.
 
 ## Why build the purchase on the web?
 
@@ -126,7 +126,7 @@ Read it in this order: the step with the highest drop-off first, then paywall to
 5. Turn on funnel events for Meta or Google, and a webhook for TikTok.
 6. Run a test-mode purchase, then send traffic.
 
-[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue). A single-page option, a [purchase link](https://revenuedot.app/features/purchase-links), skips the steps. The [web-to-app solution page](https://revenuedot.app/solutions/web-to-app) gives the overview.
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Pro costs $0 until your apps make $10,000 a month. A single-page option, a [purchase link](https://revenuedot.app/features/purchase-links), skips the steps. The [web-to-app solution page](https://revenuedot.app/solutions/web-to-app) gives the overview.
 
 ## FAQ
 
@@ -150,4 +150,4 @@ In the US storefront, Apple's guidelines say no entitlement is needed for button
 
 The SDK answers `expired`, and RevenueDot emails a new link, at most once an hour per purchase. If the buyer gave no email, no message is sent and they should contact support.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

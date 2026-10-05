@@ -1,7 +1,7 @@
 // RevenueDot: the open-source RevenueCat alternative. Same SDK API, free to start on RevenueDot Cloud.
 // This file: full exports and moves between RevenueDot servers (source and target side), and RevenueDot Cloud billing. All are RevenueDot extensions.
 // Docs: https://revenuedot.app/docs/guides/move-projects   https://revenuedot.app/docs/guides/cloud-billing
-import { NONE, SECRET, SESSION, arr, body, bool, en, int, listOf, ms, nms, nstr, num, obj, ok, op, param, str, v2Errors } from "./common.mjs";
+import { NONE, SECRET, SESSION, arr, billingGate, body, bool, en, int, listOf, ms, nms, nstr, num, obj, ok, op, param, str, v2Errors } from "./common.mjs";
 
 const P = "/v2/projects/{project_id}";
 const project = param("ProjectId");
@@ -156,27 +156,29 @@ export const movePaths = {
   },
 
   "/v2/billing": {
-    get: op({ extension: true, security: SESSION, id: "getBilling", tag: "Cloud billing", summary: "The account's plan, usage and invoices", source: BILLING,
-      description: "RevenueDot Cloud only; a self-hosted server answers 404. Tracked revenue is the USD sum of the month's production purchases, renewals and one-time purchases in the projects the account owns.",
+    get: op({ extension: true, security: SESSION, id: "getBilling", tag: "Cloud billing", summary: "The account's plan, go-live stage, usage and invoices", source: BILLING,
+      description: "RevenueDot Cloud only; a self-hosted server answers 404. Tracked revenue is the USD sum of the month's production purchases, renewals and one-time purchases that earned money in the projects the account owns; sandbox, trials, refunds and imported or moved-in history do not count. Add `?sync=1` after Stripe Checkout to read Stripe at once (at most once every 5 seconds).",
+      parameters: [{ name: "sync", in: "query", schema: en(["1"]), description: "`1`: read the subscription from Stripe now, so a new plan shows before the webhook lands." }],
       responses: { 200: ok("Billing.", obj({
         object: en(["billing"]), edition: en(["cloud"]),
-        account: obj({ plan: en(["free", "standard", "enterprise"]), status: en(["none", "active", "past_due", "unpaid", "canceled"]), cancel_at: nms("A cancelled plan ends."), current_period_end: nms("Period end."), has_payment_method: bool() }),
-        plans: arr(obj({ id: str(), name: str(), rate: num("Share of tracked revenue above free_up_to_usd."), free_up_to_usd: num(), cap_usd: { type: ["number", "null"] }, limit_usd: { type: ["number", "null"] } })),
-        usage: obj({ month: str("YYYY-MM (UTC)."), tracked_revenue_usd: num(), projects: arr(obj({ project_id: str(), name: str(), tracked_revenue_usd: num(), transactions: int() })), bill_usd: num("The bill so far on the current plan."), standard_bill_usd: num("What Cloud Standard would cost."), free_limit_usd: num(), cap_usd: num(), ceiling_usd: num(), period_end: ms("Month end.") }),
-        flags: arr(en(["past_due", "unpaid", "over_free_limit", "over_standard_limit"])),
+        account: obj({ plan: en(["none", "pro", "enterprise"], "`none` until the account starts Pro: the build stage, not a plan anyone picks."), status: en(["none", "active", "past_due", "unpaid", "canceled"], "The Stripe subscription's state. `past_due` keeps Pro while Stripe retries; `unpaid` and `canceled` mean no plan."), cancel_at: nms("A cancelled plan ends."), current_period_end: nms("Period end."), has_payment_method: bool("A Stripe customer exists for the account.") }),
+        gate: obj({ ...billingGate.properties, grace_days: int("Days to start Pro after the first live sale: 14.") }),
+        plans: arr(obj({ id: en(["pro", "enterprise"]), name: str(), price_label: str(), description: str(), rate: num("Share of tracked revenue above free_up_to_usd (0.005 is 0.5%)."), free_up_to_usd: num("Tracked revenue a month that costs nothing."), cap_usd: { type: ["number", "null"], description: "Most a month can cost; null: no cap." }, limit_usd: { type: ["number", "null"], description: "Tracked revenue a month the plan is meant for; null: no limit." }, self_serve: bool("Started with Stripe Checkout (Pro), not by contract (Enterprise)."), includes: arr(str(), { description: "What the plan includes, one line each." }) })),
+        usage: obj({ month: str("YYYY-MM (UTC)."), tracked_revenue_usd: num(), projects: arr(obj({ project_id: str(), name: nstr(), tracked_revenue_usd: num(), transactions: int() })), computed_at: nms("When the numbers were last computed (about once an hour)."), bill_usd: num("The bill so far on the current plan: 0 with no plan or on Enterprise."), pro_bill_usd: num("What Pro costs for this month's tracked revenue."), free_up_to_usd: num("Tracked revenue a month that Pro does not charge for: 10000."), cap_usd: num("Pro's cap: 999."), ceiling_usd: num("Tracked revenue a month Pro is meant for: 1000000."), period_end: ms("Month end.") }),
+        flags: arr(en(["past_due", "unpaid", "live_grace", "live_paused", "over_pro_limit"]), { description: "Banners to show: a failed payment (`past_due`), every retry failed (`unpaid`), live without a plan inside the 14 days (`live_grace`) or after them (`live_paused`), and tracked revenue above Pro's $1,000,000 a month (`over_pro_limit`)." }),
         invoices: arr(obj({ id: str(), number: nstr(), status: str(), amount_due: num(), amount_paid: num(), currency: str(), period_start: nms("Start."), period_end: nms("End."), hosted_invoice_url: nstr(), invoice_pdf: nstr(), created_at: ms("Created.") })),
         stripe_ready: bool("Checkout and the Portal can open."), stripe_problem: nstr(),
       })), 401: plain("Not signed in."), 404: plain("Self-hosted: billing is only on RevenueDot Cloud.") } }),
   },
   "/v2/billing/checkout": {
-    post: op({ extension: true, security: SESSION, id: "createBillingCheckout", tag: "Cloud billing", summary: "Upgrade to Cloud Standard with Stripe Checkout", source: BILLING,
-      description: "A Stripe Checkout session on RevenueDot's own Stripe account: the metered Standard price, billing from the 1st of next month, no proration.",
-      requestBody: body(obj({ plan: en(["standard"]) }, ["plan"]), { plan: "standard" }),
-      responses: { 200: ok("Go to url.", obj({ object: en(["checkout"]), url: str(), id: str() })), 400: plain("Only Standard has a self-serve checkout."), 401: plain("Not signed in."), 409: plain("Already on Standard."), 502: plain("Stripe refused."), 503: plain("Billing is not set up on this server.") } }),
+    post: op({ extension: true, security: SESSION, id: "createBillingCheckout", tag: "Cloud billing", summary: "Start Pro with Stripe Checkout", source: BILLING,
+      description: "A Stripe Checkout session on RevenueDot's own Stripe account: the metered Pro price, a card collected and $0 due today, billed monthly on the 1st from the 1st of next month, no proration. `standard`, Pro's old name, is still accepted.",
+      requestBody: body(obj({ plan: en(["pro"]) }, ["plan"]), { plan: "pro" }),
+      responses: { 200: ok("Go to url.", obj({ object: en(["checkout"]), url: str(), id: str() })), 400: plain("Only Pro has a self-serve checkout; Enterprise is through sales."), 401: plain("Not signed in."), 403: plain("The request did not come from the dashboard."), 409: plain("Already on Pro or on Enterprise."), 502: plain("Stripe refused."), 503: plain("Billing is not set up on this server.") } }),
   },
   "/v2/billing/portal": {
     post: op({ extension: true, security: SESSION, id: "createBillingPortal", tag: "Cloud billing", summary: "Open the Stripe Customer Portal", source: BILLING,
-      description: "Change the card, see invoices or cancel at period end.",
+      description: "Change the card, see invoices or cancel at period end. A cancelled Pro plan ends at the period end; the account then has no plan, and a live account is paused at once.",
       responses: { 200: ok("Go to url.", obj({ object: en(["portal"]), url: str() })), 401: plain("Not signed in."), 409: plain("No payment method yet."), 502: plain("Stripe refused."), 503: plain("Billing is not set up on this server.") } }),
   },
   "/v2/billing/stripe/webhook": {

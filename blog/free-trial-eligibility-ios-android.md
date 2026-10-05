@@ -156,7 +156,7 @@ RevenueDot is an open-source server that speaks the RevenueCat SDK's API. You ke
 
 A real App Store sandbox purchase has run end to end against RevenueDot (2026-10-02), but Google Play has not yet, so test each store in its sandbox before launch. RevenueCat is free up to $2,500 in monthly tracked revenue, then 1% ([RevenueCat](https://www.revenuecat.com/pricing)), and the [fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator) works out your bill. See the [RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) and [pricing](https://revenuedot.app/pricing).
 
-[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue).
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Pro costs $0 until your apps make $10,000 a month.
 
 ## FAQ
 
@@ -176,4 +176,4 @@ No. Both the property and the `isEligibleForIntroOffer(for:)` method list iOS 15
 
 Play tells them they are not eligible and lets them buy the base plan instead ([Android Developers](https://developer.android.com/google/play/billing/integrate)). Load product details when the paywall opens, so it shows current offers.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

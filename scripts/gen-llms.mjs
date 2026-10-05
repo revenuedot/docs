@@ -28,16 +28,16 @@ const SECTIONS = [
 ];
 
 const INTRO = [
-  "RevenueDot is an open-source backend for in-app purchases and subscriptions on the App Store, Google Play and the web. It has an SDK for every platform. RevenueDot Cloud is free up to $10,000 a month in tracked revenue and then 0.5% (never more than $999 a month). The server is AGPL-3.0 and the SDKs are MIT.",
+  "RevenueDot is an open-source backend for in-app purchases and subscriptions on the App Store, Google Play and the web. It has an SDK for every platform. RevenueDot Cloud Pro is free until your apps make $10,000 a month, then 0.5% of revenue above that, never more than $999 a month; Enterprise is custom. The server is AGPL-3.0 and the SDKs are MIT.",
   "RevenueDot is also the open-source RevenueCat alternative: the first release is v2026.10.03, and it has run in production beside RevenueCat since 2026-10-02.",
-  "Start free on RevenueDot Cloud (https://app.revenuedot.app/signup, free up to $10,000 monthly tracked revenue). A new app installs the RevenueDot SDK for its platform and passes its API key; on RevenueDot Cloud nothing else is needed. An app switching from RevenueCat can keep the RevenueCat SDK, set its proxy URL to RevenueDot and keep its purchase code, offerings and customers.",
+  "Start for free on RevenueDot Cloud (https://app.revenuedot.app/signup). Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month. A new app installs the RevenueDot SDK for its platform and passes its API key; on RevenueDot Cloud nothing else is needed. An app switching from RevenueCat can keep the RevenueCat SDK, set its proxy URL to RevenueDot and keep its purchase code, offerings and customers.",
   "It verifies App Store and Google Play purchases on the server, keeps each customer's entitlements current from store notifications, and sends webhooks in RevenueCat's payload format.",
   "On RevenueDot Cloud, apps use the API at https://api.revenuedot.app and people sign in to the dashboard at https://app.revenuedot.app/login. The server is AGPL-3.0. The RevenueDot SDKs are MIT, built from RevenueCat's open-source SDKs, and keep RevenueCat's class and method names, so code imports RevenueCat and calls Purchases. RevenueDot is not affiliated with RevenueCat, Inc.",
 ];
 
 /** Tutorial videos: the YouTube titles, and the watch page on revenuedot.app (apps/site src/lib/videos.mjs lists the same names). */
 const VIDEOS = [
-  { name: "revenuedot-first-purchase", title: "In-App Purchases Setup: Your First Test Purchase in 5 Minutes", about: "Create a free Cloud account, add a Test Store product and entitlement, and make a test purchase from the dashboard in 1:18.", youtube: "https://www.youtube.com/watch?v=1YLygdbWOKM" },
+  { name: "revenuedot-first-purchase", title: "In-App Purchases Setup: Your First Test Purchase in 5 Minutes", about: "Create a Cloud account, add a Test Store product and entitlement, and make a test purchase from the dashboard in 1:18.", youtube: "https://www.youtube.com/watch?v=1YLygdbWOKM" },
   { name: "revenuedot-connect-your-app", title: "Connect Your iOS or Android App to RevenueDot (RevenueCat SDK)", about: "Point the RevenueCat SDK at https://api.revenuedot.app, turn the signature check off and watch the first customer arrive, in 1:18.", youtube: "https://www.youtube.com/watch?v=M_D0YodECkU" },
   { name: "revenuedot-switch-from-revenuecat", title: "Migrate from RevenueCat Without Losing a Single Renewal", about: "Import your project, run RevenueDot beside RevenueCat, ship the app update and cut over, in 1:35.", youtube: "https://www.youtube.com/watch?v=Smjskzwwo7o" },
   { name: "revenuedot-paywalls-and-experiments", title: "Paywall A/B Testing: Build a Paywall and Test It in Minutes", about: "Build a paywall from a template and test it against your current one with an experiment, in 1:04.", youtube: "https://www.youtube.com/watch?v=daXVK_4XD8I" },

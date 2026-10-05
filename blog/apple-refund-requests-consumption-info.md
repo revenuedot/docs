@@ -150,13 +150,13 @@ If you prefer to write it, the pieces are:
 
 ## Do it with RevenueDot
 
-1. [Create a free account](https://app.revenuedot.app/signup) and add your App Store app, with its In-App Purchase key.
+1. [Create an account](https://app.revenuedot.app/signup) and add your App Store app, with its In-App Purchase key.
 2. Set the notification URL in App Store Connect as Version 2, for production and sandbox.
 3. Add the consent wording to your terms, then tick the consent box in **Lifecycle, Refund control**.
 4. Create your policies, with a default policy last.
 5. Watch the **Refund requests** table for your first requests.
 
-[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup)
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup)
 
 ## FAQ
 
@@ -180,4 +180,4 @@ Apple declined the refund request. It is the notification you get when a request
 
 No. Google Play has no consumption API. Refunds and chargebacks arrive as voided purchases and there is nothing to answer.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

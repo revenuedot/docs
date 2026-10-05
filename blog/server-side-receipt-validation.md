@@ -143,7 +143,7 @@ Add a daily job that checks Google's voided purchases and Apple's refund history
 | Restores and moving a purchase between users | Decide the rules | Four restore rules, you choose |
 | Webhooks to your own backend, with retries | Build the delivery system | Signed webhooks with retries |
 | Dashboard, charts and customer lookup | Build or skip | Included |
-| Cost | Your engineering time | Free to $10,000 a month on Cloud |
+| Cost | Your engineering time | Cloud Pro: $0 until your apps make $10,000 a month, then 0.5% above that, never more than $999 a month |
 
 Building is a reasonable choice if you have one store, a simple catalog and engineers who want to own it. The risk is in the edges: a grace period you forgot, a refund that arrives late, a restore that gives access to the wrong account. Those are the cases a mature server has already met.
 
@@ -162,13 +162,13 @@ Whatever backend you choose, run a sandbox purchase on each store before you shi
 
 ## Do it with RevenueDot
 
-1. [Create a free account](https://app.revenuedot.app/signup).
+1. [Create an account](https://app.revenuedot.app/signup).
 2. Add your App Store app with the In-App Purchase key ([guide](https://revenuedot.app/docs/guides/app-store)) and your Google Play app with the service account ([guide](https://revenuedot.app/docs/guides/google-play)).
 3. Set the notification URLs in both stores.
 4. Point the SDK's proxy URL at `https://api.revenuedot.app`.
 5. Make a sandbox purchase and check the customer in the dashboard.
 
-[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup)
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup)
 
 ## FAQ
 
@@ -192,4 +192,4 @@ The server in those products does it. The SDK posts the purchase, and the backen
 
 You can check locally on the device, but Apple's comparison says server-side validation adds subscription information and resists device clock changes. For anything that grants paid access across devices, use a server.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

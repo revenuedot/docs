@@ -131,7 +131,7 @@ Point both the App Store sandbox and production notification URLs at the same Re
 
 The unmodified RevenueCat iOS and Android SDKs pass Test Store purchases against RevenueDot on a simulator and an emulator in its test suite. If something looks wrong in your sandbox run, tell us on [GitHub](https://github.com/revenuedot/revenuedot/issues). See the [Test Store page](https://revenuedot.app/stores/test-store) and the [SwiftUI tutorial](swiftui-subscriptions-tutorial.md).
 
-[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue).
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Pro costs $0 until your apps make $10,000 a month.
 
 ## FAQ
 
@@ -155,4 +155,4 @@ Apps from TestFlight always run in the sandbox, but the sandbox controls appear 
 
 The store key, which starts with `appl_` for the App Store or `goog_` for Google Play. A `test_` key in a release build triggers a "Wrong API Key" alert and stops the app on purpose ([SwiftUI tutorial](swiftui-subscriptions-tutorial.md), [Test Store guide](https://revenuedot.app/docs/guides/test-store)).
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

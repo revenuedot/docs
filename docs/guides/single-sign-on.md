@@ -5,7 +5,7 @@ description: Verify your email domain with a DNS TXT record, connect Okta, Micro
 
 # How do I set up single sign-on for RevenueDot with SAML or OpenID Connect?
 
-Single sign-on (SSO) is part of RevenueDot Cloud Standard and Enterprise, and of self-hosted servers with an Enterprise licence key ([which plan has which feature](enterprise.md)). An organization admin does three things in **Organization settings → Single sign-on**:
+Single sign-on (SSO) is included with Pro on Cloud, or with an Enterprise licence when self-hosting ([which plan has which feature](enterprise.md)). An organization admin does three things in **Organization settings → Single sign-on**:
 
 1. **Verify your email domain** with a DNS TXT record.
 2. **Add a connection** to your identity provider (SAML 2.0 or OpenID Connect) and turn it on.
@@ -16,7 +16,7 @@ People then click **Continue with SSO** on the sign-in page and enter their work
 RevenueCat offers SSO only on its Enterprise plan, on request, through WorkOS ([SSO](https://www.revenuecat.com/docs/projects/sso)).
 
 ## Before you start
-- **On RevenueDot Cloud, Cloud Standard or Enterprise** for an owner of the organization. **On a self-hosted server, an Enterprise licence key with the `sso` feature,** or development mode. See [Turn it on](enterprise.md#turn-it-on).
+- **On RevenueDot Cloud, Pro or Enterprise** for an owner of the organization. **On a self-hosted server, an Enterprise licence key with the `sso` feature,** or development mode. See [Turn it on](enterprise.md#turn-it-on).
 - **An organization** with your projects in it ([Organizations](enterprise.md#organizations)).
 - **Self-hosted servers: set `REVENUEDOT_PUBLIC_URL`** to the address people use to open the dashboard, such as `https://revenuedot.example.com`. The SAML entity ID, the ACS URL, the OpenID Connect redirect URI and the SCIM base URL are built from it. Without it, RevenueDot builds them from the address of each request (`X-Forwarded-Host` behind a proxy), so they change if someone opens the dashboard under another name, and your identity provider then refuses the sign-in. On RevenueDot Cloud the addresses start with `https://app.revenuedot.app`.
 

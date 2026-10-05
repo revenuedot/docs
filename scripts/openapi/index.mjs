@@ -88,7 +88,7 @@ export const TAGS = [
   ["Test Store", "extensions", "Simulated purchases and lifecycles for development."],
   ["Dashboard data", "extensions", "Series and rows the dashboard shows."],
   ["Data moves", "extensions", "Full exports of a project and moves between RevenueDot servers (self-hosted and Cloud) that keep ids, SDK keys, secret keys and webhook secrets: export jobs and downloads, move states (paused, forwarded), the dashboard's server-run move, and the target side with an import token. See [Move projects and export everything](../docs/guides/move-projects.md)."],
-  ["Cloud billing", "extensions", "RevenueDot Cloud only: the account's plan, tracked revenue and invoices, Stripe Checkout and the Customer Portal on RevenueDot's own Stripe account. See [Cloud billing](../docs/guides/cloud-billing.md)."],
+  ["Cloud billing", "extensions", "RevenueDot Cloud only: the account's plan (Pro or Enterprise), its go-live stage, tracked revenue and invoices, Stripe Checkout to start Pro and the Customer Portal on RevenueDot's own Stripe account. See [Cloud billing](../docs/guides/cloud-billing.md)."],
   ["Migration import", "extensions", "Bulk import from RevenueCat, used by the `revenuedot import` CLI."],
   ["Web billing", "extensions", "Sell on the web through your own Stripe account: web providers and the setup checklist, the web config (checkout look, success page, deep link scheme), web products created in Stripe, web discounts with RevenueDot's extra settings, and the project's web address and custom domain. See [Sell on the web with Stripe](../docs/guides/web-billing.md)."],
   ["Stripe Connect", "extensions", "Connect a Stripe app to the developer's own Stripe account through RevenueDot's Stripe Connect platform (OAuth or Account Links), without a restricted key. See [Connect with Stripe](../docs/guides/stripe-connect.md)."],
@@ -112,6 +112,47 @@ export const TAGS = [
 
 const tags = () => TAGS.map(([name, page, description]) => ({ name, description, "x-page": page }));
 
+/**
+ * The go-live gate on RevenueDot Cloud (apps/server/src/routes/v2/live-gate.ts, needsPlan): these project routes answer 402
+ * plan_required while the project's owner is paused. Reads of live data (any method), record lists and records (GET), and
+ * edits of paywalls, experiments and targeting (not GET). Sandbox reads and secret-key reads of one record are let through.
+ */
+const GATE_DATA = new Set(["metrics", "charts", "attribution", "benchmarks", "customer_lists", "transactions", "events", "overview", "stats", "customer_summaries", "ads", "payment_recovery", "winback_campaigns"]);
+const GATE_AI = new Set(["conversations", "insights", "first_sale", "files", "actions", "mentions"]);
+const GATE_RECORDS = new Set(["customers", "subscriptions", "purchases"]);
+const GATE_EDIT = new Set(["paywalls", "experiments", "targeting_rules"]);
+// revenuedot apps/server/src/routes/v2/live-gate.ts `needsPlan`, for a dashboard session with no query (the widest case):
+// an operation that can answer 402 plan_required documents it.
+function needsPlan(method, rest) {
+  const [head, second] = rest;
+  if (!head) return false;
+  const read = method === "get" || method === "head";
+  if (head === "integrations" && second === "exports") return true;
+  if (head === "benchmarks" && second === "settings") return false;
+  if (head === "payment_recovery" && !second) return false;
+  if (head === "ads" && second !== "overview" && second !== "apple_search_ads") return false;
+  if (head === "ads" && second === "apple_search_ads" && !read) return false;
+  if (head === "winback_campaigns" && rest.length === 2 && (method === "post" || method === "delete")) return false;
+  if (GATE_DATA.has(head)) return true;
+  if (head === "ai") return !!second && GATE_AI.has(second);
+  if (head === "audiences") return !read;
+  if (GATE_RECORDS.has(head)) return read;
+  if (GATE_EDIT.has(head)) return !read;
+  return false;
+}
+
+function withPlanRequired(paths) {
+  for (const [path, item] of Object.entries(paths)) {
+    if (!path.startsWith("/v2/projects/{project_id}/")) continue;
+    const rest = path.split("/").slice(4).filter(Boolean);
+    for (const [method, o] of Object.entries(item)) {
+      if (!o?.responses || o.responses["402"]) continue;
+      if (needsPlan(method, rest)) o.responses = { ...o.responses, 402: { $ref: "#/components/responses/V2Error402" } };
+    }
+  }
+  return paths;
+}
+
 export function buildDocument() {
   return {
     openapi: "3.1.0",
@@ -120,7 +161,7 @@ export function buildDocument() {
       version: "0.1.0",
       summary: "Open-source backend for in-app purchases that works with the RevenueCat SDK, free to start on RevenueDot Cloud.",
       description: [
-        "RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on RevenueDot Cloud: https://app.revenuedot.app/signup",
+        "RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start for free on RevenueDot Cloud: https://app.revenuedot.app/signup",
         "One server answers four APIs: the SDK endpoints the RevenueCat SDKs call (`/v1`, public app keys), REST API v1 (`/v1`, secret keys), REST API v2 (`/v2`, secret keys or a dashboard session) with RevenueDot extensions, and store notification endpoints.",
         "Paths, fields and error formats follow RevenueCat's public API so existing SDKs, backends and scripts keep working. Operations marked `x-revenuedot-extension` exist only in RevenueDot.",
         "RevenueDot is not affiliated with RevenueCat, Inc. Docs: https://revenuedot.app/docs",
@@ -134,7 +175,7 @@ export function buildDocument() {
       { url: "https://{host}", description: "Your self-hosted RevenueDot", variables: { host: { default: "revenuedot.example.com" } } },
     ],
     tags: tags(),
-    paths: { ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...adsPaths, ...lifecyclePaths, ...webPaths, ...assistantPaths, ...insightsPaths, ...recoveryPaths, ...movePaths, ...productEditorPaths, ...settingsPathsAll, ...extensionPaths, ...accountPaths, ...enterprisePaths },
+    paths: withPlanRequired({ ...sdkPaths, ...v2Paths, ...v2MorePaths, ...v2RestPaths, ...paywallPaths, ...targetingPaths, ...chartPaths, ...integrationPaths, ...adsPaths, ...lifecyclePaths, ...webPaths, ...assistantPaths, ...insightsPaths, ...recoveryPaths, ...movePaths, ...productEditorPaths, ...settingsPathsAll, ...extensionPaths, ...accountPaths, ...enterprisePaths }),
     webhooks,
     components: { schemas: { ...schemas, ...targetingSchemas, ...webSchemas, ...productEditorSchemas, ...enterpriseSchemas }, parameters, responses, securitySchemes },
     security: [{ secretApiKey: [] }],

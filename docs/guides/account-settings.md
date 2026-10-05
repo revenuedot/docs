@@ -15,11 +15,11 @@ Open the project switcher at the top of the sidebar and choose **Account setting
 - **Delete account.** Type your email, your password and, with two-factor on, a code. RevenueDot deletes your account, your sessions, your two-factor settings, your notification choices, the OAuth keys listed under **Active OAuth tokens** and every project in which you are the only member. Projects other people use stay with them, and their audit log records that you left, with your email. Deletion is refused while:
   - you **own a project that has other members**: transfer ownership first in **Project settings → General** ([Project settings](project-settings.md)), or remove the members;
   - you are the **last admin** of a project with other members: make someone else an admin;
-  - a **Cloud Standard plan** is still active: cancel it on the Billing page first ([Cloud billing](cloud-billing.md));
+  - a **Pro plan** is still active: cancel it on the Billing page first, so you are not charged for a deleted account ([Cloud billing](cloud-billing.md));
   - you are the **only owner of an organization** that has other members: make someone else an owner of the organization first.
 
 ## Billing
-**Owned projects** lists the projects you own with your role, the number of members and the plan. The projects you belong to but do not own follow with their owner. On RevenueDot Cloud the plan, this month's tracked revenue, the bill so far and your invoices follow ([Cloud billing](cloud-billing.md)). Self-hosted servers are free and have no billing.
+**Owned projects** lists the projects you own with your role, the number of members and the owner's plan (Pro, Enterprise, or No plan). The projects you belong to but do not own follow with their owner. On RevenueDot Cloud the plan, this month's tracked revenue, the bill so far and your invoices follow ([Cloud billing](cloud-billing.md)). Self-hosted servers have no billing.
 
 ## Security
 - **Update password.** Enter the current password and the new one twice. Every other session is signed out, a sign-in that is waiting for its two-factor code has to start again, and you get an email. After 10 password checks in 15 minutes (here, in two-factor setup, email change or deletion), RevenueDot refuses more until 15 minutes after the first.

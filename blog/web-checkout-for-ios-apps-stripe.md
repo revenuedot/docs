@@ -137,14 +137,14 @@ Use a test-mode restricted key (`rk_test_...`). Purchases are then sandbox data,
 
 ## Do it with RevenueDot
 
-1. [Create a free account](https://app.revenuedot.app/signup). Cloud is free up to $10,000 in monthly tracked revenue.
+1. [Create an account](https://app.revenuedot.app/signup). Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month.
 2. Open **Web**, connect Stripe with a restricted key and add the webhook.
 3. Add a web config, create web products and put them in an offering with your App Store product.
 4. Create a purchase link or publish a funnel.
 5. Register your URL scheme and call `redeemWebPurchase` in the app.
 6. Run a test-mode purchase end to end.
 
-[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup)
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup)
 
 ## FAQ
 
@@ -168,4 +168,4 @@ Stripe's standard US card price is 2.9% plus 30 cents, and Stripe Billing is 0.7
 
 Not on the same terms. Apple's guideline restricts external purchase links in other storefronts, except where a StoreKit External Purchase Link Entitlement allows them. Check Apple's guidelines for the storefronts you serve.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
