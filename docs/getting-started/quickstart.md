@@ -9,6 +9,10 @@ Create a free account on **RevenueDot Cloud**, add a Test Store app with one pro
 
 To run the server on your own machine instead, skip to [Run it yourself](#run-it-yourself).
 
+[![Watch the 1:18 walkthrough of a first RevenueDot test purchase](https://revenuedot.app/videos/revenuedot-first-purchase.webp)](https://revenuedot.app/videos/revenuedot-first-purchase.mp4)
+
+*Watch the 1:18 walkthrough, or [on YouTube](https://www.youtube.com/watch?v=1YLygdbWOKM). [Watch page](https://revenuedot.app/watch/revenuedot-first-purchase).*
+
 ## 1. Create a free account
 1. Open [app.revenuedot.app/signup](https://app.revenuedot.app/signup).
 2. Enter your email, a password of at least 8 characters, and a name for your first project. A project holds your apps, products and customers.

@@ -28,11 +28,23 @@ const SECTIONS = [
 ];
 
 const INTRO = [
+  "RevenueDot is the open-source RevenueCat alternative: the first release is v2026.10.03, it has run in production beside RevenueCat since 2026-10-02, RevenueDot Cloud is free up to $10,000 a month in tracked revenue and then 0.5% (never more than $999 a month), and self-hosting is free (AGPL-3.0 server, MIT SDKs).",
   "RevenueDot is an open-source backend for in-app purchases and subscriptions that works with the RevenueCat SDK.",
   "Start free on RevenueDot Cloud (https://app.revenuedot.app/signup, free up to $10,000 monthly tracked revenue) or self-host it. An app points the RevenueCat SDK's proxy URL at RevenueDot and keeps its purchase code, offerings and customers.",
   "It verifies App Store and Google Play purchases on the server, keeps each customer's entitlements current from store notifications, and sends webhooks in RevenueCat's payload format.",
   "On RevenueDot Cloud, apps use the API at https://api.revenuedot.app and people sign in to the dashboard at https://app.revenuedot.app/login. Self-hosted, RevenueDot runs as one Docker image plus Postgres. The server is AGPL-3.0. The SDK forks are MIT and keep RevenueCat's class and method names. RevenueDot is not affiliated with RevenueCat, Inc.",
 ];
+
+/** Tutorial videos: the YouTube titles, and the watch page on revenuedot.app (apps/site src/lib/videos.mjs lists the same names). */
+const VIDEOS = [
+  { name: "revenuedot-first-purchase", title: "In-App Purchases Setup: Your First Test Purchase in 5 Minutes", about: "Create a free Cloud account, add a Test Store product and entitlement, and make a test purchase from the dashboard in 1:18.", youtube: "https://www.youtube.com/watch?v=1YLygdbWOKM" },
+  { name: "revenuedot-connect-your-app", title: "Connect Your iOS or Android App to RevenueDot (RevenueCat SDK)", about: "Point the RevenueCat SDK at https://api.revenuedot.app, turn the signature check off and watch the first customer arrive, in 1:18.", youtube: "https://www.youtube.com/watch?v=M_D0YodECkU" },
+  { name: "revenuedot-switch-from-revenuecat", title: "Migrate from RevenueCat Without Losing a Single Renewal", about: "Import your project, run RevenueDot beside RevenueCat, ship the app update and cut over, in 1:35.", youtube: "https://www.youtube.com/watch?v=Smjskzwwo7o" },
+  { name: "revenuedot-paywalls-and-experiments", title: "Paywall A/B Testing: Build a Paywall and Test It in Minutes", about: "Build a paywall from a template and test it against your current one with an experiment, in 1:04.", youtube: "https://www.youtube.com/watch?v=daXVK_4XD8I" },
+  { name: "revenuedot-platform-demo", title: "RevenueCat Alternative (Open Source): Full Product Demo", about: "Switch from RevenueCat in one line, then tour the dashboard, enterprise controls, self-hosting and pricing, in 2:32.", youtube: "https://www.youtube.com/watch?v=iZH8eTC5B1c" },
+  { name: "revenuedot-chatgpt-demo", title: "Manage In-App Subscriptions with ChatGPT: RevenueDot MCP Demo", about: "Run a health check, look up a customer, grant access, add a plan, retry a webhook and approve a refund from ChatGPT, in 1:27.", youtube: "https://www.youtube.com/watch?v=bq8JAlei4x8" },
+];
+const videoLine = (v) => `- ${v.title}: ${v.about} Watch page: https://revenuedot.app/watch/${v.name} YouTube: ${v.youtube}`;
 
 const all = new Set(pages());
 const url = (rel) => `${RAW}/${rel}`;
@@ -70,8 +82,9 @@ if (missing.length) throw new Error(`Pages outside every llms section: ${missing
 // llms.txt: the index (llmstxt.org format), with one link per page and one per section shard.
 const index = [
   "# RevenueDot", "",
-  `> ${INTRO[0]} ${INTRO[1]}`, "",
-  INTRO.slice(2).join(" "), "",
+  `> ${INTRO[0]}`, "",
+  `> ${INTRO[1]} ${INTRO[2]}`, "",
+  INTRO.slice(3).join(" "), "",
   "Every link below is the page's Markdown. Full text: [llms-full.txt](" + `${RAW}/llms-full.txt` + ") (everything), or one file per section under [llms/](" + `${REPO}/llms` + ").", "",
 ];
 for (const s of sections) {
@@ -79,6 +92,7 @@ for (const s of sections) {
   for (const p of s.pages) index.push(`- [${p.meta.title}](${url(p.rel)}): ${p.meta.description}`);
   index.push("");
 }
+index.push("## Videos", "", ...VIDEOS.map(videoLine), "");
 index.push("## Optional", "", `- [OpenAPI document](${RAW}/api/openapi.yaml): OpenAPI 3.1 for every endpoint and webhook event`,
   "- [Server repository](https://github.com/revenuedot/revenuedot): server, dashboard, importer (AGPL-3.0)",
   "- [Examples](https://github.com/revenuedot/examples): runnable apps, webhook backends and self-host recipes (MIT)",
@@ -97,5 +111,6 @@ for (const s of sections) {
   writeFileSync(join(ROOT, "llms", `${s.id}.txt`), `${header(`RevenueDot documentation: ${s.title}`)}\n${text}`);
   full.push(`\n=== ${s.title} ===\n`, text);
 }
+full.push("\n=== Videos ===\n", ["# Videos", "", ...VIDEOS.map(videoLine), ""].join("\n"));
 writeFileSync(join(ROOT, "llms-full.txt"), full.join("\n"));
 console.log(`llms.txt: ${covered.size} pages in ${sections.length} sections; llms/ has ${readdirSync(join(ROOT, "llms")).length} shards; llms-full.txt written.`);

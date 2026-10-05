@@ -15,7 +15,7 @@ Purchases.configure(with: Configuration.Builder(withAPIKey: "appl_...").with(ent
 
 [![Watch the 2½-minute demo of the RevenueDot platform](https://revenuedot.app/videos/revenuedot-platform-demo.webp)](https://revenuedot.app/videos/revenuedot-platform-demo.mp4)
 
-*Watch the 2½-minute demo: switch from RevenueCat in one line, import and verify your customers, then the dashboard, enterprise controls, self-hosting and pricing.*
+*Watch the 2:32 walkthrough, or [on YouTube](https://www.youtube.com/watch?v=iZH8eTC5B1c). [Watch page](https://revenuedot.app/watch/revenuedot-platform-demo).*
 
 > Every page states what exists today and what is planned. Current limits are listed in [Known issues](../help/known-issues.md).
 

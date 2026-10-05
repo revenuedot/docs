@@ -9,6 +9,10 @@ A paywall is the screen that sells your offering. RevenueDot serves paywalls in 
 
 The dashboard has three ways to start, a visual editor, translations, and a server check that every published paywall decodes in the SDK.
 
+[![Watch the 1:04 walkthrough of building a paywall and testing it](https://revenuedot.app/videos/revenuedot-paywalls-and-experiments.webp)](https://revenuedot.app/videos/revenuedot-paywalls-and-experiments.mp4)
+
+*Watch the 1:04 walkthrough, or [on YouTube](https://www.youtube.com/watch?v=daXVK_4XD8I). [Watch page](https://revenuedot.app/watch/revenuedot-paywalls-and-experiments).*
+
 ## Start a paywall
 
 Open **Paywalls** in the dashboard. You can start in three ways:

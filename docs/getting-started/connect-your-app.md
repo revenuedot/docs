@@ -7,6 +7,10 @@ description: Three ways. Proxy mode sets one URL in the RevenueCat SDK you alrea
 
 Set the RevenueCat SDK's proxy URL to RevenueDot (`https://api.revenuedot.app` for RevenueDot Cloud, or your own server) and turn its signature check off. That is **proxy mode**, and it works today with every SDK. Later you can swap in the **RevenueDot fork** of the SDK, which verifies RevenueDot's response signatures. When you migrate, the importer lets old app versions keep their **existing RevenueCat API keys**.
 
+[![Watch the 1:18 walkthrough of connecting an app to RevenueDot](https://revenuedot.app/videos/revenuedot-connect-your-app.webp)](https://revenuedot.app/videos/revenuedot-connect-your-app.mp4)
+
+*Watch the 1:18 walkthrough, or [on YouTube](https://www.youtube.com/watch?v=M_D0YodECkU). [Watch page](https://revenuedot.app/watch/revenuedot-connect-your-app).*
+
 | Way | What you change in the app | What you get | Status (2026-10-02) |
 |---|---|---|---|
 | [Proxy mode](#proxy-mode-one-setting-in-the-sdk-you-already-ship) | One setting: the proxy URL, plus the verification mode | Every SDK call goes to your server | Works with all 10 SDKs |
