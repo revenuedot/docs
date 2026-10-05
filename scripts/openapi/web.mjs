@@ -1,4 +1,4 @@
-// RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
+// RevenueDot: the open-source RevenueCat alternative. Same SDK API, free to start on RevenueDot Cloud.
 // This file: web billing in the OpenAPI document: RevenueCat's v2 discount operations (real on Stripe), the web
 // extensions (web config, web products, purchase links, funnels, domains, web discounts) and the hosted pages under /pay.
 // Docs: https://revenuedot.app/docs/guides/web-billing   Migrate from RevenueCat: https://revenuedot.app/docs/migrate

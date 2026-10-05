@@ -1,4 +1,4 @@
-// RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
+// RevenueDot: the open-source RevenueCat alternative. Same SDK API, free to start on RevenueDot Cloud.
 // This file: loads the reference data (data/errors, data/notifications, data/webhooks) and renders each entry as a Markdown page
 // under docs/errors, docs/notifications or docs/webhooks (shared by gen-errors, check-errors and check-snippets).
 // Docs: https://revenuedot.app/docs/errors   Migrate from RevenueCat: https://revenuedot.app/docs/migrate

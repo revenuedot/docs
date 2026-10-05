@@ -1,11 +1,11 @@
 ---
 title: How does RevenueDot Cloud billing work?
-description: RevenueDot Cloud is free up to $10,000 of tracked revenue a month. Cloud Standard costs 0.5% of the tracked revenue above $10,000, never more than $999 a month. Self-hosting is free and unmetered. See your usage, upgrade and manage your card on the Billing page.
+description: RevenueDot Cloud is free up to $10,000 of tracked revenue a month. Cloud Standard costs 0.5% of the tracked revenue above $10,000, never more than $999 a month. See your usage, upgrade and manage your card on the Billing page.
 ---
 
 # How does RevenueDot Cloud billing work?
 
-RevenueDot Cloud measures the **tracked revenue** of the projects you own each calendar month. Up to $10,000 a month is free. Above that, Cloud Standard costs 0.5% of the part above $10,000, and never more than $999 a month. A self-hosted RevenueDot has no billing, no meter and no limits. For a quick look at the whole product, including pricing, watch the [2:32 platform demo](https://revenuedot.app/watch/revenuedot-platform-demo).
+RevenueDot Cloud measures the **tracked revenue** of the projects you own each calendar month. Up to $10,000 a month is free. Above that, Cloud Standard costs 0.5% of the part above $10,000, and never more than $999 a month. For a quick look at the whole product, including pricing, watch the [2:32 platform demo](https://revenuedot.app/watch/revenuedot-platform-demo).
 
 ## Plans
 
@@ -69,9 +69,9 @@ Open your account menu → **Billing** (`/account/billing`). It shows:
 
 Billing never changes what your apps get. A failed payment, a cancelled plan or a month above the free limit does not block SDK calls, purchases, webhooks, integrations or the REST API. The limits decide which plan fits; they are not switches.
 
-## Self-hosting is free
+## Billing on a server you run yourself
 
-On a self-hosted RevenueDot the Billing page says billing is only on RevenueDot Cloud, and `/v2/billing` answers 404. There is no metering and nothing is sent anywhere. See [Self-hosting](self-hosting.md), and [Move between self-host and Cloud](move-projects.md) to switch either way.
+On a self-hosted RevenueDot the Billing page says billing is only on RevenueDot Cloud, and `/v2/billing` answers 404. There is no metering. See [Self-hosting](self-hosting.md), and [Move between self-host and Cloud](move-projects.md) to switch either way.
 
 ## API
 

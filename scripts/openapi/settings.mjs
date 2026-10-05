@@ -1,4 +1,4 @@
-// RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
+// RevenueDot: the open-source RevenueCat alternative. Same SDK API, free to start on RevenueDot Cloud.
 // This file: Project settings tabs (ownership, Brand, Blocked customers, Verified Metrics) and Auth (sign-in with Firebase
 // or OpenID Connect, providers, identities) in the OpenAPI document. RevenueDot extensions.
 // Docs: https://revenuedot.app/docs/guides/project-settings  https://revenuedot.app/docs/guides/auth

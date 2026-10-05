@@ -20,7 +20,7 @@ This post lists what StoreKit 2 gives you, what it leaves out, and how the three
 - **Android or web too:** you need a server to give one customer one set of entitlements across stores.
 - **Events and charts:** StoreKit does not send webhooks or draw MRR. A server does.
 - **Refunds:** Apple asks your server, not your app, for consumption data, and you have 12 hours to answer ([Apple](https://developer.apple.com/documentation/appstoreserverapi/send-consumption-information)).
-- **Cost:** RevenueCat is free to $2,500 in monthly tracked revenue, then 1% ([RevenueCat](https://www.revenuecat.com/pricing/)). RevenueDot Cloud is free to $10,000 and self-hosting is free.
+- **Cost:** RevenueCat is free to $2,500 in monthly tracked revenue, then 1% ([RevenueCat](https://www.revenuecat.com/pricing/)). RevenueDot Cloud is free to $10,000.
 
 ## What does StoreKit 2 give you on the device?
 
@@ -82,8 +82,8 @@ Where RevenueCat is stronger today: RevenueDot launched in September 2026, and R
 
 | | Build it | RevenueCat | RevenueDot |
 |---|---|---|---|
-| Cost | Your engineering time | Free to $2,500 in monthly tracked revenue, then 1% of all of it | Cloud free to $10,000, a paid plan is planned. Self-host free (AGPL-3.0) |
-| Server | You write and run it | Hosted by RevenueCat | Hosted by RevenueDot, or run it yourself |
+| Cost | Your engineering time | Free to $2,500 in monthly tracked revenue, then 1% of all of it | Cloud free to $10,000, then 0.5% capped at $999 a month |
+| Server | You write and run it | Hosted by RevenueCat | Hosted by RevenueDot |
 | Your app code | StoreKit 2 and Play Billing | RevenueCat SDK | The same RevenueCat SDK, with a proxy URL |
 | Stronger at | Full control, no vendor | An established product with SOC 2 | Open source, you own the data, no revenue share on Cloud's free tier |
 
@@ -95,8 +95,8 @@ Use these four checks.
 
 1. **One store, no outside systems.** StoreKit 2 alone is fine. Add a backend when you add a second store.
 2. **A second store, or web checkout.** Use a server. Writing your own is the slowest option for a small team.
-3. **Revenue near the point where a percentage fee hurts.** Compare the bill. At $50,000 of monthly tracked revenue RevenueCat's fee is $500 a month ([our pricing explainer](revenuecat-pricing-explained.md)). RevenueDot is free to $10,000 on Cloud, and self-hosting has no revenue share.
-4. **Data ownership or regulated data.** Self-host an open-source server.
+3. **Revenue near the point where a percentage fee hurts.** Compare the bill. At $50,000 of monthly tracked revenue RevenueCat's fee is $500 a month ([our pricing explainer](revenuecat-pricing-explained.md)). RevenueDot Cloud is free to $10,000, then 0.5% capped at $999 a month.
+4. **Data ownership or regulated data.** Ask about [Enterprise](https://revenuedot.app/pricing), which adds data location settings and a contract.
 
 You can also start with StoreKit 2 and add a server later. RevenueCat documents a mode for apps that make purchases with their own StoreKit code, where the SDK only tracks them ([RevenueCat](https://www.revenuecat.com/docs/sdk-guides/ios-native-4x-to-5x-migration)).
 
@@ -136,4 +136,4 @@ RevenueCat's page says nothing is due up to $2,500 in monthly tracked revenue, t
 
 Yes. RevenueDot imports your data and works with the same SDK, so the app change is the proxy URL. See [migrating without losing a subscriber](migrating-from-revenuecat-without-data-loss.md).
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

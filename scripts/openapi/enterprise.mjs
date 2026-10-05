@@ -1,4 +1,4 @@
-// RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
+// RevenueDot: the open-source RevenueCat alternative. Same SDK API, free to start on RevenueDot Cloud.
 // This file: RevenueDot Enterprise (the paid ee/ folder) in the OpenAPI document: the licence status, organizations,
 // custom roles and group role mappings, single sign-on (SAML 2.0, OpenID Connect), SCIM 2.0 and compliance exports.
 // These routes exist only on a server with REVENUEDOT_LICENSE_KEY (or REVENUEDOT_EE_DEV=true for development).

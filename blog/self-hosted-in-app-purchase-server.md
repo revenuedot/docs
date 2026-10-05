@@ -8,6 +8,8 @@ image: /blog/assets/self-hosted-in-app-purchase-server/cover.svg
 
 # Self-hosting an in-app purchase backend: when, cost, how to run
 
+Most apps should start on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 a month in tracked revenue, with no server to run. This post is for teams that must run their own.
+
 Self-hosting an in-app purchase backend makes sense when you must keep purchase data in a region you choose, when you want no revenue share at scale, or when your company requires software it can read and run itself. With RevenueDot it is one Docker image next to Postgres 16, served on one port. A small app fits on a $12 server, plus $15 for managed Postgres if you want one. The real cost is your time: you own uptime, backups and upgrades.
 
 ![Architecture: an HTTPS proxy in front of the RevenueDot container, which stores data in Postgres 16 on a persistent volume](assets/self-hosted-in-app-purchase-server/cover.svg)
@@ -25,7 +27,7 @@ Self-hosting an in-app purchase backend makes sense when you must keep purchase 
 | Reason | Why self-hosting fits | Alternative |
 |---|---|---|
 | Data residency | Purchases, customers and receipts live in your own Postgres, in the region you pick | Cloud, if its region and terms are enough for you |
-| Cost at scale | No revenue share and no limit on tracked revenue. RevenueCat's 1% of tracked revenue is [$500 a month at $50,000](https://www.revenuecat.com/docs/welcome/set-up-revenuecat/account-management) | The planned RevenueDot Cloud price, 0.5% above $10,000, capped at $999 |
+| Cost at scale | No revenue share and no limit on tracked revenue. RevenueCat's 1% of tracked revenue is [$500 a month at $50,000](https://www.revenuecat.com/docs/welcome/set-up-revenuecat/account-management) | RevenueDot Cloud, 0.5% above $10,000, capped at $999 |
 | Regulated apps | You control who can read data and how long it is kept | Ask your compliance team what a hosted vendor must show |
 | Agencies with many apps | One server holds many projects and apps | Cloud projects |
 | Reading and changing the code | The server decides who gets paid access. You can read it, test it and patch it | Not possible with a closed service |
@@ -49,7 +51,7 @@ These are list prices checked on October 1, 2026. They change, so check before y
 | [Railway](https://railway.com/pricing) Hobby | $5 a month with $5 of included usage | Memory at $10 per GB a month and CPU at $20 per vCPU a month beyond that |
 | Your own hardware or cloud account | Your cost | Everything |
 
-![Bar chart of monthly cost at 50,000 dollars of tracked revenue: RevenueCat 500 dollars, planned RevenueDot Cloud 200 dollars, self-host with managed Postgres about 27 dollars, self-host on one server 12 dollars](assets/self-hosted-in-app-purchase-server/cost-bars.svg)
+![Bar chart of monthly cost at 50,000 dollars of tracked revenue: RevenueCat 500 dollars, RevenueDot Cloud 200 dollars, self-host with managed Postgres about 27 dollars, self-host on one server 12 dollars](assets/self-hosted-in-app-purchase-server/cost-bars.svg)
 
 A sensible starting setup is a $12 Droplet that runs the Compose file, which includes Postgres, or the same Droplet plus the $15.15 managed database. That is $12 to about $27 a month. At $50,000 of monthly tracked revenue, RevenueCat bills $500, so the saving is over $470 a month, or about $5,700 a year. We have not load-tested RevenueDot at your scale. A large app should size the server and the database by watching real use, and may need a bigger plan.
 
@@ -197,4 +199,4 @@ Yes. Cloud and self-host run the same code and the same API, so you can start on
 
 Not yet. Run one RevenueDot container per database. The background job has no lock across processes, so two containers could send a webhook twice.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

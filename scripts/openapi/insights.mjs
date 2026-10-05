@@ -1,4 +1,4 @@
-// RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
+// RevenueDot: the open-source RevenueCat alternative. Same SDK API, free to start on RevenueDot Cloud.
 // This file: attribution (customer attribution, revenue by campaign), benchmarks (RevenueDot Cloud only) and AI growth insights with the weekly digest. All are RevenueDot extensions.
 // Docs: https://revenuedot.app/docs/guides/attribution  https://revenuedot.app/docs/guides/benchmarks  https://revenuedot.app/docs/guides/growth-insights
 import { NONE, SECRET, SESSION, arr, body, bool, en, int, ms, nint, nms, nstr, num, obj, ok, op, param, str, v2Errors } from "./common.mjs";

@@ -19,7 +19,7 @@ This post covers the order of work, what Qonversion's own migration guide teache
 - **Rebuild, then re-sync.** Create products, entitlements and offerings in RevenueDot, ship the updated app, and each customer's purchases arrive as the app posts their receipts.
 - **One URL to move.** Qonversion gives you one App Store notification URL per project, version 2, and the same endpoint takes sandbox traffic ([Qonversion docs](https://documentation.qonversion.io/docs/ios-s2s-notifications.md)). Replace it in App Store Connect with RevenueDot's, and forward to Qonversion's during the overlap.
 - **Store credentials are required.** Qonversion's guide for moving in says no store credentials are needed, only receipt data ([Qonversion docs](https://documentation.qonversion.io/docs/migrating-subscriptions.md)). RevenueDot verifies purchases itself, so it needs your App Store in-app purchase key and a Google Play service account.
-- **Both bills end at once.** Qonversion is free up to $7K of monthly tracked revenue, then 0.8% of all of it ([Qonversion pricing](https://qonversion.io/pricing)). RevenueDot Cloud is free up to $10,000 of monthly tracked revenue, and self-hosting is free.
+- **Both bills end at once.** Qonversion is free up to $7K of monthly tracked revenue, then 0.8% of all of it ([Qonversion pricing](https://qonversion.io/pricing)). RevenueDot Cloud is free up to $10,000 of monthly tracked revenue.
 - **Keep Qonversion's exports.** Raw data export and an export API let you save history before you switch it off.
 
 ## What does Qonversion's own migration guide teach us?
@@ -106,8 +106,8 @@ RevenueDot does not read Qonversion's export, but you should keep it. Qonversion
 
 | Area | Qonversion | RevenueDot |
 |---|---|---|
-| Pricing shape | One Pro plan: free to $7K, then 0.8% of all tracked revenue, every feature included ([pricing](https://qonversion.io/pricing)) | Cloud free to $10,000, self-host free |
-| Source code | SDKs are MIT on GitHub ([GitHub](https://github.com/qonversion/qonversion-ios-sdk)), backend hosted | Server and dashboard are AGPL-3.0, self-hostable |
+| Pricing shape | One Pro plan: free to $7K, then 0.8% of all tracked revenue, every feature included ([pricing](https://qonversion.io/pricing)) | Cloud free to $10,000, then 0.5% capped at $999 a month |
+| Source code | SDKs are MIT on GitHub ([GitHub](https://github.com/qonversion/qonversion-ios-sdk)), backend hosted | Server and dashboard are open source (AGPL-3.0) |
 | Web payments | Stripe and Paddle ([Qonversion docs](https://documentation.qonversion.io/docs/initiate-purchase-paddle.md)) | Stripe, through hosted checkout and funnels |
 | Support | 24/7 support on the standard plan ([pricing](https://qonversion.io/pricing)) | GitHub and email, free for everyone |
 
@@ -143,6 +143,6 @@ Not if both backends stay on until old app versions fade out. Apple and Google k
 
 ### Is Qonversion cheaper than RevenueDot?
 
-For revenue under $7K a month both are free. Above it, Qonversion charges 0.8% of all tracked revenue, while RevenueDot Cloud is free up to $10,000 and self-hosting has no fee.
+For revenue under $7K a month both are free. Above it, Qonversion charges 0.8% of all tracked revenue, while RevenueDot Cloud is free up to $10,000.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

@@ -1,11 +1,11 @@
 ---
 title: Where is my RevenueDot data stored, and can I keep it in the EU?
-description: Self-hosted, your data stays wherever you run the server. Enterprise records a US or EU region on each organization and project; on Cloud each region is its own deployment that refuses other regions' projects. Cloud has no EU region yet.
+description: RevenueDot Cloud runs in the US today and has no EU region yet. Enterprise records a US or EU region on each organization and project; on Cloud each region is its own deployment that refuses other regions' projects. A server you run yourself keeps data wherever you run it.
 ---
 
 # Where is my RevenueDot data stored, and can I keep it in the EU?
 
-**Self-hosted, your data is wherever you run RevenueDot and its Postgres.** Nothing leaves your servers, so you choose the country. **RevenueDot Cloud runs in the US today.** It has no EU region yet.
+**RevenueDot Cloud runs in the US today.** It has no EU region yet. A server you run yourself keeps its data wherever you run RevenueDot and its Postgres, so you choose the country.
 
 Data location is part of [RevenueDot Enterprise](enterprise.md) (the `data_location` feature). It records a region, **United States** (`us`) or **European Union** (`eu`), on each organization and each of its projects. RevenueCat stores data in the US ([DPA](https://www.revenuecat.com/dpa)).
 

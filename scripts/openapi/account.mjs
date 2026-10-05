@@ -1,4 +1,4 @@
-// RevenueDot: open-source, self-hostable alternative to RevenueCat. Same SDK API, free.
+// RevenueDot: the open-source RevenueCat alternative. Same SDK API, free to start on RevenueDot Cloud.
 // This file: OpenAPI source for Account settings (email change, password, sessions, two-factor, OAuth tokens, Stripe
 // accounts, projects, deletion, notification choices, the display currency's rate). Server: apps/server/src/routes/account.ts.
 // Docs: https://revenuedot.app/docs/guides/account-settings

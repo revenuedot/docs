@@ -1,32 +1,32 @@
 ---
 title: Which RevenueDot plan has organizations, SSO and the other team features, and how do I turn them on?
-description: Cloud Standard adds organizations, custom roles and single sign-on. Enterprise adds SCIM, audit retention, compliance exports, data location, the SLA and the licence for self-hosting. Self-hosted servers turn these features on with a licence key, as before.
+description: Cloud Standard adds organizations, custom roles and single sign-on. Enterprise adds SCIM, audit retention, compliance exports, data location and the SLA. Servers you run yourself turn these features on with a licence key.
 ---
 
 # Which RevenueDot plan has organizations, SSO and the other team features, and how do I turn them on?
 
-**Cloud Standard adds organizations, custom roles and single sign-on. Enterprise adds everything else: SCIM, audit retention, signed compliance exports, data location, the SLA and the licence for self-hosting.** The open-source core (projects, the SDK API, the dashboard, the REST API, the built-in Admin, Developer and Viewer roles) is in every plan, and self-hosting it is free under AGPL-3.0 with no limits.
+**Cloud Standard adds organizations, custom roles and single sign-on. Enterprise adds everything else: SCIM, audit retention, signed compliance exports, data location, the SLA and the licence for self-hosting.** The open-source core (projects, the SDK API, the dashboard, the REST API, the built-in Admin, Developer and Viewer roles) is in every plan. [Start free on Cloud](https://app.revenuedot.app/signup).
 
 The team features are the code in the `ee/` folder of the server. It is under the RevenueDot Enterprise License, not AGPL-3.0. **On a self-hosted server, every `ee/` feature needs an Enterprise licence key** in `REVENUEDOT_LICENSE_KEY`, exactly as before. Without the key, the server never loads `ee/`: no route, page or response changes. `REVENUEDOT_EE_DEV=true` turns them on for development and testing only. On RevenueDot Cloud you set no key: your plan decides.
 
 ## What each plan includes
 
-| Feature | Self-host | Cloud Free | Cloud Standard | Enterprise |
+| Feature | Cloud Free | Cloud Standard | Enterprise | Self-host (advanced) |
 |---|---|---|---|---|
-| Price | Free | $0 | 0.5% of tracked revenue above $10,000 a month, at most $999 a month | From $50,000 a year |
-| Tracked revenue | No limit | Up to $10,000 a month | Up to $1,000,000 a month | No limit |
+| Price | $0 | 0.5% of tracked revenue above $10,000 a month, at most $999 a month | From $50,000 a year | Free |
+| Tracked revenue | Up to $10,000 a month | Up to $1,000,000 a month | No limit | No limit |
 | Open-source core: projects, SDK API, dashboard, REST API | Yes | Yes | Yes | Yes |
 | Admin, Developer and Viewer roles | Yes | Yes | Yes | Yes |
-| Project audit log | Kept forever | Kept 90 days | Kept 90 days | Kept as long as you choose |
-| Organizations | With an Enterprise licence key | No | Yes | Yes |
-| Custom roles | With an Enterprise licence key | No | Yes | Yes |
-| Single sign-on (SAML 2.0, OpenID Connect, verified domains, required SSO) | With an Enterprise licence key | No | Yes | Yes |
-| SCIM provisioning | With an Enterprise licence key | No | No | Yes |
-| Audit retention from 30 days to 10 years, or forever | With an Enterprise licence key | No | No | Yes |
-| Signed compliance exports | With an Enterprise licence key | No | No | Yes |
-| Data location settings (US or EU) | With an Enterprise licence key | No | No | Yes; Cloud runs in the US only today |
-| Support | Community | Community and email | Email, first reply within 2 business days | The [SLA](sla.md) response times |
-| Uptime and support SLA | No | No | No | Yes ([SLA](sla.md)) |
+| Project audit log | Kept 90 days | Kept 90 days | Kept as long as you choose | Kept forever |
+| Organizations | No | Yes | Yes | With an Enterprise licence key |
+| Custom roles | No | Yes | Yes | With an Enterprise licence key |
+| Single sign-on (SAML 2.0, OpenID Connect, verified domains, required SSO) | No | Yes | Yes | With an Enterprise licence key |
+| SCIM provisioning | No | No | Yes | With an Enterprise licence key |
+| Audit retention from 30 days to 10 years, or forever | No | No | Yes | With an Enterprise licence key |
+| Signed compliance exports | No | No | Yes | With an Enterprise licence key |
+| Data location settings (US or EU) | No | No | Yes; Cloud runs in the US only today | With an Enterprise licence key |
+| Support | Community and email | Email, first reply within 2 business days | The [SLA](sla.md) response times | Community |
+| Uptime and support SLA | No | No | Yes ([SLA](sla.md)) | No |
 
 Cloud prices and the billing rules are on [Cloud billing](cloud-billing.md). Enterprise is a contract: [contact sales](https://revenuedot.app/contact-sales) or write to [sales@revenuedot.app](mailto:sales@revenuedot.app).
 
