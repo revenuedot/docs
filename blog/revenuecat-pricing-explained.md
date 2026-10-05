@@ -93,7 +93,7 @@ RevenueDot is an open-source backend that speaks the same API as RevenueCat's. Y
 
 Cloud is free up to $10,000 of monthly tracked revenue today. The planned paid price above that is 0.5%, capped at $999 a month. Because it is not live, do not budget on it until it ships.
 
-Be clear about what you give up. RevenueDot launched in 2026, so it has far less production history than RevenueCat. The SDK forks are not yet published to package registries, so you use the stock SDK in proxy mode. Test in sandbox before you ship. The [migration guide](https://revenuedot.app/blog/migrating-from-revenuecat-without-data-loss) shows how to run both systems side by side so that a customer never loses access.
+Be clear about what you give up. RevenueDot launched in 2026, so it has far less production history than RevenueCat. You can keep the RevenueCat SDK in proxy mode, or swap in the RevenueDot SDK, which is published for every platform (2026-10-02) and keeps the same imports ([SDK guides](https://revenuedot.app/docs/sdks)). Test in sandbox before you ship. The [migration guide](https://revenuedot.app/blog/migrating-from-revenuecat-without-data-loss) shows how to run both systems side by side so that a customer never loses access.
 
 ### 4. Self-host
 

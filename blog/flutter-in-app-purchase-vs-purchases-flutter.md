@@ -97,12 +97,12 @@ Future<void> restore() => iap.restorePurchases();
 ### With purchases_flutter and RevenueDot
 
 ```dart
+// purchases_flutter from RevenueDot's git tag 10.13.2-revenuedot (see "Do it with RevenueDot" below)
 import 'dart:io' show Platform;
 import 'package:purchases_flutter/purchases_flutter.dart';
 
 Future<void> startStore() async {
-  // One line of setup sends the SDK to RevenueDot instead of RevenueCat.
-  await Purchases.setProxyURL('https://api.revenuedot.app');
+  // RevenueDot's build of the package calls RevenueDot by default, so only the keys are needed.
   await Purchases.configure(
     PurchasesConfiguration(Platform.isIOS ? 'appl_YourKey' : 'goog_YourKey'),
   );
@@ -123,7 +123,7 @@ Future<bool> restore() async {
 }
 ```
 
-There is no `verify` function to write. The backend verifies the purchase with Apple or Google, acknowledges Google purchases, receives store notifications, and answers with the customer's entitlements. Drop the `setProxyURL` line and the same code talks to RevenueCat. Our [Flutter tutorial](flutter-in-app-purchases-tutorial.md) builds a full paywall with this package.
+There is no `verify` function to write. The backend verifies the purchase with Apple or Google, acknowledges Google purchases, receives store notifications, and answers with the customer's entitlements. With RevenueCat's package from pub.dev, the same code talks to RevenueCat, or to RevenueDot on iOS and Android once you add `await Purchases.setProxyURL('https://api.revenuedot.app')` before `configure`. Our [Flutter tutorial](flutter-in-app-purchases-tutorial.md) builds a full paywall with this package.
 
 ## What goes wrong most often?
 
@@ -137,8 +137,8 @@ Each package has its own traps. Knowing them up front saves a rejected build or 
 
 **With `purchases_flutter` against RevenueDot, from our [Flutter docs](../docs/sdks/flutter.md):**
 
-1. **Calling `configure` before `setProxyURL` finishes.** Await `setProxyURL` first, or the first requests go to RevenueCat.
-2. **Turning on enforced entitlement verification.** The stock package checks signatures against RevenueCat's key, so `EntitlementVerificationMode.enforced` fails every request. The default, disabled, is correct.
+1. **With RevenueCat's package, calling `configure` before `setProxyURL` finishes.** Await `setProxyURL` first, or the first requests go to RevenueCat.
+2. **With RevenueCat's package, turning on enforced entitlement verification.** It checks signatures against RevenueCat's key, so `EntitlementVerificationMode.enforced` fails every request. The default, disabled, is correct.
 3. **Shipping a Test Store key.** `test_` keys work only in debug builds. Release builds need the `appl_` and `goog_` keys.
 
 The first list is code you maintain forever. The second list is setup you get right once.
@@ -172,14 +172,25 @@ If you already ship `in_app_purchase` and want a backend's records without rewri
 
 ## Do it with RevenueDot
 
-RevenueDot is an open-source server that speaks the RevenueCat SDK's API. You install the stock `purchases_flutter` package, add one `setProxyURL` line, and get:
+RevenueDot is an open-source server that speaks the RevenueCat SDK's API. A new app installs RevenueDot's build of `purchases_flutter` from its git tag and passes its keys to `configure`:
+
+```yaml
+# pubspec.yaml
+dependencies:
+  purchases_flutter:
+    git:
+      url: https://github.com/revenuedot/purchases-flutter.git
+      ref: 10.13.2-revenuedot
+```
+
+An app that already ships RevenueCat's package can keep it on iOS and Android and add one `setProxyURL` line instead. Either way you get:
 
 - Purchase verification and Google acknowledgement for the [App Store](https://revenuedot.app/stores/app-store) and [Google Play](https://revenuedot.app/stores/google-play).
 - One customer and one entitlement across platforms, with your own user IDs through `logIn`.
 - [Webhooks](https://revenuedot.app/features/webhooks), [charts](https://revenuedot.app/charts/mrr), [paywalls](https://revenuedot.app/features/paywalls) and [experiments](https://revenuedot.app/features/experiments).
 - The [Flutter SDK page](https://revenuedot.app/sdks/flutter) and the [Flutter docs](../docs/sdks/flutter.md) with every setup detail.
 
-The limits matter. Flutter web does not work against RevenueDot with the stock package, because its web plugin ignores `setProxyURL`. RevenueDot's fork of `purchases_flutter` fixes this; it installs as a git dependency at tag `10.13.2-revenuedot`, because the pub.dev name belongs to RevenueCat ([Flutter docs](../docs/sdks/flutter.md)). No real store purchase has run end to end against RevenueDot yet, so test each store in its sandbox before launch. The [RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) lists the other differences.
+The limits matter. RevenueDot's build installs from git because the pub.dev name belongs to RevenueCat. Flutter web works only with RevenueDot's build, because the web plugin in RevenueCat's package ignores `setProxyURL` ([Flutter docs](../docs/sdks/flutter.md)). No real store purchase has run end to end against RevenueDot yet, so test each store in its sandbox before launch. The [RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) lists the other differences.
 
 [Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue).
 
@@ -191,7 +202,7 @@ It is enough to sell them. It is not enough to trust them: the README leaves rec
 
 ### Do I need a RevenueCat account to use purchases_flutter?
 
-No. The package is MIT-licensed and works with any backend that speaks RevenueCat's API. With RevenueDot you create a RevenueDot project, use its `appl_` and `goog_` keys, and call `setProxyURL` before `configure`.
+No. The package is MIT-licensed and works with any backend that speaks RevenueCat's API. With RevenueDot you create a RevenueDot project, install RevenueDot's build of the package and pass its `appl_` and `goog_` keys to `configure`.
 
 ### Can I use in_app_purchase and purchases_flutter together?
 

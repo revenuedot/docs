@@ -1,6 +1,6 @@
 ---
 title: "Add subscriptions to a SwiftUI app: StoreKit 2 and RevenueDot"
-description: "Add auto-renewable subscriptions to a SwiftUI app: App Store Connect setup, the RevenueCat SDK with a RevenueDot proxy URL, purchase, restore and notifications."
+description: "Add auto-renewable subscriptions to a SwiftUI app: App Store Connect setup, the RevenueDot SDK, a paywall, purchase, restore and server notifications."
 date: 2026-10-01
 author: RevenueDot team
 image: /blog/assets/swiftui-subscriptions-tutorial/cover.svg
@@ -8,14 +8,14 @@ image: /blog/assets/swiftui-subscriptions-tutorial/cover.svg
 
 # Add subscriptions to a SwiftUI app: StoreKit 2 and RevenueDot
 
-To add subscriptions to a SwiftUI app, create an auto-renewable subscription in App Store Connect, add the RevenueCat iOS SDK with Swift Package Manager, point it at a backend with `Purchases.proxyURL`, then call `offerings()`, `purchase(package:)` and check `customerInfo.entitlements`. The backend verifies each purchase with Apple and tells the app what the customer may use. This tutorial uses RevenueDot as that backend, so there is no revenue share and no server code to write.
+To add subscriptions to a SwiftUI app, create an auto-renewable subscription in App Store Connect, add the RevenueDot SDK with Swift Package Manager, call `Purchases.configure(withAPIKey:)` with your app's key, then call `offerings()`, `purchase(package:)` and check `customerInfo.entitlements`. RevenueDot is the backend: it verifies each purchase with Apple and tells the app what the customer may use. On RevenueDot Cloud that key is the only setup, and there is no server code to write.
 
-![Architecture: a SwiftUI app with the RevenueCat iOS SDK talks to RevenueDot, which talks to the App Store](assets/swiftui-subscriptions-tutorial/cover.svg)
+![Architecture: a SwiftUI app with the RevenueDot SDK talks to RevenueDot, which talks to the App Store](assets/swiftui-subscriptions-tutorial/cover.svg)
 
 ## What you need
 
 - An Apple Developer Program account and an app record in App Store Connect with a bundle ID.
-- Xcode and a SwiftUI app. Check the SDK's current minimum iOS version in its [README](https://github.com/RevenueCat/purchases-ios).
+- Xcode and a SwiftUI app for iOS 13 or later. That is the oldest iOS version the RevenueDot SDK supports, as its [Package.swift](https://github.com/revenuedot/purchases-ios/blob/5.91.0-revenuedot/Package.swift) shows.
 - A RevenueDot Cloud project. [Sign up free](https://app.revenuedot.app/signup).
 - An iPhone or simulator, and a sandbox tester account for real store purchases.
 
@@ -65,15 +65,22 @@ The [products and entitlements](https://revenuedot.app/docs/concepts/products-an
 
 ![RevenueDot dashboard page listing an offering with its packages and attached products](assets/swiftui-subscriptions-tutorial/offerings.png)
 
-## Step 4: Install the SDK
+## Step 4: Install the RevenueDot SDK with Swift Package Manager
 
-In Xcode, choose **File, Add Package Dependencies** and enter the SDK's package URL. RevenueCat's [installation guide](https://www.revenuecat.com/docs/getting-started/installation/ios) gives `https://github.com/RevenueCat/purchases-ios-spm.git`. Add the `RevenueCat` product to your app target.
+In Xcode, choose **File, Add Package Dependencies** and enter `https://github.com/revenuedot/purchases-ios`. Set the dependency rule to **Exact Version** `5.91.0-revenuedot`, then add the `RevenueCat` product to your app target. In a `Package.swift` file, the same dependency reads:
 
-RevenueDot also maintains a [fork](https://revenuedot.app/docs/sdks/ios) that keeps the same Swift module names, so `import RevenueCat` stays. It is not published to a package registry yet, so this tutorial uses the stock SDK in proxy mode.
+```swift
+.package(url: "https://github.com/revenuedot/purchases-ios", exact: "5.91.0-revenuedot")
+// Product: "RevenueCat". Add "RevenueCatUI" only if you use RevenueDot's paywall templates.
+```
 
-## Step 5: Configure the SDK with a proxy URL
+If your app uses CocoaPods, add `pod 'RevenueDotPurchases', '5.91.0'` to the Podfile instead.
 
-Set the proxy URL before you call `configure`. Turn off entitlement verification, because the stock SDK checks response signatures against RevenueCat's key and would log every RevenueDot response as failed.
+The RevenueDot SDK is built from RevenueCat's open-source SDK (MIT license), so your code imports `RevenueCat` and calls `Purchases`. It sends every request to RevenueDot and needs no RevenueCat account. The [iOS SDK guide](https://revenuedot.app/docs/sdks/ios) lists every install option.
+
+## Step 5: Configure the SDK with your app's key
+
+Call `configure` once, when the app starts. On RevenueDot Cloud there is nothing else to set, because the SDK already sends its requests to `https://api.revenuedot.app`.
 
 ```swift
 import RevenueCat
@@ -83,13 +90,7 @@ import SwiftUI
 struct FocusApp: App {
     init() {
         Purchases.logLevel = .debug
-        // Point the SDK at RevenueDot. Set it before configure.
-        Purchases.proxyURL = URL(string: "https://api.revenuedot.app")!
-        Purchases.configure(
-            with: Configuration.Builder(withAPIKey: "appl_YourPublicKey")
-                .with(entitlementVerificationMode: .disabled)
-                .build()
-        )
+        Purchases.configure(withAPIKey: "appl_YourPublicKey")
     }
 
     var body: some Scene {
@@ -98,13 +99,17 @@ struct FocusApp: App {
 }
 ```
 
-Use the app's public key from RevenueDot (`appl_...`). If you ran the importer from RevenueCat, your existing key keeps working. For development without any Apple account, create a **Test Store** app and use its `test_...` key. Test Store keys work only in Debug builds: in a Release build the SDK shows a "Wrong API Key" alert and stops the app on purpose. Ship with the `appl_` key.
+Use the app's public key from RevenueDot (`appl_...`). For development without any Apple account, create a **Test Store** app and use its `test_...` key. Test Store keys work only in Debug builds: in a Release build the SDK shows a "Wrong API Key" alert and stops the app on purpose. Ship with the `appl_` key.
 
 **Expected output:** in Xcode's console, a debug log shows the SDK's requests going to `api.revenuedot.app`, and `Purchases is configured`.
 
+**Self-hosting?** Set `Purchases.proxyURL` to your own server before `configure`, and set entitlement verification to `.disabled`, because your server signs its responses with its own key. The [iOS SDK guide](https://revenuedot.app/docs/sdks/ios) shows the code.
+
+**Already ship the RevenueCat SDK?** You can keep it. Set `Purchases.proxyURL` to `https://api.revenuedot.app` before `configure`, set entitlement verification to `.disabled`, and call `syncPurchases()` once after the update. If you ran the importer, your existing RevenueCat key keeps working. [Connect your app](https://revenuedot.app/docs/getting-started/connect-your-app) shows the code, and [Migrate from RevenueCat](https://revenuedot.app/migrate-from-revenuecat) gives the order of steps.
+
 ## Step 6: Load offerings, buy, restore and check access
 
-Keep the purchase logic in one observable model. These calls are the SDK's public API, unchanged.
+Keep the purchase logic in one observable model. These calls are the SDK's public API.
 
 ```swift
 import RevenueCat
@@ -212,7 +217,7 @@ Run a sandbox purchase before you ship, and tell us what you find in a [GitHub i
 | "Wrong API Key" alert | A `test_` key in a Release build | Use the `appl_` key for Release |
 | Purchase succeeds, entitlement not active | Product not attached to the `pro` entitlement | Attach it in the dashboard. See [entitlement not active](https://revenuedot.app/docs/help/entitlement-not-active) |
 | Purchase retries forever | RevenueDot answered 5xx, for example a missing In-App Purchase key (code 7234) | Add the key. A 5xx tells the SDK to keep the transaction and retry. See [4xx vs 5xx](https://revenuedot.app/docs/help/receipt-errors-4xx-vs-5xx) |
-| Logs say signature verification failed | Verification left on with the stock SDK | Set `.disabled` as in Step 5 |
+| Logs say signature verification failed | The RevenueCat SDK, or a self-hosted server, with verification left on | Set `.disabled`, as the notes under Step 5 say |
 | No notifications arrive | Wrong URL, or the Sandbox URL is empty | See [notifications not arriving](https://revenuedot.app/docs/help/store-notifications-not-arriving) |
 
 ## Do it with RevenueDot
@@ -220,7 +225,7 @@ Run a sandbox purchase before you ship, and tell us what you find in a [GitHub i
 1. [Create a free account](https://app.revenuedot.app/signup). Cloud is free up to $10,000 in monthly tracked revenue.
 2. Add your App Store app, the In-App Purchase key and the notification URL (Step 2).
 3. Create the product, the `pro` entitlement and the `default` offering (Step 3).
-4. Set `Purchases.proxyURL` to `https://api.revenuedot.app` and configure with your `appl_` key (Step 5).
+4. Add the RevenueDot SDK and configure it with your `appl_` key (Steps 4 and 5).
 5. Add a webhook under **Integrations, Webhooks** to tell your own backend about purchases.
 
 If you already use RevenueCat, the [migration guide](https://revenuedot.app/blog/migrating-from-revenuecat-without-data-loss) shows how to move without losing a subscriber.
@@ -249,4 +254,4 @@ Use the app's notification URL from RevenueDot, in the form `https://api.revenue
 
 Yes. Create a Test Store app in RevenueDot and use its `test_` key in a Debug build. The SDK shows a Test Store dialog instead of Apple's sheet. It proves your code path, not Apple's.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. New apps install the RevenueDot SDK and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

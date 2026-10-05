@@ -1,6 +1,6 @@
 ---
 title: "Android subscriptions with Google Play Billing, Kotlin and RTDN"
-description: "Add Google Play subscriptions to an Android app in Kotlin: Play Console setup, a service account, real-time notifications on Pub/Sub and the SDK code."
+description: "Add Google Play subscriptions to an Android app in Kotlin: Play Console setup, a service account, real-time notifications on Pub/Sub and the RevenueDot SDK."
 date: 2026-10-01
 author: RevenueDot team
 image: /blog/assets/android-google-play-billing-subscriptions/cover.svg
@@ -8,7 +8,7 @@ image: /blog/assets/android-google-play-billing-subscriptions/cover.svg
 
 # Android subscriptions with Google Play Billing, Kotlin and RTDN
 
-To add Google Play subscriptions to an Android app, create a subscription and base plan in Play Console, add the RevenueCat Android SDK (it wraps Google Play Billing), set `Purchases.proxyURL` before `Purchases.configure`, and call `awaitOfferings` and `awaitPurchase`. On the server side you need two things: a service account so the backend can read each purchase from the Google Play Developer API, and real-time developer notifications (RTDN) on Pub/Sub so it hears about renewals and refunds. RevenueDot is that backend.
+To add Google Play subscriptions to an Android app, create a subscription and base plan in Play Console, add the RevenueDot SDK (`app.revenuedot.purchases:purchases`, which wraps Google Play Billing), call `Purchases.configure` with your app's key, and call `awaitOfferings` and `awaitPurchase`. On the server side you need two things: a service account so the backend can read each purchase from the Google Play Developer API, and real-time developer notifications (RTDN) on Pub/Sub so it hears about renewals and refunds. RevenueDot is that backend.
 
 ![Architecture: an Android app using Google Play Billing through the SDK talks to RevenueDot, which talks to Google Play](assets/android-google-play-billing-subscriptions/cover.svg)
 
@@ -19,7 +19,7 @@ To add Google Play subscriptions to an Android app, create a subscription and ba
 - Android Studio and a Kotlin app.
 - A RevenueDot Cloud project. [Sign up free](https://app.revenuedot.app/signup).
 
-Google's [Play Billing documentation](https://developer.android.com/google/play/billing/getting-ready) notes that by August 31, 2026, all new apps and updates to existing apps must use Billing Library version 8 or later. The RevenueCat SDK bundles the Billing Library, so keep the SDK current and check its release notes for the version it uses.
+Google's [Play Billing documentation](https://developer.android.com/google/play/billing/getting-ready) notes that by August 31, 2026, all new apps and updates to existing apps must use Billing Library version 8 or later. The RevenueDot SDK bundles the Billing Library: version 10.23.3 uses Billing Library 8.3.0 ([source](https://github.com/revenuedot/purchases-android/blob/10.23.3-revenuedot/gradle/libs.versions.toml)). Keep the SDK current.
 
 ## Step 1: Create the subscription in Play Console
 
@@ -91,47 +91,43 @@ See [products and entitlements](https://revenuedot.app/docs/concepts/products-an
 
 ![RevenueDot dashboard page listing an offering with its packages and attached products](assets/android-google-play-billing-subscriptions/offerings.png)
 
-## Step 5: Add the SDK and configure it
+## Step 5: Add the RevenueDot SDK and configure it with your key
 
-Add the dependency from Maven Central. RevenueCat's [Android guide](https://www.revenuecat.com/docs/getting-started/installation/android) shows the form below. Use the [latest release](https://github.com/RevenueCat/purchases-android/releases) for the version.
+Add the dependency from Maven Central. The RevenueDot SDK is published there under the group `app.revenuedot.purchases`.
 
 ```kotlin
 // build.gradle.kts (module)
 dependencies {
-    implementation("com.revenuecat.purchases:purchases:<latest version>")
+    implementation("app.revenuedot.purchases:purchases:10.23.3")
 }
 ```
 
-Set the proxy URL before `configure`, and turn entitlement verification off so the stock SDK does not log every RevenueDot response as a failed signature check.
+Call `configure` once, in your `Application` class. On RevenueDot Cloud there is nothing else to set, because the SDK already sends its requests to `https://api.revenuedot.app`.
 
 ```kotlin
 import android.app.Application
-import com.revenuecat.purchases.EntitlementVerificationMode
 import com.revenuecat.purchases.Purchases
 import com.revenuecat.purchases.PurchasesConfiguration
-import java.net.URL
 
 class MainApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        // Point the SDK at RevenueDot. Set it before configure.
-        Purchases.proxyURL = URL("https://api.revenuedot.app")
-        Purchases.configure(
-            PurchasesConfiguration.Builder(this, "goog_YourPublicKey")
-                .entitlementVerificationMode(EntitlementVerificationMode.DISABLED)
-                .build()
-        )
+        Purchases.configure(PurchasesConfiguration.Builder(this, "goog_YourPublicKey").build())
     }
 }
 ```
 
-Register the class with `android:name=".MainApplication"` in the manifest. RevenueCat also says to set the purchasing Activity's `launchMode` to `standard` or `singleTop`, so a purchase is not cancelled when the customer must authenticate in another app.
+The RevenueDot SDK is built from RevenueCat's open-source SDK (MIT license), so your code imports `com.revenuecat.purchases.*` and calls `Purchases`. It sends every request to RevenueDot, including diagnostics, paywall events and ad events, and needs no RevenueCat account. The [Android SDK guide](https://revenuedot.app/docs/sdks/android) has the details.
 
-**A stock SDK caveat.** Even with a proxy URL, the stock Android SDK still sends diagnostics, paywall events and ad events to RevenueCat's hosts. Purchases, customer info and offerings go to RevenueDot. The RevenueDot fork sends everything to your server, but it is not published yet. See the [Android SDK guide](https://revenuedot.app/docs/sdks/android).
+Register the class with `android:name=".MainApplication"` in the manifest. RevenueCat's [Android guide](https://www.revenuecat.com/docs/getting-started/installation/android) also says to set the purchasing Activity's `launchMode` to `standard` or `singleTop`, so a purchase is not cancelled when the customer must authenticate in another app.
+
+**Self-hosting?** Set `Purchases.proxyURL` to your own server before `configure`, and set `EntitlementVerificationMode.DISABLED`, because your server signs its responses with its own key. The [Android SDK guide](https://revenuedot.app/docs/sdks/android) shows the code.
+
+**Already ship the RevenueCat SDK?** You can keep it. Set `Purchases.proxyURL` to `https://api.revenuedot.app` before `configure`, set `EntitlementVerificationMode.DISABLED`, and call `syncPurchases()` once after the update. Purchases, customer info and offerings then go to RevenueDot. RevenueCat's Android SDK still sends diagnostics, paywall events and ad events to RevenueCat's hosts, even with a proxy URL. The RevenueDot SDK sends them to RevenueDot. Its Kotlin packages are the same, so swapping it in is a dependency change. [Connect your app](https://revenuedot.app/docs/getting-started/connect-your-app) shows the code, and [Migrate from RevenueCat](https://revenuedot.app/migrate-from-revenuecat) gives the order of steps.
 
 ## Step 6: Offerings, purchase, restore and entitlement check
 
-These are the SDK's coroutine helpers, unchanged.
+These are the SDK's coroutine helpers.
 
 ```kotlin
 import android.app.Activity
@@ -198,7 +194,7 @@ Before you ship, run a purchase with a license tester and check that it reaches 
 2. Add a Google Play app, upload the service account key and click **Check credentials**.
 3. Create the Pub/Sub topic and push subscription with RevenueDot's URL, then send the test message.
 4. Create the product, the `pro` entitlement and the `default` offering.
-5. Set `Purchases.proxyURL` to `https://api.revenuedot.app` and configure with your `goog_` key.
+5. Add `app.revenuedot.purchases:purchases:10.23.3` and configure it with your `goog_` key.
 
 [Start free on RevenueDot Cloud](https://app.revenuedot.app/signup)
 
@@ -224,4 +220,4 @@ Access to the Google Play Android Developer API in Google Cloud, plus Play Conso
 
 Yes. A package holds one product per app, so one offering can hold your App Store product and your Google Play product.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup), free up to $10,000 in monthly tracked revenue, or self-host it with Docker and Postgres. New apps install the RevenueDot SDK and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
