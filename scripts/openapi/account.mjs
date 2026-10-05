@@ -159,6 +159,23 @@ Refused (409) while you own a project with other members or are the last admin o
       description: "Turns off the email this link came with (the weekly summary, experiment results or revenue anomaly alerts) for that one project, without a session. Each such email carries `List-Unsubscribe` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`, so mail apps can send this POST themselves (RFC 8058).",
       responses: { 200: ok("Unsubscribed (an HTML page).", { type: "string", description: "text/html" }), 404: ok("Unknown link (an HTML page).", { type: "string", description: "text/html" }) } }),
   },
+  "/auth/journeys/unsubscribe/{token}": {
+    get: op({ id: "showProductEmailsUnsubscribe", tag: TAG, summary: "Open a product email's unsubscribe link", security: NONE, source: SRC, extension: true,
+      parameters: [{ name: "token", in: "path", required: true, schema: str(), description: "From the Unsubscribe link of an onboarding or product email, or its \`List-Unsubscribe\` header." }],
+      description: "An HTML page with an **Unsubscribe** button for the onboarding emails, tips and product news. Opening the link changes nothing, because mail scanners open links too.",
+      responses: { 200: ok("The page.", { type: "string", description: "text/html" }), 404: ok("Unknown link (an HTML page).", { type: "string", description: "text/html" }) } }),
+    post: op({ id: "unsubscribeProductEmails", tag: TAG, summary: "Unsubscribe from product emails", security: NONE, source: SRC, extension: true,
+      parameters: [{ name: "token", in: "path", required: true, schema: str() }],
+      description: "Stops the onboarding emails, tips and product news for the account the link was sent to, without a session. Security, billing and alert emails still arrive. Each such email carries \`List-Unsubscribe\` and \`List-Unsubscribe-Post: List-Unsubscribe=One-Click\`, so mail apps can send this POST themselves (RFC 8058). Turn the emails back on in Account settings → Notifications.",
+      responses: { 200: ok("Unsubscribed (an HTML page).", { type: "string", description: "text/html" }), 404: ok("Unknown link (an HTML page).", { type: "string", description: "text/html" }) } }),
+  },
+  "/auth/journeys/path/{token}": {
+    get: op({ id: "pickWelcomePath", tag: TAG, summary: "Follow a welcome email's path link", security: NONE, source: SRC, extension: true,
+      parameters: [{ name: "token", in: "path", required: true, schema: str(), description: "From the welcome email's link." },
+        { name: "path", in: "query", required: false, schema: { type: "string", enum: ["new", "revenuecat"] }, description: "\`revenuecat\` for moving from RevenueCat; anything else counts as \`new\`." }],
+      description: "Records which path the reader picked in the welcome email (starting fresh or moving from RevenueCat), so later emails fit it, then redirects to that guide: the [migration guide](https://revenuedot.app/docs/migrate) or the [quickstart](https://revenuedot.app/docs/getting-started/quickstart). An unknown token still redirects and records nothing.",
+      responses: { 302: { description: "Redirect to the guide.", headers: { Location: { schema: { type: "string" }, description: "The guide URL with \`utm_\` parameters." } } } } }),
+  },
   "/auth/notifications/{project_id}": {
     put: op({ id: "updateNotificationSettings", tag: TAG, summary: "Choose a project's emails", security: SESSION, source: SRC, extension: true,
       parameters: [{ name: "project_id", in: "path", required: true, schema: str() }],
