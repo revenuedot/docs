@@ -231,7 +231,8 @@ Set this URL as the **initialize** URL of an Intercom Canvas Kit app for the Inb
   "/v1/winback/o/{token}": { get: op({ id: "winbackOpen", tag: "Win-back", summary: "Open-tracking image (campaigns with track_opens)", security: NONE, source: PUB, extension: true, parameters: [id("token")], responses: { 200: { description: "A 1×1 GIF.", content: { "image/gif": {} } } } }) },
   "/v1/winback/u/{token}": {
     get: op({ id: "winbackUnsubscribePage", tag: "Win-back", summary: "Unsubscribe page (asks first)", security: NONE, source: PUB, extension: true, parameters: [id("token")], responses: { 200: { description: "HTML.", content: { "text/html": {} } }, 404: { description: "Unknown link." } } }),
-    post: op({ id: "winbackUnsubscribe", tag: "Win-back", summary: "Unsubscribe (also RFC 8058 one-click)", security: NONE, source: PUB, extension: true, parameters: [id("token")], responses: { 200: { description: "HTML confirmation.", content: { "text/html": {} } }, 404: { description: "Unknown link." } } }),
+    post: op({ id: "winbackUnsubscribe", tag: "Win-back", summary: "Unsubscribe (also RFC 8058 one-click)", security: NONE, source: PUB, extension: true, parameters: [id("token")],
+      description: "The URL in each win-back email's `List-Unsubscribe` header, sent with `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (RFC 8058). Mail apps POST the form body `List-Unsubscribe=One-Click` with no cookie or key; the token alone adds the address to the project's suppression list. Answers 200 without a redirect; repeating it changes nothing. A test email's link changes nothing.", responses: { 200: { description: "HTML confirmation.", content: { "text/html": {} } }, 404: { description: "Unknown link." } } }),
   },
   [`${P}/customer_lists`]: {
     get: op({ ...x, id: "listCustomerList", tag: "Customer lists", summary: "Customers in a list, with the summary cards", source: CL, scopes: CR, parameters: [project, ...listQuery, ...page],

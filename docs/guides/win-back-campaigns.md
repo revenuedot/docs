@@ -32,4 +32,15 @@ Each campaign shows:
 - **Reactivated**: customers who bought or started a trial within 30 days of the email, and the revenue from them.
 
 ## Unsubscribes
-Every email has an unsubscribe link. When your server's public URL is https, the email also carries one-click `List-Unsubscribe` and `List-Unsubscribe-Post` headers ([RFC 8058](https://www.rfc-editor.org/rfc/rfc8058)), which Gmail and Yahoo require from bulk senders. Opening the link only asks; the button (or the mail app's one-click unsubscribe) unsubscribes. An address that unsubscribes never gets another win-back email from the project.
+Every email has an unsubscribe link. On RevenueDot Cloud, and on a self-hosted server whose public URL is https, the email also carries the one-click headers that Gmail and Yahoo require from bulk senders ([RFC 8058](https://www.rfc-editor.org/rfc/rfc8058)):
+
+```
+List-Unsubscribe: <https://api.revenuedot.app/v1/winback/u/{token}>
+List-Unsubscribe-Post: List-Unsubscribe=One-Click
+```
+
+The mail app's **Unsubscribe** button sends a POST to that link, and the address is unsubscribed at once, with no sign-in and no confirmation page. Opening the link in a browser only asks; its button unsubscribes. An address that unsubscribes never gets another win-back email from the project.
+
+**Send test** emails carry the same headers, so you can check them in your mail app's "Show original" view. Their unsubscribe link changes nothing.
+
+Cloud sends through Cloudflare Email Service, which accepts these headers ([Cloudflare: email headers](https://developers.cloudflare.com/email-service/reference/headers/)). A self-hosted server sends them over SMTP. A server whose public URL is http sends no headers, because mail providers accept only https links; the link in the email still works.
