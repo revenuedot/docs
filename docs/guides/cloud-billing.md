@@ -76,9 +76,10 @@ The project's owner pays. Every project follows its owner's stage, including pro
 
 When the owner's account is paused:
 
-- **Reads of live data answer 402 `plan_required`**, in the dashboard and the API: overview metrics, charts and saved charts, attribution, benchmarks, customer lists, the customer list and customer pages in the dashboard, transactions, subscriptions and purchases lists, exports, ads revenue, payment recovery, win-back and AI insights. The same reads of sandbox data (`environment=sandbox`) keep working.
-- **Creating or editing paywalls, experiments and targeting rules answers 402.** Paywalls and experiments that are already live keep serving.
-- **Webhook and integration deliveries of production events are held**, not dropped (below).
+- **Reads of live data answer 402 `plan_required`**, in the dashboard and the API: overview metrics, charts, attribution, benchmarks, customer lists, the customer list and customer pages in the dashboard, transactions, ad revenue, payment recovery cases, win-back campaigns and RevenueDot AI conversations and insights. Sandbox reads (`environment=sandbox`) of the overview, charts, transactions, attribution and one customer keep working.
+- **Creating or editing paywalls, experiments, targeting rules and customer lists answers 402.** Paywalls and experiments that are already live keep serving.
+- **Webhook and integration deliveries of production events are held**, not dropped (below). Test events from "Send test" are still sent.
+- **Scheduled data exports wait** and run from where they stopped once Pro starts.
 
 ### What never pauses
 
@@ -92,7 +93,8 @@ In every stage, these keep working:
 - sandbox and Test Store data everywhere;
 - sign-up, projects, apps, store credentials, products, entitlements and offerings;
 - paywalls and experiments that are already running;
-- imports, moves, members and API keys.
+- settings: payment recovery on and off, pausing or deleting a win-back campaign, benchmark sharing and the ads setup;
+- imports, moves and a move's full export (your data can always leave), members and API keys.
 
 ### The 402 plan_required error
 

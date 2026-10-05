@@ -117,18 +117,37 @@ const tags = () => TAGS.map(([name, page, description]) => ({ name, description,
  * plan_required while the project's owner is paused. Reads of live data (any method), record lists and records (GET), and
  * edits of paywalls, experiments and targeting (not GET). Sandbox reads and secret-key reads of one record are let through.
  */
-const GATE_DATA = new Set(["metrics", "charts", "attribution", "benchmarks", "customer_lists", "audiences", "exports", "export", "transactions", "events", "overview", "stats", "customer_summaries", "ads", "payment_recovery", "winback_campaigns", "ai"]);
+const GATE_DATA = new Set(["metrics", "charts", "attribution", "benchmarks", "customer_lists", "transactions", "events", "overview", "stats", "customer_summaries", "ads", "payment_recovery", "winback_campaigns"]);
+const GATE_AI = new Set(["conversations", "insights", "first_sale", "files", "actions", "mentions"]);
 const GATE_RECORDS = new Set(["customers", "subscriptions", "purchases"]);
 const GATE_EDIT = new Set(["paywalls", "experiments", "targeting_rules"]);
+// revenuedot apps/server/src/routes/v2/live-gate.ts `needsPlan`, for a dashboard session with no query (the widest case):
+// an operation that can answer 402 plan_required documents it.
+function needsPlan(method, rest) {
+  const [head, second] = rest;
+  if (!head) return false;
+  const read = method === "get" || method === "head";
+  if (head === "integrations" && second === "exports") return true;
+  if (head === "benchmarks" && second === "settings") return false;
+  if (head === "payment_recovery" && !second) return false;
+  if (head === "ads" && second !== "overview" && second !== "apple_search_ads") return false;
+  if (head === "ads" && second === "apple_search_ads" && !read) return false;
+  if (head === "winback_campaigns" && rest.length === 2 && (method === "post" || method === "delete")) return false;
+  if (GATE_DATA.has(head)) return true;
+  if (head === "ai") return !!second && GATE_AI.has(second);
+  if (head === "audiences") return !read;
+  if (GATE_RECORDS.has(head)) return read;
+  if (GATE_EDIT.has(head)) return !read;
+  return false;
+}
+
 function withPlanRequired(paths) {
   for (const [path, item] of Object.entries(paths)) {
     if (!path.startsWith("/v2/projects/{project_id}/")) continue;
-    const [head, second] = path.split("/").slice(4);
+    const rest = path.split("/").slice(4).filter(Boolean);
     for (const [method, o] of Object.entries(item)) {
       if (!o?.responses || o.responses["402"]) continue;
-      const read = method === "get";
-      const gated = (head === "integrations" && second === "exports") || GATE_DATA.has(head) || (GATE_RECORDS.has(head) && read) || (GATE_EDIT.has(head) && !read);
-      if (gated) o.responses = { ...o.responses, 402: { $ref: "#/components/responses/V2Error402" } };
+      if (needsPlan(method, rest)) o.responses = { ...o.responses, 402: { $ref: "#/components/responses/V2Error402" } };
     }
   }
   return paths;

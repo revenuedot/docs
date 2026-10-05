@@ -4458,7 +4458,6 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/audiences" -H "Authorization: B
 
 - **200**: All audiences.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
-- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -4552,7 +4551,6 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/audiences/filter_options" -H "A
 - **200**: Options per field.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
-- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -4583,7 +4581,6 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/audiences/$AUDIENCE_ID" -H "Aut
 
 - **200**: The audience.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
-- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
