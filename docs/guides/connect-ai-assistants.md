@@ -9,7 +9,7 @@ RevenueDot has one connector for every assistant: `https://mcp.revenuedot.app/mc
 
 [![Watch the 87-second demo of RevenueDot in ChatGPT](https://revenuedot.app/videos/revenuedot-chatgpt-demo.webp)](https://revenuedot.app/videos/revenuedot-chatgpt-demo.mp4)
 
-*Watch the 87-second demo: a health check, a customer lookup, a 7-day grant, a new weekly plan, a webhook retry, and a refund that waits for your approval.*
+*Watch the 87-second demo: a health check, a customer lookup, a 7-day grant, a new weekly plan, a webhook retry, and a refund that waits for your approval. It is also [on YouTube](https://www.youtube.com/watch?v=bq8JAlei4x8), and there is a [watch page](https://revenuedot.app/watch/revenuedot-chatgpt-demo).*
 
 ## Connect
 

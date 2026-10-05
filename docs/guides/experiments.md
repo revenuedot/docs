@@ -7,6 +7,8 @@ description: An experiment shows each customer one of two to four offerings and 
 
 **An experiment gives each customer one of two to four offerings and tells you which one earns more.** You pick what to test, make the treatment offering from the one you sell today, and start it. Each customer who joins keeps the same variant, and the SDK returns that variant's offering as `Offerings.current`, so your app code does not change. The results compare conversion, revenue and retention per variant, each with a 95% interval, the lift over the control and the chance to beat it.
 
+Watch the [1:04 walkthrough of building a paywall and testing it](https://revenuedot.app/watch/revenuedot-paywalls-and-experiments), or [on YouTube](https://www.youtube.com/watch?v=daXVK_4XD8I).
+
 Targeting rules decide what everyone else sees. They are on the [Targeting and experiments](targeting-and-experiments.md) page.
 
 ## Start an experiment

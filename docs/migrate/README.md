@@ -7,6 +7,10 @@ description: Import your project with the revenuedot CLI, run both systems side 
 
 Move in four phases: import the project, run both systems side by side, ship an app update that points the SDK at RevenueDot, then cut over. The importer copies your catalog, customers and purchases and keeps your SDK keys, so no customer loses access on switch day. **The importer is in the RevenueDot repository today but not on npm yet (2026-09-30)**; you run it from source.
 
+[![Watch the 1:35 walkthrough of switching from RevenueCat to RevenueDot](https://revenuedot.app/videos/revenuedot-switch-from-revenuecat.webp)](https://revenuedot.app/videos/revenuedot-switch-from-revenuecat.mp4)
+
+*Watch the 1:35 walkthrough, or [on YouTube](https://www.youtube.com/watch?v=Smjskzwwo7o). [Watch page](https://revenuedot.app/watch/revenuedot-switch-from-revenuecat).*
+
 ## The four phases
 1. **Import and set up RevenueDot next to RevenueCat.**
    - Run the [importer](importer.md): catalog, customers, subscriptions, purchases and the public SDK keys.
