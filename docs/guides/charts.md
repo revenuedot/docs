@@ -122,6 +122,8 @@ Filter and segment by app, store, product, product duration, offering, country (
 - **Offer type** (`offer_type`): Free trial, Introductory price, Promotional offer, Offer code, Win-back offer or No offer, as the store reported the period. The same charts except ARR and MRR.
 - **Custom attributes** (`custom_attribute:<key>`, such as `custom_attribute:plan_source`): any attribute you set on customers, on every chart that takes customer dimensions. Reserved attributes that start with `$` (such as `$email`) are not offered. Customers without the attribute show as "Not set".
 
+Ad revenue has no store, product or offering. A Revenue chart segmented by one of them shows it as its own **Ad revenue** segment, and a filter on a store, product or offering leaves it out unless you pick "Ad revenue" (`$ad_revenue` in the API).
+
 A refund counts in the renewal cycle and offer type of the period it refunded. Snapshots (MRR, actives, trials) count the period that gives access at the end of each period. Customers without attribution show as "No attribution" (an empty value in the API). A filter on a purchase dimension (store, product …) does not change the new-customer counts that conversion charts divide by. A segmented chart shows the five largest values, then "Other" and the total.
 
 ## Taxes
@@ -182,7 +184,7 @@ The same dialog lists the chart's active links. Copy or open one, or revoke it: 
 
 ## Refresh and Ask AI
 
-Charts are computed when you open them. **Refresh** computes the chart, its Customers and Annotations tabs again; the line under the chart says when. **Ask AI** opens [RevenueDot AI](revenuedot-ai.md) with the chart mentioned and a question ready to send. The assistant reads the chart with the same range, resolution, segment, filters and Sandbox switch you were looking at.
+On the dashboard, charts without filters or segments, in US dollars, come from daily totals that RevenueDot rebuilds from scratch every 15 minutes while you look at them, so they open quickly. They are at most 20 minutes old, and the line under the chart says when they were computed. Charts with filters, segments, another currency or cohorts are computed when you open them. Through the API, `realtime=true` (the default) computes the chart now, and `realtime=false` allows the daily totals; the `x-revenuedot-chart-source` header says `rollups` or `live`. **Refresh** computes the chart, its Customers and Annotations tabs again; the line under the chart says when. **Ask AI** opens [RevenueDot AI](revenuedot-ai.md) with the chart mentioned and a question ready to send. The assistant reads the chart with the same range, resolution, segment, filters and Sandbox switch you were looking at.
 
 ## Compare and save charts
 
@@ -671,5 +673,4 @@ GROUP BY s.customer_id HAVING sum(s.mrr) > 0 ORDER BY s.customer_id;
 - **Dimensions** RevenueCat also offers (first purchase month, Apple Search Ads claim type) are not available yet, and the MRR Movement and Active Subscriptions Movement charts take no renewal cycle or offer type; platform and app version are the customer's latest, not their first. Attribution dimensions cover every media source, not only Apple Search Ads.
 - **Prediction Explorer** projects from your own cohorts, not from a model trained on many apps.
 - **App Store Save Outcomes** is always zero, and refund requests cover the App Store only.
-- **Ad revenue in segments:** ad revenue has no product, store or offering, so a Revenue chart segmented by one of them shows it in every segment.
 - **Active Customers** counts days of SDK activity from the update that added it; earlier days only know each customer's first and last visit.
