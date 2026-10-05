@@ -131,6 +131,27 @@ The body is not valid JSON (400); a package would get two products of one app wi
 
 The action would make an archived object current (422). Unarchive it first.
 
+<a id="plan-required"></a>
+
+### plan_required
+
+Live data is paused on RevenueDot Cloud (402) because the project's owner has no plan. `upgrade_url` is where the owner starts Pro.
+
+**What triggers it.** The owner's account made its first live sale (a production purchase that earned money) more than 14 days ago and has not started Pro. Then reads of live data answer 402: overview metrics, charts, customer lists, transactions, subscriptions and purchases lists, exports, attribution, benchmarks, ads revenue, payment recovery, win-back and AI insights. Creating or editing paywalls, experiments and targeting answers 402 too. The same reads with `environment=sandbox`, a secret key reading one customer, subscription or purchase, and every SDK endpoint keep working, and every purchase still unlocks.
+
+**How to fix it.** The owner opens the Billing page and clicks **Start Pro**. Pro costs $0 until your apps make $10,000 a month. The 402 stops at once, and held webhooks are sent, oldest first. A teammate who is not the owner gets a message that names the owner, and asks them to start Pro. Do not retry the request unchanged before that. Self-hosted servers never send this error.
+
+```json
+{
+  "object": "error",
+  "type": "plan_required",
+  "message": "Live data is paused because this account has no plan. Start Pro on the Billing page: it costs $0 until your apps make $10,000 a month.",
+  "doc_url": "https://revenuedot.app/docs/api/errors#plan-required",
+  "retryable": false,
+  "upgrade_url": "https://app.revenuedot.app/account/billing"
+}
+```
+
 ## Related
 
 - [Authentication](authentication.md)

@@ -80,7 +80,7 @@ For customers who already lapsed, Apple's win-back offers work with RevenueDot u
 
 RevenueCat's paywall builder has an exit-offer editor today, and RevenueDot does not. If a no-code exit-offer toggle is a must-have for you, plan on the API or app code for now. See the [paywalls feature page](https://revenuedot.app/features/paywalls) and the [paywall conversion chart](https://revenuedot.app/charts/paywall-conversion-rate).
 
-[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue).
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Pro costs $0 until your apps make $10,000 a month.
 
 ## FAQ
 
@@ -104,4 +104,4 @@ RevenueCat lists a lower price, a longer trial, or a monthly option after an ann
 
 Not yet. The dashboard builds the second paywall, and the exit-offer link to it is set through the API or in your app code. The [paywalls guide](https://revenuedot.app/docs/guides/paywalls) lists exit offers among the features without an editor.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

@@ -21,12 +21,13 @@ export const V2_ERROR_MEANINGS = {
   unprocessable_entity_error: "The request is valid but not possible in this state or for this store (422), for example archiving the current offering or refunding an App Store purchase.",
   invalid_request: "The body is not valid JSON (400); a package would get two products of one app with overlapping eligibility (409); or a product file is not in a state that allows the action, such as committing a file with errors (409).",
   entity_references_archived_entities: "The action would make an archived object current (422). Unarchive it first.",
+  plan_required: "Live data is paused on RevenueDot Cloud (402) because the project's owner has no plan. `upgrade_url` is where the owner starts Pro.\n\n**What triggers it.** The owner's account made its first live sale (a production purchase that earned money) more than 14 days ago and has not started Pro. Then reads of live data answer 402: overview metrics, charts, customer lists, transactions, subscriptions and purchases lists, exports, attribution, benchmarks, ads revenue, payment recovery, win-back and AI insights. Creating or editing paywalls, experiments and targeting answers 402 too. The same reads with `environment=sandbox`, a secret key reading one customer, subscription or purchase, and every SDK endpoint keep working, and every purchase still unlocks.\n\n**How to fix it.** The owner opens the Billing page and clicks **Start Pro**. Pro costs $0 until your apps make $10,000 a month. The 402 stops at once, and held webhooks are sent, oldest first. A teammate who is not the owner gets a message that names the owner, and asks them to start Pro. Do not retry the request unchanged before that. Self-hosted servers never send this error.",
 };
 
 export const V2_ERROR_TYPES = [
   "parameter_error", "resource_already_exists", "resource_missing", "idempotency_error", "rate_limit_error", "authentication_error",
   "authorization_error", "store_error", "server_error", "resource_locked_error", "unprocessable_entity_error", "invalid_request",
-  "entity_references_archived_entities",
+  "entity_references_archived_entities", "plan_required",
 ];
 
 /** SDK and REST v1 error codes (apps/server/src/errors.ts) with the HTTP status each is sent with. */
@@ -146,6 +147,7 @@ export const schemas = {
     param: str("The request field at fault, when there is one."),
     doc_url: str("Link to the error's section of the errors page."),
     retryable: bool("True when retrying the same request can succeed."),
+    upgrade_url: str("Only on `plan_required`: the Billing page where the owner starts Pro."),
   }, ["object", "type", "message", "doc_url", "retryable"]),
   Deleted: obj({ object: str("The deleted object's type."), id: str(), deleted_at: ms("When it was deleted.") }, ["object", "id", "deleted_at"]),
   MonetaryAmount: monetary,
@@ -301,7 +303,7 @@ export const schemas = {
   // ---- RevenueDot extensions --------------------------------------------------------------------------------------
   WebhookDelivery: obj({
     object: { type: "string", const: "webhook_delivery" }, id: str(), webhook_integration_id: str(), event_id: str(), event_type: str(),
-    status: en(["pending", "delivered", "failed"]), attempts: int(), next_attempt_at: nms("Next retry, when pending."),
+    status: en(["pending", "delivered", "failed", "held"], "`held`: a production event of a project whose owner is paused on RevenueDot Cloud (no plan 14 days after the first live sale). It is sent, oldest first, when Pro starts; held more than 30 days, it is marked failed."), attempts: int(), next_attempt_at: nms("Next retry, when pending."),
     response_status: nint("HTTP status of the last attempt."), response_ms: nint("Duration of the last attempt."), last_error: nstr(), created_at: ms("Queued at."),
   }, ["object", "id", "webhook_integration_id", "event_id", "event_type", "status", "attempts"]),
   Event: obj({
@@ -451,6 +453,10 @@ export const responses = {
   V2Error404: v2err(404, "resource_missing", "Customer not found."),
   V2Error409: v2err(409, "resource_already_exists", "An entitlement with lookup_key pro already exists."),
   V2Error422: v2err(422, "unprocessable_entity_error", "The current offering cannot be archived. Make another offering current first."),
+  V2Error402: ok("Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused.", ref("V2Error"), {
+    object: "error", type: "plan_required", message: "Live data is paused because this account has no plan. Start Pro on the Billing page: it costs $0 until your apps make $10,000 a month.",
+    doc_url: "https://revenuedot.app/docs/api/errors#plan-required", retryable: false, upgrade_url: "https://app.revenuedot.app/account/billing",
+  }),
   V2Error429: v2err(429, "rate_limit_error", "This project sent too many invites today. Try again tomorrow.", true),
   V2Error502: v2err(502, "server_error", "The language model did not answer. Try again.", true),
   V2Error503: v2err(503, "server_error", "The server could not complete the request. Try again.", true),

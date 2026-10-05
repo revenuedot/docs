@@ -110,7 +110,7 @@ Test it. Adapty reports that apps running 50 or more experiments earn 18.7 times
 
 The open-source [Focus sample app](https://github.com/revenuedot/examples) follows this pattern end to end: an onboarding quiz, a "building your plan" screen, a two-page paywall with a trial timeline, annual pre-selected, and an exit offer. RevenueCat's paywall builder is more mature, and it has an exit-offer editor that RevenueDot does not have yet.
 
-[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue).
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Pro costs $0 until your apps make $10,000 a month.
 
 ## FAQ
 
@@ -134,4 +134,4 @@ Yes. Superwall reports that Apple said remote paywall updates and A/B tests are 
 
 RevenueDot has templates for most of this pattern, a visual editor, AI generation, targeting and A/B experiments. Multi-screen navigation inside one paywall and an exit-offer editor are not built yet, as the [paywalls guide](https://revenuedot.app/docs/guides/paywalls) says.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

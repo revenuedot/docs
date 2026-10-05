@@ -104,7 +104,7 @@ curl -s "https://api.revenuedot.app/v2/projects/$PROJECT_ID/customers/user_1/sub
 
 Track the result on the [churn rate chart](https://revenuedot.app/charts/churn-rate) and the [subscription status chart](https://revenuedot.app/charts/subscription-status). The stores' paths are tested against mocked Apple and Google APIs, and a real run in each sandbox is still pending, so test with real sandbox accounts first.
 
-[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue). See also the [webhooks feature page](https://revenuedot.app/features/webhooks).
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Pro costs $0 until your apps make $10,000 a month. See also the [webhooks feature page](https://revenuedot.app/features/webhooks).
 
 ## FAQ
 
@@ -128,4 +128,4 @@ If the payment is fixed inside the grace period, yes on both stores. If it is fi
 
 Yes. Use the billing-issue event from your server, since both stores also show their own prompts. RevenueDot sends `BILLING_ISSUE` to webhooks and email tools, and the event includes when grace ends.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

@@ -1,17 +1,17 @@
 ---
 title: How do I make a first purchase with RevenueDot in 5 minutes?
-description: Create a free RevenueDot Cloud account, add a Test Store app with a product and an entitlement, make a test purchase from the dashboard, then point the RevenueCat SDK at https://api.revenuedot.app.
+description: Create a RevenueDot Cloud account, add a Test Store app with a product and an entitlement, make a test purchase from the dashboard, then point the RevenueCat SDK at https://api.revenuedot.app.
 ---
 
 # How do I make a first purchase with RevenueDot in 5 minutes?
 
-Create a free account on **RevenueDot Cloud**, add a Test Store app with one product and one entitlement, make a test purchase from the dashboard, then point an SDK at `https://api.revenuedot.app`. You do not need a server, an App Store account or a Google Play account. Cloud is free up to $10,000 in monthly tracked revenue.
+Create an account on **RevenueDot Cloud**, add a Test Store app with one product and one entitlement, make a test purchase from the dashboard, then point an SDK at `https://api.revenuedot.app`. You do not need a server, an App Store account or a Google Play account. Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month.
 
 [![Watch the 1:18 walkthrough of a first RevenueDot test purchase](https://revenuedot.app/videos/revenuedot-first-purchase.webp)](https://revenuedot.app/videos/revenuedot-first-purchase.mp4)
 
 *Watch the 1:18 walkthrough, or [on YouTube](https://www.youtube.com/watch?v=1YLygdbWOKM). [Watch page](https://revenuedot.app/watch/revenuedot-first-purchase).*
 
-## 1. Create a free account
+## 1. Create an account
 1. Open [app.revenuedot.app/signup](https://app.revenuedot.app/signup).
 2. Enter your email, a password of at least 8 characters, and a name for your first project. A project holds your apps, products and customers.
 3. Open the email from RevenueDot and click the link to confirm your address. The link works for 24 hours. Cloud needs a confirmed address before you can create secret API keys or invite teammates.

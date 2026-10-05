@@ -137,7 +137,7 @@ RevenueDot works with the same RevenueCat SDK calls, so the code above does not 
 
 You create base plans and offers in Play Console. RevenueDot's `create_in_store` call makes only the subscription and one listing, and leaves base plans and prices to the console. Google Play has no separate win-back type, so build one as a developer-determined offer and tag it.
 
-[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue). See also the [Google Play store page](https://revenuedot.app/stores/google-play), the [Android SDK guide](https://revenuedot.app/sdks/android) and our [Android billing tutorial](android-google-play-billing-subscriptions.md).
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Pro costs $0 until your apps make $10,000 a month. See also the [Google Play store page](https://revenuedot.app/stores/google-play), the [Android SDK guide](https://revenuedot.app/sdks/android) and our [Android billing tutorial](android-google-play-billing-subscriptions.md).
 
 ## FAQ
 
@@ -161,4 +161,4 @@ Create an offer on an auto-renewing base plan with the eligibility "New customer
 
 The idea is the same, but Play models it as an offer phase of 3 days to 3 years, and eligibility is part of the offer. On Apple, the introductory offer is a separate object and each customer gets one per subscription group ([Apple](https://developer.apple.com/app-store/subscriptions/)).
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

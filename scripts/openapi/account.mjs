@@ -129,7 +129,7 @@ Emails a link (\`/confirm-email?token=…\`, 24 hours, works once) to the new ad
   },
   "/auth/account/projects": {
     get: op({ id: "listAccountProjects", tag: TAG, summary: "List your projects with role and plan", security: SESSION, source: SRC, extension: true,
-      description: "Owned projects first. `plan` is the owner's RevenueDot Cloud plan, or Self-hosted.",
+      description: "Owned projects first. `plan` is the owner's RevenueDot Cloud plan (`pro` Pro, `enterprise` Enterprise, or `none` No plan), or `self_hosted` Self-hosted.",
       responses: { 200: ok("Projects.", obj({ object: { type: "string", const: "list" }, edition: en(["cloud", "self-hosted"]), items: arr(obj({ object: { type: "string", const: "account_project" }, id: str(), name: str(), role: str("admin, developer, viewer, or a custom role id (RevenueDot Enterprise)."), is_owner: bool(), members: int(), owner: { type: ["object", "null"], properties: { id: str(), name: nstr(), email: str() } }, plan: obj({ id: str(), name: str() }), created_at: ms("Created.") })) })), 401: authErr } }),
   },
   "/auth/account/delete": {
@@ -138,7 +138,7 @@ Emails a link (\`/confirm-email?token=…\`, 24 hours, works once) to the new ad
       responses: { 200: ok("The check.", obj({ object: { type: "string", const: "account_deletion" }, allowed: bool(), type: str(), message: str(), projects: arr(obj({ id: str(), name: str(), reason: en(["owner", "last_admin"]), members: int() })), projects_deleted: arr(obj({ id: str(), name: str() })), projects_left: arr(obj({ id: str(), name: str() })) })), 401: authErr } }),
     post: op({ id: "deleteAccount", tag: TAG, summary: "Delete the account", security: SESSION, source: SRC, extension: true,
       description: `
-Refused (409) while you own a project with other members or are the last admin of one (\`ownership_transfer_required\`), while Cloud Standard is active (\`billing_active\`), or when an enterprise organization still needs you as its owner (\`extension_refused\`). Deletes the account, its sessions, links, recovery codes, preferences and AI conversations, the OAuth keys listed by \`GET /auth/oauth_tokens\`, and the projects where you are the only member. Audit log entries stay, and every project you leave gets a \`collaborator_account_deleted\` entry with your email. Sends a confirmation email and clears the cookie.`,
+Refused (409) while you own a project with other members or are the last admin of one (\`ownership_transfer_required\`), while Pro is active (\`billing_active\`), or when an enterprise organization still needs you as its owner (\`extension_refused\`). Deletes the account, its sessions, links, recovery codes, preferences and AI conversations, the OAuth keys listed by \`GET /auth/oauth_tokens\`, and the projects where you are the only member. Audit log entries stay, and every project you leave gets a \`collaborator_account_deleted\` entry with your email. Sends a confirmation email and clears the cookie.`,
       requestBody: body(obj({ email: str("Your email, typed to confirm."), password: str("Needed when the account has a password."), ...codeFields }, ["email"]), { email: "dana@example.com", password: "current-password" }),
       responses: { 200: ok("Deleted.", obj({ ok: bool(), deleted: bool(), projects_deleted: arr(str()) }), { ok: true, deleted: true, projects_deleted: [] }),
         400: ok("The typed email does not match (`confirmation_mismatch`), or a wrong password or code.", errBody), 401: authErr, 403: csrf,
@@ -178,8 +178,8 @@ Refused (409) while you own a project with other members or are the last admin o
   },
   "/auth/journeys/feedback/{token}": {
     get: op({ id: "showJourneyFeedback", tag: TAG, summary: "Open a one-click answer link from an email", security: NONE, source: SRC, extension: true,
-      parameters: [{ name: "token", in: "path", required: true, schema: str(), description: "From the rating or reason link of an onboarding or Cloud Standard email." },
-        { name: "kind", in: "query", required: true, schema: { type: "string", enum: ["nps", "cancel"] }, description: "`nps` for a 0 to 10 rating, `cancel` for the reason for leaving Cloud Standard." },
+      parameters: [{ name: "token", in: "path", required: true, schema: str(), description: "From the rating or reason link of an onboarding or Pro email." },
+        { name: "kind", in: "query", required: true, schema: { type: "string", enum: ["nps", "cancel"] }, description: "`nps` for a 0 to 10 rating, `cancel` for the reason for leaving Pro." },
         { name: "value", in: "query", required: true, schema: str(), description: "The answer: a whole number from 0 to 10 for `nps`, or a reason of at most 80 characters for `cancel`." }],
       description: "An HTML page that shows the answer with a comment box and a **Send** button. Opening the link records nothing, because mail scanners open links too.",
       responses: { 200: ok("The page.", { type: "string", description: "text/html" }), 404: ok("Unknown link or invalid answer (an HTML page).", { type: "string", description: "text/html" }) } }),

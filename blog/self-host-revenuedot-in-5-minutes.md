@@ -7,7 +7,7 @@ author: RevenueDot team
 
 # Self-host RevenueDot in 5 minutes
 
-Most apps should start on [RevenueDot Cloud](https://app.revenuedot.app/signup), which is free up to $10,000 a month in tracked revenue and needs no server. This post is for people who want to run the server themselves.
+Most apps should start on [RevenueDot Cloud](https://app.revenuedot.app/signup), where Pro costs $0 until your apps make $10,000 a month and there is no server to run. This post is for people who want to run the server themselves.
 
 You can run RevenueDot on your laptop, make a purchase and receive the webhook in about five minutes, most of which is the first image build. You need Docker with Compose v2, `curl`, `jq` and Node.js 18 or newer for the webhook receiver. You do not need an App Store or Google Play account: the built-in Test Store stands in for them.
 
@@ -167,4 +167,4 @@ Your laptop setup is not a production setup. Before real customers:
 
 The full list is in [Going to production](../docs/guides/going-to-production.md), with [Backups](../docs/guides/backups.md) and [Upgrades](../docs/guides/upgrades.md).
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

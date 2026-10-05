@@ -44,7 +44,7 @@ const integration = obj({
 }, ["object", "id", "type", "name", "enabled", "settings", "secrets"]);
 const delivery = obj({
   object: en(["integration_delivery"]), id: str(), integration_id: str(), event_id: str(), event_type: str("Upper-case webhook event type."),
-  status: en(["pending", "delivered", "failed", "skipped"]), attempts: int(), sent_as: nstr("The name the partner received (an event name, an Adjust token or a Slack step)."),
+  status: en(["pending", "delivered", "failed", "skipped", "held"], "`held`: a production event of a project whose owner is paused on RevenueDot Cloud (no plan 14 days after the first live sale). It is sent, oldest first, when Pro starts; held more than 30 days, it is marked failed."), attempts: int(), sent_as: nstr("The name the partner received (an event name, an Adjust token or a Slack step)."),
   next_attempt_at: nms("Next attempt, while pending."), request: nstr("Method and URL of each request, credentials replaced by [redacted]."),
   request_body: nstr("The request bodies with credentials replaced by [redacted]; first 4,000 characters."), response_status: nint(), response_ms: nint(),
   response_body: nstr("The first 1,000 characters of the partner's answer."), last_error: nstr("Why it failed or was skipped."), created_at: ms("Queued."),

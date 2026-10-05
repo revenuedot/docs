@@ -68,3 +68,9 @@ export function op({ id, tag, summary, description, security, parameters, reques
     ...(extension ? { "x-revenuedot-extension": true } : {}),
   };
 }
+
+/** The go-live gate of an account (prd/cloud-billing/PRD.md). */
+export const billingGate = obj({
+  stage: en(["building", "grace", "paused", "active", "off"], "`building`: no live sale yet and no plan. `grace`: live, no plan, inside the 14 days. `paused`: live, no plan, after the 14 days; live data answers 402 `plan_required` and production webhooks are held. `active`: Pro (`active` or `past_due`) or Enterprise. `off`: billing is not set up on this server."),
+  live_at: nms("The account's first live sale was seen."), grace_ends_at: nms("The 14 days end."),
+});

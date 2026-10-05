@@ -90,7 +90,7 @@ RevenueDot supports multi-page flows in three ways. Be clear about what each one
 
 To test it, put the multi-page paywall on one offering and your single-page paywall on another, then start an experiment. Customers keep their variant, and the results show conversions, revenue per customer and the chance the treatment is better. Wait for 100 customers in each variant. See [targeting and experiments](https://revenuedot.app/docs/guides/targeting-and-experiments), the [experiments feature page](https://revenuedot.app/features/experiments) and the [paywalls feature page](https://revenuedot.app/features/paywalls). Track results on the [paywall conversion chart](https://revenuedot.app/charts/paywall-conversion-rate).
 
-[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue).
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Pro costs $0 until your apps make $10,000 a month.
 
 ## FAQ
 
@@ -114,4 +114,4 @@ RevenueDot supports swipeable pages inside one paywall screen today (the Story p
 
 We found no rule against it. The rules that matter apply to every paywall: a clear price, the billed amount most prominent, trial terms stated, Restore available, and no free-trial toggle ([Apple guidelines](https://developer.apple.com/app-store/review/guidelines/)).
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

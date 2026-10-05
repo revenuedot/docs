@@ -20,7 +20,7 @@ This post gives the order of work, what to rebuild by hand, and how to run both 
 - **Subscribers move by receipt.** Adapty's own migration guide says users move when they open a version with the new SDK ([Adapty docs](https://adapty.io/docs/migrate-to-adapty-from-another-solutions.md)). The same mechanism works in the other direction: the updated app posts each customer's store purchases to RevenueDot.
 - **Apple allows two notification URLs per app**, one for production and one for sandbox ([Apple](https://developer.apple.com/help/app-store-connect/configure-in-app-purchase-settings/enter-server-urls-for-app-store-server-notifications)). Point them at RevenueDot and forward the body to Adapty while old app versions remain.
 - **Your code changes.** Adapty's `getProfile()` and access levels become the RevenueCat SDK's customer info and entitlements, and your webhook handler reads RevenueCat's payload shape.
-- **Cost.** Adapty is free while you earn under $5K a month, then 1% of monthly revenue ([Adapty pricing](https://adapty.io/pricing/)). RevenueDot Cloud is free up to $10,000 of monthly tracked revenue.
+- **Cost.** Adapty is free while you earn under $5K a month, then 1% of monthly revenue ([Adapty pricing](https://adapty.io/pricing/)). RevenueDot Cloud Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month.
 
 ## What does RevenueDot import from Adapty?
 
@@ -126,7 +126,7 @@ The [RevenueDot vs Adapty comparison](https://revenuedot.app/compare/revenuedot-
 4. Route notifications through RevenueDot, forward to Adapty, and compare for a cycle.
 5. Cut over and watch the [charts](https://revenuedot.app/features/charts).
 
-[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue). The [subscription revenue calculator](https://revenuedot.app/tools/subscription-revenue-calculator) helps you model your own numbers.
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Pro costs $0 until your apps make $10,000 a month. The [subscription revenue calculator](https://revenuedot.app/tools/subscription-revenue-calculator) helps you model your own numbers.
 
 ## FAQ
 
@@ -150,4 +150,4 @@ If they are Adapty-built, yes. Rebuild them from a RevenueDot template or keep y
 
 For now, yes. RevenueDot implements the API the RevenueCat SDKs call. The forks that need no proxy URL are built but not yet published on package registries.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

@@ -276,6 +276,7 @@ Errors use the [REST API v2 format](errors.md#rest-api-v2-error-types), except u
   out.push("Every v2 error has `object: \"error\"`, `type`, `message`, `doc_url` (a link to the section below) and `retryable`. `param` names the field at fault when there is one.", "");
   for (const [type, meaning] of Object.entries(v2)) {
     out.push(`<a id="${type.replace(/_/g, "-")}"></a>`, "", `### ${type}`, "", meaning, "");
+    if (type === "plan_required") out.push(json(deref(spec.components.responses.V2Error402).content["application/json"].example), "");
   }
   out.push("## Related", "", "- [Authentication](authentication.md)", "- [Troubleshooting](../docs/help/troubleshooting.md)", "");
   writeFileSync(new URL("api/errors.md", ROOT), out.join("\n"));

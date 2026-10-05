@@ -5,7 +5,7 @@ description: Run the published image ghcr.io/revenuedot/revenuedot (API plus das
 
 # How do I self-host RevenueDot?
 
-Most apps should use [RevenueDot Cloud](https://app.revenuedot.app/signup), which is free up to $10,000 a month in tracked revenue and needs no server. This guide is for teams that run their own.
+Most apps should use [RevenueDot Cloud](https://app.revenuedot.app/signup), which needs no server. This guide is for teams that run their own. The server is AGPL-3.0 and has no billing. Organizations, custom roles, single sign-on and the other `ee/` features need an Enterprise licence key ([RevenueDot Enterprise](enterprise.md)).
 
 Clone the repository, copy `.env.example` to `.env`, and run `docker compose up -d`. You get one container that serves the SDK API, the REST API, store notifications and the dashboard on port 8787, next to Postgres 16 with a persistent volume. The server applies database migrations itself when it starts, so upgrades are a pull and a restart.
 

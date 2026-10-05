@@ -38,7 +38,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Test Store**: [Simulate a Test Store purchase or lifecycle](#simulate-a-test-store-purchase-or-lifecycle)
 - **Dashboard data**: [Daily history of an overview metric](#daily-history-of-an-overview-metric), [Dashboard rows for customers](#dashboard-rows-for-customers), [Overview cards summed across your projects](#overview-cards-summed-across-your-projects), [Transactions across your projects](#transactions-across-your-projects)
 - **Data moves**: [List the project's exports](#list-the-projects-exports), [Export the whole project](#export-the-whole-project), [Get the latest export](#get-the-latest-export), [Get an export](#get-an-export), [Delete an export's files now](#delete-an-exports-files-now), [Do the next slice of an export now](#do-the-next-slice-of-an-export-now), [Download an archive](#download-an-archive), [Get the project's move state](#get-the-projects-move-state), [Move the project to another server (run by this server)](#move-the-project-to-another-server-run-by-this-server), [Do the next step of the move now](#do-the-next-step-of-the-move-now), [Switch to the target](#switch-to-the-target), [Pause writes for the last copy](#pause-writes-for-the-last-copy), [Forward the paused project to its new server](#forward-the-paused-project-to-its-new-server), [Serve the project here again](#serve-the-project-here-again), [Create an import token (Receive a project)](#create-an-import-token-receive-a-project), [List your moves into this server](#list-your-moves-into-this-server), [Check or start loading an archive](#check-or-start-loading-an-archive), [Get an import](#get-an-import), [List the project's collaborators to invite](#list-the-projects-collaborators-to-invite), [Verify the copy](#verify-the-copy), [Put the project live here](#put-the-project-live-here)
-- **Cloud billing**: [The account's plan, usage and invoices](#the-accounts-plan-usage-and-invoices), [Upgrade to Cloud Standard with Stripe Checkout](#upgrade-to-cloud-standard-with-stripe-checkout), [Open the Stripe Customer Portal](#open-the-stripe-customer-portal), [Webhook of RevenueDot's own Stripe account](#webhook-of-revenuedots-own-stripe-account)
+- **Cloud billing**: [The account's plan, go-live stage, usage and invoices](#the-accounts-plan-go-live-stage-usage-and-invoices), [Start Pro with Stripe Checkout](#start-pro-with-stripe-checkout), [Open the Stripe Customer Portal](#open-the-stripe-customer-portal), [Webhook of RevenueDot's own Stripe account](#webhook-of-revenuedots-own-stripe-account)
 - **Migration import**: [Import customers with their purchases](#import-customers-with-their-purchases), [Keep an app's existing SDK key](#keep-an-apps-existing-sdk-key), [What still needs attention after an import](#what-still-needs-attention-after-an-import)
 - **Web billing**: [List web discounts with their settings](#list-web-discounts-with-their-settings), [Get the Web page: providers and checklist](#get-the-web-page-providers-and-checklist), [Get a Stripe app's web config](#get-a-stripe-apps-web-config), [Save a Stripe app's web config](#save-a-stripe-apps-web-config), [List a Stripe app's web products](#list-a-stripe-apps-web-products), [Create a web product in Stripe](#create-a-web-product-in-stripe), [Get the project's web address and custom domain](#get-the-projects-web-address-and-custom-domain), [Change the project's slug or custom domain](#change-the-projects-slug-or-custom-domain), [Check the custom domain's DNS records](#check-the-custom-domains-dns-records)
 - **Stripe Connect**: [Get a Stripe app's Connect status](#get-a-stripe-apps-connect-status), [Start connecting a Stripe account](#start-connecting-a-stripe-account), [Finish connecting (from the callback page)](#finish-connecting-from-the-callback-page), [Disconnect the Stripe account](#disconnect-the-stripe-account)
@@ -204,8 +204,14 @@ Example 200 response:
   },
   "account": {
     "edition": "cloud",
-    "plan": "free",
-    "billing_ready": false,
+    "plan": "none",
+    "gate": {
+      "stage": "building",
+      "live_at": null,
+      "grace_ends_at": null
+    },
+    "project_gates": {},
+    "billing_ready": true,
     "billing_status": "none",
     "email_verification_required": false
   },
@@ -957,7 +963,7 @@ curl -s "$REVENUEDOT_URL/auth/stripe_accounts"
 
 `GET /auth/account/projects` · Auth: dashboard session · RevenueDot extension
 
-Owned projects first. `plan` is the owner's RevenueDot Cloud plan, or Self-hosted.
+Owned projects first. `plan` is the owner's RevenueDot Cloud plan (`pro` Pro, `enterprise` Enterprise, or `none` No plan), or `self_hosted` Self-hosted.
 
 **Example request**
 
@@ -991,7 +997,7 @@ curl -s "$REVENUEDOT_URL/auth/account/delete"
 
 `POST /auth/account/delete` · Auth: dashboard session · RevenueDot extension
 
-Refused (409) while you own a project with other members or are the last admin of one (`ownership_transfer_required`), while Cloud Standard is active (`billing_active`), or when an enterprise organization still needs you as its owner (`extension_refused`). Deletes the account, its sessions, links, recovery codes, preferences and AI conversations, the OAuth keys listed by `GET /auth/oauth_tokens`, and the projects where you are the only member. Audit log entries stay, and every project you leave gets a `collaborator_account_deleted` entry with your email. Sends a confirmation email and clears the cookie.
+Refused (409) while you own a project with other members or are the last admin of one (`ownership_transfer_required`), while Pro is active (`billing_active`), or when an enterprise organization still needs you as its owner (`extension_refused`). Deletes the account, its sessions, links, recovery codes, preferences and AI conversations, the OAuth keys listed by `GET /auth/oauth_tokens`, and the projects where you are the only member. Audit log entries stay, and every project you leave gets a `collaborator_account_deleted` entry with your email. Sends a confirmation email and clears the cookie.
 
 **Request body** (`application/json`)
 
@@ -1175,13 +1181,13 @@ An HTML page that shows the answer with a comment box and a **Send** button. Ope
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `token` | string | yes | From the rating or reason link of an onboarding or Cloud Standard email. |
+| `token` | string | yes | From the rating or reason link of an onboarding or Pro email. |
 
 **Query parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `kind` | `nps`, `cancel` | yes | `nps` for a 0 to 10 rating, `cancel` for the reason for leaving Cloud Standard. |
+| `kind` | `nps`, `cancel` | yes | `nps` for a 0 to 10 rating, `cancel` for the reason for leaving Pro. |
 | `value` | string | yes | The answer: a whole number from 0 to 10 for `nps`, or a reason of at most 80 characters for `cancel`. |
 
 **Example request**
@@ -5236,6 +5242,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/overview" -H "Authorization
 - **200**: The overview.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -5365,6 +5372,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/reward_rules" -H "Authoriza
 
 - **200**: Every rule, first checked first.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -5408,6 +5416,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/reward_rules" -H "A
 - **201**: The rule.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -5462,6 +5471,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/reward_rules/action
 - **200**: Every rule in the new order.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -5506,6 +5516,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/reward_rules/$RULE_
 - **200**: The rule.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -5553,6 +5564,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/reward_rules/$RUL
 
 - **200**: Deleted.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -5588,6 +5600,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/reward_verifications" -H "A
 - **200**: Verifications.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -5665,6 +5678,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/reward_verification
 - **201**: The verification.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -5720,6 +5734,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/admob" -H "Authorization: B
 
 - **200**: The connection.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -5781,6 +5796,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/admob" -H "Author
 
 - **200**: The connection, now empty.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -5815,6 +5831,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/admob/connect" -H "
 - **200**: Google's sign-in URL and the browser's nonce.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
@@ -5862,6 +5879,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/admob/finish" -H "A
 - **200**: The connection.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
@@ -5925,6 +5943,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/admob/refresh" -H "
 
 - **200**: The connection.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **502**: An upstream service (the store or the language model) gave no usable answer. Retry later. Returns [V2Error](#v2error).
@@ -5994,6 +6013,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/apple_search_ads/report" -H
 - **200**: The report.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -6043,6 +6063,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/apple_search_ads/sy
 
 - **200**: How many campaigns were named.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
@@ -6158,6 +6179,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports" -H "Autho
 - **200**: The project's exports.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -6218,6 +6240,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports" -
 - **201**: The export.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -6243,6 +6266,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/columns" -
 
 - **200**: The tables.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -6290,6 +6314,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$EXPORT_ID
 
 - **200**: The export.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -6349,6 +6374,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$E
 - **200**: The export.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -6375,6 +6401,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/
 
 - **200**: Deleted.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -6407,6 +6434,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$E
 - **201**: The queued run.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
@@ -6434,6 +6462,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$E
 
 - **200**: The result.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -6468,6 +6497,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$EXPORT_ID
 - **200**: Runs.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -6997,6 +7027,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/support_summar
 
 - **200**: The summary.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -7173,6 +7204,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/payment_recovery" -H "Authoriza
 
 - **200**: Settings.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -7215,6 +7247,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/payment_recovery" -H "A
 - **200**: Settings.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -7246,6 +7279,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/payment_recovery/stats" -H "Aut
 - **200**: The numbers.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -7320,6 +7354,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/payment_recovery/cases" -H "Aut
 - **200**: Cases.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -7361,6 +7396,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/payment_recovery/action
 - **200**: Sent.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **429**: Too many requests. Retry later. Returns [V2Error](#v2error).
@@ -7388,6 +7424,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/payment_recovery/action
 
 - **200**: Counts.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
@@ -7595,6 +7632,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/winback_campaigns" -H "Authoriz
 
 - **200**: Campaigns with stats.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -7644,6 +7682,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/winback_campaigns" -H "
 - **201**: The campaign.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -7668,6 +7707,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/winback_campaigns/$CAMPAIGN_ID"
 
 - **200**: The campaign.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -7718,6 +7758,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/winback_campaigns/$CAMP
 - **200**: The campaign.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -7742,6 +7783,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/winback_campaigns/$CA
 
 - **200**: Deleted. Returns [Deleted](#deleted).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -7766,6 +7808,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/winback_campaigns/$CAMP
 
 - **200**: Count and sample.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -7798,6 +7841,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/winback_campaigns/$CAMP
 - **200**: Sent.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](#v2error).
@@ -7825,6 +7869,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/winback_campaigns/$CAMP
 
 - **200**: Counts.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](#v2error).
@@ -7953,6 +7998,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_lists" -H "Authorizati
 - **200**: Rows and the summary.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -7987,6 +8033,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_lists/export" -H "Auth
 - **200**: CSV with a header row: app_user_id, email, subscription_status, auto_renewal_status, first_seen_at, last_seen_at, spent_in_usd, latest_product_id, latest_store, latest_purchase_at, country, platform.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -8028,6 +8075,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/events" -H "Authorization: Bear
 - **200**: A page of results. Returns a list of [Event](#event).
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -8063,6 +8111,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/transactions" -H "Authorization
 - **200**: A page of results. Returns a list of [Transaction](#transaction).
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -8147,6 +8196,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/metrics/history" -H "Authorizat
 - **200**: The history. Returns [MetricHistory](#metrichistory).
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -8179,6 +8229,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_summaries" -H "Authori
 - **200**: A page of results. Returns a list of [CustomerSummary](#customersummary).
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -8262,6 +8313,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/exports" -H "Authorization: Bea
 
 - **200**: Exports, newest first.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -8297,6 +8349,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/exports" -H "Authorizat
 - **202**: The export, queued.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -8320,6 +8373,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/export" -H "Authorization: Bear
 
 - **200**: The export.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -8346,6 +8400,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/exports/$EXPORT_ID" -H "Authori
 
 - **200**: The export.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -8370,6 +8425,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/exports/$EXPORT_ID" -
 
 - **200**: Deleted.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -8396,6 +8452,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/exports/$EXPORT_ID/acti
 
 - **200**: The export.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -8783,13 +8840,19 @@ curl -s -X POST "$REVENUEDOT_URL/v2/imports/$IMPORT_ID/finish"
 
 ## Cloud billing
 
-RevenueDot Cloud only: the account's plan, tracked revenue and invoices, Stripe Checkout and the Customer Portal on RevenueDot's own Stripe account. See [Cloud billing](../docs/guides/cloud-billing.md).
+RevenueDot Cloud only: the account's plan (Pro or Enterprise), its go-live stage, tracked revenue and invoices, Stripe Checkout to start Pro and the Customer Portal on RevenueDot's own Stripe account. See [Cloud billing](../docs/guides/cloud-billing.md).
 
-### The account's plan, usage and invoices
+### The account's plan, go-live stage, usage and invoices
 
 `GET /v2/billing` · Auth: dashboard session · RevenueDot extension
 
-RevenueDot Cloud only; a self-hosted server answers 404. Tracked revenue is the USD sum of the month's production purchases, renewals and one-time purchases in the projects the account owns.
+RevenueDot Cloud only; a self-hosted server answers 404. Tracked revenue is the USD sum of the month's production purchases, renewals and one-time purchases that earned money in the projects the account owns; sandbox, trials, refunds and imported or moved-in history do not count. Add `?sync=1` after Stripe Checkout to read Stripe at once (at most once every 5 seconds).
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `sync` | `1` | no | `1`: read the subscription from Stripe now, so a new plan shows before the webhook lands. |
 
 **Example request**
 
@@ -8803,31 +8866,32 @@ curl -s "$REVENUEDOT_URL/v2/billing"
 - **401**: Not signed in.
 - **404**: Self-hosted: billing is only on RevenueDot Cloud.
 
-### Upgrade to Cloud Standard with Stripe Checkout
+### Start Pro with Stripe Checkout
 
 `POST /v2/billing/checkout` · Auth: dashboard session · RevenueDot extension
 
-A Stripe Checkout session on RevenueDot's own Stripe account: the metered Standard price, billing from the 1st of next month, no proration.
+A Stripe Checkout session on RevenueDot's own Stripe account: the metered Pro price, a card collected and $0 due today, billed monthly on the 1st from the 1st of next month, no proration. `standard`, Pro's old name, is still accepted.
 
 **Request body** (`application/json`)
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `plan` | `standard` | yes |  |
+| `plan` | `pro` | yes |  |
 
 **Example request**
 
 ```bash
 curl -s -X POST "$REVENUEDOT_URL/v2/billing/checkout" \
-  -H "Content-Type: application/json" -d '{"plan":"standard"}'
+  -H "Content-Type: application/json" -d '{"plan":"pro"}'
 ```
 
 **Responses**
 
 - **200**: Go to url.
-- **400**: Only Standard has a self-serve checkout.
+- **400**: Only Pro has a self-serve checkout; Enterprise is through sales.
 - **401**: Not signed in.
-- **409**: Already on Standard.
+- **403**: The request did not come from the dashboard.
+- **409**: Already on Pro or on Enterprise.
 - **502**: Stripe refused.
 - **503**: Billing is not set up on this server.
 
@@ -8835,7 +8899,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/billing/checkout" \
 
 `POST /v2/billing/portal` · Auth: dashboard session · RevenueDot extension
 
-Change the card, see invoices or cancel at period end.
+Change the card, see invoices or cancel at period end. A cancelled Pro plan ends at the period end; the account then has no plan, and a live account is paused at once.
 
 **Example request**
 
@@ -11493,6 +11557,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai" -H "Authorization: Bearer $
 
 - **200**: Status.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -11526,6 +11591,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/settings" -H "Author
 - **200**: Saved.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -11555,6 +11621,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/conversations"
 
 - **200**: Conversations.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -11586,6 +11653,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/conversations" \
 - **201**: The conversation.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](#v2error).
@@ -11611,6 +11679,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/conversations/$CONVERSATION_
 
 - **200**: The conversation.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -11643,6 +11712,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/conversations/$CONVE
 - **200**: The conversation.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -11669,6 +11739,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/conversations/$CON
 
 - **200**: Deleted.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -11716,6 +11787,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/conversations/$CONVE
 - **200**: The answer, streamed.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **423**: An answer is still being written in this conversation. Returns [V2Error](#v2error).
@@ -11745,6 +11817,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/conversations/$CONVERSATION_
 - **200**: The answer from its first chunk.
 - **204**: Nothing is being written.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -11769,6 +11842,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/conversations/$CONVE
 
 - **200**: Stopped.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -11803,6 +11877,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/files"
 - **201**: The file.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **429**: Too many requests. Retry later. Returns [V2Error](#v2error).
@@ -11838,6 +11913,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/files/$FILE_ID"
 - **200**: The image bytes, or JSON for `format`.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -11866,6 +11942,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/storekit"
 - **200**: What the file holds.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -11897,6 +11974,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/mentions"
 
 - **200**: Suggestions.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -11922,6 +12000,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/first_sale" -H "Authorizatio
 
 - **200**: The card, or `card: null`.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -11947,6 +12026,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/first_sale/dismiss"
 
 - **200**: Hidden.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -11977,6 +12057,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/attribution" -
 
 - **200**: The row.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -12013,6 +12094,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/attribution/report" -H "Authori
 - **200**: The report.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -12050,6 +12132,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/benchmarks" -H "Authorization: 
 
 - **200**: Benchmarks.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -12073,6 +12156,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/benchmarks/settings" -H "Author
 
 - **200**: Settings.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -12107,6 +12191,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/benchmarks/settings" -H
 - **200**: Saved.
 - **400**: The request is invalid. Returns [V2Error](#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -12136,6 +12221,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/insights" -H "Authorization:
 
 - **200**: Insights.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 
@@ -12161,6 +12247,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/insights/refresh"
 
 - **200**: The new insights.
 - **401**: No API key, or an unknown one. Returns [V2Error](#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](#v2error).
 - **409**: It already exists, or it conflicts with another object. Returns [V2Error](#v2error).
@@ -13293,11 +13380,12 @@ One screen of a funnel. Every step has `id` (1-40 lower-case letters, digits, `-
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `object` | `"error"` | yes |  |
-| `type` | `parameter_error`, `resource_already_exists`, `resource_missing`, `idempotency_error`, `rate_limit_error`, `authentication_error`, `authorization_error`, `store_error`, `server_error`, `resource_locked_error`, `unprocessable_entity_error`, `invalid_request`, `entity_references_archived_entities` | yes |  |
+| `type` | `parameter_error`, `resource_already_exists`, `resource_missing`, `idempotency_error`, `rate_limit_error`, `authentication_error`, `authorization_error`, `store_error`, `server_error`, `resource_locked_error`, `unprocessable_entity_error`, `invalid_request`, `entity_references_archived_entities`, `plan_required` | yes |  |
 | `message` | string | yes | What went wrong. |
 | `param` | string | no | The request field at fault, when there is one. |
 | `doc_url` | string | yes | Link to the error's section of the errors page. |
 | `retryable` | boolean | yes | True when retrying the same request can succeed. |
+| `upgrade_url` | string | no | Only on `plan_required`: the Billing page where the owner starts Pro. |
 
 ### WebConfig
 
@@ -13407,7 +13495,7 @@ One screen of a funnel. Every step has `id` (1-40 lower-case letters, digits, `-
 | `webhook_integration_id` | string | yes |  |
 | `event_id` | string | yes |  |
 | `event_type` | string | yes |  |
-| `status` | `pending`, `delivered`, `failed` | yes |  |
+| `status` | `pending`, `delivered`, `failed`, `held` | yes | `held`: a production event of a project whose owner is paused on RevenueDot Cloud (no plan 14 days after the first live sale). It is sent, oldest first, when Pro starts; held more than 30 days, it is marked failed. |
 | `attempts` | integer | yes |  |
 | `next_attempt_at` | integer or null | no | Next retry, when pending. Epoch milliseconds, or null. |
 | `response_status` | integer or null | no | HTTP status of the last attempt. |

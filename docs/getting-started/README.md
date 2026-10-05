@@ -1,11 +1,11 @@
 ---
 title: What is RevenueDot?
-description: RevenueDot is an open-source backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on RevenueDot Cloud, point the SDK's proxy URL at it and keep your app code.
+description: RevenueDot is an open-source backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start for free on RevenueDot Cloud, point the SDK's proxy URL at it and keep your app code.
 ---
 
 # What is RevenueDot?
 
-RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. The quickest start is **RevenueDot Cloud**: [create a free account](https://app.revenuedot.app/signup) and use `https://api.revenuedot.app`. Cloud is free up to $10,000 in monthly tracked revenue. An app that already uses the RevenueCat SDK points the SDK at RevenueDot with one setting, the **proxy URL**, and keeps its purchase code.
+RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. The quickest start is **RevenueDot Cloud**: [start for free](https://app.revenuedot.app/signup) and use `https://api.revenuedot.app`. Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month. An app that already uses the RevenueCat SDK points the SDK at RevenueDot with one setting, the **proxy URL**, and keeps its purchase code.
 
 ```swift
 // Point the SDK at RevenueDot Cloud; nothing else in the app changes.
@@ -31,7 +31,7 @@ Purchases.configure(with: Configuration.Builder(withAPIKey: "appl_...").with(ent
 |---|---|
 | Source code | Open source: the server and dashboard are AGPL-3.0 ([repository](https://github.com/revenuedot/revenuedot)) |
 | Where it runs | RevenueDot Cloud at `https://api.revenuedot.app` |
-| Price | RevenueDot Cloud is free up to $10,000 in monthly tracked revenue, and sign-up is open. Paid Cloud plans have not shipped |
+| Price | RevenueDot Cloud Pro is free until your apps make $10,000 a month, then 0.5% of revenue above that, never more than $999 a month; Enterprise is custom. See [Cloud billing](../guides/cloud-billing.md) |
 | App changes | Set the SDK's proxy URL and turn off its response-signature check, or install the RevenueDot fork of the SDK |
 | Data | RevenueDot runs the database for you |
 

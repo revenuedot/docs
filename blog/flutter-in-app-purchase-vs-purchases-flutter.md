@@ -20,7 +20,7 @@ This post compares the two packages with code side by side, shows what each cost
 - **`purchases_flutter`** is published by revenuecat.com under MIT, version 10.14.0, for iOS, Android, macOS and web ([pub.dev](https://pub.dev/packages/purchases_flutter)). It needs a backend that speaks RevenueCat's API.
 - **Pick `in_app_purchase`** if you sell on one store, already run a backend, or must not depend on any vendor.
 - **Pick `purchases_flutter`** if you sell subscriptions on both stores and want entitlements, webhooks and charts without writing store server code.
-- **Cost:** `in_app_purchase` costs your engineering time. `purchases_flutter` with RevenueCat is free up to $2,500 in monthly tracked revenue, then 1% ([RevenueCat](https://www.revenuecat.com/pricing/)). With RevenueDot Cloud it is free up to $10,000.
+- **Cost:** `in_app_purchase` costs your engineering time. `purchases_flutter` with RevenueCat is free up to $2,500 in monthly tracked revenue, then 1% ([RevenueCat](https://www.revenuecat.com/pricing/)). With RevenueDot Cloud Pro it costs $0 until your apps make $10,000 a month, then 0.5% of revenue above that, never more than $999 a month.
 
 ## What does each package do?
 
@@ -149,7 +149,7 @@ The first list is code you maintain forever. The second list is setup you get ri
 |---|---|---|---|
 | `in_app_purchase` + your server | Free (BSD-3-Clause) | You build and run it | Engineering time, hosting and upkeep |
 | `purchases_flutter` + RevenueCat | Free (MIT) | Hosted by RevenueCat | Free to $2,500 in monthly tracked revenue, then 1% ([RevenueCat](https://www.revenuecat.com/pricing/)) |
-| `purchases_flutter` + RevenueDot Cloud | Free (MIT) | Hosted by RevenueDot | Free to $10,000 in monthly tracked revenue, then 0.5% capped at $999 a month ([pricing](https://revenuedot.app/pricing)) |
+| `purchases_flutter` + RevenueDot Cloud | Free (MIT) | Hosted by RevenueDot | Pro: $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month ([pricing](https://revenuedot.app/pricing)) |
 
 At $50,000 in monthly tracked revenue, RevenueCat's fee is $500 a month. The [fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator) works it out for your numbers, and our [RevenueCat pricing explainer](revenuecat-pricing-explained.md) shows worked bills.
 
@@ -180,7 +180,7 @@ RevenueDot is an open-source server that speaks the RevenueCat SDK's API. You in
 
 The limits matter. Flutter web does not work against RevenueDot with the stock package, because its web plugin ignores `setProxyURL`. RevenueDot's fork of `purchases_flutter` fixes this; it installs as a git dependency at tag `10.13.2-revenuedot`, because the pub.dev name belongs to RevenueCat ([Flutter docs](../docs/sdks/flutter.md)). No real store purchase has run end to end against RevenueDot yet, so test each store in its sandbox before launch. The [RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) lists the other differences.
 
-[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue).
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Pro costs $0 until your apps make $10,000 a month.
 
 ## FAQ
 
@@ -204,4 +204,4 @@ You can, but most apps should not. Both listen to the same store transactions. I
 
 Yes. Replace the purchase code with `purchases_flutter`, configure the backend, and call `syncPurchases` once on the first launch of the update so existing subscribers are recorded. See [restore purchases on iOS and Android](restore-purchases-ios-android.md) for when to use `syncPurchases` and when to use `restorePurchases`.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

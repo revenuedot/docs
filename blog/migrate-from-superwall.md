@@ -98,7 +98,7 @@ Save it before you switch Superwall off. Its pricing page lists the Query API fo
 4. Move store notifications to RevenueDot and forward to Superwall for the overlap.
 5. For paths B and C, build the paywalls and set up [audiences and an experiment](https://revenuedot.app/features/experiments).
 
-[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue). The [paywalls feature page](https://revenuedot.app/features/paywalls) shows what the editor supports.
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Pro costs $0 until your apps make $10,000 a month. The [paywalls feature page](https://revenuedot.app/features/paywalls) shows what the editor supports.
 
 ## FAQ
 
@@ -122,4 +122,4 @@ No. RevenueDot's importer reads RevenueCat projects only. You recreate products,
 
 Partly. RevenueDot experiments compare two offerings, enroll a share of customers deterministically and report conversion, revenue and chance to win. Superwall's campaigns support more splits and holdout groups.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

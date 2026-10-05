@@ -171,13 +171,13 @@ RevenueDot copies the exact body, byte for byte, with a 10-second timeout, in th
 
 ## Do it with RevenueDot
 
-1. [Create a free account](https://app.revenuedot.app/signup) and add an App Store app with your bundle ID.
+1. [Create an account](https://app.revenuedot.app/signup) and add an App Store app with your bundle ID.
 2. Upload the In-App Purchase key (`.p8`, Key ID, Issuer ID).
 3. Copy the notification URL and set it for production and sandbox in App Store Connect, as Version 2.
 4. Request a test notification and wait for **Ready**.
 5. Add a webhook under **Integrations, Webhooks** to hear about each change in your backend.
 
-[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup)
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup)
 
 ## FAQ
 
@@ -201,4 +201,4 @@ Yes, for recovery and history. Notifications tell you about changes, and the API
 
 Not directly, because App Store Connect holds one production URL per app. Receive in one system and forward the exact body to the other. RevenueDot does this with `notification_forward_url`.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

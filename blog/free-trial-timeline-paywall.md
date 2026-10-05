@@ -87,7 +87,7 @@ RevenueDot ships a **Trial timeline** template, built on this pattern.
 
 The timeline paywall is also the first template in the [paywalls feature page](https://revenuedot.app/features/paywalls) gallery. Track the result on the [trial conversion rate chart](https://revenuedot.app/charts/trial-conversion-rate). RevenueDot does not send the reminder notification for you. Your app schedules it. The open-source [Focus sample app](https://github.com/revenuedot/examples) shows a three-step timeline in its paywall.
 
-[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue).
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Pro costs $0 until your apps make $10,000 a month.
 
 ## FAQ
 
@@ -111,4 +111,4 @@ The reminder is a notification your app schedules on the user's device. RevenueD
 
 A timeline is one of the compliant alternatives RevenueCat lists after Apple began rejecting trial toggles ([RevenueCat](https://www.revenuecat.com/blog/growth/rip-toggle-paywall)). Keep the trial on a plan, show the price and length clearly, and make the billed amount the biggest price.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

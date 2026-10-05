@@ -5,9 +5,9 @@ description: Short answers about what RevenueDot is, what it costs, its licenses
 
 # What do people most often ask about RevenueDot?
 
-RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup). The answers below say what exists on 2026-09-30.
+RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. [Start for free](https://app.revenuedot.app/signup) on RevenueDot Cloud. The answers below say what exists on 2026-10-05.
 
-RevenueDot is the open-source RevenueCat alternative: the first release is v2026.10.03, it has run in production beside RevenueCat since 2026-10-02, RevenueDot Cloud is free up to $10,000 a month in tracked revenue and then 0.5% (never more than $999 a month). The server is AGPL-3.0 and the SDKs are MIT.
+RevenueDot is the open-source RevenueCat alternative: the first release is v2026.10.03, it has run in production beside RevenueCat since 2026-10-02, and RevenueDot Cloud Pro is free until your apps make $10,000 a month, then 0.5% of revenue above that, never more than $999 a month; Enterprise is custom. The server is AGPL-3.0 and the SDKs are MIT.
 
 ## Is RevenueDot an open-source RevenueCat alternative?
 Yes. RevenueDot implements the API that the RevenueCat SDKs call, so an app keeps its purchase code and points the SDK at RevenueDot Cloud with one setting, the proxy URL. The server code is on [GitHub](https://github.com/revenuedot/revenuedot). RevenueDot is not affiliated with RevenueCat.
@@ -28,13 +28,18 @@ Purchases.proxyURL = URL(string: "https://api.revenuedot.app")!
 Every platform's version of this line is in the [SDK guides](../sdks/README.md).
 
 ## How is RevenueDot different from RevenueCat?
-- **Start free on Cloud.** RevenueDot Cloud is free up to $10,000 a month in tracked revenue, then 0.5% and never more than $999 a month.
+- **It costs less.** RevenueDot Cloud Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. RevenueCat charges 1% of all tracked revenue once it passes $2,500 a month ([pricing](https://www.revenuecat.com/pricing)).
 - **The server is open source** under AGPL-3.0, so you can read the code that decides who gets access.
 - **It is catching up feature by feature.** Paywalls, experiments, targeting, the charts, Customer Center and virtual currencies are built; [What differs](../migrate/what-differs.md) lists what is still missing next to RevenueCat ([features](https://www.revenuecat.com/pricing)).
 - **It is newer.** RevenueCat has a longer track record as a hosted service.
 
 ## What does it cost?
-RevenueDot Cloud is free up to $10,000 in monthly tracked revenue. Sign up at [app.revenuedot.app/signup](https://app.revenuedot.app/signup); every new account starts on Cloud Free. Cloud Standard costs 0.5% of tracked revenue above $10,000 a month, at most $999 a month, and adds organizations, custom roles and single sign-on. Enterprise starts at $50,000 a year. See [Cloud billing](../guides/cloud-billing.md) and [which plan has which feature](../guides/enterprise.md). RevenueCat's Pro plan is free up to $2,500 in monthly tracked revenue and then charges 1% of tracked revenue ([pricing](https://www.revenuecat.com/pricing)).
+RevenueDot Cloud has two plans:
+
+- **Pro** costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. It includes every feature, unlimited apps, projects and teammates, organizations, custom roles, single sign-on and email support.
+- **Enterprise** has custom pricing from $50,000 a year. It adds SCIM, long audit retention, compliance exports, a 99.9% uptime SLA, 1-hour support for purchase problems and a commercial licence to self-host. [Contact sales](https://revenuedot.app/contact-sales).
+
+Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month. After your first live sale you have 14 days to start Pro on the Billing page; your app keeps working either way. See [Cloud billing](../guides/cloud-billing.md) and [which plan has which feature](../guides/enterprise.md). RevenueCat's Pro plan is free up to $2,500 in monthly tracked revenue and then charges 1% of tracked revenue ([pricing](https://www.revenuecat.com/pricing)).
 
 ## Which licenses apply?
 - The server and dashboard are AGPL-3.0.

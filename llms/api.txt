@@ -1,8 +1,8 @@
 # RevenueDot documentation: API reference
 
-> RevenueDot is the open-source RevenueCat alternative: the first release is v2026.10.03, it has run in production beside RevenueCat since 2026-10-02, RevenueDot Cloud is free up to $10,000 a month in tracked revenue and then 0.5% (never more than $999 a month). The server is AGPL-3.0 and the SDKs are MIT.
+> RevenueDot is the open-source RevenueCat alternative: the first release is v2026.10.03, and it has run in production beside RevenueCat since 2026-10-02. RevenueDot Cloud Pro is free until your apps make $10,000 a month, then 0.5% of revenue above that, never more than $999 a month; Enterprise is custom. The server is AGPL-3.0 and the SDKs are MIT.
 > RevenueDot is an open-source backend for in-app purchases and subscriptions that works with the RevenueCat SDK.
-> Start free on RevenueDot Cloud (https://app.revenuedot.app/signup, free up to $10,000 monthly tracked revenue). An app points the RevenueCat SDK's proxy URL at RevenueDot and keeps its purchase code, offerings and customers.
+> Start for free on RevenueDot Cloud (https://app.revenuedot.app/signup). Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month. An app points the RevenueCat SDK's proxy URL at RevenueDot and keeps its purchase code, offerings and customers.
 > It verifies App Store and Google Play purchases on the server, keeps each customer's entitlements current from store notifications, and sends webhooks in RevenueCat's payload format.
 > On RevenueDot Cloud, apps use the API at https://api.revenuedot.app and people sign in to the dashboard at https://app.revenuedot.app/login. The server is AGPL-3.0. The SDK forks are MIT and keep RevenueCat's class and method names. RevenueDot is not affiliated with RevenueCat, Inc.
 
@@ -268,6 +268,25 @@ The body is not valid JSON (400); a package would get two products of one app wi
 ### entity_references_archived_entities
 
 The action would make an archived object current (422). Unarchive it first.
+
+### plan_required
+
+Live data is paused on RevenueDot Cloud (402) because the project's owner has no plan. `upgrade_url` is where the owner starts Pro.
+
+**What triggers it.** The owner's account made its first live sale (a production purchase that earned money) more than 14 days ago and has not started Pro. Then reads of live data answer 402: overview metrics, charts, customer lists, transactions, subscriptions and purchases lists, exports, attribution, benchmarks, ads revenue, payment recovery, win-back and AI insights. Creating or editing paywalls, experiments and targeting answers 402 too. The same reads with `environment=sandbox`, a secret key reading one customer, subscription or purchase, and every SDK endpoint keep working, and every purchase still unlocks.
+
+**How to fix it.** The owner opens the Billing page and clicks **Start Pro**. Pro costs $0 until your apps make $10,000 a month. The 402 stops at once, and held webhooks are sent, oldest first. A teammate who is not the owner gets a message that names the owner, and asks them to start Pro. Do not retry the request unchanged before that. Self-hosted servers never send this error.
+
+```json
+{
+  "object": "error",
+  "type": "plan_required",
+  "message": "Live data is paused because this account has no plan. Start Pro on the Billing page: it costs $0 until your apps make $10,000 a month.",
+  "doc_url": "https://revenuedot.app/docs/api/errors#plan-required",
+  "retryable": false,
+  "upgrade_url": "https://app.revenuedot.app/account/billing"
+}
+```
 
 ## Related
 
@@ -6239,6 +6258,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers" -H "Authorization: B
 - **200**: A page of results. Returns a list of [Customer](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#customer).
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -6304,6 +6324,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1" -H "Authoriza
 
 - **200**: The customer. Returns [Customer](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#customer).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -6400,6 +6421,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/aliases" -H "A
 
 - **200**: A page of results. Returns a list of [CustomerAlias](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#customeralias).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -6431,6 +6453,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/attributes" -H
 
 - **200**: A page of results. Returns a list of [CustomerAttribute](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#customerattribute).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -6498,6 +6521,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/active_entitle
 
 - **200**: A page of results. Returns a list of [ActiveEntitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#activeentitlement).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -6531,6 +6555,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/subscriptions"
 - **200**: A page of subscriptions. Returns a list of [Subscription](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#subscription).
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -6620,6 +6645,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/purchases" -H 
 - **200**: A page of results. Returns a list of [Purchase](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#purchase).
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -6657,6 +6683,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/events" -H "Au
 - **200**: A page of results. Returns a list of [CustomerEvent](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#customerevent).
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -6831,6 +6858,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/customer_cente
 - **200**: The configuration.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -6898,6 +6926,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/win_back_offer
 
 - **200**: The customer's App Store subscriptions.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -6954,6 +6983,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/subscriptions" -H "Authorizatio
 - **200**: A page of results. Returns a list of [Subscription](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#subscription).
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -6978,6 +7008,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/subscriptions/$SUBSCRIPTION_ID"
 
 - **200**: The subscription. Returns [Subscription](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#subscription).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -7058,6 +7089,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/subscriptions/$SUBSCRIPTION_ID/
 
 - **200**: A page of results. Returns a list of [Entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#entitlement).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -7094,6 +7126,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/subscriptions/$SUBSCRIPTION_ID/
 - **200**: A page of results. Returns a list of [SubscriptionTransaction](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#subscriptiontransaction).
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -7241,6 +7274,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/subscriptions/$SUBSCRIPTION_ID/
 
 - **200**: The URL.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -7284,6 +7318,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/purchases" -H "Authorization: B
 - **200**: A page of results. Returns a list of [Purchase](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#purchase).
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -7308,6 +7343,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/purchases/$PURCHASE_ID" -H "Aut
 
 - **200**: The purchase. Returns [Purchase](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#purchase).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -7339,6 +7375,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/purchases/$PURCHASE_ID/entitlem
 
 - **200**: A page of results. Returns a list of [Entitlement](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#entitlement).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -7404,6 +7441,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/metrics/overview" -H "Authoriza
 - **200**: The metrics. Returns [OverviewMetrics](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#overviewmetrics).
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -7439,6 +7477,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/metrics/revenue" -H "Authorizat
 - **200**: The total.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -7504,6 +7543,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/charts/$CHART_NAME" -H "Authori
 - **200**: The chart.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -7536,6 +7576,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/charts/$CHART_NAME/options" -H 
 
 - **200**: The options.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -7582,6 +7623,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/charts/$CHART_NAME/customers" -
 - **200**: The customers, or the CSV export.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -8421,6 +8463,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/virtual_curren
 - **200**: Balances.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -8662,6 +8705,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/audiences" -H "Authorization: B
 
 - **200**: All audiences.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -8696,6 +8740,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/audiences" -H "Authoriz
 - **201**: The audience.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -8723,6 +8768,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/audiences/actions/previ
 - **200**: Stats and a sample.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -8753,6 +8799,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/audiences/filter_options" -H "A
 - **200**: Options per field.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -8783,6 +8830,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/audiences/$AUDIENCE_ID" -H "Aut
 
 - **200**: The audience.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -8818,6 +8866,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/audiences/$AUDIENCE_ID"
 - **200**: The audience.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -8842,6 +8891,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/audiences/$AUDIENCE_I
 
 - **200**: Deleted. Returns [Deleted](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#deleted).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
@@ -8905,6 +8955,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/targeting_rules" -H "Au
 - **201**: The rule.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -8935,6 +8986,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/targeting_rules/actions
 - **200**: All rules in the new order.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -8997,6 +9049,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/targeting_rules/$RULE_I
 - **200**: The rule; `revision` goes up by one.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -9021,6 +9074,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/targeting_rules/$RULE
 
 - **200**: Deleted. Returns [Deleted](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#deleted).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -9113,6 +9167,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments" -H "Author
 - **201**: The draft. Returns [Experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#experiment).
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -9204,6 +9259,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/actions/reo
 - **200**: Every experiment of the project in priority order, stopped ones last. Returns a list of [Experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#experiment).
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -9243,6 +9299,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/actions/est
 - **200**: The estimate. Returns [ExperimentEstimate](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#experimentestimate).
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -9332,6 +9389,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT
 - **200**: The experiment. Returns [Experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#experiment).
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
@@ -9359,6 +9417,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIME
 
 - **200**: Deleted. Returns [Deleted](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#deleted).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
@@ -9386,6 +9445,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT
 
 - **200**: The experiment. Returns [Experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#experiment).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
@@ -9414,6 +9474,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT
 
 - **200**: The experiment. Returns [Experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#experiment).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
@@ -9442,6 +9503,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/experiments/$EXPERIMENT
 
 - **200**: The experiment. Returns [Experiment](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#experiment).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
@@ -9584,6 +9646,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls" -H "Authoriza
 - **201**: The paywall.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
@@ -9689,6 +9752,7 @@ curl -s -X PATCH "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID" 
 - **200**: The paywall.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
@@ -9729,6 +9793,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID"
 
 - **200**: Deleted. Returns [Deleted](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#deleted).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -9765,6 +9830,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/ac
 
 - **200**: The paywall.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
@@ -9807,6 +9873,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/ac
 
 - **200**: The paywall.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
@@ -9855,6 +9922,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/ac
 - **200**: The paywall.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
@@ -9895,6 +9963,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/ac
 
 - **200**: The paywall.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -9948,6 +10017,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/ac
 - **201**: The new paywall.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
@@ -10013,6 +10083,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/ve
 - **201**: The snapshot.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
@@ -10041,6 +10112,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/ve
 
 - **200**: The paywall with `components`.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -10124,6 +10196,7 @@ curl -s -X PUT "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/$PAYWALL_ID/tem
 - **200**: The form.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -10186,6 +10259,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/validate" -H "
 - **200**: The result.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -10248,6 +10322,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/paywalls/generate" -H "
 - **200**: A paywall draft.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **429**: Too many requests. Retry later. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
@@ -11191,6 +11266,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/invoices" -H "
 
 - **200**: Always an empty list.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -11228,6 +11304,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/invoices/$INVO
 **Responses**
 
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#v2error).
 
@@ -11851,11 +11928,12 @@ Counts and totals carry only `value`. The control has no `lift` or `chance_to_be
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `object` | `"error"` | yes |  |
-| `type` | `parameter_error`, `resource_already_exists`, `resource_missing`, `idempotency_error`, `rate_limit_error`, `authentication_error`, `authorization_error`, `store_error`, `server_error`, `resource_locked_error`, `unprocessable_entity_error`, `invalid_request`, `entity_references_archived_entities` | yes |  |
+| `type` | `parameter_error`, `resource_already_exists`, `resource_missing`, `idempotency_error`, `rate_limit_error`, `authentication_error`, `authorization_error`, `store_error`, `server_error`, `resource_locked_error`, `unprocessable_entity_error`, `invalid_request`, `entity_references_archived_entities`, `plan_required` | yes |  |
 | `message` | string | yes | What went wrong. |
 | `param` | string | no | The request field at fault, when there is one. |
 | `doc_url` | string | yes | Link to the error's section of the errors page. |
 | `retryable` | boolean | yes | True when retrying the same request can succeed. |
+| `upgrade_url` | string | no | Only on `plan_required`: the Billing page where the owner starts Pro. |
 
 ### WebhookIntegration
 
@@ -11917,7 +11995,7 @@ Base URL: your server, for example `http://localhost:8787` or `https://revenuedo
 - **Test Store**: [Simulate a Test Store purchase or lifecycle](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#simulate-a-test-store-purchase-or-lifecycle)
 - **Dashboard data**: [Daily history of an overview metric](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#daily-history-of-an-overview-metric), [Dashboard rows for customers](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#dashboard-rows-for-customers), [Overview cards summed across your projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#overview-cards-summed-across-your-projects), [Transactions across your projects](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#transactions-across-your-projects)
 - **Data moves**: [List the project's exports](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-the-projects-exports), [Export the whole project](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#export-the-whole-project), [Get the latest export](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-the-latest-export), [Get an export](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-an-export), [Delete an export's files now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#delete-an-exports-files-now), [Do the next slice of an export now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#do-the-next-slice-of-an-export-now), [Download an archive](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#download-an-archive), [Get the project's move state](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-the-projects-move-state), [Move the project to another server (run by this server)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#move-the-project-to-another-server-run-by-this-server), [Do the next step of the move now](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#do-the-next-step-of-the-move-now), [Switch to the target](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#switch-to-the-target), [Pause writes for the last copy](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#pause-writes-for-the-last-copy), [Forward the paused project to its new server](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#forward-the-paused-project-to-its-new-server), [Serve the project here again](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#serve-the-project-here-again), [Create an import token (Receive a project)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-an-import-token-receive-a-project), [List your moves into this server](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-your-moves-into-this-server), [Check or start loading an archive](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-or-start-loading-an-archive), [Get an import](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-an-import), [List the project's collaborators to invite](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-the-projects-collaborators-to-invite), [Verify the copy](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#verify-the-copy), [Put the project live here](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#put-the-project-live-here)
-- **Cloud billing**: [The account's plan, usage and invoices](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-accounts-plan-usage-and-invoices), [Upgrade to Cloud Standard with Stripe Checkout](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#upgrade-to-cloud-standard-with-stripe-checkout), [Open the Stripe Customer Portal](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#open-the-stripe-customer-portal), [Webhook of RevenueDot's own Stripe account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#webhook-of-revenuedots-own-stripe-account)
+- **Cloud billing**: [The account's plan, go-live stage, usage and invoices](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#the-accounts-plan-go-live-stage-usage-and-invoices), [Start Pro with Stripe Checkout](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#start-pro-with-stripe-checkout), [Open the Stripe Customer Portal](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#open-the-stripe-customer-portal), [Webhook of RevenueDot's own Stripe account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#webhook-of-revenuedots-own-stripe-account)
 - **Migration import**: [Import customers with their purchases](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#import-customers-with-their-purchases), [Keep an app's existing SDK key](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#keep-an-apps-existing-sdk-key), [What still needs attention after an import](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#what-still-needs-attention-after-an-import)
 - **Web billing**: [List web discounts with their settings](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-web-discounts-with-their-settings), [Get the Web page: providers and checklist](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-the-web-page-providers-and-checklist), [Get a Stripe app's web config](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-stripe-apps-web-config), [Save a Stripe app's web config](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#save-a-stripe-apps-web-config), [List a Stripe app's web products](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#list-a-stripe-apps-web-products), [Create a web product in Stripe](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#create-a-web-product-in-stripe), [Get the project's web address and custom domain](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-the-projects-web-address-and-custom-domain), [Change the project's slug or custom domain](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#change-the-projects-slug-or-custom-domain), [Check the custom domain's DNS records](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#check-the-custom-domains-dns-records)
 - **Stripe Connect**: [Get a Stripe app's Connect status](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#get-a-stripe-apps-connect-status), [Start connecting a Stripe account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#start-connecting-a-stripe-account), [Finish connecting (from the callback page)](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#finish-connecting-from-the-callback-page), [Disconnect the Stripe account](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#disconnect-the-stripe-account)
@@ -12083,8 +12161,14 @@ Example 200 response:
   },
   "account": {
     "edition": "cloud",
-    "plan": "free",
-    "billing_ready": false,
+    "plan": "none",
+    "gate": {
+      "stage": "building",
+      "live_at": null,
+      "grace_ends_at": null
+    },
+    "project_gates": {},
+    "billing_ready": true,
     "billing_status": "none",
     "email_verification_required": false
   },
@@ -12836,7 +12920,7 @@ curl -s "$REVENUEDOT_URL/auth/stripe_accounts"
 
 `GET /auth/account/projects` · Auth: dashboard session · RevenueDot extension
 
-Owned projects first. `plan` is the owner's RevenueDot Cloud plan, or Self-hosted.
+Owned projects first. `plan` is the owner's RevenueDot Cloud plan (`pro` Pro, `enterprise` Enterprise, or `none` No plan), or `self_hosted` Self-hosted.
 
 **Example request**
 
@@ -12870,7 +12954,7 @@ curl -s "$REVENUEDOT_URL/auth/account/delete"
 
 `POST /auth/account/delete` · Auth: dashboard session · RevenueDot extension
 
-Refused (409) while you own a project with other members or are the last admin of one (`ownership_transfer_required`), while Cloud Standard is active (`billing_active`), or when an enterprise organization still needs you as its owner (`extension_refused`). Deletes the account, its sessions, links, recovery codes, preferences and AI conversations, the OAuth keys listed by `GET /auth/oauth_tokens`, and the projects where you are the only member. Audit log entries stay, and every project you leave gets a `collaborator_account_deleted` entry with your email. Sends a confirmation email and clears the cookie.
+Refused (409) while you own a project with other members or are the last admin of one (`ownership_transfer_required`), while Pro is active (`billing_active`), or when an enterprise organization still needs you as its owner (`extension_refused`). Deletes the account, its sessions, links, recovery codes, preferences and AI conversations, the OAuth keys listed by `GET /auth/oauth_tokens`, and the projects where you are the only member. Audit log entries stay, and every project you leave gets a `collaborator_account_deleted` entry with your email. Sends a confirmation email and clears the cookie.
 
 **Request body** (`application/json`)
 
@@ -13054,13 +13138,13 @@ An HTML page that shows the answer with a comment box and a **Send** button. Ope
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `token` | string | yes | From the rating or reason link of an onboarding or Cloud Standard email. |
+| `token` | string | yes | From the rating or reason link of an onboarding or Pro email. |
 
 **Query parameters**
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `kind` | `nps`, `cancel` | yes | `nps` for a 0 to 10 rating, `cancel` for the reason for leaving Cloud Standard. |
+| `kind` | `nps`, `cancel` | yes | `nps` for a 0 to 10 rating, `cancel` for the reason for leaving Pro. |
 | `value` | string | yes | The answer: a whole number from 0 to 10 for `nps`, or a reason of at most 80 characters for `cancel`. |
 
 **Example request**
@@ -17115,6 +17199,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/overview" -H "Authorization
 - **200**: The overview.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -17244,6 +17329,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/reward_rules" -H "Authoriza
 
 - **200**: Every rule, first checked first.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -17287,6 +17373,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/reward_rules" -H "A
 - **201**: The rule.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -17341,6 +17428,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/reward_rules/action
 - **200**: Every rule in the new order.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -17385,6 +17473,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/reward_rules/$RULE_
 - **200**: The rule.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -17432,6 +17521,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/reward_rules/$RUL
 
 - **200**: Deleted.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -17467,6 +17557,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/reward_verifications" -H "A
 - **200**: Verifications.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -17544,6 +17635,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/reward_verification
 - **201**: The verification.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -17599,6 +17691,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/admob" -H "Authorization: B
 
 - **200**: The connection.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -17660,6 +17753,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/admob" -H "Author
 
 - **200**: The connection, now empty.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -17694,6 +17788,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/admob/connect" -H "
 - **200**: Google's sign-in URL and the browser's nonce.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
@@ -17741,6 +17836,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/admob/finish" -H "A
 - **200**: The connection.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
@@ -17804,6 +17900,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/admob/refresh" -H "
 
 - **200**: The connection.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **502**: An upstream service (the store or the language model) gave no usable answer. Retry later. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
@@ -17873,6 +17970,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/apple_search_ads/report" -H
 - **200**: The report.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -17922,6 +18020,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ads/apple_search_ads/sy
 
 - **200**: How many campaigns were named.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
@@ -18037,6 +18136,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports" -H "Autho
 - **200**: The project's exports.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -18097,6 +18197,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports" -
 - **201**: The export.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -18122,6 +18223,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/columns" -
 
 - **200**: The tables.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -18169,6 +18271,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$EXPORT_ID
 
 - **200**: The export.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -18228,6 +18331,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$E
 - **200**: The export.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -18254,6 +18358,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/
 
 - **200**: Deleted.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -18286,6 +18391,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$E
 - **201**: The queued run.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
@@ -18313,6 +18419,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$E
 
 - **200**: The result.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -18347,6 +18454,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/integrations/exports/$EXPORT_ID
 - **200**: Runs.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -18876,6 +18984,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/support_summar
 
 - **200**: The summary.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -19052,6 +19161,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/payment_recovery" -H "Authoriza
 
 - **200**: Settings.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -19094,6 +19204,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/payment_recovery" -H "A
 - **200**: Settings.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -19125,6 +19236,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/payment_recovery/stats" -H "Aut
 - **200**: The numbers.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -19199,6 +19311,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/payment_recovery/cases" -H "Aut
 - **200**: Cases.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -19240,6 +19353,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/payment_recovery/action
 - **200**: Sent.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **429**: Too many requests. Retry later. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
@@ -19267,6 +19381,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/payment_recovery/action
 
 - **200**: Counts.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
@@ -19474,6 +19589,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/winback_campaigns" -H "Authoriz
 
 - **200**: Campaigns with stats.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -19523,6 +19639,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/winback_campaigns" -H "
 - **201**: The campaign.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -19547,6 +19664,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/winback_campaigns/$CAMPAIGN_ID"
 
 - **200**: The campaign.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -19597,6 +19715,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/winback_campaigns/$CAMP
 - **200**: The campaign.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -19621,6 +19740,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/winback_campaigns/$CA
 
 - **200**: Deleted. Returns [Deleted](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#deleted).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -19645,6 +19765,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/winback_campaigns/$CAMP
 
 - **200**: Count and sample.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -19677,6 +19798,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/winback_campaigns/$CAMP
 - **200**: Sent.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
@@ -19704,6 +19826,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/winback_campaigns/$CAMP
 
 - **200**: Counts.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **422**: The request is valid but cannot be done in this state or for this store. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
@@ -19832,6 +19955,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_lists" -H "Authorizati
 - **200**: Rows and the summary.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -19866,6 +19990,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_lists/export" -H "Auth
 - **200**: CSV with a header row: app_user_id, email, subscription_status, auto_renewal_status, first_seen_at, last_seen_at, spent_in_usd, latest_product_id, latest_store, latest_purchase_at, country, platform.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -19907,6 +20032,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/events" -H "Authorization: Bear
 - **200**: A page of results. Returns a list of [Event](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#event).
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -19942,6 +20068,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/transactions" -H "Authorization
 - **200**: A page of results. Returns a list of [Transaction](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#transaction).
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -20026,6 +20153,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/metrics/history" -H "Authorizat
 - **200**: The history. Returns [MetricHistory](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#metrichistory).
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -20058,6 +20186,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customer_summaries" -H "Authori
 - **200**: A page of results. Returns a list of [CustomerSummary](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#customersummary).
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -20141,6 +20270,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/exports" -H "Authorization: Bea
 
 - **200**: Exports, newest first.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -20176,6 +20306,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/exports" -H "Authorizat
 - **202**: The export, queued.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -20199,6 +20330,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/export" -H "Authorization: Bear
 
 - **200**: The export.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -20225,6 +20357,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/exports/$EXPORT_ID" -H "Authori
 
 - **200**: The export.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -20249,6 +20382,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/exports/$EXPORT_ID" -
 
 - **200**: Deleted.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -20275,6 +20409,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/exports/$EXPORT_ID/acti
 
 - **200**: The export.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -20662,13 +20797,19 @@ curl -s -X POST "$REVENUEDOT_URL/v2/imports/$IMPORT_ID/finish"
 
 ## Cloud billing
 
-RevenueDot Cloud only: the account's plan, tracked revenue and invoices, Stripe Checkout and the Customer Portal on RevenueDot's own Stripe account. See [Cloud billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/cloud-billing.md).
+RevenueDot Cloud only: the account's plan (Pro or Enterprise), its go-live stage, tracked revenue and invoices, Stripe Checkout to start Pro and the Customer Portal on RevenueDot's own Stripe account. See [Cloud billing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/cloud-billing.md).
 
-### The account's plan, usage and invoices
+### The account's plan, go-live stage, usage and invoices
 
 `GET /v2/billing` · Auth: dashboard session · RevenueDot extension
 
-RevenueDot Cloud only; a self-hosted server answers 404. Tracked revenue is the USD sum of the month's production purchases, renewals and one-time purchases in the projects the account owns.
+RevenueDot Cloud only; a self-hosted server answers 404. Tracked revenue is the USD sum of the month's production purchases, renewals and one-time purchases that earned money in the projects the account owns; sandbox, trials, refunds and imported or moved-in history do not count. Add `?sync=1` after Stripe Checkout to read Stripe at once (at most once every 5 seconds).
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `sync` | `1` | no | `1`: read the subscription from Stripe now, so a new plan shows before the webhook lands. |
 
 **Example request**
 
@@ -20682,31 +20823,32 @@ curl -s "$REVENUEDOT_URL/v2/billing"
 - **401**: Not signed in.
 - **404**: Self-hosted: billing is only on RevenueDot Cloud.
 
-### Upgrade to Cloud Standard with Stripe Checkout
+### Start Pro with Stripe Checkout
 
 `POST /v2/billing/checkout` · Auth: dashboard session · RevenueDot extension
 
-A Stripe Checkout session on RevenueDot's own Stripe account: the metered Standard price, billing from the 1st of next month, no proration.
+A Stripe Checkout session on RevenueDot's own Stripe account: the metered Pro price, a card collected and $0 due today, billed monthly on the 1st from the 1st of next month, no proration. `standard`, Pro's old name, is still accepted.
 
 **Request body** (`application/json`)
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `plan` | `standard` | yes |  |
+| `plan` | `pro` | yes |  |
 
 **Example request**
 
 ```bash
 curl -s -X POST "$REVENUEDOT_URL/v2/billing/checkout" \
-  -H "Content-Type: application/json" -d '{"plan":"standard"}'
+  -H "Content-Type: application/json" -d '{"plan":"pro"}'
 ```
 
 **Responses**
 
 - **200**: Go to url.
-- **400**: Only Standard has a self-serve checkout.
+- **400**: Only Pro has a self-serve checkout; Enterprise is through sales.
 - **401**: Not signed in.
-- **409**: Already on Standard.
+- **403**: The request did not come from the dashboard.
+- **409**: Already on Pro or on Enterprise.
 - **502**: Stripe refused.
 - **503**: Billing is not set up on this server.
 
@@ -20714,7 +20856,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/billing/checkout" \
 
 `POST /v2/billing/portal` · Auth: dashboard session · RevenueDot extension
 
-Change the card, see invoices or cancel at period end.
+Change the card, see invoices or cancel at period end. A cancelled Pro plan ends at the period end; the account then has no plan, and a live account is paused at once.
 
 **Example request**
 
@@ -23372,6 +23514,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai" -H "Authorization: Bearer $
 
 - **200**: Status.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -23405,6 +23548,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/settings" -H "Author
 - **200**: Saved.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -23434,6 +23578,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/conversations"
 
 - **200**: Conversations.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -23465,6 +23610,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/conversations" \
 - **201**: The conversation.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **503**: The store could not be reached, or the feature is not configured on this server. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
@@ -23490,6 +23636,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/conversations/$CONVERSATION_
 
 - **200**: The conversation.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -23522,6 +23669,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/conversations/$CONVE
 - **200**: The conversation.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -23548,6 +23696,7 @@ curl -s -X DELETE "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/conversations/$CON
 
 - **200**: Deleted.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -23595,6 +23744,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/conversations/$CONVE
 - **200**: The answer, streamed.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **423**: An answer is still being written in this conversation. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
@@ -23624,6 +23774,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/conversations/$CONVERSATION_
 - **200**: The answer from its first chunk.
 - **204**: Nothing is being written.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -23648,6 +23799,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/conversations/$CONVE
 
 - **200**: Stopped.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -23682,6 +23834,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/files"
 - **201**: The file.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **429**: Too many requests. Retry later. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
@@ -23717,6 +23870,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/files/$FILE_ID"
 - **200**: The image bytes, or JSON for `format`.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -23745,6 +23899,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/storekit"
 - **200**: What the file holds.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -23776,6 +23931,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/mentions"
 
 - **200**: Suggestions.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -23801,6 +23957,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/first_sale" -H "Authorizatio
 
 - **200**: The card, or `card: null`.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -23826,6 +23983,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/first_sale/dismiss"
 
 - **200**: Hidden.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -23856,6 +24014,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/customers/user_1/attribution" -
 
 - **200**: The row.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -23892,6 +24051,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/attribution/report" -H "Authori
 - **200**: The report.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -23929,6 +24089,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/benchmarks" -H "Authorization: 
 
 - **200**: Benchmarks.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -23952,6 +24113,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/benchmarks/settings" -H "Author
 
 - **200**: Settings.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -23986,6 +24148,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/benchmarks/settings" -H
 - **200**: Saved.
 - **400**: The request is invalid. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -24015,6 +24178,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/insights" -H "Authorization:
 
 - **200**: Insights.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 
@@ -24040,6 +24204,7 @@ curl -s -X POST "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/ai/insights/refresh"
 
 - **200**: The new insights.
 - **401**: No API key, or an unknown one. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
+- **402**: Live data is paused: the project's owner went live more than 14 days ago without starting Pro (RevenueDot Cloud only). Sandbox reads (`environment=sandbox`) and secret-key reads of one customer, subscription or purchase are never paused. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **403**: The key lacks a permission, or a public key was used. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **404**: Not found in this project (another project's ids also answer 404). Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
 - **409**: It already exists, or it conflicts with another object. Returns [V2Error](https://raw.githubusercontent.com/revenuedot/docs/main/api/extensions.md#v2error).
@@ -25172,11 +25337,12 @@ One screen of a funnel. Every step has `id` (1-40 lower-case letters, digits, `-
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `object` | `"error"` | yes |  |
-| `type` | `parameter_error`, `resource_already_exists`, `resource_missing`, `idempotency_error`, `rate_limit_error`, `authentication_error`, `authorization_error`, `store_error`, `server_error`, `resource_locked_error`, `unprocessable_entity_error`, `invalid_request`, `entity_references_archived_entities` | yes |  |
+| `type` | `parameter_error`, `resource_already_exists`, `resource_missing`, `idempotency_error`, `rate_limit_error`, `authentication_error`, `authorization_error`, `store_error`, `server_error`, `resource_locked_error`, `unprocessable_entity_error`, `invalid_request`, `entity_references_archived_entities`, `plan_required` | yes |  |
 | `message` | string | yes | What went wrong. |
 | `param` | string | no | The request field at fault, when there is one. |
 | `doc_url` | string | yes | Link to the error's section of the errors page. |
 | `retryable` | boolean | yes | True when retrying the same request can succeed. |
+| `upgrade_url` | string | no | Only on `plan_required`: the Billing page where the owner starts Pro. |
 
 ### WebConfig
 
@@ -25286,7 +25452,7 @@ One screen of a funnel. Every step has `id` (1-40 lower-case letters, digits, `-
 | `webhook_integration_id` | string | yes |  |
 | `event_id` | string | yes |  |
 | `event_type` | string | yes |  |
-| `status` | `pending`, `delivered`, `failed` | yes |  |
+| `status` | `pending`, `delivered`, `failed`, `held` | yes | `held`: a production event of a project whose owner is paused on RevenueDot Cloud (no plan 14 days after the first live sale). It is sent, oldest first, when Pro starts; held more than 30 days, it is marked failed. |
 | `attempts` | integer | yes |  |
 | `next_attempt_at` | integer or null | no | Next retry, when pending. Epoch milliseconds, or null. |
 | `response_status` | integer or null | no | HTTP status of the last attempt. |
@@ -25442,7 +25608,7 @@ Example 200 response:
 
 `POST /v2/organizations` · Auth: dashboard session · RevenueDot extension
 
-You become its owner. On RevenueDot Cloud this needs Cloud Standard or Enterprise. `region` defaults to this deployment's region; another region needs data location in the licence or plan and must be one of `selectable_regions` (403 or 400 otherwise). A licence with an organization limit answers 403 once the server has that many organizations.
+You become its owner. On RevenueDot Cloud this needs Pro or Enterprise. `region` defaults to this deployment's region; another region needs data location in the licence or plan and must be one of `selectable_regions` (403 or 400 otherwise). A licence with an organization limit answers 403 once the server has that many organizations.
 
 **Request body** (`application/json`)
 
@@ -28230,11 +28396,11 @@ The shapes the operations above send and return.
 |---|---|---|---|
 | `object` | `"enterprise"` | yes |  |
 | `mode` | `licensed`, `development`, `invalid`, `cloud` | yes | `licensed`: a valid licence key. `development`: `REVENUEDOT_EE_DEV=true`, for development and testing only. `invalid`: a key that failed or expired more than 14 days ago; no feature is on. `cloud`: RevenueDot Cloud, where the account's plan decides the features. |
-| `plan` | `free`, `standard`, `enterprise` | no | RevenueDot Cloud only: the signed-in account's plan. Absent on a self-hosted server. |
+| `plan` | `none`, `pro`, `enterprise` | no | RevenueDot Cloud only: the signed-in account's plan; `none` until it starts Pro. Absent on a self-hosted server. |
 | `features` | array of `organizations`, `custom_roles`, `sso`, `scim`, `data_location`, `audit_retention`, `compliance_exports` | yes | The features that are on. On RevenueDot Cloud, the features of the account's plan. |
 | `locked` | array of object | no | Features that are off, each with the plan that has it. |
 | `locked[].feature` | `organizations`, `custom_roles`, `sso`, `scim`, `data_location`, `audit_retention`, `compliance_exports` | yes |  |
-| `locked[].plan` | `standard`, `enterprise` | yes | The cheapest plan that has the feature: `standard` (upgrade in Billing) or `enterprise` (contact sales). Always `enterprise` on a self-hosted server. |
+| `locked[].plan` | `pro`, `enterprise` | yes | The cheapest plan that has the feature: `pro` (Start Pro in Billing) or `enterprise` (contact sales). Always `enterprise` on a self-hosted server. |
 | `licensee` | string or null | no | Who the licence is for. |
 | `expires_at` | integer or null | no | When the licence expires. Features keep working for 14 days after it. Epoch milliseconds, or null. |
 | `message` | string or null | no | Why the licence is invalid, or a renewal warning. |
@@ -28260,10 +28426,10 @@ The shapes the operations above send and return.
 | `member_count` | integer | no | Active members. |
 | `project_count` | integer | no |  |
 | `features` | array of string | no | The enterprise features this organization has: the licence's on a self-hosted server, its plan's on RevenueDot Cloud. |
-| `plan` | `free`, `standard`, `enterprise` | no | RevenueDot Cloud only: the best plan among the organization's owners, which decides its features. Absent on a self-hosted server. |
+| `plan` | `none`, `pro`, `enterprise` | no | RevenueDot Cloud only: the best plan among the organization's owners, which decides its features; `none` when no owner has Pro or Enterprise. Absent on a self-hosted server. |
 | `locked` | array of object | no | Features the organization lacks (its plan on RevenueDot Cloud, the licence on a self-hosted server), each with the plan that has it. The dashboard still shows them, with that note. |
 | `locked[].feature` | `organizations`, `custom_roles`, `sso`, `scim`, `data_location`, `audit_retention`, `compliance_exports` | yes |  |
-| `locked[].plan` | `standard`, `enterprise` | yes | The cheapest plan that has the feature: `standard` (upgrade in Billing) or `enterprise` (contact sales). Always `enterprise` on a self-hosted server. |
+| `locked[].plan` | `pro`, `enterprise` | yes | The cheapest plan that has the feature: `pro` (Start Pro in Billing) or `enterprise` (contact sales). Always `enterprise` on a self-hosted server. |
 | `created_at` | integer | no | Creation time. Epoch milliseconds. |
 | `updated_at` | integer | no | Last change. Epoch milliseconds. |
 
@@ -28489,11 +28655,12 @@ A SCIM 2.0 User (RFC 7643). Other attributes you send, such as `phoneNumbers` an
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `object` | `"error"` | yes |  |
-| `type` | `parameter_error`, `resource_already_exists`, `resource_missing`, `idempotency_error`, `rate_limit_error`, `authentication_error`, `authorization_error`, `store_error`, `server_error`, `resource_locked_error`, `unprocessable_entity_error`, `invalid_request`, `entity_references_archived_entities` | yes |  |
+| `type` | `parameter_error`, `resource_already_exists`, `resource_missing`, `idempotency_error`, `rate_limit_error`, `authentication_error`, `authorization_error`, `store_error`, `server_error`, `resource_locked_error`, `unprocessable_entity_error`, `invalid_request`, `entity_references_archived_entities`, `plan_required` | yes |  |
 | `message` | string | yes | What went wrong. |
 | `param` | string | no | The request field at fault, when there is one. |
 | `doc_url` | string | yes | Link to the error's section of the errors page. |
 | `retryable` | boolean | yes | True when retrying the same request can succeed. |
+| `upgrade_url` | string | no | Only on `plan_required`: the Billing page where the owner starts Pro. |
 
 ## Related
 

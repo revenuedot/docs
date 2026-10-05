@@ -137,7 +137,7 @@ You can filter and segment by app, store, product, offering, country, platform a
 4. Segment by store and product when one moves, then drill into the cohort chart.
 5. Read the charts from the [API](https://revenuedot.app/docs/guides/charts) if you want them in your own report.
 
-[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue). The [feature page for charts](https://revenuedot.app/features/charts) lists everything included.
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Pro costs $0 until your apps make $10,000 a month. The [feature page for charts](https://revenuedot.app/features/charts) lists everything included.
 
 ## FAQ
 
@@ -161,4 +161,4 @@ Realized LTV is the money a cohort has actually paid by a given day, minus refun
 
 MRR, churn, trial conversion, paywall conversion, realized LTV and refund rate. If one moves, segment it by store, product and country to find the cause.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

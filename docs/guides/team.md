@@ -18,7 +18,7 @@ The roles follow RevenueCat's collaborator roles ([Collaborators](https://www.re
 
 `GET /v2/projects/{project_id}/collaborators` answers with RevenueCat's role names, so the Viewer role comes back as `read_only`. Requests that set a role take `admin`, `developer` or `viewer`.
 
-**Custom roles** (for example a support agent who can refund but not edit the catalog) are part of RevenueDot Cloud Standard and Enterprise, and of self-hosted servers with an Enterprise licence key ([Custom roles](enterprise.md#custom-roles)). A member with one shows **Custom role** in Collaborators, and the API returns the role's id (`role_...`). Single sign-on comes with the same plans ([Single sign-on](single-sign-on.md)); SCIM needs Enterprise ([SCIM](scim.md)).
+**Custom roles** (for example a support agent who can refund but not edit the catalog) are included with Pro on Cloud, or with an Enterprise licence when self-hosting ([Custom roles](enterprise.md#custom-roles)). A member with one shows **Custom role** in Collaborators, and the API returns the role's id (`role_...`). Single sign-on comes with the same plans ([Single sign-on](single-sign-on.md)); SCIM needs Enterprise ([SCIM](scim.md)).
 
 ## Invite someone
 1. Open **Project settings → Collaborators** and click **Invite**.

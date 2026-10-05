@@ -104,7 +104,7 @@ RevenueDot's experiments are simpler than some hosted tools: two variants, no ea
 
 See the [experiments feature page](https://revenuedot.app/features/experiments) and the [paywall conversion chart](https://revenuedot.app/charts/paywall-conversion-rate) for what you can measure. The [paywall abandonment chart](https://revenuedot.app/charts/paywall-abandonment-rate) shows how many viewers leave without starting a purchase.
 
-[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue).
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Pro costs $0 until your apps make $10,000 a month.
 
 ## FAQ
 
@@ -128,4 +128,4 @@ It is the probability that the treatment beats the control given the data so far
 
 Yes, on distinct audiences, or on separate subsets of one audience. Overlapping tests on the same customers muddy both results.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

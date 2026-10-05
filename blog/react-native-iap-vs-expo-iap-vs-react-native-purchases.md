@@ -21,7 +21,7 @@ This post compares the three packages with code, cost and fit. Every fact about 
 - **`react-native-purchases`** is version 10.11.0, MIT, published by RevenueCat ([npm](https://www.npmjs.com/package/react-native-purchases)). It needs a backend that speaks RevenueCat's API.
 - **Pick an OpenIAP package** if you already run a backend or must not depend on any vendor.
 - **Pick `react-native-purchases`** if you want entitlements, webhooks and charts without writing store server code.
-- **Cost:** the OpenIAP packages cost your engineering time. `react-native-purchases` with RevenueCat is free up to $2,500 in monthly tracked revenue, then 1% ([RevenueCat](https://www.revenuecat.com/pricing/)). With RevenueDot Cloud it is free up to $10,000.
+- **Cost:** the OpenIAP packages cost your engineering time. `react-native-purchases` with RevenueCat is free up to $2,500 in monthly tracked revenue, then 1% ([RevenueCat](https://www.revenuecat.com/pricing/)). With RevenueDot Cloud Pro it costs $0 until your apps make $10,000 a month, then 0.5% of revenue above that, never more than $999 a month.
 
 ## Is react-native-iap still maintained?
 
@@ -158,7 +158,7 @@ The first list is code you maintain. The second is setup you do once.
 |---|---|---|---|
 | `expo-iap` or `react-native-iap` + your server | Free (MIT) | You build and run it | Engineering time, hosting and upkeep |
 | `react-native-purchases` + RevenueCat | Free (MIT) | Hosted by RevenueCat | Free to $2,500 in monthly tracked revenue, then 1% ([RevenueCat](https://www.revenuecat.com/pricing/)) |
-| `react-native-purchases` + RevenueDot Cloud | Free (MIT) | Hosted by RevenueDot | Free to $10,000 in monthly tracked revenue, then 0.5% capped at $999 a month ([pricing](https://revenuedot.app/pricing)) |
+| `react-native-purchases` + RevenueDot Cloud | Free (MIT) | Hosted by RevenueDot | Pro: $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month ([pricing](https://revenuedot.app/pricing)) |
 
 At $50,000 in monthly tracked revenue, RevenueCat's fee is $500 a month. The [fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator) works it out for your numbers. Our [RevenueCat pricing explainer](revenuecat-pricing-explained.md) shows worked bills.
 
@@ -192,7 +192,7 @@ You can also install RevenueDot's fork. Version 10.10.2 is on npm as `@revenuedo
 
 The limits matter. No real store purchase has run end to end against RevenueDot yet, so test each store in its [sandbox](sandbox-testing-in-app-purchases.md) before launch. The [RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) lists the other differences.
 
-[Start free on RevenueDot Cloud](https://app.revenuedot.app/signup) (free up to $10,000 monthly tracked revenue).
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Pro costs $0 until your apps make $10,000 a month.
 
 ## FAQ
 
@@ -212,4 +212,4 @@ Yes, if you want to trust the purchase. The docs say to validate each receipt wi
 
 Yes. Replace the purchase code, configure the backend, and call `Purchases.syncPurchases()` once on the first launch of the update so existing subscribers are recorded ([React Native docs](../docs/sdks/react-native.md)). Do not run both packages at once.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

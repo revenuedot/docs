@@ -19,7 +19,7 @@ Published at [revenuedot.app/docs](https://revenuedot.app/docs); the source of t
 
 </div>
 
-**Open documentation for [RevenueDot](https://revenuedot.app), the open-source backend for in-app purchases that works with the RevenueCat SDK.** Start free on [RevenueDot Cloud](https://app.revenuedot.app/signup): free up to $10,000 in monthly tracked revenue, then 0.5%, never more than $999 a month. Everything here is public Markdown: getting started, concepts, SDK guides, store setup, webhooks, self-hosting, migration from RevenueCat, the API reference, a help center and a blog.
+**Open documentation for [RevenueDot](https://revenuedot.app), the open-source backend for in-app purchases that works with the RevenueCat SDK.** RevenueDot Cloud Pro is free until your apps make $10,000 a month, then 0.5% of revenue above that, never more than $999 a month; Enterprise is custom. [Start for free](https://app.revenuedot.app/signup). Everything here is public Markdown: getting started, concepts, SDK guides, store setup, webhooks, self-hosting, migration from RevenueCat, the API reference, a help center and a blog.
 
 > Every page says what works today and what is planned.
 
