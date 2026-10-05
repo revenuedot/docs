@@ -112,7 +112,7 @@ RevenueDot extensions in the store object: \`notification_forward_url\` (copy st
       responses: { 200: list(ref("Product")), ...E(404) } }),
     post: op({ id: "createProduct", tag: "Products", summary: "Create a product", security: SECRET, source: R.products, scopes: ["project_configuration:products:read_write"],
       parameters: [project, expand(["indicative_price", "store_details"], priceExpand)],
-      description: "`store_identifier` is the store's product id. For Google Play subscriptions use `subscriptionId:basePlanId`. Set `subscription.duration` (ISO 8601, for example P1M): the Test Store uses it as the period, and MRR uses it for every store. `test_store_price` sets what the SDK shows for a Test Store product.",
+      description: "`store_identifier` is the store's product id. For Google Play subscriptions use `subscriptionId:basePlanId`; for an App Store monthly billing plan with a 12-month commitment (iOS 26.4) use `productId:monthly`. Set `subscription.duration` (ISO 8601, for example P1M): the Test Store uses it as the period, and MRR uses it for every store. `test_store_price` sets what the SDK shows for a Test Store product.",
       requestBody: body(obj({
         store_identifier: str(undefined, { maxLength: 255 }), app_id: str(), type: en(["subscription", "one_time", "consumable", "non_consumable", "non_renewing_subscription"]),
         display_name: nstr(), title: nstr("Alias of display_name."), price_identifier: nstr("Accepted and ignored."),
@@ -651,7 +651,7 @@ Google subscriptions without \`purchase_token\` are keyed \`needs_token_refresh:
           id: str(), aliases: arr(str()), first_seen_at: int(), last_seen_at: int(), last_seen_app_version: nstr(), last_seen_country: nstr(), last_seen_platform: nstr(),
           attributes: arr(obj({ name: str(), value: nstr(), updated_at: int() }, ["name", "value"])),
           subscriptions: arr(obj({
-            source_id: str(), app_id: nstr(), store: str(), product_identifier: str(), environment: en(["production", "sandbox"]), ownership: en(["purchased", "family_shared"]),
+            source_id: str(), app_id: nstr(), store: str(), product_identifier: str("The store product id. Google Play `subscriptionId:basePlanId` and App Store `productId:monthly` (iOS 26.4 billing plan) are split into product and plan; `productId:upFront` is the bare App Store product."), environment: en(["production", "sandbox"]), ownership: en(["purchased", "family_shared"]),
             starts_at: int(), current_period_starts_at: int(), current_period_ends_at: { type: ["integer", "null"] },
             status: en(["trialing", "active", "expired", "in_grace_period", "in_billing_retry", "paused", "unknown", "incomplete"]),
             auto_renewal_status: en(["will_renew", "will_not_renew", "will_change_product", "will_pause", "requires_price_increase_consent", "has_already_renewed"]),

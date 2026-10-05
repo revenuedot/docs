@@ -182,7 +182,7 @@ export const schemas = {
   }, ["object", "id", "key", "environment", "app_id", "created_at"]),
   Product: obj({
     object: { type: "string", const: "product" }, id: str("Product id (prod...)."),
-    store_identifier: str("The store's product id. Google Play subscriptions use `subscriptionId:basePlanId`."),
+    store_identifier: str("The store's product id. Google Play subscriptions use `subscriptionId:basePlanId`; an App Store monthly billing plan (iOS 26.4) uses `productId:monthly`."),
     type: en(["subscription", "one_time", "consumable", "non_consumable", "non_renewing_subscription"]),
     state: en(["active", "inactive"]),
     subscription: obj({ duration: nstr("ISO 8601 period such as P1M."), grace_period_duration: { type: "null" }, trial_duration: { type: "null" } }),

@@ -62,6 +62,9 @@ How RevenueDot answers Apple:
 
 Check the status any time: `GET /v2/projects/{project_id}/setup_health` lists each app's `notification_status` (`ready`, `failing`, `received` or `waiting`) and the last error. See [store notifications not arriving](../help/store-notifications-not-arriving.md).
 
+## Monthly billing plans (iOS 26.4)
+Apple lets a yearly subscription be paid monthly with a 12-month commitment. Each signed transaction names its plan in [`billingPlanType`](https://developer.apple.com/documentation/appstoreserverapi/billingplantype) (`MONTHLY` or `BILLED_UPFRONT`, App Store Server API 1.21). RevenueDot records `MONTHLY` as product plan `monthly`, the value the iOS SDK reports as `productPlanIdentifier`. A plain `pro_annual` matches monthly-plan purchases online and, through the SDK's offline entitlements, while RevenueDot is down. To give the monthly plan its own entitlements, add it as `productId:monthly` (for example `pro_annual:monthly`). See [offline entitlements](offline-entitlements.md).
+
 ## Optional settings
 Set these in the app's `app_store` object with `POST /v2/projects/{project_id}/apps/{app_id}`, or in the dashboard under **More settings**:
 

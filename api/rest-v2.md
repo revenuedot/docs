@@ -585,7 +585,7 @@ curl -s "$REVENUEDOT_URL/v2/projects/$PROJECT_ID/products" -H "Authorization: Be
 
 `POST /v2/projects/{project_id}/products` · Auth: secret key or dashboard session · Permissions: `project_configuration:products:read_write`
 
-`store_identifier` is the store's product id. For Google Play subscriptions use `subscriptionId:basePlanId`. Set `subscription.duration` (ISO 8601, for example P1M): the Test Store uses it as the period, and MRR uses it for every store. `test_store_price` sets what the SDK shows for a Test Store product.
+`store_identifier` is the store's product id. For Google Play subscriptions use `subscriptionId:basePlanId`; for an App Store monthly billing plan with a 12-month commitment (iOS 26.4) use `productId:monthly`. Set `subscription.duration` (ISO 8601, for example P1M): the Test Store uses it as the period, and MRR uses it for every store. `test_store_price` sets what the SDK shows for a Test Store product.
 
 **Path parameters**
 
@@ -7266,7 +7266,7 @@ Counts and totals carry only `value`. The control has no `lift` or `chance_to_be
 |---|---|---|---|
 | `object` | `"product"` | yes |  |
 | `id` | string | yes | Product id (prod...). |
-| `store_identifier` | string | yes | The store's product id. Google Play subscriptions use `subscriptionId:basePlanId`. |
+| `store_identifier` | string | yes | The store's product id. Google Play subscriptions use `subscriptionId:basePlanId`; an App Store monthly billing plan (iOS 26.4) uses `productId:monthly`. |
 | `type` | `subscription`, `one_time`, `consumable`, `non_consumable`, `non_renewing_subscription` | yes |  |
 | `state` | `active`, `inactive` | yes |  |
 | `subscription` | object | no |  |

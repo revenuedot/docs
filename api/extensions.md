@@ -8780,7 +8780,7 @@ Google subscriptions without `purchase_token` are keyed `needs_token_refresh:<or
 | `customers[].subscriptions[].source_id` | string | no |  |
 | `customers[].subscriptions[].app_id` | string or null | no |  |
 | `customers[].subscriptions[].store` | string | yes |  |
-| `customers[].subscriptions[].product_identifier` | string | yes |  |
+| `customers[].subscriptions[].product_identifier` | string | yes | The store product id. Google Play `subscriptionId:basePlanId` and App Store `productId:monthly` (iOS 26.4 billing plan) are split into product and plan; `productId:upFront` is the bare App Store product. |
 | `customers[].subscriptions[].environment` | `production`, `sandbox` | no |  |
 | `customers[].subscriptions[].ownership` | `purchased`, `family_shared` | no |  |
 | `customers[].subscriptions[].starts_at` | integer | yes |  |
@@ -12729,7 +12729,7 @@ One screen of a funnel. Every step has `id` (1-40 lower-case letters, digits, `-
 |---|---|---|---|
 | `object` | `"product"` | yes |  |
 | `id` | string | yes | Product id (prod...). |
-| `store_identifier` | string | yes | The store's product id. Google Play subscriptions use `subscriptionId:basePlanId`. |
+| `store_identifier` | string | yes | The store's product id. Google Play subscriptions use `subscriptionId:basePlanId`; an App Store monthly billing plan (iOS 26.4) uses `productId:monthly`. |
 | `type` | `subscription`, `one_time`, `consumable`, `non_consumable`, `non_renewing_subscription` | yes |  |
 | `state` | `active`, `inactive` | yes |  |
 | `subscription` | object | no |  |
