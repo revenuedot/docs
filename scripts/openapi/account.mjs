@@ -176,6 +176,18 @@ Refused (409) while you own a project with other members or are the last admin o
       description: "Records which path the reader picked in the welcome email (starting fresh or moving from RevenueCat), so later emails fit it, then redirects to that guide: the [migration guide](https://revenuedot.app/docs/migrate) or the [quickstart](https://revenuedot.app/docs/getting-started/quickstart). An unknown token still redirects and records nothing.",
       responses: { 302: { description: "Redirect to the guide.", headers: { Location: { schema: { type: "string" }, description: "The guide URL with \`utm_\` parameters." } } } } }),
   },
+  "/auth/journeys/feedback/{token}": {
+    get: op({ id: "showJourneyFeedback", tag: TAG, summary: "Open a one-click answer link from an email", security: NONE, source: SRC, extension: true,
+      parameters: [{ name: "token", in: "path", required: true, schema: str(), description: "From the rating or reason link of an onboarding or Cloud Standard email." },
+        { name: "kind", in: "query", required: true, schema: { type: "string", enum: ["nps", "cancel"] }, description: "`nps` for a 0 to 10 rating, `cancel` for the reason for leaving Cloud Standard." },
+        { name: "value", in: "query", required: true, schema: str(), description: "The answer: a whole number from 0 to 10 for `nps`, or a reason of at most 80 characters for `cancel`." }],
+      description: "An HTML page that shows the answer with a comment box and a **Send** button. Opening the link records nothing, because mail scanners open links too.",
+      responses: { 200: ok("The page.", { type: "string", description: "text/html" }), 404: ok("Unknown link or invalid answer (an HTML page).", { type: "string", description: "text/html" }) } }),
+    post: op({ id: "recordJourneyFeedback", tag: TAG, summary: "Record a one-click answer from an email", security: NONE, source: SRC, extension: true,
+      parameters: [{ name: "token", in: "path", required: true, schema: str() }],
+      description: "Records the answer (form fields `kind`, `value` and an optional `comment` of up to 2,000 characters) for the account the email was sent to, without a session. The latest answer of each kind replaces the earlier one.",
+      responses: { 200: ok("Recorded (an HTML page).", { type: "string", description: "text/html" }), 404: ok("Unknown link or invalid answer (an HTML page).", { type: "string", description: "text/html" }) } }),
+  },
   "/auth/notifications/{project_id}": {
     put: op({ id: "updateNotificationSettings", tag: TAG, summary: "Choose a project's emails", security: SESSION, source: SRC, extension: true,
       parameters: [{ name: "project_id", in: "path", required: true, schema: str() }],
