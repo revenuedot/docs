@@ -1,0 +1,61 @@
+# Runs the same checks as deploy-site.yml on every pull request, so a broken page, a missing API route or a too-long
+# title fails here and not on main after the merge (eight deploys failed that way between 2026-10-02 and 2026-10-05).
+#
+# The server checkout is the branch of revenuedot/revenuedot with the same name as this pull request's branch when one
+# exists (a docs change that goes with a server change), else its main. Merge the server pull request first: after the
+# docs merge, the deploy checks the docs against the server's main.
+name: CI
+on:
+  pull_request:
+concurrency: { group: "ci-${{ github.ref }}", cancel-in-progress: true }
+permissions: { contents: read }
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DOCS_DIR: ${{ github.workspace }}/docs
+      CHECK_WORKSPACE: "0"
+    steps:
+      - uses: actions/checkout@v5
+        with: { path: docs }
+      - name: Pick the server branch
+        id: server
+        env: { HEAD_REF: "${{ github.head_ref }}" }
+        run: |
+          if git ls-remote --exit-code --heads https://github.com/revenuedot/revenuedot "refs/heads/$HEAD_REF" >/dev/null 2>&1; then ref="$HEAD_REF"; else ref=main; fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"; echo "server branch: $ref"
+      - uses: actions/checkout@v5
+        with: { repository: revenuedot/revenuedot, ref: "${{ steps.server.outputs.ref }}", path: revenuedot }
+      - uses: pnpm/action-setup@v4
+        with: { package_json_file: revenuedot/package.json }
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: revenuedot/.nvmrc
+          cache: pnpm
+          cache-dependency-path: revenuedot/pnpm-lock.yaml
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ hashFiles('docs/package-lock.json') }}
+          restore-keys: npm-
+      - name: Docs checks (drift against the server code, pages, links)
+        working-directory: docs
+        run: npm ci --no-audit --no-fund --prefer-offline && npm run all
+      # `npm run all` regenerates the API, error and llms pages; a difference means the pull request forgot to run it.
+      - name: Generated pages are committed
+        working-directory: docs
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then git status --short; echo "::error::Run 'npm run build' and commit the generated pages."; exit 1; fi
+      - run: pnpm install --frozen-lockfile
+        working-directory: revenuedot
+      - uses: actions/cache@v4
+        with:
+          path: revenuedot/apps/site/node_modules/.astro
+          key: astro-${{ hashFiles('revenuedot/apps/site/src/**', 'revenuedot/apps/site/public/**', 'revenuedot/apps/site/astro.config.mjs', 'docs/blog/assets/**') }}
+          restore-keys: astro-
+      # The site's own checks (titles 70 characters at most, descriptions 70 to 170, links, JSON-LD) run on the built pages.
+      - run: pnpm --filter site build
+        working-directory: revenuedot
+      - run: pnpm --filter site check
+        working-directory: revenuedot

@@ -5,7 +5,7 @@ description: purchases-hybrid-common is the shared native and TypeScript layer u
 
 # What is purchases-hybrid-common, and do I need to install it?
 
-`purchases-hybrid-common` is the shared layer that the cross-platform SDKs (React Native, Flutter, Capacitor, Unity and Cordova) sit on. It turns their calls into calls on the native iOS and Android SDKs. **You never install it yourself**: your wrapper depends on it, and setting the proxy URL and verification mode in the wrapper is all you need.
+`purchases-hybrid-common` is the shared layer that the cross-platform SDKs (React Native, Flutter, Capacitor, Unity and Cordova) sit on. It turns their calls into calls on the native iOS and Android SDKs. **You never install it yourself**: your wrapper depends on it. Installing the RevenueDot SDK for React Native, Flutter, Capacitor, Unity or Cordova pulls in RevenueDot's build of it.
 
 ## What it contains
 | Part | What it does | RevenueDot fork package (version 19.4.1) | Keeps the name |
@@ -15,7 +15,7 @@ description: purchases-hybrid-common is the shared native and TypeScript layer u
 | TypeScript types | Shared types and enums such as `ENTITLEMENT_VERIFICATION_MODE` | npm `@revenuedot/purchases-typescript-internal` and `-esm` | installed through npm aliases, so imports stay `@revenuecat/...` |
 | Web mappings | Runs purchases-js in browser mode (Expo Go, React Native web, Flutter web) | npm `@revenuedot/purchases-js-hybrid-mappings` | installed through an npm alias |
 
-The fork is [github.com/revenuedot/purchases-hybrid-common](https://github.com/revenuedot/purchases-hybrid-common); release 19.4.1 is the tag `19.4.1-revenuedot`, which Swift Package Manager also uses. Published: both pods on CocoaPods trunk, `purchases-hybrid-common`, `-ui` and `-store-galaxy` on Maven Central, and `@revenuedot/purchases-typescript-internal` and `@revenuedot/purchases-js-hybrid-mappings` on npm., and `@revenuedot/purchases-typescript-internal-esm` too.
+The fork is [github.com/revenuedot/purchases-hybrid-common](https://github.com/revenuedot/purchases-hybrid-common); release 19.4.1 is the tag `19.4.1-revenuedot`, which Swift Package Manager also uses. Published: both pods on CocoaPods trunk, `purchases-hybrid-common`, `-ui` and `-store-galaxy` on Maven Central, and `@revenuedot/purchases-typescript-internal` and `@revenuedot/purchases-js-hybrid-mappings` and `@revenuedot/purchases-typescript-internal-esm` on npm.
 
 ## Which wrappers use it
 | Wrapper | Native layer | TypeScript or web packages | Fork pin |
@@ -36,7 +36,7 @@ The RevenueDot forks pin each other, so a wrapper fork gets the RevenueDot build
 
 Releases run in that order: iOS and Android first, then hybrid-common, then purchases-js and the web mappings, then the wrappers. All of them are published.
 
-## What it means for proxy mode
+## Apps that keep RevenueCat's SDK change nothing here
 - You do nothing here. The wrapper's `setProxyURL` and verification option pass through hybrid-common to the native SDK.
 - With the stock wrappers, hybrid-common is RevenueCat's build, which trusts RevenueCat's signing key. That is why you turn verification off. See [Trusted Entitlements](../guides/trusted-entitlements.md).
 

@@ -52584,8 +52584,8 @@ paths:
       operationId: pickWelcomePath
       tags:
         - Account settings
-      summary: Follow a welcome email's path link
-      description: With `path=revenuecat`, an HTML page that asks the reader to confirm they are switching from RevenueCat; opening the link records nothing, because mail scanners open links too. Any other path redirects to the [quickstart](https://revenuedot.app/docs/getting-started/quickstart).
+      summary: Open a welcome email's path link
+      description: With `path=revenuecat`, an HTML page with a **Yes, show me how to switch** button. Opening the link changes nothing, because mail scanners open links too. Any other path redirects to the [quickstart](https://revenuedot.app/docs/getting-started/quickstart), which is where links from older emails land.
       security: []
       parameters:
         - name: token
@@ -52602,10 +52602,10 @@ paths:
             enum:
               - new
               - revenuecat
-          description: "`revenuecat` for moving from RevenueCat; anything else counts as `new`."
+          description: "`revenuecat` for moving from RevenueCat; anything else opens the quickstart."
       responses:
         "200":
-          description: The confirm page (`path=revenuecat`).
+          description: The page.
           content:
             application/json:
               schema:
@@ -52617,7 +52617,7 @@ paths:
             Location:
               schema:
                 type: string
-              description: The guide URL with `utm_` parameters.
+              description: The quickstart URL with `utm_` parameters.
         "404":
           description: Unknown link (an HTML page).
           content:
@@ -52628,11 +52628,11 @@ paths:
       x-source: routes/account.ts
       x-revenuedot-extension: true
     post:
-      operationId: confirmWelcomePath
+      operationId: recordWelcomePath
       tags:
         - Account settings
-      summary: Confirm switching from RevenueCat
-      description: Records that the account is switching from RevenueCat, so later emails follow the switching steps, then redirects to the [migration guide](https://revenuedot.app/docs/migrate).
+      summary: Record that the reader is switching from RevenueCat
+      description: Records the switching path for the account the email was sent to, without a session, so later emails are the switching steps (import, a side-by-side run, turning RevenueCat off) and not the new-app ones. Then redirects to the [migration guide](https://revenuedot.app/docs/migrate).
       security: []
       parameters:
         - name: token

@@ -1,6 +1,6 @@
 ---
 title: What is the checklist for cutting over from RevenueCat to RevenueDot?
-description: The migration steps in order, from starting the server to turning RevenueCat off, as a checklist. Each step says how to check it is done.
+description: The migration steps in order, from creating a RevenueDot Cloud project (or starting your own server) to turning RevenueCat off, as a checklist. Each step says how to check it is done.
 ---
 
 # What is the checklist for cutting over from RevenueCat to RevenueDot?
@@ -8,13 +8,13 @@ description: The migration steps in order, from starting the server to turning R
 Work through these steps in order. RevenueCat keeps running until the last section, so any step can be paused or undone. `revenuedot import plan` prints the same steps with your app ids and URLs filled in.
 
 ## 1. Set up RevenueDot
-- [ ] Run a RevenueDot server that the internet can reach over HTTPS. See [Self-hosting](../guides/self-hosting.md) and [Going to production](../guides/going-to-production.md). Check: `GET https://revenuedot.example.com/v1/health` returns `{"status":"ok"}`.
-- [ ] Create a project and a secret key (`sk_...`) on the dashboard's **API keys** page.
+- [ ] Create a RevenueDot Cloud project at [app.revenuedot.app/signup](https://app.revenuedot.app/signup) and confirm your email. Its API is at `https://api.revenuedot.app`. To self-host instead, run a RevenueDot server that the internet can reach over HTTPS; see [Self-hosting](../guides/self-hosting.md) and [Going to production](../guides/going-to-production.md). Check: `GET https://api.revenuedot.app/v1/health` (or your server's `/v1/health`) returns `{"status":"ok"}`.
+- [ ] Create a project, if you have none yet, and a secret key (`sk_...`) on the dashboard's **API keys** page.
 - [ ] Create a RevenueCat v2 secret key with read access to project configuration and customer information.
-- [ ] Optional: set `REVENUEDOT_SIGNING_KEY` if you plan to use fork builds with your own key. See [Trusted Entitlements](../guides/trusted-entitlements.md).
+- [ ] Self-hosting only, optional: set `REVENUEDOT_SIGNING_KEY` if you plan to build the RevenueDot SDKs with your own key. See [Trusted Entitlements](../guides/trusted-entitlements.md).
 
 ## 2. Import
-- [ ] Dry run: `npx revenuedot import --from-revenuecat --rc-project proj... --to https://revenuedot.example.com --dry-run`. It asks for both secret keys. Until the CLI is on npm, run it from source; see [The importer](importer.md#run-it).
+- [ ] Dry run: `npx revenuedot import --from-revenuecat --rc-project proj... --to https://revenuedot.example.com --dry-run`. It asks for both secret keys. On RevenueDot Cloud, use `--to https://api.revenuedot.app`. See [The importer](importer.md#run-it).
 - [ ] Import: the same command without `--dry-run`. Re-run it until the report says the pass is complete.
 - [ ] Add each app's store credentials in the dashboard: the App Store in-app purchase key, and the Google Play service account with "View financial data". See [Connect the App Store](../guides/app-store.md) and [Connect Google Play](../guides/google-play.md).
 - [ ] Click **Check credentials** on each app page, so Apple and Google confirm the credentials work.

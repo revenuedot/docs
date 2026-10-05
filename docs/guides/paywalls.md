@@ -1,11 +1,11 @@
 ---
 title: Paywalls
-description: Build a native paywall from a template, with the visual editor or with AI, translate it, publish it to an offering, and show it in your app with RevenueCatUI's PaywallView.
+description: Build a native paywall from a template, with the visual editor or with AI, translate it, publish it to an offering, and show it in your app with the paywall view in the RevenueDot UI SDK.
 ---
 
 # Paywalls
 
-A paywall is the screen that sells your offering. RevenueDot serves paywalls in the format the RevenueCat SDKs render natively (paywall components, also called Paywalls V2). You build and change a paywall in the dashboard, and your app shows it with one view, without an app release.
+A paywall is the screen that sells your offering. You build and change a paywall in the dashboard, and your app shows it with one view from the RevenueDot UI SDK, without an app release. RevenueDot serves paywalls in the format the RevenueCat SDKs also render natively (paywall components, also called Paywalls V2), so apps that keep RevenueCat's SDK show them too.
 
 The dashboard has three ways to start, a visual editor, translations, and a server check that every published paywall decodes in the SDK.
 
@@ -84,7 +84,16 @@ Open the **Localizations** tab. Add a language, then fill in its strings next to
 
 ## Show it in your app
 
-Add the RevenueCatUI library next to the SDK, then present the paywall. `PaywallView()` shows the current offering's paywall; pass an offering to show another one.
+Add the RevenueDot UI SDK next to the RevenueDot SDK, then present the paywall. The UI SDK is built from RevenueCat's open-source paywall library, so its module is still called `RevenueCatUI` in code. `PaywallView()` shows the current offering's paywall; pass an offering to show another one.
+
+| Platform | RevenueDot UI SDK |
+|---|---|
+| iOS | Product `RevenueCatUI` of the Swift package `https://github.com/revenuedot/purchases-ios` (`5.91.0-revenuedot`), or `pod 'RevenueDotPurchasesUI', '5.91.0'` |
+| Android | `implementation("app.revenuedot.purchases:purchases-ui:10.23.3")` |
+| React Native and Expo | `npm install react-native-purchases-ui@npm:@revenuedot/react-native-purchases-ui@10.10.2` |
+| Flutter | `purchases_ui_flutter` from the git dependency `https://github.com/revenuedot/purchases-flutter.git` (`path: purchases_ui_flutter`, `ref: 10.13.2-revenuedot`) |
+
+Install lines for every platform are in the [SDK guides](../sdks/README.md). Apps that keep RevenueCat's SDK use RevenueCat's UI library with the same code.
 
 ```swift
 import RevenueCatUI
@@ -93,18 +102,18 @@ import RevenueCatUI
 ```
 
 ```kotlin
-// Jetpack Compose, com.revenuecat.purchases:purchases-ui
+// Jetpack Compose, app.revenuedot.purchases:purchases-ui (package com.revenuecat.purchases.ui.revenuecatui)
 PaywallDialog(PaywallDialogOptions.Builder().build())
 ```
 
 ```tsx
-// React Native, react-native-purchases-ui
+// React Native, react-native-purchases-ui (the alias of @revenuedot/react-native-purchases-ui)
 import RevenueCatUI from "react-native-purchases-ui";
 await RevenueCatUI.presentPaywall();
 ```
 
 ```dart
-// Flutter, purchases_ui_flutter
+// Flutter, purchases_ui_flutter from the RevenueDot git dependency
 await RevenueCatUI.presentPaywall();
 ```
 

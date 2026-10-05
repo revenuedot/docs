@@ -43,10 +43,10 @@ Posts from the team building RevenueDot, an open-source (AGPL-3.0) backend for i
 - [Multi-page paywalls vs single page: the 2026 data and layout](multi-page-paywalls.md): 12.41% against 9.07% conversion, a three-page layout, and what RevenueDot supports today.
 - [Paywall exit offers: discount after a cancelled purchase](paywall-exit-offers.md): 17% of revenue from abandon offers, the App Store rules, and how to build one.
 - [RevenueCat pricing in 2026, explained (and how to pay less)](revenuecat-pricing-explained.md): 1% of all tracked revenue once you pass $2,500, worked bills from $5K to $1M, and the options.
-- [Add subscriptions to a SwiftUI app](swiftui-subscriptions-tutorial.md): StoreKit 2 products, the RevenueCat SDK in proxy mode, a paywall, entitlement checks and restore.
-- [Flutter in-app purchases and subscriptions](flutter-in-app-purchases-tutorial.md): purchases_flutter from install to a tested purchase on iOS and Android.
-- [React Native and Expo subscriptions](react-native-expo-subscriptions-tutorial.md): react-native-purchases in a development build, purchase, restore and testing.
-- [Android subscriptions with Google Play Billing](android-google-play-billing-subscriptions.md): Kotlin, base plans, the Play service account and real-time developer notifications.
+- [Add subscriptions to a SwiftUI app](swiftui-subscriptions-tutorial.md): StoreKit 2 products, the RevenueDot SDK, a paywall, entitlement checks and restore.
+- [Flutter in-app purchases and subscriptions](flutter-in-app-purchases-tutorial.md): the RevenueDot SDK for Flutter from install to a tested purchase on iOS, Android and the web.
+- [React Native and Expo subscriptions](react-native-expo-subscriptions-tutorial.md): the RevenueDot SDK for React Native in a development build, purchase, restore and testing.
+- [Android subscriptions with Google Play Billing](android-google-play-billing-subscriptions.md): Kotlin, base plans, the Play service account, real-time developer notifications and the RevenueDot SDK.
 - [App Store Server Notifications V2](app-store-server-notifications-v2.md): setup and every notification type, explained.
 - [Server-side in-app purchase validation](server-side-receipt-validation.md): the App Store Server API, Google's subscriptionsv2, and when to build or use a server.
 - [Apple refund requests and CONSUMPTION_REQUEST](apple-refund-requests-consumption-info.md): what Apple asks for, the deadline, and how to answer automatically.

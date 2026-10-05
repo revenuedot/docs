@@ -92,7 +92,7 @@ RevenueDot is an open-source backend that speaks the same API as RevenueCat's. Y
 
 RevenueDot Cloud Pro costs $0 until your apps make $10,000 a month. Above that it costs 0.5% of the revenue above $10,000, never more than $999 a month.
 
-Be clear about what you give up. RevenueDot launched in 2026, so it has far less production history than RevenueCat. The SDK forks are not yet published to package registries, so you use the stock SDK in proxy mode. Test in sandbox before you ship. The [migration guide](https://revenuedot.app/blog/migrating-from-revenuecat-without-data-loss) shows how to run both systems side by side so that a customer never loses access.
+Be clear about what you give up. RevenueDot launched in 2026, so it has far less production history than RevenueCat. You can keep the RevenueCat SDK in proxy mode, or swap in the RevenueDot SDK, which is published for every platform (2026-10-02) and keeps the same imports ([SDK guides](https://revenuedot.app/docs/sdks)). Test in sandbox before you ship. The [migration guide](https://revenuedot.app/blog/migrating-from-revenuecat-without-data-loss) shows how to run both systems side by side so that a customer never loses access.
 
 ## How to choose
 
@@ -135,4 +135,4 @@ RevenueDot Cloud Pro costs $0 until your apps make $10,000 a month, then 0.5% of
 
 RevenueCat's pricing page lists an Enterprise plan with custom pricing for high-volume apps. Contact them with your tracked revenue and ask for terms in writing.
 
-**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. Point the SDK's proxy URL at RevenueDot and keep your app code, your offerings and your customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).

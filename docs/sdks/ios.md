@@ -1,62 +1,55 @@
 ---
-title: How do I use RevenueDot with the iOS SDK?
-description: Set Purchases.proxyURL before configure and turn entitlement verification off. The RevenueCat iOS SDK 5.x then talks to your RevenueDot server with no other code change.
+title: How do I add in-app purchases to an iOS app with RevenueDot?
+description: Add the RevenueDot SDK with Swift Package Manager or CocoaPods, then call Purchases.configure with your app's key. On RevenueDot Cloud nothing else is needed. The same SDK covers iPadOS, macOS, tvOS, watchOS and visionOS.
 ---
 
-# How do I use RevenueDot with the iOS SDK?
+# How do I add in-app purchases to an iOS app with RevenueDot?
 
-Set `Purchases.proxyURL` to your RevenueDot server before you call `Purchases.configure`, and set the entitlement verification mode to `.disabled`. The rest of your RevenueCat iOS SDK code stays the same. This covers iOS, iPadOS, macOS, tvOS, watchOS and visionOS apps on SDK 5.x.
+Add the RevenueDot SDK to your app with Swift Package Manager or CocoaPods, then call `Purchases.configure(withAPIKey:)` with your app's key from RevenueDot. On RevenueDot Cloud nothing else is needed. The same SDK covers iOS, iPadOS, macOS, tvOS, watchOS and visionOS apps.
 
-## Use the RevenueCat SDK you already ship (proxy mode)
+## Install the RevenueDot SDK and pass your key
+**Version 5.91.0 is published** on CocoaPods trunk and as a Swift package tag. The source is [github.com/revenuedot/purchases-ios](https://github.com/revenuedot/purchases-ios).
+
+```swift
+// Package.swift (or Xcode > File > Add Package Dependencies, exact version 5.91.0-revenuedot)
+.package(url: "https://github.com/revenuedot/purchases-ios", exact: "5.91.0-revenuedot")
+// Products: "RevenueCat", and "RevenueCatUI" for paywalls
+```
+```ruby
+# Podfile
+pod 'RevenueDotPurchases', '5.91.0'
+pod 'RevenueDotPurchasesUI', '5.91.0'   # only for paywalls (module RevenueCatUI)
+```
+Release tags are `<upstream version>-revenuedot`, because the repository also carries RevenueCat's own tags.
+
 ```swift
 import RevenueCat
 
-// Point the SDK at your RevenueDot server; nothing else in the app changes.
+// Once, at launch: in your App's init() or in application(_:didFinishLaunchingWithOptions:).
+Purchases.configure(withAPIKey: "appl_...")
+```
+- The RevenueDot SDK is built from RevenueCat's open-source SDK (MIT license), so your code imports `RevenueCat` and calls `Purchases`. It sends every request to RevenueDot and needs no RevenueCat account.
+- Use the app's public key from RevenueDot: `appl_...`, `mac_...` for a Mac App Store app, or `test_...` for the Test Store. See [Which key goes where](../concepts/projects-and-apps.md#which-key-goes-where).
+- **On RevenueDot Cloud** the SDK already calls `https://api.revenuedot.app`, so there is nothing else to set. It trusts RevenueDot Cloud's response-signing key, so entitlement verification reports `VERIFIED`.
+
+**Self-hosting:** set `Purchases.proxyURL` to your server **before** `configure`, and set entitlement verification to `.disabled`. Your server signs with its own key (`REVENUEDOT_SIGNING_KEY`), which this build does not trust.
+```swift
+import RevenueCat
+
 Purchases.proxyURL = URL(string: "https://revenuedot.example.com")!
 Purchases.configure(
     with: Configuration.Builder(withAPIKey: "appl_...")
-        // The default (.informational) logs every RevenueDot response as a failed signature check.
+        // A self-hosted server signs with its own key. The default, .informational, would log every response as a failed check, so set .disabled unless you build the SDK with your key.
         .with(entitlementVerificationMode: .disabled)
         .build()
 )
 ```
-- Set `proxyURL` **before** `configure`. It is a static property on `Purchases`.
-- Use the app's public key from RevenueDot (`appl_...`, or `mac_...` for a Mac App Store app). If you ran the [importer](../migrate/importer.md), your existing RevenueCat key keeps working. See [Which key goes where](../concepts/projects-and-apps.md#which-key-goes-where).
+- `proxyURL` is a static property on `Purchases`.
 - For local testing, the simulator reaches your Mac at `http://localhost:8787`.
-
-**After you migrate from RevenueCat, call `syncPurchases()` once** on the first launch of the update. It sends the device's existing App Store purchases to RevenueDot, so current subscribers keep access even if their history was not imported.
-```swift
-// Once, after this update: send purchases made while the app talked to RevenueCat.
-if !UserDefaults.standard.bool(forKey: "revenuedotSynced") {
-    _ = try? await Purchases.shared.syncPurchases()
-    UserDefaults.standard.set(true, forKey: "revenuedotSynced")
-}
-```
-
-## Use the RevenueDot fork
-The fork is [github.com/revenuedot/purchases-ios](https://github.com/revenuedot/purchases-ios). It keeps the Swift modules `RevenueCat` and `RevenueCatUI`, so every `import RevenueCat` stays. It trusts RevenueDot's signing key, and its default host is `https://api.revenuedot.app`.
-
-**Version 5.91.0 is published** on CocoaPods trunk and as a Swift package tag:
-```ruby
-# Podfile
-pod 'RevenueDotPurchases', '5.91.0'
-pod 'RevenueDotPurchasesUI', '5.91.0'   # only if you use RevenueCatUI
-```
-```swift
-// Package.swift (or Xcode > Add Package Dependencies)
-.package(url: "https://github.com/revenuedot/purchases-ios", exact: "5.91.0-revenuedot")
-// Products: "RevenueCat" and "RevenueCatUI"
-```
-Release tags are `<upstream version>-revenuedot`, because the fork also carries RevenueCat's own tags. The fork's default host is RevenueDot Cloud, so a Cloud project needs no `Purchases.proxyURL`. When you self-host, keep setting it to your server.
-
-## Trusted Entitlements
-- **Stock SDK:** it checks signatures with RevenueCat's key, so RevenueDot responses read as failed. The default mode, `.informational`, logs the failure and still grants access. Set `.disabled` to stop the noise. **Never use `.enforced` with the stock SDK**: every request would fail.
-- **Fork:** it trusts RevenueDot Cloud's key. A self-hosted server signs with its own key (`REVENUEDOT_SIGNING_KEY`), so keep `.disabled` or `.informational`, or build the fork with your own public key.
-
-Details, key generation and self-host builds: [Trusted Entitlements](../guides/trusted-entitlements.md).
+- To get `VERIFIED` against your own server, build the SDK with your public key. See [Trusted Entitlements](../guides/trusted-entitlements.md).
 
 ## Check an entitlement and make a purchase
-The API is RevenueCat's, unchanged.
+Check the entitlement your app unlocks, here `pro`, then buy a package from the current offering, the set of products your paywall shows.
 ```swift
 let customerInfo = try await Purchases.shared.customerInfo()
 let isPro = customerInfo.entitlements["pro"]?.isActive == true
@@ -87,7 +80,7 @@ Customers who buy on the web through a RevenueDot [purchase link](../guides/purc
 }
 ```
 
-A RevenueCatUI paywall's **web checkout** button also works: it opens a Stripe Checkout on your Stripe account for the app's current user, and the purchase lands on that user with no redemption link. Full setup: [Redemption links](../guides/redemption-links.md) and [Sell on the web with Stripe](../guides/web-billing.md).
+A paywall's **web checkout** button (module `RevenueCatUI`) also works: it opens a Stripe Checkout on your Stripe account for the app's current user, and the purchase lands on that user with no redemption link. Full setup: [Redemption links](../guides/redemption-links.md) and [Sell on the web with Stripe](../guides/web-billing.md).
 
 ## Test Store
 Create a `test_store` app in RevenueDot and pass its `test_...` key to `configure`. The SDK then shows a Test Store alert instead of the App Store sheet.
@@ -98,7 +91,36 @@ Create a `test_store` app in RevenueDot and pass its `test_...` key to `configur
 
 More: [Test Store](../guides/test-store.md).
 
-## Migrate from RevenueCat
+## Switching from RevenueCat? Keep your SDK and change one line
+An app that ships RevenueCat's iOS SDK 5.x can keep it. Set `Purchases.proxyURL` to RevenueDot before you call `Purchases.configure` (`https://api.revenuedot.app` on RevenueDot Cloud, or your own server), and set the entitlement verification mode to `.disabled`. The rest of your code stays the same.
+
+```swift
+import RevenueCat
+
+// Point the SDK at your RevenueDot server; nothing else in the app changes.
+Purchases.proxyURL = URL(string: "https://revenuedot.example.com")!
+Purchases.configure(
+    with: Configuration.Builder(withAPIKey: "appl_...")
+        // The default (.informational) logs every RevenueDot response as a failed signature check.
+        .with(entitlementVerificationMode: .disabled)
+        .build()
+)
+```
+- Set `proxyURL` **before** `configure`. It is a static property on `Purchases`.
+- Use the app's public key from RevenueDot. If you ran the [importer](../migrate/importer.md), your existing RevenueCat key keeps working.
+- **Turn entitlement verification off.** RevenueCat's SDK checks signatures with RevenueCat's key, so RevenueDot responses read as failed. The default mode, `.informational`, logs the failure and still grants access. Set `.disabled` to stop the noise. **Never use `.enforced` with RevenueCat's SDK**: every request would fail. See [Trusted Entitlements](../guides/trusted-entitlements.md).
+- **Or install the RevenueDot SDK in the same release.** It keeps the `RevenueCat` and `RevenueCatUI` modules, so the swap is a dependency change. See [Install the RevenueDot SDK](#install-the-revenuedot-sdk-and-pass-your-key).
+
+**Call `syncPurchases()` once** on the first launch of the update. It sends the device's existing App Store purchases to RevenueDot, so current subscribers keep access even if their history was not imported.
+```swift
+// Once, after this update: send purchases made while the app talked to RevenueCat.
+if !UserDefaults.standard.bool(forKey: "revenuedotSynced") {
+    _ = try? await Purchases.shared.syncPurchases()
+    UserDefaults.standard.set(true, forKey: "revenuedotSynced")
+}
+```
+
+The whole app change fits in one diff:
 ```diff
  import RevenueCat
 

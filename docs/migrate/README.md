@@ -5,7 +5,7 @@ description: Import your project with the revenuedot CLI, run both systems side 
 
 # How do I migrate from RevenueCat to RevenueDot?
 
-Move in four phases: import the project, run both systems side by side, ship an app update that points the SDK at RevenueDot, then cut over. The importer copies your catalog, customers and purchases and keeps your SDK keys, so no customer loses access on switch day. **The importer is in the RevenueDot repository today but not on npm yet (2026-09-30)**; you run it from source.
+Move in four phases: import the project, run both systems side by side, ship an app update that points the SDK at RevenueDot, then cut over. The importer copies your catalog, customers and purchases and keeps your SDK keys, so no customer loses access on switch day. **The importer is the `revenuedot` CLI on npm**, so `npx revenuedot import --from-revenuecat` runs it; see [The importer](importer.md).
 
 [![Watch the 1:35 walkthrough of switching from RevenueCat to RevenueDot](https://revenuedot.app/videos/revenuedot-switch-from-revenuecat.webp)](https://revenuedot.app/videos/revenuedot-switch-from-revenuecat.mp4)
 
@@ -38,7 +38,7 @@ The import records **no events and sends no webhooks**, so your backend does not
 
 ## What it does not bring over
 - **Store credentials.** RevenueCat's API does not return them. The import report lists every app that needs them.
-- **Paywalls, targeting rules, experiments and virtual currency balances.** RevenueDot does not have these features yet; see [What differs](what-differs.md).
+- **Paywalls, targeting rules, experiments and virtual currency balances.** RevenueDot has [paywalls](../guides/paywalls.md) with templates and a visual editor, [targeting and experiments](../guides/targeting-and-experiments.md) and virtual currencies, but the importer does not copy RevenueCat's. Recreate them in RevenueDot; see [What differs](what-differs.md).
 - **Integrations other than webhooks, and the webhooks themselves.** Create webhooks in RevenueDot at cutover.
 - **Refunds of subscriptions.** RevenueCat's [API v2](https://www.revenuecat.com/docs/api-v2) subscription object does not show them, so a refunded subscription imports as expired.
 - **RevenueCat Billing renewals.** Current access is imported, but those subscriptions keep renewing through RevenueCat.
