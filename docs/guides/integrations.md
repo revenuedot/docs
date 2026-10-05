@@ -473,6 +473,6 @@ FROM transactions WHERE NOT is_sandbox GROUP BY 1 ORDER BY 1;
 ```
 
 ## Self-hosting notes
-- Set `REVENUEDOT_ENCRYPTION_KEY` (`openssl rand -base64 32`) in `.env` so integration keys are encrypted at rest. Without it the key is derived from `REVENUEDOT_SIGNING_KEY`; with neither, they are stored unencrypted (never shown by the API). Changing the key means entering the integrations' keys again.
+- Set `REVENUEDOT_ENCRYPTION_KEY` (`openssl rand -base64 32`) in `.env` so integration keys are encrypted at rest. Without it the key is derived from `REVENUEDOT_SIGNING_KEY`; with neither, they are stored unencrypted (never shown by the API). To change the key without entering the keys again, follow [Encryption key](self-hosting.md#encryption-key).
 - Deliveries and exports run in the server's background job, every 30 seconds on Node and every minute on RevenueDot Cloud.
 - Parquet works on both, since the writer is plain JavaScript.

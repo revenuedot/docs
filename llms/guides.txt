@@ -2268,7 +2268,7 @@ The image is [`ghcr.io/revenuedot/revenuedot`](https://github.com/revenuedot/rev
 One container is enough for most apps. To run two or more against the same database, behind a load balancer, see [High availability](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/high-availability.md): migrations and the background job take Postgres locks, so each webhook and email still goes out once. The server answers `GET /healthz` (process alive) and `GET /readyz` (database reachable, not shutting down) for health checks, and finishes requests in flight when it gets SIGTERM.
 
 ## Settings
-Edit `.env` next to `docker-compose.yml`. Store credentials (Apple keys, Google service accounts) are not environment variables: each app holds its own, set in the dashboard or with the REST API.
+Edit `.env` next to `docker-compose.yml`. Store credentials (Apple keys, Google service accounts) are not environment variables: each app holds its own, set in the dashboard or with the REST API, and the server stores them encrypted (see [Encryption key](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#encryption-key)).
 
 | Variable | Default | What it does |
 |---|---|---|
@@ -2278,6 +2278,7 @@ Edit `.env` next to `docker-compose.yml`. Store credentials (Apple keys, Google 
 | `REVENUEDOT_ALLOW_SIGNUP` | `false` | `true` lets anyone who reaches the dashboard create an account. Invited addresses can always create one |
 | `REVENUEDOT_SMTP_URL`, `REVENUEDOT_MAIL_FROM`, `REVENUEDOT_MAIL_REPLY_TO`, `REVENUEDOT_PUBLIC_URL` | unset | Outgoing email. See [Email](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#email) |
 | `REVENUEDOT_SIGNING_KEY` | unset | Base64 Ed25519 seed. Turns on [response signing](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md). Not passed through by the default `docker-compose.yml`; see below |
+| `REVENUEDOT_ENCRYPTION_KEY` | unset | Base64 of 32 random bytes. Encrypts store keys, integration credentials and two-factor secrets. See [Encryption key](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#encryption-key) |
 
 Inside the container the server reads:
 
@@ -2288,6 +2289,7 @@ Inside the container the server reads:
 | `DASHBOARD_DIST` | the built dashboard in the image | Folder of the dashboard's built files. If it has no `index.html`, only the API is served |
 | `REVENUEDOT_ALLOW_SIGNUP` | unset (owner only) | See above |
 | `REVENUEDOT_SIGNING_KEY` | unset | See above |
+| `REVENUEDOT_ENCRYPTION_KEY` | unset | See above |
 | `REVENUEDOT_SMTP_URL` and the other mail variables | unset | See [Email](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#email) |
 | `REVENUEDOT_PAY_URL` | `<this server>/pay` | Where purchase links, funnels and redemption links live. A URL without a path, such as `https://pay.example.com`, serves them at that host's root. Redemption emails link here, else to `REVENUEDOT_PUBLIC_URL` + `/pay`, never to the host a request named. See [Custom domains](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/custom-domains.md) |
 | `REVENUEDOT_CUSTOM_DOMAIN_TARGET` | the pay host | The host customers' custom domains must CNAME to |
@@ -2307,6 +2309,21 @@ services:
 ```
 
 Check it with `curl http://localhost:8787/.well-known/revenuedot-signing-key`. Stock RevenueCat SDKs still cannot verify these signatures; see [Trusted Entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/trusted-entitlements.md).
+
+### Encryption key
+Every secret the server keeps is encrypted with AES-256-GCM: the App Store In-App Purchase and App Store Connect `.p8` keys, the Google Play service account JSON, Apple and Amazon shared secrets, Stripe, Paddle, Roku and Galaxy Store keys, integration and data export credentials, and two-factor secrets. The API and the dashboard never return them; they show only whether each one is set.
+
+The key is `REVENUEDOT_ENCRYPTION_KEY` (make one with `openssl rand -base64 32`). Without it the server uses a key derived from `REVENUEDOT_SIGNING_KEY`. With neither, secrets are stored unencrypted in their own column, and encrypted within a minute of a key being set. Keep the key with your database backups but not in them: without it, saved store keys must be entered again.
+
+Upgrading from a version that stored Apple and Google keys unencrypted needs no step: within a minute of starting, the server encrypts them in place. It logs `secrets backfill:` with counts and app ids, never a value.
+
+To rotate the key:
+
+1. Set `REVENUEDOT_ENCRYPTION_KEY` to the new key, a comma, then the old one (`NEW,OLD`), and restart. The first key encrypts; both decrypt. If you used the key derived from the signing key, set only `NEW`: the derived key keeps working while `REVENUEDOT_SIGNING_KEY` is unchanged.
+2. Wait until the log shows `secrets backfill:` and then stays quiet (a few minutes). Every secret is now encrypted with the new key.
+3. Set `REVENUEDOT_ENCRYPTION_KEY` to `NEW` alone and restart. Rotate `REVENUEDOT_SIGNING_KEY` only after this, since the derived key opens nothing once it changes.
+
+A secret encrypted with a key the server no longer has cannot be read: the app's **Check credentials** says so, and the key must be entered again.
 
 ## Email
 RevenueDot sends email for password resets, [team invites](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/team.md) and [alerts](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/alerts.md). A self-hosted server sends it through any SMTP provider (your own mail server, Amazon SES, Postmark, Resend, Mailgun, SendGrid and others). Add these to `.env`; the default `docker-compose.yml` passes them to the container:
@@ -4830,7 +4847,7 @@ FROM transactions WHERE NOT is_sandbox GROUP BY 1 ORDER BY 1;
 ```
 
 ## Self-hosting notes
-- Set `REVENUEDOT_ENCRYPTION_KEY` (`openssl rand -base64 32`) in `.env` so integration keys are encrypted at rest. Without it the key is derived from `REVENUEDOT_SIGNING_KEY`; with neither, they are stored unencrypted (never shown by the API). Changing the key means entering the integrations' keys again.
+- Set `REVENUEDOT_ENCRYPTION_KEY` (`openssl rand -base64 32`) in `.env` so integration keys are encrypted at rest. Without it the key is derived from `REVENUEDOT_SIGNING_KEY`; with neither, they are stored unencrypted (never shown by the API). To change the key without entering the keys again, follow [Encryption key](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/self-hosting.md#encryption-key).
 - Deliveries and exports run in the server's background job, every 30 seconds on Node and every minute on RevenueDot Cloud.
 - Parquet works on both, since the writer is plain JavaScript.
 
