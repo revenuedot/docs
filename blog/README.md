@@ -9,6 +9,11 @@ author: RevenueDot team
 
 Posts from the team building RevenueDot, an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK, free to start on [RevenueDot Cloud](https://app.revenuedot.app/signup). Newest first.
 
+## 2026-10-19
+- [How to export your data from RevenueCat](export-data-from-revenuecat.md): the four RevenueCat exports, what each one holds, why none of the self-service ones carries Google Play purchase tokens, and the order of steps that keeps every subscriber's access during a move.
+- [How to handle StoreKit 2 Transaction.updates](storekit-2-transaction-updates.md): start one listener at launch, verify, grant access and then finish, with a complete Swift store class, Ask to Buy, refunds, five common mistakes and what the RevenueCat SDK does for you.
+- [How to handle Google Play refunds and chargebacks](google-play-refunds-and-chargebacks.md): the voided purchase notification and the Voided Purchases API, cancel vs revoke vs refund, Node.js code for both signals, and how RevenueDot records each refund.
+
 ## 2026-10-02
 - [react-native-iap vs expo-iap vs react-native-purchases: which to use](react-native-iap-vs-expo-iap-vs-react-native-purchases.md): what each React Native package does, which ones run in Expo Go, the server each one needs, code side by side, cost, and when each one fits.
 - [How to check free trial eligibility on iOS and Android](free-trial-eligibility-ios-android.md): Apple's one-trial-per-group rule, how Google Play filters offers, StoreKit 2 and RevenueCat SDK code, and what the paywall button should say.
