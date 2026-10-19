@@ -15,6 +15,11 @@ Description: Posts from the RevenueDot team about building RevenueDot Cloud, an 
 
 Posts from the team building RevenueDot, an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK, free to start on [RevenueDot Cloud](https://app.revenuedot.app/signup). Newest first.
 
+## 2026-10-19
+- [How to export your data from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/blog/export-data-from-revenuecat.md): the four RevenueCat exports, what each one holds, why none of the self-service ones carries Google Play purchase tokens, and the order of steps that keeps every subscriber's access during a move.
+- [How to handle StoreKit 2 Transaction.updates](https://raw.githubusercontent.com/revenuedot/docs/main/blog/storekit-2-transaction-updates.md): start one listener at launch, verify, grant access and then finish, with a complete Swift store class, Ask to Buy, refunds, five common mistakes and what the RevenueCat SDK does for you.
+- [How to handle Google Play refunds and chargebacks](https://raw.githubusercontent.com/revenuedot/docs/main/blog/google-play-refunds-and-chargebacks.md): the voided purchase notification and the Voided Purchases API, cancel vs revoke vs refund, Node.js code for both signals, and how RevenueDot records each refund.
+
 ## 2026-10-02
 - [react-native-iap vs expo-iap vs react-native-purchases: which to use](https://raw.githubusercontent.com/revenuedot/docs/main/blog/react-native-iap-vs-expo-iap-vs-react-native-purchases.md): what each React Native package does, which ones run in Expo Go, the server each one needs, code side by side, cost, and when each one fits.
 - [How to check free trial eligibility on iOS and Android](https://raw.githubusercontent.com/revenuedot/docs/main/blog/free-trial-eligibility-ios-android.md): Apple's one-trial-per-group rule, how Google Play filters offers, StoreKit 2 and RevenueCat SDK code, and what the paywall button should say.
@@ -1058,6 +1063,145 @@ Yes. Use the billing-issue event from your server, since both stores also show t
 
 ---
 
+# How to export your data from RevenueCat
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/export-data-from-revenuecat.md
+Description: RevenueCat has four exports: scheduled transaction files, customer CSVs, chart CSVs and a support-made migration file. What each holds and which one a move needs.
+
+RevenueCat gives you three self-service exports and one export that its support team prepares by hand. Scheduled Data Exports send transaction files to your own storage, audience exports give one CSV row per customer, and chart exports give the numbers behind a chart. None of the three self-service exports is enough to move subscribers to another backend, because none contains raw Google Play purchase tokens. For a move you either ask RevenueCat support for a migration file, or you use an importer that reads RevenueCat's API and looks the tokens up with your own Google credentials.
+
+This post explains what each export contains, which one you need for a backup, for analytics and for a move, and the order of steps that keeps every subscriber's access. Every fact about RevenueCat links its documentation and was checked on October 19, 2026.
+
+![Four RevenueCat exports side by side, with a mark showing which ones carry the store identifiers a migration needs](https://github.com/revenuedot/docs/blob/main/blog/assets/export-data-from-revenuecat/cover.svg)
+
+## The short answer
+
+- **Scheduled Data Exports** send transaction rows (revenue, products, stores, app user IDs, refunds and store transaction IDs) to S3, Google Cloud Storage, Azure or email as CSV or Parquet, once a day by default ([RevenueCat](https://www.revenuecat.com/docs/integrations/scheduled-data-exports)).
+- **Audience exports** give one row per customer with about 60 columns, such as status and total spent, as a zipped, semicolon-separated CSV ([RevenueCat](https://www.revenuecat.com/docs/dashboard-and-metrics/audiences)).
+- **Chart exports** give the aggregated values behind one chart view as a CSV ([RevenueCat](https://www.revenuecat.com/docs/dashboard-and-metrics/charts)).
+- **A migration export** is prepared by RevenueCat support. RevenueCat says that moving to another provider usually needs it, because the self-service exports do not include raw Google Play purchase tokens ([RevenueCat](https://www.revenuecat.com/docs/revenuecat-support/common-tickets/export-data-or-migrate-away)).
+- **Do not delete the RevenueCat project early.** RevenueCat warns that deletion cannot be undone, and older app versions may keep calling it for months.
+
+## Why export your data at all?
+
+Three reasons come up again and again on developer forums and in our own conversations with teams that run apps on both stores.
+
+1. **A backup you control.** Your purchase history lives with your vendor. A daily copy in your own bucket protects you if you lose access to the dashboard, if a teammate deletes a project, or if the vendor changes its terms or shuts down.
+2. **Analytics in your own warehouse.** Teams that join purchase data with ad spend, product analytics or support tickets need raw rows, not charts.
+3. **A move to another backend.** When the monthly bill grows (RevenueCat charges 1% of all tracked revenue once you pass $2,500 a month, per its [pricing page](https://www.revenuecat.com/pricing)), some teams move to a cheaper or self-hosted backend. A move needs the store identifiers that let the new backend ask Apple and Google about each subscription.
+
+Each reason needs a different export, so it helps to know what each one holds.
+
+## What each RevenueCat export contains
+
+| Export | What one row is | Format and delivery | Good for | Enough for a move? |
+|---|---|---|---|---|
+| Scheduled Data Exports | One transaction | CSV (gzip) or Parquet, to S3, GCS, Azure or email, daily by default | Backup, warehouse | No: no raw Google purchase tokens |
+| Audience export | One customer | Zipped CSV with semicolons, link by email for 30 days | Account records, CRM | No: no store identifiers |
+| Chart export | One point on a chart | CSV from the chart screen | Board decks, finance | No |
+| Migration export | One subscription | Files from support, through an access-controlled link | Moving providers | Yes, if you ask for the right columns |
+
+The sources for this table are RevenueCat's pages on [Scheduled Data Exports](https://www.revenuecat.com/docs/integrations/scheduled-data-exports), [audiences](https://www.revenuecat.com/docs/dashboard-and-metrics/audiences) and [exporting data or migrating away](https://www.revenuecat.com/docs/revenuecat-support/common-tickets/export-data-or-migrate-away).
+
+### Scheduled Data Exports
+
+This is the export to set up first, even if you never plan to leave. RevenueCat delivers transaction files to a storage bucket or an email address on a schedule. Its documentation lists Amazon S3, Google Cloud Storage, Azure Blob Storage and email as destinations, and CSV or Parquet as formats. CSV files are gzip-compressed and come as one file per delivery unless you turn on splitting for exports over about 1 GB. The default schedule is once a day, and Enterprise plans can choose every 4, 6, 8, 12 or 24 hours ([RevenueCat](https://www.revenuecat.com/docs/integrations/scheduled-data-exports)).
+
+The transactions feed has columns such as `rc_original_app_user_id`, `price_in_usd` and `start_time`, with every time in UTC. RevenueCat's guide on leaving says these rows include store transaction identifiers such as Google Play order IDs, but not raw Google Play purchase tokens ([RevenueCat](https://www.revenuecat.com/docs/revenuecat-support/common-tickets/export-data-or-migrate-away)). The same documentation notes one gap: Google subscriptions that expired more than 60 days before an app moved onto RevenueCat have no transaction history in these files.
+
+RevenueCat lists Scheduled Data Exports as available to everyone who signed up after September 2023, and to its legacy Grow, Pro and Enterprise plans ([RevenueCat](https://www.revenuecat.com/docs/integrations/scheduled-data-exports)).
+
+### Audience exports
+
+An audience is a saved customer filter in RevenueCat's dashboard. **Export all** sends you an email with a link to a `.zip` that holds one CSV, one row per customer, with about 60 columns such as `app_user_id`, `latest_product`, `total_spent` and `status`. Two details trip people up. The CSV uses semicolons, not commas, so a spreadsheet may show everything in one column until you change the delimiter. You must also wait 30 minutes between exports, and each link lasts 30 days ([RevenueCat](https://www.revenuecat.com/docs/dashboard-and-metrics/audiences)).
+
+This export is the right place for customer attributes you set from your app, such as an email address. RevenueCat says a support-made migration file does not include reserved or custom attributes on its own, so export them here or through Scheduled Data Exports if your next backend needs them ([RevenueCat](https://www.revenuecat.com/docs/revenuecat-support/common-tickets/export-data-or-migrate-away)).
+
+### Chart exports
+
+Every chart in the dashboard can be downloaded as a CSV of its current view, with the same date range, filters and segments. The same numbers are available from the Charts and Metrics endpoints of RevenueCat's [API v2](https://www.revenuecat.com/docs/api-v2). These files are summaries, so they help finance and reporting but not a move.
+
+### The migration export from support
+
+A move needs identifiers that let the new backend ask the store for the current state of each subscription. RevenueCat's guide lists them per store ([RevenueCat](https://www.revenuecat.com/docs/revenuecat-support/common-tickets/export-data-or-migrate-away)):
+
+- **App Store:** the app user ID and Apple's original transaction ID.
+- **Google Play:** the app user ID, the raw purchase token and the product ID.
+- **Stripe and others:** the provider's subscription IDs.
+
+RevenueCat asks you to prepare a few things before you open a ticket. You need the destination's import format and column names, a list of every project, app and store, whether you want production only or sandbox too, the date range, and any extra fields such as customer attributes. The project owner has to send or approve the request. Support delivers the files through a link that expires, and RevenueCat asks you to treat receipts, tokens and transaction IDs as sensitive customer data.
+
+## How to move subscribers without losing access
+
+Exports are one part of a move. The order of steps matters more, because the risk in a move is a paying customer who suddenly loses access. RevenueCat's own guide gives the main warnings: keep RevenueCat connected until the new backend has checked the imported subscriptions and your released app uses it, test with a sample from each store first, and remember that older app versions on customers' phones keep calling RevenueCat ([RevenueCat](https://www.revenuecat.com/docs/revenuecat-support/common-tickets/export-data-or-migrate-away)).
+
+A safe order looks like this:
+
+1. **Turn on Scheduled Data Exports now.** Even if the move is months away, a daily copy in your own bucket costs nothing extra and gives you a full archive.
+2. **Import into the new backend while RevenueCat keeps running.** Copy the catalog, customers and subscriptions, and keep your public SDK keys if the new backend supports that.
+3. **Add your store credentials to the new backend.** RevenueCat cannot export your App Store in-app purchase key or Google Play service account, so you add them again yourself.
+4. **Run both side by side.** Send App Store Server Notifications and Google Play notifications to the new backend and forward them to RevenueCat, so both stay current.
+5. **Ship an app update** that points the SDK at the new backend. Customers on old versions keep using RevenueCat, which stays correct because notifications are forwarded.
+6. **Compare the two systems** until no differences remain and few customers run old versions.
+7. **Cut over.** Move your webhooks, stop forwarding, and only then stop RevenueCat. Keep the exports.
+
+## How RevenueDot imports a RevenueCat project
+
+RevenueDot is an open-source backend that works with the RevenueCat SDK, so an app switches by changing the SDK's proxy URL. Its importer does steps 2 and 3 above without a support ticket. You run it with one command and a RevenueCat secret API key:
+
+```bash
+npx revenuedot import --from-revenuecat
+```
+
+The importer reads RevenueCat's API v2 and copies apps, public SDK keys, products, entitlements, offerings, customers, attributes, subscriptions, one-time purchases and revenue history. It records no events and sends no webhooks, so your backend does not see a second copy of every old purchase ([migration guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md)).
+
+**The Google Play token gap.** RevenueCat's API gives Google Play order IDs, not purchase tokens. RevenueDot fills the gap in four ways, and the customer keeps access the whole time ([importer guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md#google-play-purchase-tokens)):
+
+1. With your Google service account, the next import looks the token up from the order ID through Google's API.
+2. You pass a CSV with `--google-tokens tokens.csv`, for example the migration file from RevenueCat support. The importer accepts column names such as `purchase_token`, `order_id` and `app_user_id`.
+3. Google's next renewal notification carries the token.
+4. The app's `syncPurchases()` call after the update sends it.
+
+**What the importer does not copy.** Paywalls, targeting rules, experiments and virtual currency balances stay in RevenueCat, and you rebuild them in RevenueDot. Refunded subscriptions import as expired, because RevenueCat's API v2 subscription object has no refund field. The full list is in [What differs from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/what-differs.md).
+
+**How it is tested.** The importer runs in tests against a fake RevenueCat API whose responses are checked against RevenueCat's published OpenAPI schemas. A production app has run the side-by-side setup since October 2, 2026, with RevenueDot processing its live store notifications and forwarding each one to RevenueCat. A real App Store sandbox purchase has run end to end on a physical iPhone. No real Google Play purchase has run end to end yet, so test a Play sample before you cut over ([migration guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md#what-is-tested)).
+
+The steps for running both systems at once are in [Dual run](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/dual-run.md), and the last checks are in the [cutover checklist](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/cutover-checklist.md). For a page that walks through the whole switch, see [migrate from RevenueCat](https://revenuedot.app/migrate-from-revenuecat).
+
+## Getting your data out of RevenueDot
+
+Ask any new vendor the same question before you move: how do I leave? RevenueDot answers it with one archive. **Project settings, Export and move, Export project** (or `npx revenuedot export`) builds a `.tar` of every table the project owns, one JSON line per row, with a manifest that lists the row count and a checksum for each table ([export guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/move-projects.md#export-everything)). The same archive can be loaded into a self-hosted RevenueDot server, because the server is open source under AGPL-3.0. RevenueDot also has scheduled data exports of transactions, customers, subscriptions and events to Amazon S3, Cloudflare R2, Google Cloud Storage or Azure Blob Storage ([integrations](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#scheduled-data-exports)).
+
+On cost, RevenueCat charges 1% of all monthly tracked revenue once you reach $2,500 ([RevenueCat](https://www.revenuecat.com/pricing)). RevenueDot Cloud's Pro plan costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. You can check your own numbers in the [RevenueCat fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator), read the [RevenueDot vs RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat), which also says where RevenueCat is stronger, or see [pricing](https://revenuedot.app/pricing).
+
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month.
+
+## FAQ
+
+### Can I export all my subscribers from RevenueCat?
+
+Yes. An audience export with no filters gives one row per customer, and Scheduled Data Exports give every transaction ([RevenueCat](https://www.revenuecat.com/docs/dashboard-and-metrics/audiences)). Neither includes raw Google Play purchase tokens, so for a move you also need a migration file from support or an importer that looks the tokens up.
+
+### Does RevenueCat export Google Play purchase tokens?
+
+Not in its self-service exports. RevenueCat says Scheduled Data Exports include Google Play order IDs but not raw purchase tokens, and that you should ask support for a migration export if you need them ([RevenueCat](https://www.revenuecat.com/docs/revenuecat-support/common-tickets/export-data-or-migrate-away)).
+
+### Will my subscribers lose access if I leave RevenueCat?
+
+Not if you keep both systems running until your new app version is widely installed. Subscriptions live in Apple's and Google's systems, not in RevenueCat, so a new backend can read their state with the right identifiers. The risk comes from turning RevenueCat off while old app versions still call it.
+
+### Should I delete my RevenueCat project after moving?
+
+Wait. RevenueCat warns that deletion cannot be undone and asks you to wait until the new provider has checked the imported data ([RevenueCat](https://www.revenuecat.com/docs/revenuecat-support/common-tickets/export-data-or-migrate-away)). Keep your exports in your own storage either way.
+
+### Can I move back to RevenueCat later?
+
+Yes. RevenueCat can import existing subscriptions from store identifiers ([RevenueCat](https://www.revenuecat.com/docs/migrating-to-revenuecat/migrating-existing-subscriptions)), and RevenueDot's full export gives you every subscription with its store transaction IDs and Google purchase tokens. Your app can also call `syncPurchases()` once after the switch to send each device's purchases to the new backend.
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
 # Flutter in_app_purchase vs purchases_flutter: which to use
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/flutter-in-app-purchase-vs-purchases-flutter.md
@@ -1991,6 +2135,170 @@ Create an offer on an auto-renewing base plan with the eligibility "New customer
 ### Does a free trial on Google Play work like Apple's?
 
 The idea is the same, but Play models it as an offer phase of 3 days to 3 years, and eligibility is part of the offer. On Apple, the introductory offer is a separate object and each customer gets one per subscription group ([Apple](https://developer.apple.com/app-store/subscriptions/)).
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
+# How to handle Google Play refunds and chargebacks
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/google-play-refunds-and-chargebacks.md
+Description: Google tells you about a refund through a voided purchase notification and the Voided Purchases API. How each works, when to remove access, and how to refund from your server.
+
+Google Play tells your backend about a refund, a chargeback or a revoked purchase in two ways. A real-time developer notification with a `voidedPurchaseNotification` arrives within moments, and the Voided Purchases API lists every voided order of the last 30 days. Use the notification to remove access right away, and run a daily job against the API to catch anything you missed. A refund you issue yourself in Play Console or through the API shows up in both places only if you choose to revoke access, so decide that before you click.
+
+This post explains who can refund a Google Play purchase, what each signal contains, the difference between cancel and revoke, and code for both the notification and the daily check. Every Google fact links Google's documentation and was checked on October 19, 2026.
+
+![A Google Play refund travels two paths to your server: a voided purchase notification within moments, and the Voided Purchases API once a day for the last 30 days](https://github.com/revenuedot/docs/blob/main/blog/assets/google-play-refunds-and-chargebacks/cover.svg)
+
+## The short answer
+
+- **Customers can ask Google within 48 hours.** After 48 hours, Google tells them to contact the developer ([Google Play Help](https://support.google.com/googleplay/answer/15574908?hl=en)).
+- **You learn about it from a notification.** A `voidedPurchaseNotification` carries the purchase token, the order ID, the product type and the refund type ([Android Developers](https://developer.android.com/google/play/billing/rtdn-reference)).
+- **The Voided Purchases API is the backup.** It lists refunds, chargebacks and cancellations from the last 30 days only ([Google](https://developers.google.com/android-publisher/voided-purchases)).
+- **Your own refunds appear only if you revoke.** Google says only revoked orders show in the Voided Purchases API ([Google](https://developers.google.com/android-publisher/voided-purchases)).
+- **Cancel and revoke are not the same.** A cancel stops renewal and keeps access to the end of the period; a revoke stops renewal and removes access at once ([Android Developers](https://developer.android.com/google/play/billing/subscriptions)).
+- **A chargeback revokes a subscription.** Google sends `SUBSCRIPTION_REVOKED` and says to remove access immediately ([Android Developers](https://developer.android.com/google/play/billing/lifecycle/subscriptions)).
+
+## Who can refund a Google Play purchase?
+
+Three parties can void a purchase, and your backend has to handle all of them the same way.
+
+1. **The customer, through Google.** Google's refund policy says that within 48 hours of a purchase the customer may get a refund depending on its details, and that after 48 hours they should contact the developer ([Google Play Help](https://support.google.com/googleplay/answer/15574908?hl=en)).
+2. **You, the developer.** In Play Console's order management you can refund an order, and choose **Refund and revoke** to remove the item as well. Google's help page says that refunding the most recent order of a subscription removes the subscription at once and cancels future renewals, while refunding an older order leaves the subscription active ([Play Console Help](https://support.google.com/googleplay/android-developer/answer/2741495?hl=en)).
+3. **The bank or Google.** A chargeback from the customer's card issuer, or a cancellation by Google, voids the purchase too ([Google](https://developers.google.com/android-publisher/voided-purchases)).
+
+Unlike Apple, Google does not ask you for consumption data before it decides a refund. If you also sell on iOS, our post on [Apple refund requests](https://raw.githubusercontent.com/revenuedot/docs/main/blog/apple-refund-requests-consumption-info.md) covers Apple's side.
+
+## Cancel, revoke and refund are three different things
+
+Developers mix these up more than anything else in Play Billing, and the mix-up costs either money or customers.
+
+| Action | Stops renewal | Removes access | Gives money back | Notification |
+|---|---|---|---|---|
+| Cancel | Yes | No, access lasts to `expiryTime` | No | `SUBSCRIPTION_CANCELED` |
+| Revoke | Yes | Yes, at once | Depends on the refund type | `SUBSCRIPTION_REVOKED` |
+
+Both rows come from Google's subscription guides ([Android Developers](https://developer.android.com/google/play/billing/subscriptions), [lifecycle](https://developer.android.com/google/play/billing/lifecycle/subscriptions)). Google warns that removing access while a customer is still entitled, for example after a plain cancel, breaks its subscriptions policy. A refund is a third thing: it gives money back, and a developer refund shows up in the Voided Purchases API only when you also chose to revoke ([Google](https://developers.google.com/android-publisher/voided-purchases)).
+
+From a server, `purchases.subscriptionsv2.revoke` takes a `revocationContext` that says how to refund: the full amount of the latest charge, a prorated amount for the time left, or one item of a subscription with add-ons ([Google](https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.subscriptionsv2/revoke)). For a single order, `orders.refund` takes a `revoke` flag ([Google](https://developers.google.com/android-publisher/api-ref/rest/v3/orders/refund)).
+
+## Signal 1: the voided purchase notification
+
+If you have [real-time developer notifications](https://raw.githubusercontent.com/revenuedot/docs/main/blog/android-google-play-billing-subscriptions.md) set up, Google publishes a Pub/Sub message for each voided purchase. It looks like this ([Android Developers](https://developer.android.com/google/play/billing/rtdn-reference)):
+
+```json
+{
+  "version": "1.0",
+  "packageName": "com.example.app",
+  "eventTimeMillis": "1760860800000",
+  "voidedPurchaseNotification": {
+    "purchaseToken": "PURCHASE_TOKEN",
+    "orderId": "GPA.1234-5678-9012-34567",
+    "productType": 1,
+    "refundType": 1
+  }
+}
+```
+
+- **`productType`** is 1 for a subscription and 2 for a one-time product.
+- **`refundType`** is 1 for a full refund and 2 for a partial refund by quantity, which only applies to purchases of more than one unit. When the last units of such a purchase are refunded, the type becomes 1.
+- **`orderId`** names the exact order. For a subscription, each renewal has its own order ID, so a refund of an old renewal and a refund of the current period look different.
+
+Google says the notification alone is enough to find the purchase and order for an access change ([Android Developers](https://developer.android.com/google/play/billing/rtdn-reference)). For a subscription, read it again from `purchases.subscriptionsv2` anyway, because the state you need (expired, or still active after an old order was refunded) lives there.
+
+Here is a minimal handler in Node.js. It assumes you already decode the Pub/Sub push body and have a `db` and a Play Developer API client.
+
+```js
+export async function handleVoided(n, { db, play, packageName }) {
+  const { purchaseToken, orderId, productType, refundType } = n.voidedPurchaseNotification;
+
+  if (productType === 1) {
+    // Subscription: read the current state; a refund of an old renewal leaves it active.
+    const sub = await play.purchases.subscriptionsv2.get({ packageName, token: purchaseToken });
+    const active = sub.data.subscriptionState === "SUBSCRIPTION_STATE_ACTIVE";
+    await db.markRefunded({ purchaseToken, orderId });
+    if (!active) await db.revokeAccess({ purchaseToken });
+    return;
+  }
+
+  if (refundType === 2) {
+    // Partial refund of a multi-quantity purchase: reduce the balance by the refunded units.
+    return db.reduceQuantity({ purchaseToken, orderId });
+  }
+  await db.markRefunded({ purchaseToken, orderId });
+  await db.revokeAccess({ purchaseToken });
+}
+```
+
+Answer Pub/Sub with a 2xx status only after the change is saved. Google redelivers messages that are not acknowledged, and its reference suggests checking each `messageId` so a redelivered message is not processed twice ([Android Developers](https://developer.android.com/google/play/billing/rtdn-reference)).
+
+## Signal 2: the Voided Purchases API
+
+Notifications can be lost: a Pub/Sub subscription misconfigured for a day, a deploy that returned errors, or a backend that was down. The [Voided Purchases API](https://developers.google.com/android-publisher/voided-purchases) is the safety net. What matters about it:
+
+- **It reaches back 30 days.** Run it at least once a day, from the last time you ran it.
+- **Ask for subscriptions too.** The default `type=0` returns only one-time products; `type=1` returns both. Google asks you to match by `orderId` when you use `type=1`, because subscription renewals share a purchase token.
+- **It needs financial access.** The service account needs the **View financial data** permission in Play Console.
+- **It has quotas.** Each app can make 6,000 queries a day and 30 in any 30 seconds, with up to 1,000 results per page.
+- **It has rules.** Google's API terms say this data may be used only to revoke access to refunded or charged-back purchases and to fight fraud ([Google](https://developers.google.com/android-publisher/terms)).
+
+```js
+// Once a day: everything voided since the last run, at most 30 days back.
+const res = await play.purchases.voidedpurchases.list({
+  packageName,
+  startTime: String(lastRunMs),
+  type: 1,
+  maxResults: 1000,
+});
+for (const v of res.data.voidedPurchases ?? []) {
+  // Skip orders you already recorded from a notification, then handle the rest
+  // exactly like a voidedPurchaseNotification.
+}
+```
+
+## What about repeat refunders?
+
+Some customers buy, use the product and ask for a refund, again and again. Google's guidance on the Voided Purchases API asks you to apply any policy uniformly, to start with a warning inside the app, to tell customers before you change a policy and when you revoke access, and to let them dispute a decision ([Google](https://developers.google.com/android-publisher/voided-purchases)). Keep a refund count per customer from both signals, and look at it before you take any step beyond removing the refunded item.
+
+## How RevenueDot handles Google Play refunds
+
+RevenueDot is an open-source backend for in-app purchases that works with the RevenueCat SDK and its forks, the RevenueDot SDKs. You add a Google Play service account and a Pub/Sub topic once, and it does the work above for you ([Google Play setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md)):
+
+- **Voided purchase notifications** are stored once by message ID, and the purchase is read again from the Play Developer API before anything changes.
+- **A daily check of the Voided Purchases API** covers the last 30 days as a backup for missed notifications. This needs the service account's financial permission.
+- **Access ends at the refund time.** A refunded subscription or one-time product drops out of the customer's entitlements, so the SDK's `customerInfo` shows it inactive on the next fetch.
+- **A refund of an old renewal is left alone**, so the customer keeps their current paid period, which matches what Google does.
+- **Your backend gets a webhook.** A refund arrives as a `CANCELLATION` event with `cancel_reason: CUSTOMER_SUPPORT` and a negative price ([webhook reference](https://raw.githubusercontent.com/revenuedot/docs/main/docs/webhooks/webhook-cancellation.md)).
+- **You can refund from your server.** `POST /v2/projects/{project_id}/subscriptions/{subscription_id}/actions/refund` refunds and revokes a subscription order, and the purchases route does the same for one-time products.
+
+Be aware of the limits. No real Google Play purchase has run end to end against RevenueDot yet; Play handling is tested against a copy of Google's API, so test refunds with a license tester before you rely on them. Partial refunds by quantity of one-time products are not recorded yet.
+
+**Switching from RevenueCat?** Keep your SDK and change one line: point its proxy URL at RevenueDot. The [migration guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md) covers importing customers, the [RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) shows where each one is stronger, and the [fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator) shows the cost at your revenue. See [pricing](https://revenuedot.app/pricing) for RevenueDot's plans.
+
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month.
+
+## FAQ
+
+### How do I know if a Google Play purchase was refunded?
+
+Turn on real-time developer notifications with voided purchases included, and handle each `voidedPurchaseNotification` ([Android Developers](https://developer.android.com/google/play/billing/rtdn-reference)). Once a day, also call the Voided Purchases API for anything you missed in the last 30 days ([Google](https://developers.google.com/android-publisher/voided-purchases)).
+
+### Does Google remove access after a refund automatically?
+
+Your backend decides what your app unlocks, so it must remove access when the voided purchase arrives. For a revoked subscription, Google sets `subscriptionState` to `SUBSCRIPTION_STATE_EXPIRED` and says to remove access immediately ([Android Developers](https://developer.android.com/google/play/billing/lifecycle/subscriptions)).
+
+### Why is my refund missing from the Voided Purchases API?
+
+Either it is older than 30 days, you queried with the default `type=0`, which leaves subscriptions out, or it was a developer refund without revoke. Google lists developer refunds only when the revoke option was set ([Google](https://developers.google.com/android-publisher/voided-purchases)).
+
+### Should I revoke access when a customer cancels?
+
+No. A cancel stops renewal but the customer keeps access until `expiryTime`, and Google says removing access while the customer is still entitled breaks its subscriptions policy ([Android Developers](https://developer.android.com/google/play/billing/lifecycle/subscriptions)).
+
+### Can a customer get a refund after 48 hours?
+
+Not from Google directly. Google's policy sends customers to the developer after 48 hours ([Google Play Help](https://support.google.com/googleplay/answer/15574908?hl=en)), and you can refund any order in Play Console or through `orders.refund`.
 
 **About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
 
@@ -5738,6 +6046,184 @@ Both stores bill them, and the entitlement simply stays active. Show the subscri
 ### Does the price have to be the same on every platform?
 
 No for Google: its FAQ says it does not require parity across platforms ([Google Play](https://support.google.com/googleplay/android-developer/answer/10281818)). Apple's 3.1.3(b) asks only that the items are also available as in-app purchases. Many apps charge less on the web, where the store fee does not apply.
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
+# How to handle StoreKit 2 Transaction.updates
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/storekit-2-transaction-updates.md
+Description: Start one Transaction.updates listener at launch, verify each transaction, grant access, then call finish(). Code, Ask to Buy, refunds and what to do when the app is closed.
+
+`Transaction.updates` is the StoreKit 2 stream that tells your app about purchases it did not start itself: renewals, Ask to Buy approvals, offer code redemptions, purchases made in the App Store and purchases made on another device. Apple says to start listening in a `Task` as soon as the app launches, because unfinished transactions arrive on this stream once, right after launch, and an app that is not listening misses them. For each transaction, check that it is verified, grant access, and then call `finish()`. When the app is closed the stream is silent, so a server that receives App Store Server Notifications covers the rest.
+
+This post shows a complete listener in Swift, explains each case it receives, lists the mistakes that cause missed or repeated purchases, and shows what changes when you use the RevenueCat SDK or RevenueDot. Every Apple fact links Apple's documentation and was checked on October 19, 2026.
+
+![The four doors a transaction can come through in StoreKit 2: the purchase call, Transaction.updates, currentEntitlements and the server, with which one fires while the app is running and which one fires while it is closed](https://github.com/revenuedot/docs/blob/main/blog/assets/storekit-2-transaction-updates/cover.svg)
+
+## The short answer
+
+- **Start the listener at launch.** Apple says to create a `Task` that iterates `Transaction.updates` "as soon as your app launches" ([Apple](https://developer.apple.com/documentation/storekit/transaction/updates)).
+- **It carries purchases from outside your purchase call.** Apple lists Ask to Buy, offer code redemptions, App Store purchases and purchases on another device ([Apple](https://developer.apple.com/documentation/storekit/transaction/updates)).
+- **A purchase on the same device does not arrive there.** Apple returns it through `Product.PurchaseResult.success` instead ([Apple](https://developer.apple.com/documentation/storekit/transaction/updates)).
+- **Unfinished transactions arrive once, at launch.** Use `Transaction.unfinished` to read them again at any time ([Apple](https://developer.apple.com/documentation/storekit/transaction/unfinished)).
+- **Call `finish()` only after you deliver.** Apple says to finish a transaction after you deliver the content or turn on the service ([Apple](https://developer.apple.com/documentation/storekit/transaction/finish%28%29)).
+- **The stream only runs while the app runs.** Renewals and refunds that happen while the app is closed reach your server through App Store Server Notifications.
+
+## What does Transaction.updates deliver?
+
+Apple describes `Transaction.updates` as the sequence that emits a transaction when the system creates or updates one outside the app or on other devices ([Apple](https://developer.apple.com/documentation/storekit/transaction/updates)). In practice, these are the cases you will see:
+
+| Case | Where it comes from | What your app should do |
+|---|---|---|
+| Ask to Buy approved | A parent approves a child's request later | Grant access, finish |
+| Offer code redeemed | The customer redeems a code in the App Store | Grant access, finish |
+| Purchase in the App Store | A promoted in-app purchase bought on the App Store page | Grant access, finish |
+| Purchase on another device | The same Apple account buys on an iPad or Mac | Grant access, finish |
+| Renewal | The subscription renews while the app is running | Extend access, finish |
+| Refund or revocation | Apple refunds it, or Family Sharing access is removed | Remove access, finish |
+| Unfinished from last session | The app crashed or closed before calling `finish()` | Grant access, finish |
+
+A purchase that the customer makes inside your app on the same device is the one case that does not come through this stream. Apple returns it from your `purchase()` call as `.success` ([Apple](https://developer.apple.com/documentation/storekit/transaction/updates)). If the call returns `.pending`, for example because Ask to Buy needs a parent's approval, Apple says the resulting transaction arrives later in `Transaction.updates` ([Apple](https://developer.apple.com/documentation/storekit/product/purchaseresult/pending)). So your purchase code and your listener must share the same "grant access" function.
+
+## A complete listener in Swift
+
+Here is a small store class that starts the listener when it is created, handles every transaction the same way, and refreshes entitlements after each one. Create it once, early, for example as a property of your `App` struct.
+
+```swift
+import StoreKit
+
+@MainActor
+final class Store: ObservableObject {
+    @Published private(set) var ownedProductIDs = Set<String>()
+    private var updates: Task<Void, Never>?
+
+    init() {
+        // Start listening before anything else, so no transaction is missed.
+        updates = Task(priority: .background) { [weak self] in
+            for await result in Transaction.updates {
+                await self?.handle(result)
+            }
+        }
+        Task { await refreshEntitlements() }
+    }
+
+    deinit { updates?.cancel() }
+
+    func purchase(_ product: Product) async throws {
+        switch try await product.purchase() {
+        case .success(let result):
+            await handle(result)
+        case .pending:
+            break // For example Ask to Buy. The result arrives in Transaction.updates.
+        case .userCancelled:
+            break
+        @unknown default:
+            break
+        }
+    }
+
+    private func handle(_ result: VerificationResult<Transaction>) async {
+        guard case .verified(let transaction) = result else {
+            return // Do not grant access for a transaction that failed verification.
+        }
+        // Send transaction.jwsRepresentation to your server here if you have one.
+        await refreshEntitlements()
+        await transaction.finish()
+    }
+
+    func refreshEntitlements() async {
+        var owned = Set<String>()
+        for await result in Transaction.currentEntitlements {
+            if case .verified(let transaction) = result {
+                owned.insert(transaction.productID)
+            }
+        }
+        ownedProductIDs = owned
+    }
+}
+```
+
+Three choices in this code matter.
+
+1. **The listener starts in `init()`.** If you start it from a view's `onAppear`, a transaction that arrives before the view appears is lost.
+2. **Access comes from `currentEntitlements`, not from the transaction alone.** Apple's `currentEntitlements` returns the latest transaction for each non-consumable and each subscription that is active or in a billing grace period, and leaves out refunded and revoked products ([Apple](https://developer.apple.com/documentation/storekit/transaction/currententitlements)). Recomputing from it after every update handles renewals, upgrades and refunds with one code path.
+3. **`finish()` comes last.** Apple says to finish after you deliver the content or turn on the service ([Apple](https://developer.apple.com/documentation/storekit/transaction/finish%28%29)). If you send the transaction to a server, finish only after the server accepts it.
+
+## How do refunds arrive?
+
+A refund or a Family Sharing revocation also comes through `Transaction.updates`. The transaction has a `revocationDate`, which Apple defines as the date the App Store refunded the transaction or revoked it from Family Sharing ([Apple](https://developer.apple.com/documentation/storekit/transaction/revocationdate)). The listener above handles it without a special case, because `currentEntitlements` no longer includes the product. If your app stores access anywhere else, check `revocationDate` and remove access there too.
+
+Consumables are different. They never appear in `currentEntitlements`, so keep their balance yourself. Apple says unfinished consumables are available from `Transaction.unfinished` and `Transaction.all` ([Apple](https://developer.apple.com/documentation/storekit/transaction/currententitlements)), and `Transaction.all` includes finished consumables only when they are refunded or revoked, unless you set the `SKIncludeConsumableInAppPurchaseHistory` key to true ([Apple](https://developer.apple.com/documentation/storekit/transaction/all)).
+
+## Five mistakes that cause missed or repeated purchases
+
+These are the problems developers report most often on Apple's developer forums about this stream, such as a listener that never fires in an [Ask to Buy test](https://developer.apple.com/forums/thread/695394) or a [listener that stops working](https://developer.apple.com/forums/thread/732096).
+
+1. **Starting the listener late.** Unfinished transactions arrive once, right after launch ([Apple](https://developer.apple.com/documentation/storekit/transaction/updates)). Start the task in your app's entry point, not in a screen.
+2. **Never calling `finish()`.** An unfinished transaction is delivered again on the next launch. Apple says a transaction stays unfinished until you call `finish()` ([Apple](https://developer.apple.com/documentation/storekit/transaction/unfinished)), and for consumables that can block the next purchase.
+3. **Calling `finish()` too early.** If you finish before your server records the purchase and the request fails, StoreKit will not send the transaction again. Finish after the server says yes.
+4. **Two listeners.** If your own code and an SDK both iterate `Transaction.updates` and both call `finish()`, they race. Pick one owner, as the next section explains.
+5. **Expecting updates while the app is closed.** The stream only runs while your app runs. A subscription that renews or is refunded overnight shows up on the next launch, or at your server right away if you have one.
+
+## Do you need a server too?
+
+For one app on one platform with one subscription, the listener plus `currentEntitlements` is enough to ship. A server earns its place when you need any of these:
+
+- **Access on the web or Android** for a customer who bought on iOS. The device cannot tell your other platforms.
+- **Events while the app is closed.** Apple sends App Store Server Notifications to your server for renewals, billing problems, refunds and more, in real time. Our [App Store Server Notifications V2 guide](https://raw.githubusercontent.com/revenuedot/docs/main/blog/app-store-server-notifications-v2.md) lists every type.
+- **Revenue charts and webhooks** to your own backend, CRM or analytics.
+- **Checks you trust.** Apple's documentation suggests verifying the signed transaction on your server "for the most control and security" ([Apple](https://developer.apple.com/documentation/storekit/verificationresult)).
+
+Our post on [server-side receipt validation](https://raw.githubusercontent.com/revenuedot/docs/main/blog/server-side-receipt-validation.md) shows what a server does with each signed transaction, and [StoreKit 2 vs RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/blog/storekit-2-vs-revenuecat.md) compares building it yourself with using a backend.
+
+## What changes with the RevenueCat SDK or RevenueDot
+
+If your app uses the RevenueCat SDK, or the RevenueDot SDK built from it, you do not write this listener. The SDK observes `Transaction.updates` itself; the source comment says it receives renewals, purchases made on other devices and purchases from SwiftUI's paywalls ([source](https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Purchasing/StoreKit2/StoreKit2TransactionListener.swift)). It posts each transaction to the backend and, by default, finishes it after the backend accepts it. Your code reads the result:
+
+```swift
+import RevenueCat
+
+// Once, at launch.
+Purchases.configure(withAPIKey: "appl_...")
+
+// Anywhere you need to know about changes, including ones from Transaction.updates.
+for await customerInfo in Purchases.shared.customerInfoStream {
+    let isPro = customerInfo.entitlements["pro"]?.isActive == true
+    // Update your UI.
+}
+```
+
+Do not add your own `finish()` calls next to the SDK. If you must keep your own StoreKit code, configure the SDK with `purchasesAreCompletedBy: .myApp` so your code owns `finish()` and the SDK only records the purchase.
+
+The RevenueDot SDK's code imports `RevenueCat` because it is built from RevenueCat's MIT-licensed SDK, and it needs no RevenueCat account. It sends everything to RevenueDot, an open-source backend that verifies each signed transaction with Apple, receives App Store Server Notifications while the app is closed, and turns both into one entitlement your app, your web app and your Android app can read. A real App Store sandbox purchase has run end to end against RevenueDot Cloud on a physical iPhone. See the [iOS SDK guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/ios.md) and the [App Store setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md).
+
+**Switching from RevenueCat?** Keep your SDK and change one line: point its proxy URL at RevenueDot. The [migration guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md) covers importing your customers, and the [RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) and [fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator) cover cost. See [pricing](https://revenuedot.app/pricing) for RevenueDot's plans.
+
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month.
+
+## FAQ
+
+### Where should I start the Transaction.updates listener?
+
+In your app's entry point, before any screen appears: in your `App` struct's `init()` or in `application(_:didFinishLaunchingWithOptions:)`. Apple says to start it as soon as the app launches, because unfinished transactions arrive once right after launch ([Apple](https://developer.apple.com/documentation/storekit/transaction/updates)).
+
+### Why doesn't Transaction.updates fire after a purchase?
+
+A purchase made inside your app on the same device returns from `purchase()` as `.success` and does not also arrive on the stream ([Apple](https://developer.apple.com/documentation/storekit/transaction/updates)). Handle it in your purchase code, with the same function your listener uses.
+
+### What is the difference between Transaction.updates and Transaction.unfinished?
+
+`Transaction.updates` delivers new and changed transactions while the app runs, plus unfinished ones once at launch. `Transaction.unfinished` lets you read the unfinished ones again at any time ([Apple](https://developer.apple.com/documentation/storekit/transaction/unfinished)).
+
+### Do I need to call finish() for subscriptions?
+
+Yes. Every transaction stays unfinished until you call `finish()`, whatever the product type ([Apple](https://developer.apple.com/documentation/storekit/transaction/unfinished)). Call it after you grant access. If you use the RevenueCat SDK, it finishes for you unless you set `purchasesAreCompletedBy` to `.myApp`.
+
+### How do I test Transaction.updates?
+
+In Xcode, use a StoreKit configuration file and the transaction manager to approve Ask to Buy requests, refund purchases and speed up renewals while the app runs. On a device, use a sandbox account. Our [sandbox testing guide](https://raw.githubusercontent.com/revenuedot/docs/main/blog/sandbox-testing-in-app-purchases.md) shows each step.
 
 **About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
 
