@@ -49953,6 +49953,11 @@ Description: Posts from the RevenueDot team about building RevenueDot Cloud, an 
 
 Posts from the team building RevenueDot, an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK, free to start on [RevenueDot Cloud](https://app.revenuedot.app/signup). Newest first.
 
+## 2026-10-26
+- [Google Play Billing Library 8: deadline and migration](https://raw.githubusercontent.com/revenuedot/docs/main/blog/google-play-billing-library-8-migration.md): the August 31, 2026 deadline and the November 1 extension, the APIs version 8 removed, the Kotlin to change, the RevenueCat and Flutter package versions to pick, and the consumable restore gap.
+- [How to look up an in-app purchase by order ID](https://raw.githubusercontent.com/revenuedot/docs/main/blog/look-up-purchase-by-order-id.md): where customers find App Store and Google Play order IDs, Apple's Look Up Order ID and Google's Orders API in Node.js, and how to give the purchase back to the right account.
+- [What happens if your in-app purchase vendor shuts down](https://raw.githubusercontent.com/revenuedot/docs/main/blog/in-app-purchase-vendor-shutdown.md): what Apple and Google keep running, what stops, what Glassfy customers faced, the data a move needs, and six steps to take now.
+
 ## 2026-10-19
 - [How to export your data from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/blog/export-data-from-revenuecat.md): the four RevenueCat exports, what each one holds, why none of the self-service ones carries Google Play purchase tokens, and the order of steps that keeps every subscriber's access during a move.
 - [How to handle StoreKit 2 Transaction.updates](https://raw.githubusercontent.com/revenuedot/docs/main/blog/storekit-2-transaction-updates.md): start one listener at launch, verify, grant access and then finish, with a complete Swift store class, Ask to Buy, refunds, five common mistakes and what the RevenueCat SDK does for you.
@@ -52078,6 +52083,181 @@ The idea is the same, but Play models it as an offer phase of 3 days to 3 years,
 
 ---
 
+# Google Play Billing Library 8: deadline and migration
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/google-play-billing-library-8-migration.md
+Description: Play rejects app updates on Billing Library 7 since August 31, 2026, with extensions to November 1. What changed in version 8 and the SDK versions to pick.
+
+Since August 31, 2026, Google Play only accepts new apps and app updates that use Play Billing Library 8 or later. Teams that asked Google for an extension can keep shipping on version 7 until November 1, 2026. The apps already on people's phones keep working, so the deadline blocks your next release, not your current purchases. If your app uses the RevenueCat SDK, version 9.0.0 of the Android, React Native and Flutter SDKs moved to Billing Library 8. If you use Flutter's `in_app_purchase`, version 0.5.0 of its Android package made the same move.
+
+This post covers the dates, the APIs that version 8 removed, the code to change, the version to pick for Flutter, React Native and Expo apps, and the one change that can quietly break restores. Every fact about Google and RevenueCat links its source and was checked on October 26, 2026.
+
+![Google Play Billing Library deadlines from version 5 to 9, with the August 31, 2026 deadline for version 7 marked](https://github.com/revenuedot/docs/blob/main/blog/assets/google-play-billing-library-8-migration/cover.svg)
+
+## The short answer
+
+- **The deadline:** new apps and updates must use Billing Library 8 or later since August 31, 2026. An extension, which you request in Play Console, runs to November 1, 2026 ([Google](https://developer.android.com/google/play/billing/deprecation-faq)).
+- **Existing installs keep working.** Google says unmaintained APKs do not need updates; only new apps and updates must use a supported version ([Google](https://developer.android.com/google/play/billing/deprecation-faq)).
+- **Removed in 8.0.0:** `queryPurchaseHistory()`, `querySkuDetailsAsync()`, the no-argument `enablePendingPurchases()` and the string version of `queryPurchasesAsync()`. The product details callback also has a new signature ([Google](https://developer.android.com/google/play/billing/release-notes)).
+- **Package versions:** RevenueCat's purchases-android, react-native-purchases and purchases-flutter use Billing Library 8 from 9.0.0 ([RevenueCat](https://www.revenuecat.com/docs/known-store-issues/play-billing-library/restore-consumable-purchases-bc8)). Flutter's `in_app_purchase_android` uses it from 0.5.0 ([pub.dev](https://pub.dev/packages/in_app_purchase_android/changelog)).
+- **The trap:** version 8 can no longer read consumed one-time purchases, so an app without logins cannot restore them from the device. Plan an order ID restore for support cases.
+
+## The dates Google set
+
+Google publishes one deadline per library version on its [deprecation FAQ](https://developer.android.com/google/play/billing/deprecation-faq), updated on October 23, 2026. Each version stops being accepted on August 31, one year after the version before it, with an extension to November 1 of the same year.
+
+| Billing Library version | New apps and updates must move off it by | Extension until |
+|---|---|---|
+| 5 | August 31, 2024 | November 1, 2024 |
+| 6 | August 31, 2025 | November 1, 2025 |
+| 7 | August 31, 2026 | November 1, 2026 |
+| 8 | August 31, 2027 | November 1, 2027 |
+| 9 | August 31, 2028 | November 1, 2028 |
+
+The table also tells you which version to pick. Any 8.x release satisfies today's rule, but version 8 reaches its own deadline in August 2027. Moving straight to version 9 gives your Android code a year longer before the next forced upgrade.
+
+## What happens if you miss it
+
+The deadline is a publishing gate. When your app uses an unsupported version, Play Console shows a warning, and Google says you open the extension form from that warning's details page under **Policy status** ([Google](https://developer.android.com/google/play/billing/deprecation-faq)). Without an extension, Play Console will not accept the update.
+
+Nothing changes for customers who already installed your app. Their purchases and renewals keep working, because Google bills subscriptions on its own schedule whatever library version the app was built with. The risk is a different one: a crash fix or an urgent release that Play Console refuses because the billing code is out of date. Upgrade before you need a hotfix.
+
+## What changed in Billing Library 8
+
+Version 8.0.0 shipped on June 30, 2025. Google's [release notes](https://developer.android.com/google/play/billing/release-notes) and [migration guide](https://developer.android.com/google/play/billing/migrate-gpblv8) list four removed APIs and one changed callback.
+
+| Removed or changed | Replacement |
+|---|---|
+| `queryPurchaseHistory()` | No device replacement for consumed purchases; see [query purchase history](https://developer.android.com/google/play/billing/query-purchase-history) |
+| `querySkuDetailsAsync()` | `queryProductDetailsAsync()` |
+| `enablePendingPurchases()` with no arguments | `enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())` |
+| `queryPurchasesAsync(String skuType, listener)` | `queryPurchasesAsync(QueryPurchasesParams, listener)` |
+| `onProductDetailsResponse(BillingResult, List<ProductDetails>)` | `onProductDetailsResponse(BillingResult, QueryProductDetailsResult)` |
+
+Version 8 also added three useful things. `enableAutoServiceReconnection()` reconnects to Google Play by itself when you call an API while the service is disconnected. `queryProductDetailsAsync()` now reports products it could not fetch instead of dropping them silently. And `launchBillingFlow()` can return sub-response codes such as `PAYMENT_DECLINED_DUE_TO_INSUFFICIENT_FUNDS` and `USER_INELIGIBLE`, which help you show a better error message.
+
+### The code to change
+
+If you call the library yourself in Kotlin, the client setup and the product query are the two places that usually break the build. Here is the setup Google shows in its [integration guide](https://developer.android.com/google/play/billing/integrate), with automatic reconnection turned on:
+
+```kotlin
+val billingClient = BillingClient.newBuilder(context)
+    .setListener(purchasesUpdatedListener)
+    .enablePendingPurchases(
+        PendingPurchasesParams.newBuilder().enableOneTimeProducts().build()
+    )
+    .enableAutoServiceReconnection()
+    .build()
+```
+
+Google asks you not to call `startConnection()` again from `onBillingServiceDisconnected()` once automatic reconnection is on. Leave that method empty, or use it only to log the disconnection.
+
+The product query now hands you a result object with two lists:
+
+```kotlin
+billingClient.queryProductDetailsAsync(params) { billingResult, result ->
+    if (billingResult.responseCode != BillingClient.BillingResponseCode.OK) return@queryProductDetailsAsync
+
+    for (details in result.productDetailsList) {
+        // Show this product on the paywall.
+    }
+    for (missing in result.unfetchedProductList) {
+        // Log it: the product id is wrong, inactive, or has no offer for this user.
+    }
+}
+```
+
+Log the unfetched products. A paywall that shows two plans instead of three is a common bug after a Play Console change, and this list now tells you which product went missing.
+
+### Later releases you should know about
+
+Three later releases change what you can support. Version 8.1.0 raised `minSdkVersion` to 23 and added `Purchase.isSuspended()` for subscriptions that are suspended, which Google says should not get access. Version 9.0.0 raised `targetSdkVersion` to 35 and now returns `BILLING_UNAVAILABLE` instead of `ERROR` when the system blocks the Play Store, for example in a kids mode. Version 9.1.0 added APIs for Google's billing choice programs ([Google](https://developer.android.com/google/play/billing/release-notes)).
+
+## Which package version to use
+
+Most cross-platform apps never call the Billing Library directly. The library comes inside a package, so the upgrade is a package upgrade.
+
+| What your app uses | First version on Billing Library 8 | Source |
+|---|---|---|
+| RevenueCat purchases-android | 9.0.0 | [RevenueCat](https://www.revenuecat.com/docs/known-store-issues/play-billing-library/restore-consumable-purchases-bc8) |
+| react-native-purchases (React Native and Expo) | 9.0.0 | [RevenueCat](https://www.revenuecat.com/docs/known-store-issues/play-billing-library/restore-consumable-purchases-bc8) |
+| purchases_flutter | 9.0.0 | [RevenueCat](https://www.revenuecat.com/docs/known-store-issues/play-billing-library/restore-consumable-purchases-bc8) |
+| purchases-capacitor, purchases-unity, purchases-kmp | 11.0.0, 8.0.0, 2.0.0 | [RevenueCat](https://www.revenuecat.com/docs/known-store-issues/play-billing-library/restore-consumable-purchases-bc8) |
+| Flutter `in_app_purchase_android` | 0.5.0 (0.5.5 moved to 9.1.0) | [pub.dev](https://pub.dev/packages/in_app_purchase_android/changelog) |
+
+A major version of the RevenueCat SDK can include other breaking changes, so read the release notes for your platform before you bump it. The Android 9.0.0 release, for example, also removed `copy` functions from public data classes ([GitHub](https://github.com/RevenueCat/purchases-android/releases/tag/9.0.0)). Today RevenueCat's purchases-android builds against Billing Library 8.3.0 and needs Android 6.0 (API 23) or later ([GitHub](https://github.com/RevenueCat/purchases-android/blob/main/gradle/libs.versions.toml)).
+
+For Expo apps the upgrade happens in a development build, not in Expo Go. Bump the package, run a new native build, and upload it to an internal testing track to check the Play Console warning has cleared.
+
+## The restore problem with consumables
+
+This is the change that can hurt customers. Starting with Billing Library 8, Google removed the ability to read consumed one-time purchases from the device. RevenueCat's documentation says its SDKs on this version therefore cannot restore those purchases ([RevenueCat](https://www.revenuecat.com/docs/known-store-issues/play-billing-library/restore-consumable-purchases-bc8)). Subscriptions and non-consumables still restore normally, because `queryPurchasesAsync()` returns everything the customer still owns.
+
+The problem only matters if two things are true. Your app sells or once sold consumables, such as credits or coins, and it has no login, so a customer who reinstalls or changes phones gets a new anonymous ID. That customer's past credit purchases no longer come back with a tap on **Restore**.
+
+You have three ways to handle it:
+
+1. **Add accounts.** A customer who logs in keeps the same app user ID on every device, so the backend already knows their purchases.
+2. **Back up the anonymous ID.** Android Auto Backup can restore the SDK's stored app user ID on a new phone. RevenueCat notes this does not cover every device.
+3. **Restore by order ID.** Every Google Play receipt email has an order ID that starts with `GPA.`. Support can use it to find the purchase on the server and move it to the customer's new ID.
+
+RevenueDot supports the third path for Google Play and the App Store. One call to the REST API finds the purchase with Google's Orders API and gives it to the customer under your project's transfer behavior ([API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#restore-a-purchase-by-its-store-order-id)):
+
+```bash
+curl -s -X POST "https://api.revenuedot.app/v2/projects/$PROJECT_ID/customers/$APP_USER_ID/actions/restore_purchase_by_order_id" \
+  -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"order_id":"GPA.3372-4157-7914-56870"}'
+```
+
+The Play service account needs the "View financial data" permission for this lookup. Our post on [looking up a purchase by order ID](https://raw.githubusercontent.com/revenuedot/docs/main/blog/look-up-purchase-by-order-id.md) explains the support flow for both stores.
+
+## A checklist for the upgrade
+
+1. **Find your version.** Open Play Console, **Policy status**, and read the warning, or check the package version in your `build.gradle`, `pubspec.lock` or `package-lock.json`.
+2. **Request the extension now** if you cannot ship a new build before November 1, 2026.
+3. **Upgrade the package** to a release on Billing Library 8 or, better, 9. Read its release notes for other breaking changes.
+4. **Check `minSdkVersion`.** Billing Library 8.1.0 and later need Android 6.0 (API 23).
+5. **Test a purchase, a renewal and a restore** with a license tester on an internal testing track. Our [testing guide](https://raw.githubusercontent.com/revenuedot/docs/main/blog/sandbox-testing-in-app-purchases.md) shows the setup.
+6. **Test consumables on a fresh install.** If restore no longer brings them back, decide between accounts, backup and order ID restores before you release.
+7. **Upload to Play Console** and confirm the warning disappears from **Policy status**.
+
+## How RevenueDot fits in
+
+RevenueDot is an open-source backend for in-app purchases that works with the RevenueCat SDK. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md), which is built from RevenueCat's MIT-licensed SDKs, so its code says `import RevenueCat` even though it needs no RevenueCat account. Its current releases are past 9.0.0 on every platform: 10.23.3 for [Android](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/android.md), 10.13.2 for [Flutter](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/flutter.md) and 10.10.2 for [React Native and Expo](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/react-native.md). They use Billing Library 8 or later, so they meet the deadline.
+
+The server checks Google Play purchases with the Play Developer API, receives real-time developer notifications, and scans for voided purchases every day ([Google Play setup](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md)). RevenueDot has run next to RevenueCat in a production app since October 2, 2026, and a real App Store sandbox purchase has run end to end on a physical iPhone. A real Google Play purchase has not yet run end to end, so test a Play purchase with your own license tester before you rely on it.
+
+**Switching from RevenueCat? Keep your SDK and change one line.** The RevenueCat SDK accepts a proxy URL, so an app on RevenueCat can point it at RevenueDot and keep its code, offerings and customers. RevenueCat charges 1% of all tracked revenue once you pass $2,500 a month ([RevenueCat](https://www.revenuecat.com/pricing)). Compare your own numbers with the [RevenueCat fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator), read the [RevenueDot vs RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat), or see [pricing](https://revenuedot.app/pricing).
+
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month.
+
+## FAQ
+
+### What is the Google Play Billing Library deadline in 2026?
+
+Since August 31, 2026, new apps and updates must use Billing Library 8 or later. Apps that requested an extension in Play Console can ship on version 7 until November 1, 2026 ([Google](https://developer.android.com/google/play/billing/deprecation-faq)).
+
+### Will my app stop selling if I do not update the Billing Library?
+
+No. Google says existing apps keep working and only new apps and updates must use a supported version ([Google](https://developer.android.com/google/play/billing/deprecation-faq)). You will not be able to publish an update until you upgrade, which is a problem the day you need a fix.
+
+### Should I upgrade to Billing Library 8 or 9?
+
+Either meets the current rule. Version 8 must itself be replaced by August 31, 2027, while version 9 is accepted until August 31, 2028, so version 9 gives you a year more. Check that your package supports it first.
+
+### Which RevenueCat SDK version uses Billing Library 8?
+
+Version 9.0.0 and later of purchases-android, react-native-purchases and purchases-flutter. Capacitor uses it from 11.0.0, Unity from 8.0.0 and Kotlin Multiplatform from 2.0.0 ([RevenueCat](https://www.revenuecat.com/docs/known-store-issues/play-billing-library/restore-consumable-purchases-bc8)).
+
+### Why can't my app restore consumable purchases after the upgrade?
+
+Billing Library 8 removed the way to read consumed one-time purchases from the device. Apps with logins keep them on the server. Apps without logins need app backups or a support flow that restores a purchase from the order ID on the receipt email.
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
 # How to handle Google Play refunds and chargebacks
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/google-play-refunds-and-chargebacks.md
@@ -52453,6 +52633,126 @@ The proxy URL moves the API calls. It cannot change what is compiled into the SD
 - **Platforms where the proxy does not work.** On Flutter web, the stock SDK ignores `setProxyURL`.
 
 That is why we maintain MIT forks of all ten SDKs. They carry a different signing key and close these gaps, and they keep every name your code imports. The details are in [Why we forked the RevenueCat SDKs](https://raw.githubusercontent.com/revenuedot/docs/main/blog/why-we-forked-the-revenuecat-sdks.md).
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
+# What happens if your in-app purchase vendor shuts down
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/in-app-purchase-vendor-shutdown.md
+Description: Subscribers keep paying Apple and Google when a vendor like RevenueCat or Adapty closes. What breaks in your app, the data you lose, and six steps to take now.
+
+If the company behind your in-app purchase backend shuts down, your subscribers keep paying. Apple and Google bill them, renew them and let them cancel, whatever happens to the vendor. What stops is everything the vendor runs for you: the server your app asks "does this customer have Pro?", the webhooks to your own server, your charts, your integrations and, most important, the records that link each store purchase to one of your users. A team that keeps its own store credentials, a daily export and control of its store notifications can move in days. A team that keeps none of them can lose the link between paying customers and their accounts.
+
+This post explains what keeps working, what breaks, what happened when Glassfy closed, and six steps that protect you whichever vendor you use. Every fact about Apple, Google and other vendors links its source and was checked on October 26, 2026.
+
+![Two columns: what the stores keep running when a vendor closes, such as billing and renewals, and what stops, such as access checks, webhooks and user links](https://github.com/revenuedot/docs/blob/main/blog/assets/in-app-purchase-vendor-shutdown/cover.svg)
+
+## The short answer
+
+- **Billing keeps running.** Apple says auto-renewable subscriptions renew at the end of each period until the customer cancels ([Apple](https://developer.apple.com/app-store/subscriptions/)). Google Play works the same way. Your revenue does not stop.
+- **Access checks stop.** An app that asks the vendor's server for entitlements gets errors once that server is gone. SDK caches and offline modes help for a while, not for good.
+- **Your user links are the asset.** Moving to a new backend needs, for each customer, your app user ID plus the Apple original transaction ID or the Google purchase token. If those live only with the vendor, you need them out before it closes.
+- **It has happened before.** Adapty's migration guide, published August 1, 2024, said Glassfy's services would end in December 2024 ([Adapty](https://adapty.io/blog/migrate-from-glassfy-to-adapty/)).
+- **Six steps cut the risk:** own your store credentials, export daily, control your store notification URLs, record purchases on your own server, make the SDK host changeable, and practice a restore.
+
+## Why vendor risk is real
+
+An in-app purchase backend sits between your app and two stores. It is a small, critical piece of software, and the market has many young companies in it. For an app that makes $30,000 or more a month on both stores, the vendor's fee is a cost you can plan for, but a vendor that disappears would be a crisis.
+
+Glassfy is the example people remember. It was a hosted subscription backend with its own SDK. In August 2024, Adapty published a guide for Glassfy customers that said Glassfy's services would end in December 2024, and described the move: replace the SDK, ask Glassfy support for a data export, and import it ([Adapty](https://adapty.io/blog/migrate-from-glassfy-to-adapty/)). That guide also notes that the export needed to include iOS receipts and Apple original transaction IDs. When we checked on October 26, 2026, the address of Glassfy's own shutdown announcement redirected to an unrelated website, so the notice itself is gone.
+
+Customers who exported in time had about five months. Customers who did not had nothing to export from.
+
+## What keeps working
+
+The stores own the subscription. Apple and Google hold the payment method, run each renewal, handle billing retries and refunds, and let the customer cancel in their account settings ([Apple](https://developer.apple.com/app-store/subscriptions/)). None of that depends on your vendor.
+
+Your app's own store code also keeps working. On iOS, StoreKit 2 can still list the customer's current entitlements on the device, and on Android, `queryPurchasesAsync()` still returns active subscriptions. A purchase still goes through, because the payment sheet belongs to the store.
+
+## What breaks
+
+| Part | What happens when the vendor's server is gone |
+|---|---|
+| Access checks | The SDK cannot fetch the customer's status. A cached answer works for a while; new installs and new devices get errors |
+| New purchases | The store charges the customer, but the vendor never records the purchase or unlocks it on its server |
+| Paywall content | Products, prices and paywall designs that the app downloads from the vendor may not load |
+| Webhooks | Your server stops hearing about renewals, cancellations and refunds |
+| Integrations | Attribution, analytics and messaging tools stop receiving purchase events |
+| History and charts | Revenue history, cohorts and refunds are gone unless you exported them |
+| User links | The mapping from store purchases to your app user IDs is gone unless you kept it |
+| Granted access | Promotional access you gave by hand exists only in the vendor's database |
+
+Offline modes soften the first two rows but do not remove them. RevenueCat's SDK, for example, turns on its Offline Entitlements when its servers cannot respond, but RevenueCat documents that it only applies to purchases made while the servers are down, does not cover one-time purchases, and does not recognize purchases across platforms ([RevenueCat](https://www.revenuecat.com/docs/customers/customer-info)). Those rules are built for an outage of minutes or hours, not for a company that has closed.
+
+## The data you need to move
+
+A new backend can rebuild almost everything from the stores, as long as it knows which purchase belongs to which of your users. For each paying customer you need ([RevenueCat](https://www.revenuecat.com/docs/revenuecat-support/common-tickets/export-data-or-migrate-away)):
+
+- **App Store:** your app user ID and Apple's original transaction ID.
+- **Google Play:** your app user ID, the purchase token and the product ID.
+- **Stripe or other web billing:** your app user ID and the provider's subscription ID.
+
+Apple is forgiving here. With any one transaction ID, the App Store Server API returns the customer's full history and subscription status. Google is not. Google's APIs look up a subscription by its purchase token, so without the token you depend on the customer's device, the next renewal notification, or an order ID from their receipt email. Our post on [looking up a purchase by order ID](https://raw.githubusercontent.com/revenuedot/docs/main/blog/look-up-purchase-by-order-id.md) shows that last route.
+
+## Six steps to take now
+
+None of these steps needs you to change vendors. They make a change possible on your own schedule.
+
+1. **Own your store credentials.** Keep your App Store In-App Purchase key and your Google Play service account in your own secrets store, not only in the vendor's dashboard. No vendor can export them for you.
+2. **Export every day.** Send transaction and customer data to your own storage bucket on a schedule. Our guide to [exporting data from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/blog/export-data-from-revenuecat.md) shows what each RevenueCat export holds.
+3. **Control your notification URLs.** App Store Connect has one production and one sandbox URL for App Store Server Notifications ([Apple](https://developer.apple.com/help/app-store-connect/configure-in-app-purchase-settings/enter-server-urls-for-app-store-server-notifications)). Point it at an endpoint you control that forwards each notification to the vendor. For Google Play, a Pub/Sub topic can have more than one subscription ([Google Cloud](https://docs.cloud.google.com/pubsub/docs/subscription-overview)), so you can add your own next to the vendor's.
+4. **Record purchases on your own server.** Store your app user ID with the Apple original transaction ID or Google purchase token whenever a webhook or your app reports a purchase. This small table is what makes a move safe.
+5. **Make the SDK host changeable.** Several SDKs let you set a proxy URL before `configure`. If your app reads that URL from remote config, you can move backends without waiting for every customer to update.
+6. **Practice a restore.** Once a quarter, take one test customer and rebuild their access in a second system from your own data alone. A plan you never tested is a hope.
+
+## Questions to ask any vendor
+
+Before you sign up, or before you renew, ask five questions. Write the answers down.
+
+- **Can I get all my data out without a support ticket, and in what format?**
+- **Does the export include Google purchase tokens and Apple original transaction IDs?**
+- **Is the server open source, and under which license, so the code outlives the company?**
+- **Can I run the same server myself if I have to?**
+- **How long has it run in production, and for whom?** Maturity matters. A vendor with years of traffic, audits and a large customer base has proven things a young vendor has not.
+
+## Where RevenueDot stands
+
+RevenueDot is an open-source backend for in-app purchases that works with the RevenueCat SDK. It is also a young company: it launched in 2026, has no SOC 2 report yet, and has run next to RevenueCat in one production app since October 2, 2026. We think a young vendor should answer the shutdown question before anyone asks, so here are our answers.
+
+- **The server is open source** under AGPL-3.0 on [GitHub](https://github.com/revenuedot/revenuedot), and the SDKs are MIT-licensed forks of RevenueCat's. If RevenueDot the company disappeared, the code would not.
+- **One command exports everything.** `npx revenuedot export`, or **Project settings, Export and move** in the dashboard, builds an archive of every table the project owns, one JSON line per row, with a row count and checksum for each table ([export guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/move-projects.md#export-everything)). It includes Apple transaction IDs and Google purchase tokens.
+- **The same archive runs on your own server.** You can load it into a [self-hosted](https://revenuedot.app/self-host) RevenueDot with Docker and Postgres. Enterprise features on your own servers need an Enterprise license.
+- **Scheduled exports** send transactions, customers, subscriptions and events to Amazon S3, Cloudflare R2, Google Cloud Storage or Azure Blob Storage ([integrations](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/integrations.md#scheduled-data-exports)).
+- **Forwarding is built in.** Each app can forward every store notification to RevenueCat or to your own server, so you keep a second copy of the event stream ([dual run guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/dual-run.md)).
+- **You can go back.** RevenueCat imports existing subscriptions from store identifiers ([RevenueCat](https://www.revenuecat.com/docs/migrating-to-revenuecat/migrating-existing-subscriptions)), and RevenueDot's export has them.
+
+**Switching from RevenueCat? Keep your SDK and change one line.** An app that ships the RevenueCat SDK can point its proxy URL at RevenueDot and keep its code, offerings and customers. RevenueCat charges 1% of all tracked revenue once you pass $2,500 a month ([RevenueCat](https://www.revenuecat.com/pricing)). See the [RevenueDot vs RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat), which also lists where RevenueCat is stronger, the [migration guide](https://revenuedot.app/migrate-from-revenuecat), the [RevenueCat fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator) and [pricing](https://revenuedot.app/pricing).
+
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month.
+
+## FAQ
+
+### Do subscribers keep getting charged if my subscription vendor shuts down?
+
+Yes. Apple and Google bill the customer and renew the subscription until the customer cancels in their store account ([Apple](https://developer.apple.com/app-store/subscriptions/)). The vendor never holds the payment, so its closing does not stop renewals.
+
+### Will my users lose access if RevenueCat or Adapty goes down?
+
+During a short outage, SDK caches and offline modes keep most current subscribers unlocked; RevenueCat documents the limits of its Offline Entitlements ([RevenueCat](https://www.revenuecat.com/docs/customers/customer-info)). After a permanent shutdown, new installs and new devices cannot get their status until the app points at another backend.
+
+### What data do I need to move to another backend?
+
+For each customer, your app user ID with the Apple original transaction ID, or with the Google purchase token and product ID. A new backend can ask the stores for everything else.
+
+### What happened to Glassfy customers?
+
+Glassfy announced that its services would end in December 2024. Other vendors, such as Adapty, published migration guides that asked customers to request a data export from Glassfy support and replace the SDK ([Adapty](https://adapty.io/blog/migrate-from-glassfy-to-adapty/)).
+
+### Is an open-source backend safer?
+
+It removes one risk: the code survives the company, and you can run it yourself. It does not remove the others, such as bugs or a project that stops getting updates. Check the license, the export format and how long it has run in production.
 
 **About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
 
@@ -53049,6 +53349,170 @@ On the App Store, yes, when you turn on Family Sharing for the product. You cann
 ### Does a refund remove lifetime access?
 
 It should. Apple sends `REFUND` for non-consumables ([Apple](https://developer.apple.com/documentation/appstoreservernotifications/notificationtype)), and Google lists refunded one-time orders in the Voided Purchases API for 30 days ([Google](https://developers.google.com/android-publisher/voided-purchases)).
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
+# How to look up an in-app purchase by order ID
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/look-up-purchase-by-order-id.md
+Description: A customer sends an App Store or Google Play order ID. How to find the purchase with Apple's Look Up Order ID and Google's Orders API, and give back access.
+
+When a customer says "I paid but the app does not unlock," the fastest proof is the order ID on their receipt email. Apple's App Store Server API has a **Look Up Order ID** endpoint that turns an App Store order ID into the signed transactions on that order. Google's Play Developer API has an **Orders API** that turns a `GPA.` order ID into the order's purchase token, state and price. With either answer, your server can confirm the purchase and give it to the customer's current account.
+
+This post shows where customers find each order ID, how to call both APIs with working Node.js code, how to give the purchase back to the right account, and what RevenueDot does in one call. Every fact about Apple, Google and RevenueCat links its source and was checked on October 26, 2026.
+
+![An App Store order ID and a Google Play order ID, each going to its store's API and coming back as a verified purchase on the customer's account](https://github.com/revenuedot/docs/blob/main/blog/assets/look-up-purchase-by-order-id/cover.svg)
+
+## The short answer
+
+- **App Store:** call `GET https://api.storekit.apple.com/inApps/v1/lookup/{orderId}` with your In-App Purchase key. A `status` of `0` comes with the order's signed transactions; `1` means the ID is invalid or holds no purchase for your app ([Apple](https://developer.apple.com/documentation/appstoreserverapi/look-up-order-id)).
+- **The App Store lookup does not work in the sandbox.** Apple says this one endpoint is production only ([Apple](https://developer.apple.com/documentation/appstoreserverapi)).
+- **Google Play:** call `GET .../applications/{packageName}/orders/{orderId}` with a service account. The order holds the purchase token, the state (such as `PROCESSED` or `REFUNDED`) and the line items ([Google](https://developers.google.com/android-publisher/api-ref/rest/v3/orders)).
+- **Then verify and grant.** Check the transaction or token the way you check any purchase, and attach it to the customer's current app user ID.
+- **Why it matters more now:** Google Play Billing Library 8 can no longer read consumed purchases from the device, so a restore from the order ID is often the only way back for an app without logins.
+
+## When support needs an order ID
+
+Most purchase problems fix themselves with a **Restore** button. The order ID matters in the cases where restore cannot help:
+
+- The customer bought on one Apple ID or Google account and now uses the app signed in to another.
+- The app has no login, the customer reinstalled, and the new install got a new anonymous ID.
+- The purchase was a consumable, such as credits, which Google Play Billing Library 8 no longer returns from the device ([RevenueCat](https://www.revenuecat.com/docs/known-store-issues/play-billing-library/restore-consumable-purchases-bc8)). Our [Billing Library 8 post](https://raw.githubusercontent.com/revenuedot/docs/main/blog/google-play-billing-library-8-migration.md) explains that change.
+- The customer wants a refund or says they were charged twice, and you need to see what they actually bought.
+- A store notification was lost during an outage, and your database never recorded the purchase.
+
+In each case the receipt email is the one thing the customer reliably has.
+
+## Where customers find the order ID
+
+| Store | What it looks like | Where the customer finds it |
+|---|---|---|
+| App Store | Letters and digits, such as `MK5TTTVWJH` | The receipt email Apple sends for every in-app purchase, and their purchase history ([Apple](https://developer.apple.com/documentation/appstoreserverapi/orderid)) |
+| Google Play | `GPA.` and four groups of digits, such as `GPA.3333-4137-0319-36762` | The confirmation email, and **Payments & subscriptions**, **Budget & history** in the Play Store ([Google](https://support.google.com/googleplay/answer/2850369?hl=en)) |
+
+On an iPhone, the purchase history is under the account button in the App Store, then **Apps & Purchase History** ([Apple Support](https://support.apple.com/en-us/118212)). Put both paths in your support macro, because customers rarely know which store they paid through until they see the email.
+
+## Look up an App Store order
+
+Apple's endpoint takes the order ID and returns an `OrderLookupResponse`. Apple documents two status values: `0` means the order ID is valid and contains at least one in-app purchase for your app, and `1` means it is invalid or contains none ([Apple](https://developer.apple.com/documentation/appstoreserverapi/orderlookupstatus)). Only a `0` answer carries the `signedTransactions` array.
+
+The request needs a JSON Web Token signed with an In-App Purchase key from App Store Connect, the same key every other App Store Server API call uses. Apple's official Node.js library builds the token and checks the signatures for you:
+
+```js
+// npm install @apple/app-store-server-library
+import { readFileSync } from "node:fs";
+import {
+  AppStoreServerAPIClient, Environment, SignedDataVerifier,
+} from "@apple/app-store-server-library";
+
+const key = readFileSync("SubscriptionKey_ABCDEFGHIJ.p8", "utf8");
+const client = new AppStoreServerAPIClient(
+  key, "ABCDEFGHIJ", "your-issuer-id", "com.example.app", Environment.PRODUCTION,
+);
+const rootCerts = [readFileSync("AppleRootCA-G3.cer")];
+const verifier = new SignedDataVerifier(
+  rootCerts, true, Environment.PRODUCTION, "com.example.app", 1234567890, // your app's Apple ID
+);
+
+export async function lookUpAppStoreOrder(orderId) {
+  const res = await client.lookUpOrderId(orderId);
+  if (res.status !== 0) return []; // invalid, or no purchase for this app
+  const out = [];
+  for (const jws of res.signedTransactions ?? []) {
+    out.push(await verifier.verifyAndDecodeTransaction(jws));
+  }
+  return out; // productId, originalTransactionId, purchaseDate, revocationDate…
+}
+```
+
+Apple suggests using `productId` and `purchaseDate` from the decoded transaction to help the customer ([Apple](https://developer.apple.com/documentation/appstoreserverapi/look-up-order-id)). For a subscription, take `originalTransactionId` and call **Get All Subscription Statuses** to see whether it is active, in a grace period or expired ([Apple](https://developer.apple.com/documentation/appstoreserverapi/get-all-subscription-statuses)). A refunded purchase still comes back from the lookup; its decoded transaction has a `revocationDate`. To see every refund the customer has had, call **Get Refund History** with any of their transaction IDs ([Apple](https://developer.apple.com/documentation/appstoreserverapi/get-refund-history)).
+
+Three details catch people out:
+
+- **No sandbox.** You cannot test this endpoint with a sandbox purchase. Test it with a real purchase from your own Apple ID in production, then refund it.
+- **The new host.** Apple's documentation now gives `api.storekit.apple.com` as the production host and `api.storekit-sandbox.apple.com` for the sandbox ([Apple](https://developer.apple.com/documentation/appstoreserverapi)). Older code uses `api.storekit.itunes.apple.com`; check your library version.
+- **Installs do not matter.** Apple says the API answers from the customer's purchase history whether or not they removed or reinstalled the app.
+
+## Look up a Google Play order
+
+Google's Orders API returns an `Order` with the `purchaseToken`, a `state` (`PENDING`, `PROCESSED`, `CANCELED`, `PENDING_REFUND`, `PARTIALLY_REFUNDED` or `REFUNDED`), the line items, the total, the tax and an order history of refunds and cancellations ([Google](https://developers.google.com/android-publisher/api-ref/rest/v3/orders)). The request uses a service account with the `androidpublisher` scope:
+
+```js
+// npm install google-auth-library
+import { GoogleAuth } from "google-auth-library";
+
+const auth = new GoogleAuth({
+  keyFile: "play-service-account.json",
+  scopes: ["https://www.googleapis.com/auth/androidpublisher"],
+});
+
+export async function lookUpPlayOrder(packageName, orderId) {
+  const client = await auth.getClient();
+  const url = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/` +
+    `${encodeURIComponent(packageName)}/orders/${encodeURIComponent(orderId)}`;
+  const { data: order } = await client.request({ url });
+  return order; // order.purchaseToken, order.state, order.lineItems, order.total
+}
+```
+
+The `purchaseToken` is the key to everything else. For a subscription, pass it to `purchases.subscriptionsv2.get` for the current state and expiry ([Google](https://developer.android.com/google/play/billing/subscriptions)). For a one-time product, check the purchase with the token, then grant it. To check many orders at once, `orders:batchGet` takes 1 to 1,000 distinct order IDs, and the whole request fails if any one of them is not found ([Google](https://developers.google.com/android-publisher/api-ref/rest/v3/orders/batchget)).
+
+The service account needs access to financial data in Play Console. If the call returns 403, open **Users and permissions** and check that the account can view financial data for the app.
+
+## Give the purchase to the right account
+
+Finding the purchase is half the job. The other half is deciding who owns it, because the same purchase may already belong to another account in your database.
+
+1. **Match it to your app.** Check the bundle ID or package name and the product ID against your catalog. An order ID from a different app should not unlock anything.
+2. **Check the state.** Do not grant a refunded, revoked or expired purchase. On Google Play, also skip orders that are `PENDING` or `CANCELED`.
+3. **Decide on ownership.** If another account already owns the purchase, either move it (and remove access from the old account) or refuse and tell the customer which account has it. Pick one rule and apply it everywhere, including normal restores.
+4. **Record it once.** Store the transaction ID or purchase token so a later store notification for the same purchase updates the record instead of creating a second one.
+5. **Tell the customer.** Ask them to reopen the app, so it fetches its new status from your server.
+
+## How RevenueDot does it in one call
+
+RevenueDot is an open-source backend for in-app purchases that works with the RevenueCat SDK. It does all five steps above in one REST call. Send the customer's current app user ID and the order ID:
+
+```bash
+curl -s -X POST "https://api.revenuedot.app/v2/projects/$PROJECT_ID/customers/$APP_USER_ID/actions/restore_purchase_by_order_id" \
+  -H "Authorization: Bearer $SECRET_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"order_id":"MK5TTTVWJH"}'
+```
+
+A `GPA.` ID goes to Google's `orders.batchGet` on each Play app in the project, and the purchase token it returns is checked and acknowledged like any receipt. Any other ID goes to Apple's Look Up Order ID on each App Store app, production first and then the sandbox, and only that order's own subscriptions and purchases are restored. The purchase then moves under the project's transfer behavior, and a move records a `TRANSFER` event that your webhooks receive ([API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#restore-a-purchase-by-its-store-order-id)). The answer is 404 when no store knows the order, 422 when no app has the credentials the lookup needs, and 409 when the transfer behavior keeps the purchase with another customer.
+
+The setup is the same credentials RevenueDot already uses: the In-App Purchase key for the [App Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md) and a service account with the "View financial data" permission for [Google Play](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md).
+
+**Switching from RevenueCat? Keep your SDK and change one line.** RevenueCat's API v2 has the same operation, which it documents for Google Play order IDs that start with `GPA` ([RevenueCat](https://www.revenuecat.com/docs/known-store-issues/play-billing-library/restore-consumable-purchases-bc8)). RevenueDot accepts App Store order IDs too. An app on RevenueCat can point the SDK's proxy URL at RevenueDot and keep its code, offerings and customers; see [migrate from RevenueCat](https://revenuedot.app/migrate-from-revenuecat) and the [RevenueDot vs RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat), which also says where RevenueCat is stronger.
+
+On cost, RevenueCat charges 1% of all tracked revenue once you pass $2,500 a month ([RevenueCat](https://www.revenuecat.com/pricing)). RevenueDot Cloud's Pro plan costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. Check your numbers with the [RevenueCat fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator) or see [pricing](https://revenuedot.app/pricing).
+
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month.
+
+## FAQ
+
+### Where do I find an App Store order ID?
+
+On the receipt email Apple sends after each in-app purchase, and in the customer's App Store purchase history ([Apple](https://developer.apple.com/documentation/appstoreserverapi/orderid)). On an iPhone, the purchase history is under the account button, **Apps & Purchase History**, and on the web it is at reportaproblem.apple.com ([Apple Support](https://support.apple.com/en-us/118212)).
+
+### Can I test Look Up Order ID in the sandbox?
+
+No. Apple says every App Store Server API endpoint works in the sandbox except Look Up Order ID ([Apple](https://developer.apple.com/documentation/appstoreserverapi)). Test it with a real purchase in production and refund it afterwards.
+
+### What does status 1 mean in Apple's order lookup?
+
+It means the order ID is invalid, or the order has no in-app purchase for your app ([Apple](https://developer.apple.com/documentation/appstoreserverapi/orderlookupstatus)). A common cause is an order for a different app on the same Apple ID. Ask for the receipt email that names your app.
+
+### How do I get a purchase token from a Google Play order ID?
+
+Call the Orders API: `orders.get` with your package name and the `GPA.` order ID. The `Order` it returns includes the `purchaseToken`, which you then use with the subscription or product purchase APIs ([Google](https://developers.google.com/android-publisher/api-ref/rest/v3/orders)).
+
+### Does a refunded purchase still show up?
+
+Yes. Apple's lookup still returns the transaction, with a `revocationDate` when it was refunded. Google's order shows a `state` of `REFUNDED` or `PARTIALLY_REFUNDED` and lists the refund in its order history. Do not grant access for either.
 
 **About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
 
