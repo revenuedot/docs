@@ -9,6 +9,11 @@ author: RevenueDot team
 
 Posts from the team building RevenueDot, an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK, free to start on [RevenueDot Cloud](https://app.revenuedot.app/signup). Newest first.
 
+## 2026-10-26
+- [Google Play Billing Library 8: deadline and migration](google-play-billing-library-8-migration.md): the August 31, 2026 deadline and the November 1 extension, the APIs version 8 removed, the Kotlin to change, the RevenueCat and Flutter package versions to pick, and the consumable restore gap.
+- [How to look up an in-app purchase by order ID](look-up-purchase-by-order-id.md): where customers find App Store and Google Play order IDs, Apple's Look Up Order ID and Google's Orders API in Node.js, and how to give the purchase back to the right account.
+- [What happens if your in-app purchase vendor shuts down](in-app-purchase-vendor-shutdown.md): what Apple and Google keep running, what stops, what Glassfy customers faced, the data a move needs, and six steps to take now.
+
 ## 2026-10-19
 - [How to export your data from RevenueCat](export-data-from-revenuecat.md): the four RevenueCat exports, what each one holds, why none of the self-service ones carries Google Play purchase tokens, and the order of steps that keeps every subscriber's access during a move.
 - [How to handle StoreKit 2 Transaction.updates](storekit-2-transaction-updates.md): start one listener at launch, verify, grant access and then finish, with a complete Swift store class, Ask to Buy, refunds, five common mistakes and what the RevenueCat SDK does for you.
