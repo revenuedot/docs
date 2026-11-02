@@ -10,7 +10,7 @@ author: RevenueDot team
 Posts from the team building RevenueDot, an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK, free to start on [RevenueDot Cloud](https://app.revenuedot.app/signup). Newest first.
 
 ## 2026-11-02
-- [Why your in-app products don't load on iOS and Android](in-app-products-not-loading.md): how to log which product failed, the iOS causes from the Paid Apps Agreement to the StoreKit configuration file, the Android causes from testing tracks to `NO_ELIGIBLE_OFFER`, and what empty offerings mean.
+- [Why in-app products don't load on iOS and Android](in-app-products-not-loading.md): how to log which product failed, the iOS causes from the Paid Apps Agreement to the StoreKit configuration file, the Android causes from testing tracks to `NO_ELIGIBLE_OFFER`, and what empty offerings mean.
 - [How to sell credits in an AI app with in-app purchases](sell-credits-in-app-purchases.md): credit packs as consumables, Apple's no-expiry rule, Google's three-day consume rule, a server ledger with Node.js and SQL, refunds, and RevenueDot's in-app currencies.
 - [Apple win-back offers: setup, eligibility and StoreKit code](apple-win-back-offers.md): the eligibility rules and limits, setup in App Store Connect, StoreKit 2 code for your own paywall, sandbox tests, what your server sees, and Google Play's developer determined offers.
 

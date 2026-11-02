@@ -1,12 +1,12 @@
 ---
-title: "Why your in-app products don't load on iOS and Android"
+title: "Why in-app products don't load on iOS and Android"
 description: "StoreKit returns no products, Play Billing returns unfetched products, or offerings come back empty. The causes on each store, in order, and how to find yours."
 date: 2026-11-02
 author: RevenueDot team
 image: /blog/assets/in-app-products-not-loading/cover.svg
 ---
 
-# Why your in-app products don't load on iOS and Android
+# Why in-app products don't load on iOS and Android
 
 When your paywall shows no prices, the store almost never says why. On iOS, StoreKit's `Product.products(for:)` silently leaves out every product ID it cannot find and returns an empty array ([Apple](https://developer.apple.com/documentation/storekit/product/products(for:))). On Android, Google Play Billing returns the missing IDs in an `unfetchedProductList` with a status code ([Google](https://developer.android.com/google/play/billing/integrate)). The cause is nearly always setup, not code: an unsigned agreement, a product that is not ready, a bundle ID or package name that does not match, or a test device that is not signed in as a tester.
 
