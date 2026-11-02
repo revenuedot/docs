@@ -15,6 +15,11 @@ Description: Posts from the RevenueDot team about building RevenueDot Cloud, an 
 
 Posts from the team building RevenueDot, an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK, free to start on [RevenueDot Cloud](https://app.revenuedot.app/signup). Newest first.
 
+## 2026-11-02
+- [Why your in-app products don't load on iOS and Android](https://raw.githubusercontent.com/revenuedot/docs/main/blog/in-app-products-not-loading.md): how to log which product failed, the iOS causes from the Paid Apps Agreement to the StoreKit configuration file, the Android causes from testing tracks to `NO_ELIGIBLE_OFFER`, and what empty offerings mean.
+- [How to sell credits in an AI app with in-app purchases](https://raw.githubusercontent.com/revenuedot/docs/main/blog/sell-credits-in-app-purchases.md): credit packs as consumables, Apple's no-expiry rule, Google's three-day consume rule, a server ledger with Node.js and SQL, refunds, and RevenueDot's in-app currencies.
+- [Apple win-back offers: setup, eligibility and StoreKit code](https://raw.githubusercontent.com/revenuedot/docs/main/blog/apple-win-back-offers.md): the eligibility rules and limits, setup in App Store Connect, StoreKit 2 code for your own paywall, sandbox tests, what your server sees, and Google Play's developer determined offers.
+
 ## 2026-10-26
 - [Google Play Billing Library 8: deadline and migration](https://raw.githubusercontent.com/revenuedot/docs/main/blog/google-play-billing-library-8-migration.md): the August 31, 2026 deadline and the November 1 extension, the APIs version 8 removed, the Kotlin to change, the RevenueCat and Flutter package versions to pick, and the consumable restore gap.
 - [How to look up an in-app purchase by order ID](https://raw.githubusercontent.com/revenuedot/docs/main/blog/look-up-purchase-by-order-id.md): where customers find App Store and Google Play order IDs, Apple's Look Up Order ID and Google's Orders API in Node.js, and how to give the purchase back to the right account.
@@ -934,6 +939,182 @@ Yes. A promotional-offer message pairs text with a promotional offer you created
 ### What does it cost in RevenueDot?
 
 Nothing extra. It is part of RevenueDot, and every feature comes with Pro on RevenueDot Cloud, which costs $0 until your apps make $10,000 a month.
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
+# Apple win-back offers: setup, eligibility and StoreKit code
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/apple-win-back-offers.md
+Description: How App Store win-back offers bring back lapsed subscribers: the eligibility rules, setup in App Store Connect, StoreKit 2 code, sandbox tests and Google's equivalent.
+
+A win-back offer is a free or discounted period that Apple shows to people whose subscription to your app has ended. You create it in App Store Connect and choose who qualifies: how long they paid, how long ago they left, and how long they must wait between offers ([Apple](https://developer.apple.com/help/app-store-connect/manage-subscriptions/set-up-win-back-offers)). Apple then shows it for you on the Manage Subscriptions page, in a sheet inside your app on iOS 18 and later, and on the App Store if you promote it. Unlike promotional offers, a win-back offer needs no signature from your server.
+
+This post covers the eligibility rules and limits, the setup steps, the StoreKit 2 code for a custom paywall, how to test it, what your server sees, and how Google Play handles the same idea. Every fact about Apple, Google and RevenueCat links its source and was checked on November 2, 2026.
+
+![Two columns: who qualifies for an Apple win-back offer, such as paid duration and time since leaving, and where Apple shows it, such as the subscriptions page and the in-app sheet](https://github.com/revenuedot/docs/blob/main/blog/assets/apple-win-back-offers/cover.svg)
+
+## The short answer
+
+- **Who sees it:** customers whose subscription has an expiration date in the past and is not set to renew ([Apple](https://developer.apple.com/documentation/storekit/supporting-win-back-offers-in-your-app)). A subscription in a billing grace period or billing retry is not eligible ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/renewalinfo/eligiblewinbackofferids)).
+- **Rules you set:** a minimum paid duration from 1 to 24 months or 3 to 5 years, time since last subscribed from 1 to 24 months, and an optional wait of 2 to 24 months between offers ([Apple](https://developer.apple.com/help/app-store-connect/manage-subscriptions/set-up-win-back-offers)).
+- **Where it appears:** the Manage Subscriptions page, the win-back sheet in your app (iOS 18, iPadOS 18, macOS 15 or later), a direct link you can email, and the App Store when you promote it.
+- **Code:** with no code, StoreKit shows Apple's sheet at launch. For your own paywall, read `eligibleWinBackOfferIDs` and add `.winBackOffer(offer)` to the purchase.
+- **Handle redemptions you did not start.** Most redemptions happen outside your purchase flow, so your app needs a `Transaction.updates` listener and your server needs App Store Server Notifications.
+
+## Why win-back offers matter
+
+Every subscription app loses customers. Some leave on purpose, and some leave because a card expired and they never noticed. Bringing a past subscriber back usually costs less than finding a new one, because they already know the app.
+
+Before iOS 18, you had two tools for this on the App Store. Promotional offers needed a signature from your server and worked only inside your app. Offer codes needed you to reach the customer some other way. Win-back offers fill the gap: Apple decides who is eligible from rules you set, signs nothing on your side, and shows the offer in places your app cannot reach, such as the customer's subscription settings.
+
+## The rules and limits in App Store Connect
+
+You create win-back offers per subscription product, not per subscription group, and only after App Review has approved that subscription ([Apple](https://developer.apple.com/help/app-store-connect/manage-subscriptions/set-up-win-back-offers)). Customers qualify only for their most recently lapsed product in each group.
+
+| Setting | Allowed values |
+|---|---|
+| Offer type | Pay as you go, pay up front, or free |
+| Minimum paid duration | 1 to 24 months, or 3, 4 or 5 years |
+| Time since last subscribed | A range between 1 and 24 months, such as 5 to 11 months |
+| Wait between offers | Optional, 2 to 24 months |
+| Priority | Normal or high, which affects how Apple ranks the offer |
+| Dates | Starts at the earliest one day after today, and runs at least 3 days |
+| Limits | Up to 350 offers per subscription, and 5 running at once per storefront |
+
+The reference name, offer identifier and price cannot change after you create the offer ([Apple](https://developer.apple.com/help/app-store-connect/manage-subscriptions/set-up-win-back-offers)). The offer identifier appears in transactions and renewal info, so pick a clear one, such as `comeback_50_3m`.
+
+When several offers overlap, Apple chooses one to show based on price, duration and the customer's tenure. To appear on your App Store product page and in Apple's editorial placements, you must promote the offer, which needs an approved subscription image that is not your app icon or a screenshot ([Apple](https://developer.apple.com/help/app-store-connect/manage-subscriptions/set-up-win-back-offers)).
+
+## How to set one up
+
+1. **Pick the product.** Choose the subscription most lapsed customers had, usually your monthly or annual plan.
+2. **Decide the offer.** A common start is a discount for one to three months, or one free month for people who paid at least six months.
+3. **Create it in App Store Connect.** Open the subscription, add a win-back offer, and fill in the reference name, offer identifier, dates, priority, regions, eligibility and price.
+4. **Check Streamlined Purchasing.** It is on by default, which means customers can finish the purchase outside your app and your app receives a completed transaction ([Apple](https://developer.apple.com/documentation/storekit/supporting-win-back-offers-in-your-app)).
+5. **Save the direct link.** App Store Connect creates a link in the form `https://apps.apple.com/win-back/<offer Apple ID>`. Apple suggests storing it with the offer identifier on your server.
+6. **Make sure your app handles outside purchases.** Start a `Transaction.updates` listener at launch. Our post on [Transaction.updates](https://raw.githubusercontent.com/revenuedot/docs/main/blog/storekit-2-transaction-updates.md) shows a complete store class.
+
+## Show the offer in your own paywall
+
+If you do nothing, StoreKit shows Apple's win-back sheet when the app launches for an eligible customer ([Apple](https://developer.apple.com/documentation/storekit/merchandising-win-back-offers-in-your-app)). If you would rather show the offer in your own paywall, suppress that sheet and use the offer data yourself.
+
+To suppress the sheet, read StoreKit messages at launch and skip the one whose reason is `.winBackOffer`:
+
+```swift
+import StoreKit
+import SwiftUI
+
+struct RootView: View {
+    @Environment(\.displayStoreKitMessage) private var displayStoreMessage
+
+    var body: some View {
+        ContentView()
+            .task {
+                for await message in StoreKit.Message.messages {
+                    // Show every App Store message except the win-back sheet.
+                    if message.reason != .winBackOffer {
+                        try? displayStoreMessage(message)
+                    }
+                }
+            }
+    }
+}
+```
+
+To find the best offer for this customer and buy it, compare the renewal info's eligible IDs with the product's offers. Apple sorts `eligibleWinBackOfferIDs` with the best offer first ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/renewalinfo/eligiblewinbackofferids)):
+
+```swift
+func bestWinBackOffer(for product: Product) async -> Product.SubscriptionOffer? {
+    guard let subscription = product.subscription,
+          let status = try? await subscription.status.first,
+          case .verified(let renewalInfo) = status.renewalInfo else { return nil }
+
+    // Best offer first; empty when the customer is not eligible.
+    for id in renewalInfo.eligibleWinBackOfferIDs {
+        if let offer = subscription.winBackOffers.first(where: { $0.id == id }) {
+            return offer
+        }
+    }
+    return nil
+}
+
+func buy(_ product: Product, with offer: Product.SubscriptionOffer) async throws {
+    let result = try await product.purchase(options: [.winBackOffer(offer)])
+    if case .success(.verified(let transaction)) = result {
+        // Grant access, then finish.
+        await transaction.finish()
+    }
+}
+```
+
+`winBackOffers` lists every offer you configured, whether or not the customer qualifies, so always filter by `eligibleWinBackOfferIDs` ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/winbackoffers)). If you use StoreKit's `SubscriptionStoreView`, it shows eligible win-back offers on its own, and `preferredSubscriptionOffer(_:)` picks one when several apply ([Apple](https://developer.apple.com/documentation/storekit/merchandising-win-back-offers-in-your-app)).
+
+With the RevenueCat SDK, the same steps are `eligibleWinBackOffers(forPackage:)` and a purchase with `PurchaseParams` that includes `winBackOffer`. RevenueCat lists iOS SDK 5.10.0 or later for paywall redemption, and iOS 18 or later on the device ([RevenueCat](https://www.revenuecat.com/docs/subscription-guidance/subscription-offers/ios-subscription-offers)).
+
+## Redemptions outside your app
+
+Customers can redeem a win-back offer from the direct link, the App Store or their subscription settings. With Streamlined Purchasing on, the purchase completes there, and your app gets the transaction through `Transaction.updates` if it is running, or through `Transaction.all` and `currentEntitlements` on the next launch ([Apple](https://developer.apple.com/documentation/storekit/supporting-win-back-offers-in-your-app)).
+
+If you turn Streamlined Purchasing off, StoreKit opens your app and sends a `PurchaseIntent` instead, so you can ask the customer to sign in before you complete the purchase. Your latest approved build must use the `PurchaseIntent` API before you can turn it off, and redemptions from the subscription settings page always behave as if it were on ([Apple](https://developer.apple.com/documentation/storekit/supporting-win-back-offers-in-your-app)).
+
+Before you email the direct link, check that the customer qualifies. Apple's App Store Server API returns `eligibleWinBackOfferIds` in the renewal info from Get All Subscription Statuses, and Apple recommends sending the link only to eligible customers ([Apple](https://developer.apple.com/documentation/storekit/supporting-win-back-offers-in-your-app)).
+
+## What your server sees
+
+A redeemed win-back offer is a new purchase of the same subscription. In the signed transaction, `offerType` is `4` and `offerIdentifier` is the ID you chose ([Apple](https://developer.apple.com/documentation/storekit/supporting-win-back-offers-in-your-app)). App Store Server Notifications report it with the rest of your subscription events. Store the offer ID on each period, so you can later count how many customers each offer brought back and how many stayed after it ended.
+
+## How to test win-back offers
+
+- **In Xcode,** add win-back offers to a StoreKit configuration file. This needs no App Store Connect setup ([Apple](https://developer.apple.com/documentation/storekit/product/purchaseoption/winbackoffer(_:))).
+- **In the sandbox,** a test account qualifies once it owned the subscription and the subscription expired; a monthly sandbox subscription expires in 5 minutes by default. Settings, Developer, Sandbox Apple Account has a Win-Back Offer Sheet toggle and a Test Transactions page that redeems an offer outside the app ([Apple](https://developer.apple.com/documentation/storekit/testing-win-back-offers-in-the-sandbox-environment)).
+- **In TestFlight,** only your own paywall code can be tested. Apple says the win-back sheet and App Store redemption are not available there.
+
+Our [testing guide](https://raw.githubusercontent.com/revenuedot/docs/main/blog/sandbox-testing-in-app-purchases.md) covers sandbox accounts and the other environments.
+
+## Google Play's version
+
+Google Play has no separate win-back offer type. Instead, a subscription offer can use **developer determined** eligibility, where "you solely decide the business logic and determine eligibility in your app," and Google gives win-back offers for lapsed subscribers as an example. Those offers can be bought only inside your app ([Google](https://support.google.com/googleplay/android-developer/answer/12154973?hl=en)). So on Android, your server decides who is a lapsed subscriber, and your paywall shows the offer. Our post on [base plans and offers](https://raw.githubusercontent.com/revenuedot/docs/main/blog/google-play-base-plans-and-offers.md) explains how offers attach to a subscription.
+
+## How RevenueDot supports win-back offers
+
+RevenueDot is an open-source backend for in-app purchases that works with the RevenueCat SDK. The SDK does the win-back work on the device, so your app code does not change ([Win-back offers](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md)).
+
+- **It grants access.** A win-back purchase arrives as a resubscription with the same original transaction ID, and the entitlement is active again.
+- **It records the offer.** Each subscription period and transaction stores the offer type (`win_back`) and the offer ID. Webhooks send the ID as `offer_code`, and exports include both.
+- **It keeps Apple's eligibility list.** RevenueDot stores `eligibleWinBackOfferIds` each time it reads the renewal info, and `GET /v2/projects/{project_id}/customers/{customer_id}/win_back_offers` returns it, so you email the direct link only to customers who qualify.
+- **It sends the emails.** [Win-back campaigns](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-campaigns.md) email customers whose subscription ended, with a button to the Apple subscriptions page where their eligible offers appear.
+
+To be clear about where this stands: the flow is tested with signed test transactions and a mocked App Store, and no real win-back offer has been redeemed against RevenueDot yet ([known limits](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/win-back-offers.md#known-limits)).
+
+New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md). Its code says `import RevenueCat` because it is built from RevenueCat's MIT-licensed SDK, and it needs no RevenueCat account. The [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) gets a first test purchase working in a few minutes.
+
+**Switching from RevenueCat? Keep your SDK and change one line.** An app that ships the RevenueCat SDK can point its proxy URL at RevenueDot and keep its code, offerings and customers, including its win-back offer code. See the [migration guide](https://revenuedot.app/migrate-from-revenuecat), the [comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) and the [RevenueCat fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator).
+
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month. See [pricing](https://revenuedot.app/pricing).
+
+## FAQ
+
+### What is an Apple win-back offer?
+
+A free or discounted period for an auto-renewable subscription, shown to customers whose subscription has ended and will not renew ([Apple](https://developer.apple.com/documentation/storekit/supporting-win-back-offers-in-your-app)). You set the price, duration and eligibility in App Store Connect, and Apple shows it in the app, on the App Store and in subscription settings.
+
+### Do win-back offers need a server signature?
+
+No. Promotional offers need a signature from your server, but win-back offers do not. StoreKit checks eligibility from Apple's own records, and your app adds the offer with the `winBackOffer` purchase option.
+
+### Which iOS versions support win-back offers?
+
+The in-app sheet and the StoreKit APIs need iOS 18, iPadOS 18 or macOS 15. Customers on iOS 14.3 or later still see eligible offers on the Manage Subscriptions page ([Apple](https://developer.apple.com/help/app-store-connect/manage-subscriptions/set-up-win-back-offers)).
+
+### Who is eligible for a win-back offer?
+
+Customers who meet the paid duration and time-since-lapse rules you set, on their most recently lapsed product in the group, and who have not redeemed the same offer within your wait period. Subscriptions in a billing grace period or billing retry are not eligible ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/renewalinfo/eligiblewinbackofferids)).
+
+### How do I offer win-back discounts on Google Play?
+
+Create a subscription offer with developer determined eligibility, decide on your server who is a lapsed subscriber, and show the offer in your app ([Google](https://support.google.com/googleplay/android-developer/answer/12154973?hl=en)). Google Play does not pick eligible customers for you as Apple does.
 
 **About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
 
@@ -2695,6 +2876,174 @@ The proxy URL moves the API calls. It cannot change what is compiled into the SD
 - **Platforms where the proxy does not work.** On Flutter web, the stock SDK ignores `setProxyURL`.
 
 That is why we maintain MIT forks of all ten SDKs. They carry a different signing key and close these gaps, and they keep every name your code imports. The details are in [Why we forked the RevenueCat SDKs](https://raw.githubusercontent.com/revenuedot/docs/main/blog/why-we-forked-the-revenuecat-sdks.md).
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
+# Why your in-app products don't load on iOS and Android
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/in-app-products-not-loading.md
+Description: StoreKit returns no products, Play Billing returns unfetched products, or offerings come back empty. The causes on each store, in order, and how to find yours.
+
+When your paywall shows no prices, the store almost never says why. On iOS, StoreKit's `Product.products(for:)` silently leaves out every product ID it cannot find and returns an empty array ([Apple](https://developer.apple.com/documentation/storekit/product/products(for:))). On Android, Google Play Billing returns the missing IDs in an `unfetchedProductList` with a status code ([Google](https://developer.android.com/google/play/billing/integrate)). The cause is nearly always setup, not code: an unsigned agreement, a product that is not ready, a bundle ID or package name that does not match, or a test device that is not signed in as a tester.
+
+This post lists the causes on each store in the order worth checking, shows a few lines of Swift and Kotlin that tell you which product failed, and explains what "empty offerings" means when you use a backend such as RevenueDot or RevenueCat. Every fact about Apple, Google and RevenueCat links its source and was checked on November 2, 2026.
+
+![A checklist for each store: on iOS the agreement, product status, bundle ID and test account; on Android the testing track, tester account, package name and active product](https://github.com/revenuedot/docs/blob/main/blog/assets/in-app-products-not-loading/cover.svg)
+
+## The short answer
+
+- **Find out which IDs failed first.** Print the IDs you asked for next to the IDs that came back. On Android, print each unfetched product's status code.
+- **iOS, most common causes:** the Paid Apps Agreement is not signed ([Apple](https://developer.apple.com/help/app-store-connect/manage-agreements/sign-and-update-agreements)), the product is missing metadata, the bundle ID does not match, or the device is not using a sandbox account.
+- **Android, most common causes:** the app was never uploaded to a testing track, the Google account is not a license tester, the package name does not match, or the product is not active ([Google](https://developer.android.com/google/play/billing/test)).
+- **New products take time.** Apple says metadata changes can take up to one hour to reach the sandbox ([Apple](https://developer.apple.com/documentation/storekit/testing-win-back-offers-in-the-sandbox-environment)), and Google lists a product that is "just created but not fully propagated yet" as a cause of `PRODUCT_NOT_FOUND` ([Google](https://developer.android.com/reference/com/android/billingclient/api/UnfetchedProduct.StatusCode)).
+- **"Empty offerings" is a different problem.** Your backend sent a list of product IDs and the store could not load them, or your backend sent no list at all. Check both.
+
+## Step 1: find out which product failed
+
+Before you change any settings, log exactly what the store returned. This turns "nothing loads" into one or two product IDs with a reason.
+
+On iOS with StoreKit 2:
+
+```swift
+import StoreKit
+
+let wanted: Set<String> = ["pro_monthly", "pro_annual", "credits_100"]
+
+func checkProducts() async {
+    do {
+        let products = try await Product.products(for: wanted)
+        let found = Set(products.map(\.id))
+        print("Found:", found.sorted())
+        print("Missing:", wanted.subtracting(found).sorted())
+    } catch {
+        // A thrown error is a system problem (network, StoreKit), not a missing product.
+        print("StoreKit error:", error)
+    }
+}
+```
+
+An empty "Missing" list with no paywall means your UI code has the bug. A full "Missing" list means the store cannot see any of your products, which points to an account-level cause such as the agreement or the bundle ID. A partial list points to those products' own setup.
+
+On Android with Google Play Billing Library 8:
+
+```kotlin
+val params = QueryProductDetailsParams.newBuilder()
+    .setProductList(listOf(
+        QueryProductDetailsParams.Product.newBuilder()
+            .setProductId("pro")
+            .setProductType(BillingClient.ProductType.SUBS)
+            .build()
+    ))
+    .build()
+
+billingClient.queryProductDetailsAsync(params) { billingResult, result ->
+    Log.d("IAP", "response=${billingResult.responseCode}")
+    result.productDetailsList.forEach { Log.d("IAP", "found ${it.productId}") }
+    result.unfetchedProductList.forEach {
+        // 2 = INVALID_PRODUCT_ID_FORMAT, 3 = PRODUCT_NOT_FOUND, 4 = NO_ELIGIBLE_OFFER
+        Log.d("IAP", "missing ${it.productId} status=${it.statusCode}")
+    }
+}
+```
+
+Google documents four status codes ([Google](https://developer.android.com/reference/com/android/billingclient/api/UnfetchedProduct.StatusCode)):
+
+| Status code | Meaning | What to check |
+|---|---|---|
+| `INVALID_PRODUCT_ID_FORMAT` (2) | The ID breaks Play's format rules | IDs must start with a number or lowercase letter ([Google](https://support.google.com/googleplay/android-developer/answer/1153481?hl=en)) |
+| `PRODUCT_NOT_FOUND` (3) | No product with this ID and type | Typos, the wrong product type (`SUBS` against `INAPP`), a deleted product, or a product created minutes ago |
+| `NO_ELIGIBLE_OFFER` (4) | The product exists but has nothing to buy | A subscription with no active base plan, or a one-time product with no purchase option |
+| `UNKNOWN` (0) | Anything else | Retry, then check the Play Store app and the tester account |
+
+If your app is older and still on Billing Library 7 or earlier, our [Billing Library 8 migration post](https://raw.githubusercontent.com/revenuedot/docs/main/blog/google-play-billing-library-8-migration.md) covers the change to `queryProductDetailsAsync` and the deadline.
+
+## iOS: the causes, in the order to check
+
+Work down this table. The first rows block every product at once, so check them first when nothing loads.
+
+| Check | Why it matters | Where to look |
+|---|---|---|
+| The Paid Apps Agreement is signed and active | Apple says the Account Holder must sign it "to sell your apps on the App Store or offer In-App Purchases" ([Apple](https://developer.apple.com/help/app-store-connect/manage-agreements/sign-and-update-agreements)) | App Store Connect, Business |
+| Tax and banking are complete | An update to tax or banking information can create a new agreement to accept ([Apple](https://developer.apple.com/help/app-store-connect/manage-agreements/sign-and-update-agreements)) | App Store Connect, Business |
+| The bundle ID in Xcode matches the app in App Store Connect | Products belong to one app record | Xcode target, Signing & Capabilities |
+| The product ID matches exactly | IDs are case sensitive, and StoreKit drops IDs it cannot find without an error ([Apple](https://developer.apple.com/documentation/storekit/product/products(for:))) | App Store Connect, the product page |
+| The product has all its metadata | A product missing its display name, price or review screenshot is not ready | App Store Connect, the product's status |
+| The device uses a sandbox account | Development builds buy with a Sandbox Apple Account, set under Settings, Developer ([Apple](https://developer.apple.com/documentation/storekit/testing-win-back-offers-in-the-sandbox-environment)) | The test device |
+| The Xcode scheme does not point at a StoreKit configuration file when you mean to test the sandbox | When the configuration file is active, StoreKit uses its local data instead of App Store Connect ([Apple](https://developer.apple.com/documentation/xcode/setting-up-storekit-testing-in-xcode)) | Xcode, Edit Scheme, Run, Options |
+| You waited after a change | Metadata changes can take up to one hour to appear in the sandbox ([Apple](https://developer.apple.com/documentation/storekit/testing-win-back-offers-in-the-sandbox-environment)) | A clock |
+
+Two more rules catch people at release time, not during testing:
+
+- **The first in-app purchase of each type ships with an app version.** Apple says the first consumable, non-consumable, auto-renewable subscription and non-renewing subscription "must be submitted with a new app version" ([Apple](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/submit-an-in-app-purchase)). If you submit the app without its subscription attached, the live app will find no products.
+- **Simulators and StoreKit testing.** The simulator can load products from a StoreKit configuration file, which is the fastest way to build a paywall. To test against App Store Connect, use a real device with a sandbox account, or TestFlight. Our [testing guide](https://raw.githubusercontent.com/revenuedot/docs/main/blog/sandbox-testing-in-app-purchases.md) walks through each environment.
+
+## Android: the causes, in the order to check
+
+Google Play blocks the billing library for apps that are not signed and uploaded to Play, unless the Google account on the device is a license tester ([Google](https://developer.android.com/google/play/billing/test)). That one rule explains most "nothing loads" reports on Android.
+
+| Check | Why it matters | Where to look |
+|---|---|---|
+| A build has been uploaded to a testing track | Products need an app on Play; after you publish to a test track "it can take a few hours for the app to be available for testers" ([Google](https://developer.android.com/google/play/billing/test)) | Play Console, Testing |
+| The Google account on the device is a license tester | License testers can run debug and sideloaded builds and buy with test cards ([Google](https://developer.android.com/google/play/billing/test)) | Play Console, Settings, License testing |
+| The tester opted in to the test | Testers on a track must accept the opt-in link ([Google](https://developer.android.com/google/play/billing/test)) | The test's opt-in URL |
+| The package name matches | Google says the package name "must match that of the app that is configured for Google Play" ([Google](https://developer.android.com/google/play/billing/test)) | `applicationId` in Gradle |
+| The app declares the billing permission | Play requires `com.android.vending.BILLING` in the manifest ([Google](https://support.google.com/googleplay/android-developer/answer/1153481?hl=en)) | The merged manifest (the billing library adds it) |
+| The product is active, and a subscription has an active base plan | Inactive products cannot be bought, and a subscription without a base plan returns `NO_ELIGIBLE_OFFER` | Play Console, Monetize |
+| The device has the current Play Store app and the right account | If several accounts are on the device, the purchase uses the one that downloaded the app ([Google](https://developer.android.com/google/play/billing/test)) | The test device |
+
+An emulator works if it has the Play Store app and a signed-in tester account. An emulator image without Google Play cannot load products at all.
+
+## When the store works but offerings are empty
+
+Most apps do not hard-code product IDs. They ask a backend which products to show, then ask the store for prices. With the RevenueCat SDK, that backend is RevenueCat or a compatible server such as RevenueDot, and the call is `getOfferings()`. An empty result can fail at either step:
+
+1. **The backend sent no products.** No offering is marked current, or the current offering's packages hold products for a different app. The store is never asked.
+2. **The store could not load the products the backend named.** Every cause in the two tables above applies. RevenueCat's SDK then logs that none of the products registered in its dashboard could be fetched from the store, and its guide lists the same store-side causes ([RevenueCat](https://www.revenuecat.com/docs/offerings/troubleshooting-offerings)).
+
+To tell the two apart, turn on the SDK's debug logs and look at the offerings response before the store request. If the response has packages with `platform_product_identifier` values, the backend did its part, and the problem is in App Store Connect or Play Console. If the response has no current offering, fix the backend first.
+
+Two more backend mistakes look like store problems:
+
+- **The wrong API key for the platform.** Each app (iOS, Android, web) has its own public key. An Android build with the iOS key asks for the iOS products.
+- **Google Play IDs in the wrong form.** A Play subscription is a product with base plans. Backends usually store it as `subscription_id:base_plan_id`, such as `pro:monthly`, and a bare `pro` may not match the package you meant.
+
+## How RevenueDot helps you find the cause
+
+RevenueDot is an open-source backend for in-app purchases that works with the RevenueCat SDK. Three parts of it shorten this hunt.
+
+- **The offerings response is easy to inspect.** `GET /v1/subscribers/{app_user_id}/offerings` returns only the packages whose products belong to the calling app, so you can see exactly what the SDK will ask the store for ([Offerings and packages](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/offerings-and-packages.md)). The [troubleshooting page](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/troubleshooting.md#sdk) lists "Offerings are empty" with its two causes and fixes.
+- **The Test Store needs no store account.** A Test Store app with a `test_` key loads products from RevenueDot and buys them through the SDK's test dialog, so you can build and test the paywall before the agreement, the products or the testing track are ready ([Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md)).
+- **Import products from the stores.** **Import products** reads your products from App Store Connect and Google Play with the app's credentials, so the IDs in your offerings are the store's own, with no typing ([Import products](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/import-products.md)).
+
+New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md). Its code says `import RevenueCat` because it is built from RevenueCat's MIT-licensed SDK, and it needs no RevenueCat account. The [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) gets a first test purchase working in a few minutes.
+
+**Switching from RevenueCat? Keep your SDK and change one line.** An app that ships the RevenueCat SDK can point its proxy URL at RevenueDot and keep its code, offerings and customers. See the [migration guide](https://revenuedot.app/migrate-from-revenuecat), the [RevenueDot vs RevenueCat comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) and the [RevenueCat fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator).
+
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month. See [pricing](https://revenuedot.app/pricing).
+
+## FAQ
+
+### Why does StoreKit return an empty products array?
+
+StoreKit leaves out every product ID the App Store cannot find, and only throws for system errors ([Apple](https://developer.apple.com/documentation/storekit/product/products(for:))). When every ID is missing, check the Paid Apps Agreement, the bundle ID and the sandbox account first. When only some are missing, check those products' IDs and metadata.
+
+### Why are my products not found on Google Play?
+
+Usually because the app has not been uploaded to a testing track, or the account on the device is not a license tester ([Google](https://developer.android.com/google/play/billing/test)). Log each unfetched product's status code: `PRODUCT_NOT_FOUND` points to the ID, type or a brand-new product, and `NO_ELIGIBLE_OFFER` points to a missing base plan.
+
+### Do I need to sign the Paid Apps Agreement to test in the sandbox?
+
+Apple says the Account Holder must sign the Paid Apps Agreement to offer in-app purchases ([Apple](https://developer.apple.com/help/app-store-connect/manage-agreements/sign-and-update-agreements)). Sign it before you test against App Store Connect. A StoreKit configuration file in Xcode, or RevenueDot's Test Store, lets you build the paywall before then.
+
+### How long do new in-app products take to appear?
+
+Apple says metadata changes can take up to one hour to reach the sandbox ([Apple](https://developer.apple.com/documentation/storekit/testing-win-back-offers-in-the-sandbox-environment)). Google says a newly created product may not be fully propagated yet, and a new testing track can take a few hours to reach testers ([Google](https://developer.android.com/google/play/billing/test)).
+
+### Why are my RevenueCat offerings empty?
+
+Either the backend has no current offering with products for this app, or the store could not load the products the backend named. Debug logs show which. RevenueCat's own guide lists the store-side causes ([RevenueCat](https://www.revenuecat.com/docs/offerings/troubleshooting-offerings)), and they match the tables above.
 
 **About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
 
@@ -6141,6 +6490,154 @@ Yes. Cloud and self-host run the same code and the same API, so you can start on
 ### Can I run more than one server for high availability?
 
 Not yet. Run one RevenueDot container per database. The background job has no lock across processes, so two containers could send a webhook twice.
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
+# How to sell credits in an AI app with in-app purchases
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/sell-credits-in-app-purchases.md
+Description: Sell AI credits as consumable in-app purchases on iOS and Android: Apple's no-expiry rule, Google's 3-day consume rule, a server ledger, spending and refunds.
+
+To sell credits in an AI app, create each credit pack as a **consumable** in-app purchase on the App Store and Google Play, and keep the balance on your own server, not on the device. The store charges the customer and gives you a transaction. Your server checks that transaction, adds the credits once, and subtracts credits each time the app makes an AI request. Apple requires that credits bought with in-app purchase never expire ([Apple](https://developer.apple.com/app-store/review/guidelines/)), and Google refunds a purchase that is not consumed or acknowledged within three days ([Google](https://developer.android.com/google/play/billing/integrate)).
+
+This post explains the store rules, the ledger your server needs, the order of steps that avoids double credits and lost credits, how to handle refunds, and how RevenueDot does each step for you. Every fact about Apple, Google and RevenueCat links its source and was checked on November 2, 2026.
+
+![A credit pack bought in the App Store or Google Play flows to the server, which adds credits to a ledger once per transaction and subtracts credits for each AI request](https://github.com/revenuedot/docs/blob/main/blog/assets/sell-credits-in-app-purchases/cover.svg)
+
+## The short answer
+
+- **Use consumables for credit packs.** A pack of 100 or 500 credits is a consumable product on both stores. Customers can buy it again and again.
+- **Credits may not expire.** Apple's guideline 3.1.1 says "any credits or in-game currencies purchased via in-app purchase may not expire" ([Apple](https://developer.apple.com/app-store/review/guidelines/)).
+- **Consume on Android within three days.** Google refunds and revokes a purchase that is not acknowledged within three days; consuming it counts as acknowledging it ([Google](https://developer.android.com/google/play/billing/integrate)).
+- **The device is not your record.** After a consumable is finished, StoreKit leaves it out of the transaction history by default ([Apple](https://developer.apple.com/documentation/storekit/transaction/all)). Keep the balance in a server ledger tied to the user's account.
+- **Grant once per transaction ID, and spend on the server.** The store's transaction ID is the key that stops a retry from adding credits twice. The server, not the app, subtracts credits when it runs the AI request.
+
+## Why AI apps sell credits
+
+An AI request has a real cost per call. A flat subscription works when usage is predictable, but a few heavy users can cost more than they pay. Credits tie the price to the work. Most apps pick one of three models:
+
+| Model | What the customer buys | Store product | Good for |
+|---|---|---|---|
+| Credit packs | 100, 500 or 2,000 credits, bought when needed | Consumable | Occasional use, such as image or video generation |
+| Subscription with credits | A monthly plan that adds credits each renewal | Auto-renewable subscription | Regular use with a predictable bill |
+| Both | A subscription, plus packs to top up | Subscription and consumables | Apps with a few heavy users |
+
+You can change models later. Start with the simplest one your usage fits, and keep the balance logic on the server so a change does not need an app update.
+
+## What Apple and Google require
+
+**Apple.** Credits sold through in-app purchase must not expire, and you should offer a restore mechanism for restorable purchases ([Apple](https://developer.apple.com/app-store/review/guidelines/)). Consumables are not restorable in the store's sense, so "restore" for credits means the balance comes back when the customer signs in on a new device. That only works if the balance lives on your server.
+
+StoreKit 2 also changes what the device can tell you. `Transaction.currentEntitlements` never includes consumables ([Apple](https://developer.apple.com/documentation/storekit/transaction/currententitlements)). `Transaction.all` includes unfinished consumables and refunded ones, but leaves out finished consumables unless you set the `SKIncludeConsumableInAppPurchaseHistory` key in your Info.plist ([Apple](https://developer.apple.com/documentation/storekit/transaction/all)). Call `finish()` only after you have delivered the credits ([Apple](https://developer.apple.com/documentation/storekit/transaction/finish())), and treat your server as the place that remembers them.
+
+**Google.** The purchase must be acknowledged within three days, or Google refunds it and revokes it ([Google](https://developer.android.com/google/play/billing/integrate)). For consumables, Google recommends consuming from your backend with `purchases.products.consume`, after checking `consumptionState`, and using `consumeAsync()` in the app only when there is no backend. Consuming both acknowledges the purchase and lets the customer buy the same pack again. Google also warns that consumption can fail, so your server must check that each purchase token has not been used before it grants anything ([Google](https://developer.android.com/google/play/billing/integrate)).
+
+Since Google Play Billing Library 8, the device can no longer list consumed purchases, which makes a server record even more important. Our [Billing Library 8 post](https://raw.githubusercontent.com/revenuedot/docs/main/blog/google-play-billing-library-8-migration.md) explains that change.
+
+## The ledger your server needs
+
+Store every change to a balance as one row, and compute the balance from the rows. A ledger is easy to audit, and it makes refunds and support questions simple to answer.
+
+```sql
+create table credit_ledger (
+  id          bigserial primary key,
+  user_id     text not null,
+  amount      integer not null,          -- +100 for a pack, -3 for a request
+  source      text not null,             -- 'purchase', 'spend', 'refund', 'support'
+  source_key  text,                      -- store transaction ID, or your request ID
+  created_at  timestamptz not null default now(),
+  unique (source, source_key)            -- the same purchase or request applies once
+);
+
+create view credit_balance as
+  select user_id, sum(amount) as balance from credit_ledger group by user_id;
+```
+
+The unique key is the important part. Apple can send the same notification more than once, the app can retry a request, and a customer can tap a button twice. Each of those inserts the same `source_key`, and the database ignores the copy.
+
+Spending needs the same care. Subtract credits in the same transaction that checks the balance, so two requests at once cannot both spend the last credit:
+
+```js
+// Node.js with pg. Spend `cost` credits for one AI request, once per requestId.
+export async function spend(db, userId, requestId, cost) {
+  await db.query("begin");
+  try {
+    await db.query("select pg_advisory_xact_lock(hashtext($1))", [userId]);
+    const { rows } = await db.query(
+      "select coalesce(sum(amount), 0) as balance from credit_ledger where user_id = $1", [userId]);
+    if (Number(rows[0].balance) < cost) { await db.query("rollback"); return { ok: false, reason: "not_enough_credits" }; }
+    await db.query(
+      "insert into credit_ledger (user_id, amount, source, source_key) values ($1, $2, 'spend', $3) on conflict do nothing",
+      [userId, -cost, requestId]);
+    await db.query("commit");
+    return { ok: true };
+  } catch (e) { await db.query("rollback"); throw e; }
+}
+```
+
+## The purchase flow, step by step
+
+1. **The customer taps a pack.** The app starts the purchase with StoreKit or Google Play Billing. On Android, pass your account ID as `obfuscatedAccountId` so the purchase carries it ([Google](https://developer.android.com/google/play/billing/integrate)). On iOS, pass a UUID for the account as the `appAccountToken` purchase option ([Apple](https://developer.apple.com/documentation/storekit/product/purchaseoption/appaccounttoken(_:))).
+2. **The app sends the result to your server.** Send Apple's signed transaction, or Google's purchase token and product ID.
+3. **The server verifies it with the store.** Check Apple's signature or call the App Store Server API, and call Google's Play Developer API for the token. Our [server-side validation post](https://raw.githubusercontent.com/revenuedot/docs/main/blog/server-side-receipt-validation.md) shows both.
+4. **The server adds the credits.** Insert one ledger row with the transaction ID or purchase token as `source_key`.
+5. **The server finishes the purchase.** Consume the Google purchase from the backend. Tell the app to call `finish()` on the Apple transaction.
+6. **The app shows the new balance.** Read it from your server, not from a number the app keeps.
+
+Do steps 3 and 4 before step 5. If you finish or consume first and your server then fails, the customer has paid and has nothing, and the store will not send the purchase to the app again.
+
+Also listen to the stores directly. Purchases can complete when the app is closed, for example after a slow payment method on Android or an interrupted purchase on iOS. App Store Server Notifications and Google's real-time developer notifications let your server grant those too.
+
+## Refunds and disputes
+
+Customers can ask Apple or Google for a refund after they spend the credits. Decide your rule before launch: remove the refunded credits, let the balance go negative, or block new purchases until the balance is positive.
+
+- **Apple** sends a `REFUND` notification, and for consumables it may first send a `CONSUMPTION_REQUEST` that asks how much of the purchase the customer used. A prompt, honest answer helps Apple decide. Our post on [Apple refund requests](https://raw.githubusercontent.com/revenuedot/docs/main/blog/apple-refund-requests-consumption-info.md) covers the fields and the deadline.
+- **Google** reports refunds and chargebacks through voided purchase notifications and the Voided Purchases API. Our post on [Google Play refunds](https://raw.githubusercontent.com/revenuedot/docs/main/blog/google-play-refunds-and-chargebacks.md) shows both signals in Node.js.
+
+A ledger makes both easy, because you can see exactly how many of the refunded credits the customer spent.
+
+## How RevenueDot handles credits
+
+RevenueDot is an open-source backend for in-app purchases that works with the RevenueCat SDK. It has in-app currencies built in, so you do not have to build the ledger above.
+
+- **Product grants.** Create a currency, such as `CRD`, and say how many credits each product adds. RevenueDot adds them when it records the purchase, renewal or trial start, using the store transaction ID as the ledger's idempotency key, so a replayed notification never adds credits twice ([source](https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/virtual-currencies.ts)).
+- **Spend from your server.** Your backend calls `POST /v2/projects/{project_id}/customers/{customer_id}/virtual_currencies/transactions` with `{"adjustments": {"CRD": -3}}` and an `Idempotency-Key` header. Nothing is applied if a balance would go below zero ([API reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#credit-or-spend-in-app-currency)).
+- **Read the balance in the app.** The SDK reads balances with the RevenueCat SDK's virtual currency calls, such as `Purchases.shared.virtualCurrencies()` on iOS (SDK 5.32.0 and later) ([RevenueCat](https://www.revenuecat.com/docs/offerings/virtual-currency)).
+- **Android consumption is handled.** RevenueDot tells the Android SDK to consume consumables once it has recorded them, so customers can buy the pack again ([Products and entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/products-and-entitlements.md)).
+- **Apple consumption requests use the ledger.** When Apple asks about a consumable that grants credits, RevenueDot reports how much of that purchase's grant was spent, oldest credits first ([source](https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/services/refunds.ts)). It records the refund but does not remove credits by itself, so your refund rule stays yours.
+- **Webhooks and setup.** Each purchase grant sends a `VIRTUAL_CURRENCY_TRANSACTION` webhook event, and you create currencies and their product grants under **Product catalog > Virtual currencies** in the dashboard.
+- **Rewarded ads can add credits too.** An ad reward can grant a fixed amount of a currency per view ([Ads](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/ads.md)).
+
+New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md). Its code says `import RevenueCat` because it is built from RevenueCat's MIT-licensed SDK, and it needs no RevenueCat account. Start with the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md), and test credit packs with the [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md) before your store products are ready.
+
+**Switching from RevenueCat? Keep your SDK and change one line.** An app that ships the RevenueCat SDK can point its proxy URL at RevenueDot and keep its code, offerings and customers. RevenueDot's importer does not copy virtual currency balances yet, so plan to load balances through the API ([what differs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/what-differs.md#migration)). See the [migration guide](https://revenuedot.app/migrate-from-revenuecat), the [comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) and the [RevenueCat fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator).
+
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month. See [pricing](https://revenuedot.app/pricing).
+
+## FAQ
+
+### Can in-app purchase credits expire?
+
+Not on the App Store. Apple's guideline 3.1.1 says credits or in-game currencies purchased via in-app purchase may not expire ([Apple](https://developer.apple.com/app-store/review/guidelines/)). Show the customer their balance, and keep it on your server so it survives a new device.
+
+### Should AI credits be a consumable or a subscription?
+
+Sell packs as consumables, and use an auto-renewable subscription if you want to add credits every month. Many AI apps offer both: a subscription with a monthly allowance and packs to top up. The store product type follows what the customer buys, not how you count credits.
+
+### What happens if I don't consume a Google Play purchase?
+
+Google refunds and revokes any purchase that is not acknowledged within three days, and consuming a consumable counts as acknowledging it ([Google](https://developer.android.com/google/play/billing/integrate)). An unconsumed pack also cannot be bought again, because the customer still owns it.
+
+### Can credits bought on iOS be used on Android?
+
+Yes, if the balance belongs to the user's account on your server rather than to the device. Both stores' purchases add to the same ledger row for that user. Sign the customer in before purchase so you know whose balance to credit.
+
+### How do I stop customers from getting credits twice?
+
+Use the store's transaction ID, or Google's purchase token, as a unique key when you add credits, and spend with your own request ID as the key. Retries and duplicate notifications then insert the same key and change nothing.
 
 **About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
 
