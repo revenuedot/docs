@@ -15,6 +15,11 @@ Description: Posts from the RevenueDot team about building RevenueDot Cloud, an 
 
 Posts from the team building RevenueDot, an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK, free to start on [RevenueDot Cloud](https://app.revenuedot.app/signup). Newest first.
 
+## 2026-11-09
+- [Leave RevenueCat with a Flutter or React Native app](https://raw.githubusercontent.com/revenuedot/docs/main/blog/leave-revenuecat-flutter-react-native.md): what RevenueCat costs a two-store app at $30K to $100K a month, the `setProxyURL` change for Flutter, React Native and Expo, the dual run for both stores, Google Play purchase tokens, and what does not move.
+- [How to get App Store transaction history in Node.js](https://raw.githubusercontent.com/revenuedot/docs/main/blog/app-store-transaction-history-nodejs.md): the In-App Purchase key, Apple's Node.js library with the V2 endpoint, paging and filters, the 50-per-second rate limit, error `4040010`, and keeping the data current.
+- [Google Play pending purchases: how to handle them](https://raw.githubusercontent.com/revenuedot/docs/main/blog/google-play-pending-purchases.md): enabling pending purchases, the Kotlin listener, catching payments that clear while the app is closed, server checks and acknowledgement in Node.js, and the slow test cards.
+
 ## 2026-11-02
 - [Why in-app products fail to load on iOS and Android](https://raw.githubusercontent.com/revenuedot/docs/main/blog/in-app-products-not-loading.md): how to log which product failed, the iOS causes from the Paid Apps Agreement to the StoreKit configuration file, the Android causes from testing tracks to `NO_ELIGIBLE_OFFER`, and what empty offerings mean.
 - [How to sell credits in an AI app with in-app purchases](https://raw.githubusercontent.com/revenuedot/docs/main/blog/sell-credits-in-app-purchases.md): credit packs as consumables, Apple's no-expiry rule, Google's three-day consume rule, a server ledger with Node.js and SQL, refunds, and RevenueDot's in-app currencies.
@@ -501,6 +506,201 @@ Yes, for recovery and history. Notifications tell you about changes, and the API
 ### Can two systems receive the same notification?
 
 Not directly, because App Store Connect holds one production URL per app. Receive in one system and forward the exact body to the other. RevenueDot does this with `notification_forward_url`.
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
+# How to get App Store transaction history in Node.js
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/app-store-transaction-history-nodejs.md
+Description: Fetch a customer's App Store purchases from your server with Apple's Node.js library: the API key, the V2 endpoint, paging, filters, rate limits and common errors.
+
+To get a customer's App Store purchases on your server, call Apple's Get Transaction History endpoint with any one of that customer's transaction IDs. In Node.js, the simplest way is Apple's own `@apple/app-store-server-library`: create an `AppStoreServerAPIClient` with an In-App Purchase key, call `getTransactionHistory` with `GetTransactionHistoryVersion.V2`, and page through the results until `hasMore` is false. The endpoint returns every product type, including finished consumables, and every state, including refunded and revoked purchases ([Apple](https://developer.apple.com/documentation/appstoreserverapi/get-transaction-history)).
+
+This post covers when you need the history, how to create the key, a complete Node.js example you can run, the filters and paging rules, rate limits, the errors you will meet, and how to keep the data current. Every fact about Apple links its source and was checked on November 9, 2026.
+
+![Two columns: the steps to call Get Transaction History from Node.js, from one transaction ID to verified transactions, and the rules that trip people up, such as passing V2 and paging up to 20 at a time](https://github.com/revenuedot/docs/blob/main/blog/assets/app-store-transaction-history-nodejs/cover.svg)
+
+## The short answer
+
+- **Endpoint:** `GET https://api.storekit.apple.com/inApps/v2/history/{transactionId}`, or `api.storekit-sandbox.apple.com` for sandbox. Any transaction ID that belongs to the customer works ([Apple](https://developer.apple.com/documentation/appstoreserverapi/get-transaction-history)).
+- **Use V2, not V1.** Apple deprecated V1, which skips finished consumables ([Apple](https://developer.apple.com/documentation/appstoreserverapi/get-transaction-history-v1)). In version 3.1.0 of Apple's Node.js library, `getTransactionHistory` still defaults to V1, so pass `GetTransactionHistoryVersion.V2` yourself.
+- **Paging:** each response holds up to 20 transactions, a `revision` token and `hasMore`. Send the same filters with every follow-up request.
+- **Rate limit:** 50 requests per second per app in production, enforced over each hour. A `429` response carries a `Retry-After` header ([Apple](https://developer.apple.com/documentation/appstoreserverapi/identifying-rate-limits)).
+- **Verify every item.** Each transaction is a signed JWS. Decode it with `SignedDataVerifier` and Apple's root certificate before you trust it.
+
+## When you need the history on your server
+
+StoreKit 2 already gives the app the customer's current entitlements. The server needs its own copy for jobs the device cannot do:
+
+1. **Restoring purchases on a new account or device.** The app sends one transaction ID, and the server finds everything that customer bought.
+2. **Answering support tickets.** A customer says they paid, and you want to see every purchase, refund and upgrade in order. Our post on [looking up a purchase by order ID](https://raw.githubusercontent.com/revenuedot/docs/main/blog/look-up-purchase-by-order-id.md) covers the case where the customer only has a receipt email.
+3. **Backfilling a new backend.** When you move from one system to another, the history rebuilds what each customer owns from Apple's own records.
+4. **Reconciling.** A nightly job can compare what Apple says with what your database says, and fix any notification you missed.
+
+If you only need to know whether a subscription is active right now, call Get All Subscription Statuses instead. It returns the latest transaction and renewal info for each subscription group in one request ([Apple](https://developer.apple.com/documentation/appstoreserverapi/get-all-subscription-statuses)).
+
+## Step 1: Create an In-App Purchase key
+
+The App Store Server API accepts only requests signed with a JSON Web Token made from a private key you download from App Store Connect ([Apple](https://developer.apple.com/documentation/appstoreserverapi/creating-api-keys-to-authorize-api-requests)).
+
+1. In App Store Connect, open **Users and Access** and then the **Integrations** tab.
+2. Under **Keys** in the sidebar, choose **In-App Purchase**.
+3. Click **Generate In-App Purchase Key**, give it a name and download the `.p8` file. Keep the file safe: Apple offers the private key for download only once and does not keep a copy ([Apple](https://developer.apple.com/documentation/appstoreserverapi/creating-api-keys-to-authorize-api-requests)).
+4. Write down the **Key ID** and the **Issuer ID** shown on the same page.
+
+Apple says to keep the key out of code repositories and client code, and to revoke it at once if you think it leaked. Store it in your secret manager and load it at runtime.
+
+You also need Apple's root certificate to verify the signed transactions. Download **Apple Root CA - G3** from [Apple's certificate authority page](https://www.apple.com/certificateauthority/) and keep it next to your server code. It is public, so it can live in the repository.
+
+## Step 2: Install the library
+
+```bash
+npm install @apple/app-store-server-library
+```
+
+The library's README asks for Node 22 or later ([Apple on GitHub](https://github.com/apple/app-store-server-library-node)). It handles the JWT, the HTTP calls, the paging parameters and the JWS verification, so you write very little code.
+
+## Step 3: Fetch and verify the full history
+
+This module fetches every page, verifies each transaction and returns plain objects. We ran it against Apple's sandbox with version 3.1.0 of the library.
+
+```js
+// history.mjs
+import { readFileSync } from "node:fs";
+import {
+  AppStoreServerAPIClient, APIException, Environment, GetTransactionHistoryVersion,
+  Order, ProductType, SignedDataVerifier,
+} from "@apple/app-store-server-library";
+
+const bundleId = "com.example.app";
+const appAppleId = 1234567890; // your app's Apple ID, required for production verification
+
+function clientFor(environment) {
+  return new AppStoreServerAPIClient(
+    process.env.APPLE_IAP_KEY,   // contents of the .p8 file
+    process.env.APPLE_KEY_ID,
+    process.env.APPLE_ISSUER_ID,
+    bundleId,
+    environment,
+  );
+}
+
+const roots = [readFileSync("AppleRootCA-G3.cer")];
+const verifierFor = (environment) =>
+  new SignedDataVerifier(roots, true, environment, bundleId, environment === Environment.PRODUCTION ? appAppleId : undefined);
+
+export async function getHistory(transactionId, environment = Environment.PRODUCTION) {
+  const client = clientFor(environment);
+  const verifier = verifierFor(environment);
+  const request = { sort: Order.ASCENDING }; // add filters here, and keep them for every page
+  const transactions = [];
+  let revision = null;
+  let page;
+  do {
+    page = await client.getTransactionHistory(transactionId, revision, request, GetTransactionHistoryVersion.V2);
+    for (const signed of page.signedTransactions ?? []) {
+      transactions.push(await verifier.verifyAndDecodeTransaction(signed));
+    }
+    revision = page.revision ?? null;
+  } while (page.hasMore);
+  return transactions;
+}
+
+// Try production first; Apple answers 4040010 (transaction not found) from the wrong environment.
+export async function getHistoryAnyEnvironment(transactionId) {
+  try {
+    return await getHistory(transactionId, Environment.PRODUCTION);
+  } catch (e) {
+    if (e instanceof APIException && e.apiError === 4040010) return getHistory(transactionId, Environment.SANDBOX);
+    throw e;
+  }
+}
+```
+
+Each decoded transaction has the fields you need to rebuild what a customer owns: `transactionId`, `originalTransactionId`, `productId`, `type`, `purchaseDate`, `expiresDate`, `revocationDate`, `price`, `currency`, `appAccountToken` and `environment`. A subscription's renewals share one `originalTransactionId`, so group by it to see each subscription as a single chain.
+
+Where does the first transaction ID come from? A StoreKit 2 app reads `transaction.id` after a purchase and sends it to your server. An older StoreKit 1 app can send its app receipt instead, and the library's `ReceiptUtility.extractTransactionIdFromAppReceipt` pulls a transaction ID out of it without calling Apple.
+
+## Step 4: Filter what you ask for
+
+The request accepts filters, and Apple returns only the transactions that match all of them ([Apple](https://developer.apple.com/documentation/appstoreserverapi/get-transaction-history)).
+
+| Library field | Query parameter | What it does |
+|---|---|---|
+| `startDate`, `endDate` | `startDate`, `endDate` | Limits by purchase date, in milliseconds since 1970 |
+| `productIds` | `productId` | One or more product IDs |
+| `productTypes` | `productType` | `AUTO_RENEWABLE`, `NON_RENEWABLE`, `CONSUMABLE` or `NON_CONSUMABLE` |
+| `subscriptionGroupIdentifiers` | `subscriptionGroupIdentifier` | One or more subscription groups |
+| `inAppOwnershipType` | `inAppOwnershipType` | `PURCHASED` or `FAMILY_SHARED` |
+| `revoked` | `revoked` | `true` for only revoked transactions, `false` to leave them out |
+| `sort` | `sort` | `ASCENDING` (the default, oldest first) or `DESCENDING` |
+
+Two rules trip people up. First, the filters on every follow-up request must match the first request, or the `revision` token will not line up. Second, Apple sorts by the date a transaction was last modified, not by purchase date. An upgrade or a refund changes that date, so with `ASCENDING` you may see the same transaction twice, the second time with newer data. Store transactions by `transactionId` and let the later copy replace the earlier one.
+
+For a support tool, `sort: Order.DESCENDING` with no other filter shows the newest activity first and is often all you need from the first page.
+
+## Step 5: Respect the rate limit
+
+Apple allows 50 requests per second per app for this endpoint in production and enforces the limit over each hour ([Apple](https://developer.apple.com/documentation/appstoreserverapi/identifying-rate-limits)). A customer with 200 transactions needs 10 requests, so a backfill of 100,000 customers needs at least 100,000 requests, which takes more than half an hour even at the full rate.
+
+For one-off lookups this never matters. For a backfill, run a small fixed number of requests at a time, space them out, and handle `429`. Apple's `RateLimitExceededError` comes with a `Retry-After` header that tells you when to try again, and Apple suggests logging the failure and queuing the job for later. Do not retry in a tight loop, because every retry counts against the same hourly limit.
+
+## Errors you will meet
+
+| Error | What it means | What to do |
+|---|---|---|
+| `401` | The JWT is wrong: bad key, Key ID, Issuer ID or bundle ID | Check the four values. Our example returns 401 when we run it with a made-up key |
+| `4040010` | Transaction ID not found ([Apple](https://developer.apple.com/documentation/appstoreserverapi/transactionidnotfounderror)) | Usually the wrong environment. Try sandbox, as the example does |
+| `429` | Rate limit exceeded | Wait for `Retry-After`, then resume from the last `revision` |
+| `5xx` | A problem on Apple's side | Retry later. Never treat it as "the customer owns nothing" |
+
+The last row matters most. If your server turns an Apple outage into "no purchases", a paying customer loses access. Treat any error as "unknown" and keep what you already had.
+
+## Keep the data current
+
+The history tells you the past at the moment you ask. To stay current, add App Store Server Notifications V2. Apple sends a notification for each renewal, refund, expiry and billing problem, and your server updates the same records the history created. Our guide to [App Store Server Notifications V2](https://raw.githubusercontent.com/revenuedot/docs/main/blog/app-store-server-notifications-v2.md) covers the setup, and our post on [server-side receipt validation](https://raw.githubusercontent.com/revenuedot/docs/main/blog/server-side-receipt-validation.md) covers the other App Store Server API calls. On the device, keep a [Transaction.updates listener](https://raw.githubusercontent.com/revenuedot/docs/main/blog/storekit-2-transaction-updates.md) running from launch.
+
+A good pattern is to call the history once when you first see a customer, then rely on notifications, and run a nightly job that calls the history again for any customer whose records look wrong.
+
+## Do it with RevenueDot
+
+RevenueDot is an open-source backend for in-app purchases that works with the RevenueCat SDK. It does this work for you on every purchase, and you can read the code.
+
+- **It asks Apple for the full history.** When the SDK posts a purchase, the server calls `GET /inApps/v2/history/{transactionId}` with the app's In-App Purchase key, follows every page, and verifies each transaction ([source](https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/api.ts)). It tries production first and falls back to sandbox when Apple does not know the transaction ([source](https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/apple/index.ts)).
+- **It keeps the data current.** RevenueDot processes App Store Server Notifications V2 and updates the same customer. The [App Store guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md) shows where to paste the key and the notification URL.
+- **It gives the history back to you.** The REST API lists each subscription's transactions (`GET /v2/projects/{project_id}/subscriptions/{subscription_id}/transactions`, see the [REST reference](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md)), and the [full export](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/move-projects.md) includes every transaction, so you do not need to call Apple yourself.
+
+To be clear about where this stands: a real App Store sandbox purchase has run end to end against RevenueDot Cloud on a physical iPhone, and RevenueDot processes the live production notifications of one real app. It does not yet have years of production traffic.
+
+New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md). Its code says `import RevenueCat` because it is built from RevenueCat's MIT-licensed SDK, and it needs no RevenueCat account. The [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) gets a first test purchase working in a few minutes.
+
+**Switching from RevenueCat? Keep your SDK and change one line.** An app that ships the RevenueCat SDK can point its proxy URL at RevenueDot and keep its code, offerings and customers. See the [migration guide](https://revenuedot.app/migrate-from-revenuecat), the [comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) and the [RevenueCat fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator).
+
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month. See [pricing](https://revenuedot.app/pricing).
+
+## FAQ
+
+### What is the App Store Get Transaction History endpoint?
+
+It is an App Store Server API call that returns a customer's in-app purchase transactions for your app, starting from any one of their transaction IDs. The V2 endpoint returns every product type, including finished consumables, in every state ([Apple](https://developer.apple.com/documentation/appstoreserverapi/get-transaction-history)).
+
+### Should I use Get Transaction History V1 or V2?
+
+Use V2. Apple deprecated V1, which leaves out finished consumable purchases ([Apple](https://developer.apple.com/documentation/appstoreserverapi/get-transaction-history-v1)). In Apple's Node.js library, pass `GetTransactionHistoryVersion.V2`, because the method still defaults to V1.
+
+### How many transactions does each page return?
+
+Up to 20. Each response includes a `revision` token and `hasMore`. Send the token with the same filters to get the next page, and stop when `hasMore` is false ([Apple](https://developer.apple.com/documentation/appstoreserverapi/get-transaction-history)).
+
+### Why does Apple say the transaction ID was not found?
+
+Error `4040010` usually means you called the wrong environment, such as production for a sandbox purchase. Call the other environment, or read the `environment` field of the transaction the app sent you ([Apple](https://developer.apple.com/documentation/appstoreserverapi/transactionidnotfounderror)).
+
+### Does the transaction history include refunds?
+
+Yes. The endpoint returns refunded and revoked transactions, with a `revocationDate` and a reason. Set `revoked` to `false` to leave them out, or to `true` to get only them ([Apple](https://developer.apple.com/documentation/appstoreserverapi/get-transaction-history)).
 
 **About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
 
@@ -2501,6 +2701,200 @@ Billing Library 8 removed the way to read consumed one-time purchases from the d
 
 ---
 
+# Google Play pending purchases: how to handle them
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/google-play-pending-purchases.md
+Description: How to handle Google Play pending purchases: enable them, keep access locked until payment clears, acknowledge at the right time, and catch the result on your server.
+
+A pending purchase on Google Play is a purchase the customer has started but not yet paid for. It happens when someone chooses to pay with cash at a store, with a bank transfer, or with another payment method that takes time to clear. Google says your app must not grant access until the purchase moves from `PENDING` to `PURCHASED`, and must not acknowledge it before then ([Google](https://developer.android.com/google/play/billing/integrate#pending)). If you treat a pending purchase like a finished one, you give away the product for free, and if you treat it like a failure, the customer pays and gets nothing.
+
+This post shows how to enable pending purchases, the Kotlin code for the purchase listener, how to catch payments that clear while your app is closed, what your server should do, and how to test the whole flow without real money. Every fact about Google and RevenueCat links its source and was checked on November 9, 2026.
+
+![Two columns: what the app does with a pending Google Play purchase, such as showing a waiting message, and what the server does, such as waiting for the purchased notification](https://github.com/revenuedot/docs/blob/main/blog/assets/google-play-pending-purchases/cover.svg)
+
+## The short answer
+
+- **Enable them when you build the client.** Google Play Billing Library 8 requires `enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())`, and prepaid subscription plans need `enablePrepaidPlans()` as well ([Google](https://developer.android.com/reference/com/android/billingclient/api/PendingPurchasesParams.Builder)).
+- **Check the state of every purchase.** Call `getPurchaseState()` and grant access only when it returns `PURCHASED` ([Google](https://developer.android.com/google/play/billing/integrate#pending)).
+- **Do not acknowledge a pending purchase.** The three-day acknowledgement window starts only when the purchase becomes `PURCHASED`.
+- **Expect the payment to clear later.** Call `queryPurchasesAsync()` when the app starts and in `onResume()`, and let your server listen for real-time developer notifications.
+- **Handle the cancel case.** If the customer never pays, Google sends `ONE_TIME_PRODUCT_CANCELED` or `SUBSCRIPTION_PENDING_PURCHASE_CANCELED`, and the customer should never have had access.
+
+## What a pending purchase is
+
+Most Google Play purchases finish in seconds. The customer taps buy, the card is charged, and your `PurchasesUpdatedListener` receives a purchase in the `PURCHASED` state. A pending purchase takes a different path. Google's example is a customer who chooses to pay in cash at a physical store: Google gives them a code, they show the code to a cashier, and only then does Google tell you and the customer that the payment arrived ([Google](https://developer.android.com/google/play/billing/integrate#pending)).
+
+Two other cases look similar. A family member can approve a purchase on another device, and a pre-order stays `PENDING` until its release date and then becomes `PURCHASED` without any action from the customer ([Google](https://developer.android.com/google/play/billing/integrate#granting-entitlement)).
+
+Pending purchases apply to one-time products, such as credit packs or a lifetime unlock. For subscriptions, they apply only to prepaid plans, which do not renew on their own. Google says pending transactions for subscriptions exist only for prepaid plans on Billing Library 7.0 and later, and you must enable them explicitly ([Google](https://developer.android.com/google/play/billing/subscriptions#pending)). A normal auto-renewing subscription never reaches your app as a pending purchase.
+
+## The states you will see
+
+| Where you look | Pending | Paid | Never paid |
+|---|---|---|---|
+| `Purchase.getPurchaseState()` in the app | `PENDING` | `PURCHASED` | The purchase disappears |
+| `purchases.products.get` on your server | `purchaseState` 2 | `purchaseState` 0 | `purchaseState` 1 |
+| `purchases.subscriptionsv2.get` on your server | `SUBSCRIPTION_STATE_PENDING` | `SUBSCRIPTION_STATE_ACTIVE` | `SUBSCRIPTION_STATE_PENDING_PURCHASE_CANCELED` |
+| Real-time developer notification | None | `ONE_TIME_PRODUCT_PURCHASED` or `SUBSCRIPTION_PURCHASED` | `ONE_TIME_PRODUCT_CANCELED` or `SUBSCRIPTION_PENDING_PURCHASE_CANCELED` |
+
+The product values come from Google's reference for `purchases.products`, which lists 0 as purchased, 1 as canceled and 2 as pending ([Google](https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.products)). The subscription states come from `purchases.subscriptionsv2` ([Google](https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.subscriptionsv2)), and the notification types come from the [real-time developer notifications reference](https://developer.android.com/google/play/billing/rtdn-reference).
+
+## Step 1: Enable pending purchases
+
+You turn pending purchases on when you build the `BillingClient`. Since Billing Library 8, the version without arguments is gone, so every app passes a `PendingPurchasesParams` object ([Google](https://developer.android.com/google/play/billing/release-notes)). Our [Billing Library 8 migration guide](https://raw.githubusercontent.com/revenuedot/docs/main/blog/google-play-billing-library-8-migration.md) covers the other changes in that release.
+
+```kotlin
+val billingClient = BillingClient.newBuilder(context)
+    .setListener(purchasesListener)
+    .enablePendingPurchases(
+        PendingPurchasesParams.newBuilder()
+            .enableOneTimeProducts()   // required
+            .enablePrepaidPlans()      // only if you sell prepaid subscription plans
+            .build()
+    )
+    .enableAutoServiceReconnection()
+    .build()
+```
+
+Google calls `enableOneTimeProducts()` mandatory. By calling it, you tell Google that your app will not grant access before the payment clears ([Google](https://developer.android.com/reference/com/android/billingclient/api/PendingPurchasesParams.Builder)).
+
+## Step 2: Branch on the purchase state
+
+Your listener receives pending and finished purchases through the same callback, so the first thing to read is the state. The code below sends every purchase to your server, shows a waiting message for pending ones, and leaves acknowledgement to the paid path.
+
+```kotlin
+private val purchasesListener = PurchasesUpdatedListener { result, purchases ->
+    if (result.responseCode != BillingClient.BillingResponseCode.OK || purchases == null) return@PurchasesUpdatedListener
+    purchases.forEach { handlePurchase(it) }
+}
+
+private fun handlePurchase(purchase: Purchase) {
+    when (purchase.purchaseState) {
+        Purchase.PurchaseState.PURCHASED -> {
+            // Your server verifies the token, grants access and acknowledges (or consumes).
+            scope.launch { api.recordPurchase(purchase.purchaseToken, purchase.products) }
+        }
+        Purchase.PurchaseState.PENDING -> {
+            // Save the token so you can match it later, but do not unlock anything.
+            scope.launch { api.recordPending(purchase.purchaseToken, purchase.products) }
+            showMessage("Your purchase is waiting for payment. We will unlock it as soon as Google confirms it.")
+        }
+        else -> Unit // UNSPECIFIED_STATE: ignore
+    }
+}
+```
+
+The waiting message matters more than it seems. A customer who sees nothing happen is likely to tap buy again or write to support, so tell them what is happening and close the paywall. Google gives the same advice: if the state is pending, tell the customer what they still need to do before access is granted ([Google](https://developer.android.com/google/play/billing/integrate#granting-entitlement)).
+
+For prepaid plans there is one more case. When a customer starts a pending top-up, upgrade or downgrade, your app receives the old subscription's `Purchase` with a `PendingPurchaseUpdate` object that holds the new product IDs and purchase token. The customer keeps the old plan until the payment clears, and only then should you replace the old token with the new one ([Google](https://developer.android.com/google/play/billing/subscriptions#pending)).
+
+## Step 3: Catch payments that clear while the app is closed
+
+A customer may pay at the store hours later, when your app is not running. Google gives you two ways to find out, and you should use both.
+
+1. **Query purchases when the app connects and resumes.** Google recommends calling `queryPurchasesAsync()` after the billing connection succeeds and in `onResume()`, so purchases that moved to `PURCHASED` while the app was closed are processed ([Google](https://developer.android.com/google/play/billing/integrate#process)).
+2. **Listen for real-time developer notifications on your server.** When the purchase completes, Google sends `ONE_TIME_PRODUCT_PURCHASED` or `SUBSCRIPTION_PURCHASED`. When it is canceled, Google sends `ONE_TIME_PRODUCT_CANCELED` or `SUBSCRIPTION_PENDING_PURCHASE_CANCELED` ([Google](https://developer.android.com/google/play/billing/integrate#pending)).
+
+```kotlin
+override fun onResume() {
+    super.onResume()
+    billingClient.queryPurchasesAsync(
+        QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build()
+    ) { result, purchases ->
+        if (result.responseCode == BillingClient.BillingResponseCode.OK) purchases.forEach { handlePurchase(it) }
+    }
+}
+```
+
+The server notification is the one you can rely on. The customer may not open the app for days, and the notification arrives anyway. If you also email or push a message when the payment clears, the customer knows to come back.
+
+## Step 4: Verify and acknowledge on your server
+
+Your server should treat the purchase token as a claim and ask Google for the truth. For a one-time product, call `purchases.products.get`. For a subscription, call `purchases.subscriptionsv2.get`. Grant access only when the state says paid. This Node.js example uses Google's `googleapis` package and a service account with access to your Play Console app.
+
+```js
+import { google } from "googleapis";
+
+const auth = new google.auth.GoogleAuth({
+  keyFile: "service-account.json",
+  scopes: ["https://www.googleapis.com/auth/androidpublisher"],
+});
+const play = google.androidpublisher({ version: "v3", auth });
+
+export async function checkOneTimePurchase(packageName, productId, token) {
+  const { data } = await play.purchases.products.get({ packageName, productId, token });
+  if (data.purchaseState === 2) return { status: "pending" };   // keep access locked
+  if (data.purchaseState === 1) return { status: "canceled" };  // never grant
+  // purchaseState 0: paid. Grant access, then acknowledge (or let the app consume a consumable).
+  if (data.acknowledgementState === 0) {
+    await play.purchases.products.acknowledge({ packageName, productId, token });
+  }
+  return { status: "paid", orderId: data.orderId };
+}
+```
+
+Google's rule on acknowledgement is easy to get wrong with pending purchases. You must acknowledge a paid purchase within three days, or Google refunds it and revokes it. For a pending purchase, the three days start only when the state becomes `PURCHASED`, so acknowledging early is both wrong and unnecessary ([Google](https://developer.android.com/google/play/billing/integrate#pending)). Consumables, such as credit packs, are acknowledged when the app consumes them. Our post on [selling credits](https://raw.githubusercontent.com/revenuedot/docs/main/blog/sell-credits-in-app-purchases.md) shows a ledger that adds credits only once.
+
+Store the token with a `pending` status as soon as the app reports it. When the notification arrives, you look up the same token, check it with Google, and switch it to `paid` or `canceled`. Because the notification only tells you that something changed, always call the API again rather than trusting the message alone. Our guide to [server-side receipt validation](https://raw.githubusercontent.com/revenuedot/docs/main/blog/server-side-receipt-validation.md) covers the setup of the service account and the API calls in more detail.
+
+## Step 5: Test it without real money
+
+Google gives license testers two extra payment methods for this case. **Slow test card, approves after a few minutes** completes the purchase after a short wait, and **Slow test card, declines after a few minutes** cancels it ([Google](https://developer.android.com/google/play/billing/test#pending-purchases)). Run both:
+
+1. Buy with the approving card, close the app at once, wait a few minutes, and open it again. The product should unlock on resume, and your server should have received `ONE_TIME_PRODUCT_PURCHASED`.
+2. Buy with the declining card and wait. The product must never unlock, and your server should receive the cancel notification.
+3. Buy with the approving card and keep the app open. The listener should fire a second time with `PURCHASED`, and the waiting message should give way to the unlocked content.
+
+Our guide to [testing in-app purchases](https://raw.githubusercontent.com/revenuedot/docs/main/blog/sandbox-testing-in-app-purchases.md) covers license testers, testing tracks and the App Store side.
+
+## The iOS equivalent
+
+Apple has a similar case. With Ask to Buy, a child's purchase waits for a parent's approval, and StoreKit 2 returns `.pending` from `purchase()`. The approved transaction later arrives through `Transaction.updates`, which is why every iOS app needs that listener running from launch ([Apple](https://developer.apple.com/documentation/storekit/product/purchaseresult/pending)). Our post on [Transaction.updates](https://raw.githubusercontent.com/revenuedot/docs/main/blog/storekit-2-transaction-updates.md) shows the full store class.
+
+## If you use the RevenueCat SDK or RevenueDot
+
+The purchases SDK handles most of this for you. When a purchase is pending, it raises `paymentPendingError` (code 20) instead of returning a successful result. That error is not a failure: show a waiting message and close the paywall, and do not start the purchase again ([paymentPendingError](https://raw.githubusercontent.com/revenuedot/docs/main/docs/errors/sdk-payment-pending-error.md)). RevenueCat's own engineering post on Google Play edge cases describes the same rule of granting nothing until the state is purchased ([RevenueCat](https://www.revenuecat.com/blog/engineering/google-play-edge-cases)).
+
+RevenueDot is an open-source backend for in-app purchases that works with the RevenueCat SDK. Its server follows Google's rules for pending purchases, and you can read the code:
+
+- **It never grants a pending purchase.** When the SDK posts a pending Google Play purchase to `POST /v1/receipts`, the server answers with HTTP 503, so the SDK keeps the purchase and retries later instead of dropping it ([source](https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/index.ts)). Our page on [4xx and 5xx receipt errors](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/receipt-errors-4xx-vs-5xx.md) explains why a temporary problem must never return a 4xx.
+- **It does not acknowledge too early.** The server acknowledges a subscription only when it has left the pending states, and it leaves consumables for the app to consume.
+- **It processes the notifications.** For each subscription notification it reads the purchase again from Google; a pending state changes nothing, and the purchased notification that follows grants access. A [canceled pending purchase](https://raw.githubusercontent.com/revenuedot/docs/main/docs/notifications/google-subscription-pending-purchase-canceled.md) never grants access ([source](https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/sync.ts)).
+
+To be clear about where this stands: RevenueDot's Google Play handling is tested against a copy of Google's API, and no real Google Play purchase has run end to end against RevenueDot yet.
+
+New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md). Its code says `import RevenueCat` because it is built from RevenueCat's MIT-licensed SDK, and it needs no RevenueCat account. The [Google Play guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md) shows how to connect the service account and real-time developer notifications.
+
+**Switching from RevenueCat? Keep your SDK and change one line.** An app that ships the RevenueCat SDK can point its proxy URL at RevenueDot and keep its code, offerings and customers. See the [migration guide](https://revenuedot.app/migrate-from-revenuecat), the [comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) and the [RevenueCat fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator).
+
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month. See [pricing](https://revenuedot.app/pricing).
+
+## FAQ
+
+### What does a pending purchase mean on Google Play?
+
+It means the customer started the purchase but the payment has not cleared yet, for example because they chose to pay in cash at a store. Your app should show a waiting message and grant nothing until the state becomes `PURCHASED` ([Google](https://developer.android.com/google/play/billing/integrate#pending)).
+
+### Should I acknowledge a pending purchase?
+
+No. Acknowledge only after the state is `PURCHASED`. The three-day acknowledgement window starts when the purchase moves from `PENDING` to `PURCHASED`, so there is no deadline to miss while it waits ([Google](https://developer.android.com/google/play/billing/integrate#pending)).
+
+### How long can a Google Play purchase stay pending?
+
+Google does not publish one fixed limit in its integration guide. If the customer does not pay within the time the payment method allows, Google cancels the purchase and sends `ONE_TIME_PRODUCT_CANCELED` or `SUBSCRIPTION_PENDING_PURCHASE_CANCELED` to your server ([Google](https://developer.android.com/google/play/billing/integrate#pending)).
+
+### Can subscriptions be pending on Google Play?
+
+Only prepaid plans, and only if you call `enablePrepaidPlans()` on Billing Library 7.0 or later. Auto-renewing subscriptions do not reach your app as pending purchases ([Google](https://developer.android.com/google/play/billing/subscriptions#pending)).
+
+### How do I test pending purchases?
+
+Add a license tester in the Play Console and buy with **Slow test card, approves after a few minutes** or **Slow test card, declines after a few minutes**. The first completes the purchase after a short wait, and the second cancels it ([Google](https://developer.android.com/google/play/billing/test#pending-purchases)).
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
 # How to handle Google Play refunds and chargebacks
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/google-play-refunds-and-chargebacks.md
@@ -3586,6 +3980,155 @@ Yes by default. At the end of the offer the subscription renews at the standard 
 ### How is an offer code different from a promotional offer?
 
 An offer code is redeemed by a code the customer holds, and Apple handles the redemption screen. A promotional offer is chosen by your app and needs a signature from your server. See [iOS promotional offers and the signature](https://raw.githubusercontent.com/revenuedot/docs/main/blog/ios-promotional-offers-signature.md).
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
+# Leave RevenueCat with a Flutter or React Native app
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/leave-revenuecat-flutter-react-native.md
+Description: How a Flutter, React Native or Expo app on both stores moves off RevenueCat: what it costs at $30K to $100K a month, the code change, the dual run and the risks.
+
+A Flutter, React Native or Expo app that sells on both the App Store and Google Play can leave RevenueCat without rewriting its purchase code. The RevenueCat SDK has a proxy URL setting, so the app keeps `purchases_flutter` or `react-native-purchases` and points it at another backend that speaks the same protocol, such as RevenueDot. The real work is outside the code: importing customers, sending both stores' notifications to the new backend while old app versions still talk to RevenueCat, and cutting over once the two agree.
+
+This post is for teams that make $30,000 or more a month on two stores. It shows what RevenueCat costs at that size, the exact code change for Flutter and React Native, the steps for each store, what does not move, and where the risks are. Every fact about RevenueCat, Apple and Google links its source and was checked on November 9, 2026.
+
+![A table of monthly fees at $30K, $50K and $100K of revenue for RevenueCat and RevenueDot Cloud, next to the four steps of a move: import, dual run, app update and cutover](https://github.com/revenuedot/docs/blob/main/blog/assets/leave-revenuecat-flutter-react-native/cover.svg)
+
+## The short answer
+
+- **Cost at your size:** RevenueCat charges 1% of all tracked revenue once you reach $2,500 a month, so $30,000 costs $300 a month and $100,000 costs $1,000 ([RevenueCat](https://www.revenuecat.com/pricing)). RevenueDot Cloud costs $100 and $450 at the same levels.
+- **Code change:** one call before `configure`. Flutter and React Native both use `await Purchases.setProxyURL(...)`, plus one `syncPurchases()` call on first launch after the update ([SDK changes](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/sdk-changes.md)).
+- **Two stores, two notification paths:** App Store Connect takes one notification URL per environment, so RevenueDot receives Apple's notifications and forwards them to RevenueCat. Google Play can send one topic to two push subscriptions.
+- **Old app versions keep working.** Customers who never update keep talking to RevenueCat, which stays correct because it still receives every notification.
+- **What does not move:** store credentials, paywalls, experiments and virtual currency balances. You enter or rebuild them in the new backend.
+
+## What RevenueCat costs a two-store app at $30K to $100K
+
+RevenueCat's Pro plan is free until monthly tracked revenue reaches $2,500, and then costs 1% of what you track ([RevenueCat](https://www.revenuecat.com/pricing)). A RevenueCat staff member confirmed that the 1% applies to all of it, not only the part above $2,500 ([RevenueCat community](https://community.revenuecat.com/general-questions-7/questions-about-pro-plan-payments-3618)). The fee is on everything RevenueCat tracks for you, so an app that makes $20,000 on iOS and $10,000 on Android pays 1% of $30,000.
+
+| Monthly revenue, both stores | RevenueCat a month | RevenueCat a year | RevenueDot Cloud a month | RevenueDot Cloud a year |
+|---|---|---|---|---|
+| $30,000 | $300 | $3,600 | $100 | $1,200 |
+| $50,000 | $500 | $6,000 | $200 | $2,400 |
+| $75,000 | $750 | $9,000 | $325 | $3,900 |
+| $100,000 | $1,000 | $12,000 | $450 | $5,400 |
+
+RevenueDot Cloud's Pro plan costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, and never more than $999 a month ([pricing](https://revenuedot.app/pricing)). The [RevenueCat fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator) runs the same numbers for your revenue, and [the comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) lists the feature differences. Our post on [RevenueCat pricing](https://raw.githubusercontent.com/revenuedot/docs/main/blog/revenuecat-pricing-explained.md) explains how the 1% compares with the store's own cut.
+
+At $100,000 a month the gap is $6,600 a year. That is real money, but it is not enough by itself to justify a risky move. The rest of this post is about making the move safe.
+
+## What RevenueCat is still better at
+
+You should know what you give up before you decide. RevenueCat has a SOC 2 Type II report, audited each year by an independent firm ([RevenueCat](https://www.revenuecat.com/security-and-compliance)), and many years of production traffic. RevenueDot has no SOC 2 report, no published uptime history, and has not yet run a real Google Play purchase end to end. If your company needs a SOC 2 report from every vendor, RevenueCat is the safer choice today.
+
+## The code change in a Flutter app
+
+Flutter apps keep the `purchases_flutter` package from pub.dev. Add the proxy URL before `configure`, and call `syncPurchases()` once after the update, so purchases made while the app talked to RevenueCat reach the new backend ([SDK changes](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/sdk-changes.md#flutter)).
+
+```dart
+import 'dart:io' show Platform;
+import 'package:purchases_flutter/purchases_flutter.dart';
+
+Future<void> initPurchases() async {
+  // RevenueDot Cloud's address. Await it before configure.
+  await Purchases.setProxyURL('https://api.revenuedot.app');
+  await Purchases.configure(PurchasesConfiguration(Platform.isIOS ? 'appl_...' : 'goog_...'));
+  // Once, on the first launch after this update.
+  await Purchases.syncPurchases();
+}
+```
+
+Your public SDK keys stay the same, because the importer copies them. One limit matters for Flutter teams: RevenueCat's web plugin for Flutter ignores `setProxyURL`, so a Flutter web build would still call RevenueCat. iOS and Android builds work with the stock package. If you ship Flutter web, use the [RevenueDot SDK for Flutter](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/flutter.md), which fixes this.
+
+## The code change in a React Native or Expo app
+
+React Native and Expo apps keep `react-native-purchases`. The change is the same shape ([SDK changes](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/sdk-changes.md#react-native-and-expo)).
+
+```ts
+import { Platform } from "react-native";
+import Purchases from "react-native-purchases";
+
+export async function initPurchases() {
+  // RevenueDot Cloud's address. Await it before configure.
+  await Purchases.setProxyURL("https://api.revenuedot.app");
+  Purchases.configure({ apiKey: Platform.OS === "ios" ? "appl_..." : "goog_..." });
+  // Once, on the first launch after this update.
+  await Purchases.syncPurchasesForResult();
+}
+```
+
+The proxy URL works on iOS, Android, Expo Go and the web with the stock package ([SDKs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md)). If you set `entitlementVerificationMode` to `INFORMATIONAL` or `ENFORCED`, set it back to the default, because RevenueDot signs responses with its own key rather than RevenueCat's.
+
+Because the change is in JavaScript, Expo teams sometimes ask whether an over-the-air update is enough. Treat this as a normal store release. It changes where purchases are sent, and you want a build you have tested end to end in TestFlight and a Play testing track before customers get it.
+
+## The steps for two stores
+
+The move has four phases, and the [migration guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md) covers each in detail.
+
+1. **Import.** Run `npx revenuedot import --from-revenuecat`. It copies your products, entitlements, offerings, customers, subscriptions, purchases and public SDK keys ([importer](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md)). Then enter each app's App Store In-App Purchase key and Google Play service account, because RevenueCat's API does not return store credentials. Run the importer again so it can confirm Apple transaction IDs and look up Google purchase tokens.
+2. **Dual run.** App Store Connect accepts one production and one sandbox notification URL per app ([Apple](https://developer.apple.com/documentation/appstoreservernotifications/enabling-app-store-server-notifications)), so point it at RevenueDot and let RevenueDot forward the exact body to RevenueCat. Google Play publishes to one Pub/Sub topic ([Google](https://developer.android.com/google/play/billing/getting-ready#configure-rtdn)), and a topic can have several push subscriptions ([Google Cloud](https://cloud.google.com/pubsub/docs/subscriber)), so add a second push subscription for RevenueDot and leave RevenueCat's in place ([dual run](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/dual-run.md)).
+3. **App update.** Ship the code change above to both stores. Customers who update talk to RevenueDot. Customers who do not update keep talking to RevenueCat, and both systems see every renewal, refund and cancellation.
+4. **Cutover.** When `npx revenuedot import verify` shows no differences and few customers run old versions, create your webhooks in RevenueDot, turn off RevenueCat's, remove the forwarding, and close the RevenueCat project ([cutover checklist](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/cutover-checklist.md)).
+
+RevenueCat's own export guide gives the same warnings from its side. It says to keep RevenueCat connected until the new provider can validate imported subscriptions, and notes that removing RevenueCat from a new release does not change the versions already on customers' devices ([RevenueCat](https://www.revenuecat.com/docs/revenuecat-support/common-tickets/export-data-or-migrate-away)).
+
+## Google Play needs the most care
+
+Apple identifies each subscription by its original transaction ID, and the importer brings those over directly. Google Play is harder. RevenueCat's self-service exports do not include raw Google Play purchase tokens ([RevenueCat](https://www.revenuecat.com/docs/revenuecat-support/common-tickets/export-data-or-migrate-away)), and its API gives only order IDs. Without a token, a new backend cannot ask Google about a subscription.
+
+RevenueDot fills the gap in four ways: it looks the tokens up with your service account, reads them from a CSV you pass, takes them from Google's next renewal notification, or receives them when the updated app calls `syncPurchases()` ([Google Play purchase tokens](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/importer.md#google-play-purchase-tokens)). Customers keep access in the meantime, because the imported subscription is already active. If you can get a store migration file from RevenueCat support that includes the tokens, pass it in and the gap closes at once.
+
+## What does not move
+
+- **Paywalls, targeting rules and experiments.** RevenueDot has [paywalls](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md) with a visual editor and [targeting and experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/targeting-and-experiments.md), but the importer does not copy RevenueCat's. If you use RevenueCat Paywalls, rebuild them before the app update.
+- **Virtual currency balances.** RevenueDot has virtual currencies, but the importer does not copy RevenueCat's balances, so plan how you will carry them over.
+- **Integrations other than webhooks.** Recreate them, and create webhooks at cutover.
+- **Refunded subscriptions.** RevenueCat's API v2 subscription object does not show refunds, so a refunded subscription imports as expired.
+- **RevenueCat Billing renewals.** If you sell on the web through RevenueCat Billing, those subscriptions keep renewing there.
+
+The full list is in [What differs from RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/what-differs.md).
+
+## The risks, and how the plan handles them
+
+**A purchase bug that drops sales.** The RevenueCat SDK treats a 4xx answer to a posted purchase as final and stops retrying it, while a 5xx makes it keep the purchase and try again. RevenueDot answers any temporary problem with a 5xx, so a bad moment on the server delays a purchase instead of losing it ([receipt errors](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/receipt-errors-4xx-vs-5xx.md)).
+
+**Losing subscribers during the move.** The dual run keeps both systems current, so neither one has a gap. You can stop at any point before cutover and RevenueCat still has every event.
+
+**A young vendor disappearing.** The server is open source under AGPL-3.0, and a full export moves every table to another RevenueDot server, including one you run yourself with Docker and Postgres ([move projects](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/move-projects.md)). Our post on [vendor shutdowns](https://raw.githubusercontent.com/revenuedot/docs/main/blog/in-app-purchase-vendor-shutdown.md) explains what the stores keep running in any case.
+
+**Where RevenueDot stands today.** A real App Store sandbox purchase has run end to end against RevenueDot Cloud on a physical iPhone, and RevenueDot processes the live production notifications of one real app in a dual run with RevenueCat. No real Google Play purchase has run end to end yet; Play handling is tested against a copy of Google's API. For a two-store app, that means you should run the dual run long enough to see Google renewals match on both sides before you cut over.
+
+## Do it with RevenueDot
+
+RevenueDot is an open-source backend for in-app purchases that works with the RevenueCat SDK. The importer, the dual run and the `import verify` check exist to make this move dull and safe. The [switching guide](https://revenuedot.app/migrate-from-revenuecat) shows the whole path on one page.
+
+New apps that have never used RevenueCat install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md). Its code says `import RevenueCat` because it is built from RevenueCat's MIT-licensed SDK, and it needs no RevenueCat account. Our [Flutter tutorial](https://raw.githubusercontent.com/revenuedot/docs/main/blog/flutter-in-app-purchases-tutorial.md) and [React Native and Expo tutorial](https://raw.githubusercontent.com/revenuedot/docs/main/blog/react-native-expo-subscriptions-tutorial.md) start from zero.
+
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month. See [pricing](https://revenuedot.app/pricing).
+
+## FAQ
+
+### Do I have to rewrite my Flutter or React Native purchase code to leave RevenueCat?
+
+No. You keep `purchases_flutter` or `react-native-purchases`, add `setProxyURL` before `configure`, and call `syncPurchases()` once after the update. Your offerings, entitlements and SDK keys come over with the importer ([SDK changes](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/sdk-changes.md)).
+
+### How much does RevenueCat cost at $50,000 a month?
+
+$500 a month, or $6,000 a year, because RevenueCat charges 1% of all tracked revenue once you pass $2,500 a month ([RevenueCat](https://www.revenuecat.com/pricing)). RevenueDot Cloud costs $200 a month at the same revenue.
+
+### What happens to customers on old app versions?
+
+They keep talking to RevenueCat. During the dual run, RevenueCat still receives every App Store and Google Play notification, so their access stays correct until they update or until you cut over ([dual run](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/dual-run.md)).
+
+### Can I export Google Play purchase tokens from RevenueCat?
+
+Not from the self-service exports, which leave raw purchase tokens out. RevenueCat support can prepare a store migration file with store identifiers on request ([RevenueCat](https://www.revenuecat.com/docs/revenuecat-support/common-tickets/export-data-or-migrate-away)). RevenueDot can also look the tokens up with your service account.
+
+### Does the proxy URL work in Expo Go?
+
+Yes. With the stock `react-native-purchases` package, `setProxyURL` works on iOS, Android, Expo Go and the web ([SDKs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md)). Test the release itself in a development build on TestFlight and a Play testing track before you ship it.
 
 **About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
 
