@@ -9,6 +9,11 @@ author: RevenueDot team
 
 Posts from the team building RevenueDot, an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK, free to start on [RevenueDot Cloud](https://app.revenuedot.app/signup). Newest first.
 
+## 2026-11-09
+- [Leave RevenueCat with a Flutter or React Native app](leave-revenuecat-flutter-react-native.md): what RevenueCat costs a two-store app at $30K to $100K a month, the `setProxyURL` change for Flutter, React Native and Expo, the dual run for both stores, Google Play purchase tokens, and what does not move.
+- [How to get App Store transaction history in Node.js](app-store-transaction-history-nodejs.md): the In-App Purchase key, Apple's Node.js library with the V2 endpoint, paging and filters, the 50-per-second rate limit, error `4040010`, and keeping the data current.
+- [Google Play pending purchases: how to handle them](google-play-pending-purchases.md): enabling pending purchases, the Kotlin listener, catching payments that clear while the app is closed, server checks and acknowledgement in Node.js, and the slow test cards.
+
 ## 2026-11-02
 - [Why in-app products fail to load on iOS and Android](in-app-products-not-loading.md): how to log which product failed, the iOS causes from the Paid Apps Agreement to the StoreKit configuration file, the Android causes from testing tracks to `NO_ELIGIBLE_OFFER`, and what empty offerings mean.
 - [How to sell credits in an AI app with in-app purchases](sell-credits-in-app-purchases.md): credit packs as consumables, Apple's no-expiry rule, Google's three-day consume rule, a server ledger with Node.js and SQL, refunds, and RevenueDot's in-app currencies.
