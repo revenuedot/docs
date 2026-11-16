@@ -9,6 +9,11 @@ author: RevenueDot team
 
 Posts from the team building RevenueDot, an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK, free to start on [RevenueDot Cloud](https://app.revenuedot.app/signup). Newest first.
 
+## 2026-11-16
+- [How to sync subscription status to your own backend](sync-subscription-status-to-your-backend.md): why the app alone cannot gate server features, the webhook as a trigger followed by one customer lookup, `logIn` with your own user ID, an Express receiver and SQL table, idempotency, a nightly check, and RevenueDot webhooks.
+- [How to check subscription status in StoreKit 2](storekit-2-check-subscription-status.md): `Transaction.currentEntitlements` and `Product.SubscriptionInfo.Status`, the five renewal states, renewal info, SwiftUI's `subscriptionStatusTask`, what the device cannot tell you, and pitfalls developers report.
+- [How to submit your first in-app purchase for App Review](submit-first-in-app-purchase-for-review.md): Apple's rule that the first item of each type ships with a new app version, the product states and metadata, rejections under 2.1(b), 3.1.1 and 3.1.2, sandbox purchases during review, a checklist, and how Google Play differs.
+
 ## 2026-11-09
 - [Leave RevenueCat with a Flutter or React Native app](leave-revenuecat-flutter-react-native.md): what RevenueCat costs a two-store app at $30K to $100K a month, the `setProxyURL` change for Flutter, React Native and Expo, the dual run for both stores, Google Play purchase tokens, and what does not move.
 - [How to get App Store transaction history in Node.js](app-store-transaction-history-nodejs.md): the In-App Purchase key, Apple's Node.js library with the V2 endpoint, paging and filters, the 50-per-second rate limit, error `4040010`, and keeping the data current.
