@@ -54,12 +54,12 @@ func hasActiveSubscription(groupID: String) async -> Bool {
 
 Two fields deserve a closer look.
 
-1. **`revocationDate`** is the date the App Store refunded or revoked the transaction. Apple says this happens after a refund, after a Family Sharing revocation, or when the customer loses access through an organization or group ([Apple](https://developer.apple.com/documentation/storekit/transaction/revocationdate)). Revoked products should already be missing from the sequence, so this check is a second guard, not the main one.
-2. **`expirationDate`** is "the date the subscription expires or renews" ([Apple](https://developer.apple.com/documentation/storekit/transaction/expirationdate)). Be careful with it. A grace period starts when a renewal payment fails, so the latest transaction is still in `currentEntitlements` while its `expirationDate` is already in the past. If you add `expirationDate > .now` to the check above, you cut off customers Apple wants you to keep serving. Use `expirationDate` to show "renews on" text, not to decide access for an auto-renewable subscription.
+1. **`revocationDate`** is the date the App Store refunded or revoked the transaction. Apple says this happens after a refund, after a Family Sharing revocation, or when the customer loses access through an organization or group ([Apple](https://developer.apple.com/documentation/storekit/transaction/revocationdate)). Revoked products should already be missing, so this check is a second guard.
+2. **`expirationDate`** is "the date the subscription expires or renews" ([Apple](https://developer.apple.com/documentation/storekit/transaction/expirationdate)). Be careful with it. A grace period starts when a renewal payment fails, so the latest transaction stays in `currentEntitlements` after its `expirationDate` has passed. If you add `expirationDate > .now` to the check, you cut off customers Apple wants you to keep serving. Use it for "renews on" text, not for access.
 
 ## Read the renewal state for the full picture
 
-`currentEntitlements` tells you yes or no. `Product.SubscriptionInfo.Status` tells you why. You get an array of statuses for a subscription group with the static `Product.SubscriptionInfo.status(for:)`, or from a loaded product with `product.subscription?.status`, which is `async throws` ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo)).
+`currentEntitlements` tells you yes or no, and `Product.SubscriptionInfo.Status` tells you why. You get an array of statuses for a subscription group with the static `Product.SubscriptionInfo.status(for:)`, or from a loaded product with `product.subscription?.status`, which is `async throws` ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo)).
 
 Each status has three parts ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/status-swift.struct)):
 
@@ -77,7 +77,7 @@ The five renewal states, with what your app should do in each:
 | `expired` | The subscription expired | No | A paywall, maybe a win-back offer |
 | `revoked` | The App Store revoked access to the group | No | A paywall |
 
-The meanings and the access rule come from Apple's `RenewalState` page ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/renewalstate)). Grace period and billing retry are easy to mix up. Our post on [billing grace period and retry](billing-grace-period-and-retry.md) shows both timelines.
+The meanings and the access rule come from Apple's `RenewalState` page ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/renewalstate)). Our post on [billing grace period and retry](billing-grace-period-and-retry.md) shows both timelines.
 
 The array is empty when the customer was never subscribed to the group, and it can hold several entries when the subscription supports Family Sharing. A customer can be `expired` on their own purchase and `subscribed` through a family member, and then they are entitled to service. Apple says to give the highest level of service where the state is `subscribed` ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/status-swift.property)), so never read only the first status.
 
@@ -85,10 +85,9 @@ The array is empty when the customer was never subscribed to the group, and it c
 
 `RenewalInfo` describes the next renewal period ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/renewalinfo)). The fields most apps use:
 
-- `willAutoRenew` tells you whether the plan renews at the end of this period. When it is false, the user has turned off auto-renew, and a "your plan ends on" message makes sense.
+- `willAutoRenew` tells you whether the plan renews at the end of this period. When it is false, show a "your plan ends on" message.
 - `expirationReason` tells you why it ended. Apple lists `autoRenewDisabled`, `billingError`, `didNotConsentToPriceIncrease`, `productUnavailable`, `unbundled` and `unknown` ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/renewalinfo/expirationreason-swift.struct)).
 - `isInBillingRetry` and `gracePeriodExpirationDate` give the details of a billing problem.
-- `autoRenewPreference` is the product ID that will renew, which differs from the current one after a downgrade.
 
 ## A complete status check in Swift
 
@@ -133,7 +132,7 @@ func loadProStatus(groupID: String) async -> ProStatus {
 }
 ```
 
-Because the loop looks at every status, a family member's active plan still grants access when the user's own plan has expired. If the call throws, do not lock the user out on the spot. Keep the last answer you had and try again later.
+Because the loop reads every status, a family member's active plan still grants access when the user's own plan has expired. If the call throws, keep the last answer you had and try again later, rather than locking the user out.
 
 To react to changes while the app runs, iterate `Product.SubscriptionInfo.Status.updates`, which Apple describes as the sequence that emits status information when a subscription's status changes ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/status-swift.struct)). Keep your `Transaction.updates` listener too, because that is where you call `finish()`. Our post on [Transaction.updates](storekit-2-transaction-updates.md) covers that listener in full.
 
@@ -166,29 +165,29 @@ Put the modifier high in the view tree, so it stays alive while the user moves b
 
 ## What the device cannot tell you
 
-Everything above runs on one device, for the Apple account signed in to it. That leaves gaps:
+Everything above runs on one device, for the Apple account signed in to it. That leaves three gaps:
 
 - **The same user on the web or Android.** Your other apps cannot read StoreKit.
 - **Changes while the app is closed.** A renewal, a refund or a failed payment overnight is invisible until the next launch.
 - **Your backend's own checks.** If your server serves paid content or an API, it cannot trust a boolean your app sends.
 
-Apple gives servers two tools for this. The App Store Server API's [Get All Subscription Statuses](https://developer.apple.com/documentation/appstoreserverapi/get-all-subscription-statuses) endpoint, `GET /inApps/v1/subscriptions/{transactionId}`, returns the status of every subscription the customer has in your app, grouped by subscription group. It takes any original transaction ID, transaction ID or app transaction ID that belongs to the customer. Its `status` field uses numbers: 1 is active, 2 expired, 3 billing retry, 4 grace period and 5 revoked ([Apple](https://developer.apple.com/documentation/appstoreserverapi/status)). Those map one to one to the five states on the device.
+Apple gives servers two tools for this. The App Store Server API's [Get All Subscription Statuses](https://developer.apple.com/documentation/appstoreserverapi/get-all-subscription-statuses) endpoint, `GET /inApps/v1/subscriptions/{anyTransactionId}`, returns the status of every subscription the customer has in your app, grouped by subscription group. It takes any of the customer's transaction IDs, and its `status` field uses numbers: 1 is active, 2 expired, 3 billing retry, 4 grace period and 5 revoked, the same five states as on the device ([Apple](https://developer.apple.com/documentation/appstoreserverapi/status)).
 
-[App Store Server Notifications](https://developer.apple.com/documentation/appstoreservernotifications) is the other half. Apple calls it a server-to-server service that sends real-time notifications for purchases, renewals, offer redemptions, refunds and more, so your database stays current even when the app never opens. Our guide to [App Store Server Notifications V2](app-store-server-notifications-v2.md) lists each type, and the post on [server-side receipt validation](server-side-receipt-validation.md) shows how to verify what Apple sends.
+[App Store Server Notifications](https://developer.apple.com/documentation/appstoreservernotifications) is the other half. Apple calls it a server-to-server service that sends real-time notifications for purchases, renewals, offer redemptions, refunds and more, so your database stays current when the app never opens. Our guide to [App Store Server Notifications V2](app-store-server-notifications-v2.md) lists each type, and the post on [server-side receipt validation](server-side-receipt-validation.md) shows how to verify what Apple sends.
 
 ## Problems developers report on Apple's forums
 
 These are reports from developers, not confirmed Apple bugs, but they are worth planning for.
 
 1. **An empty `currentEntitlements` for a paying user.** Developers report production cases where both `Transaction.currentEntitlements` and `subscription.status` return nothing for an active annual subscription, even after `AppStore.sync()`, with the user stuck on the paywall ([thread 841930](https://developer.apple.com/forums/thread/841930)). No reply had been posted when we checked. A server that knows the user paid gives you a way to let them in while you investigate.
-2. **Offer code redemptions that do not show up.** Developers report that a subscription from a redeemed offer code is active in the user's account settings but missing from `currentEntitlements`, even after a sync ([thread 836181](https://developer.apple.com/forums/thread/836181)). An Apple engineer asked whether the app listens to `Transaction.updates`, since redemptions arrive there, and asked for a Feedback Assistant report. Apple's server notifications also cover offer redemptions, so a server can catch them. Our post on [looking up a purchase by order ID](look-up-purchase-by-order-id.md) helps when support has a receipt from the customer.
+2. **Offer code redemptions that do not show up.** Developers report that a subscription from a redeemed offer code is active in the user's account settings but missing from `currentEntitlements`, even after a sync ([thread 836181](https://developer.apple.com/forums/thread/836181)). An Apple engineer asked whether the app listens to `Transaction.updates`, where redemptions arrive, and asked for a Feedback Assistant report. Apple's server notifications also cover offer redemptions, and [looking up a purchase by order ID](look-up-purchase-by-order-id.md) helps when the customer has a receipt.
 3. **Expired subscriptions still listed during tests.** Developers testing with a StoreKit configuration file and shortened subscription periods report `currentEntitlements` returning expired subscriptions ([thread 729770](https://developer.apple.com/forums/thread/729770)). One developer traced their case to the device's wrong time zone. Apple notes that the sandbox renews subscriptions at an accelerated rate, up to 12 times, and that a subscription can lapse briefly before it renews ([Apple](https://developer.apple.com/documentation/storekit/testing-an-auto-renewable-subscription)). Check your device clock, and test lapses on purpose.
 
 ## Check status with RevenueDot
 
 RevenueDot is an open-source backend for in-app purchases. It receives Apple's server notifications and verifies each signed transaction with Apple, then gives your app and your server one answer per entitlement. New apps install the [RevenueDot SDK](../docs/sdks/ios.md). Its code says `import RevenueCat` because it is built from RevenueCat's MIT-licensed SDK, and it needs no RevenueCat account.
 
-In the app, the whole status check becomes one property:
+In the app, the whole status check comes down to one entitlement:
 
 ```swift
 import RevenueCat
@@ -219,7 +218,7 @@ export async function isPro(appUserId) {
 }
 ```
 
-For events instead of polling, add a [webhook](../docs/guides/webhooks.md). The [App Store setup guide](../docs/guides/app-store.md) shows how to add the in-app purchase key and point Apple's notifications at RevenueDot. If an entitlement looks wrong, [Why is my entitlement not active?](../docs/help/entitlement-not-active.md) walks through the causes. A real App Store sandbox purchase has run end to end against RevenueDot Cloud on a physical iPhone.
+For events instead of polling, add a [webhook](../docs/guides/webhooks.md). The [App Store setup guide](../docs/guides/app-store.md) connects Apple's notifications, and [Why is my entitlement not active?](../docs/help/entitlement-not-active.md) covers what to check when the answer looks wrong. A real App Store sandbox purchase has run end to end against RevenueDot Cloud on a physical iPhone.
 
 **Switching from RevenueCat? Keep your SDK and change one line.** An app that ships the RevenueCat SDK points its proxy URL at RevenueDot, and `customerInfo.entitlements["pro"]?.isActive` keeps working as it is. See the [migration guide](https://revenuedot.app/migrate-from-revenuecat), the [comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) and the [RevenueCat fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator). RevenueCat is free under $2,500 of monthly tracked revenue, then charges 1% of all tracked revenue ([RevenueCat](https://www.revenuecat.com/pricing)). If you are still deciding whether you need a backend at all, read [StoreKit 2 vs RevenueCat](storekit-2-vs-revenuecat.md).
 
@@ -233,15 +232,11 @@ Loop over `Transaction.currentEntitlements`, keep `.verified` results for your s
 
 ### Should I check expirationDate to decide access?
 
-Not for auto-renewable subscriptions. During a billing grace period the user keeps access while the transaction's `expirationDate` is already in the past. Use `currentEntitlements` or the renewal state for access, and use `expirationDate` for display.
+Not for auto-renewable subscriptions. In a billing grace period the user keeps access after the `expirationDate` has passed. Decide access from `currentEntitlements` or the renewal state, and show `expirationDate` as text.
 
 ### What is the difference between inGracePeriod and inBillingRetryPeriod?
 
 Both mean a renewal payment failed. In `inGracePeriod` the user keeps access while Apple retries, and in `inBillingRetryPeriod` they do not. Apple says only `subscribed` and `inGracePeriod` are entitled to service ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/renewalstate)).
-
-### Why does Product.SubscriptionInfo.status return more than one status?
-
-Family Sharing. A user can have their own expired plan and a shared active one. Apple says to give the highest level of service where the state is `subscribed` ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/status-swift.property)).
 
 ### Can I check subscription status without the app?
 

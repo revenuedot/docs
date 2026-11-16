@@ -16,15 +16,15 @@ This post is for builders shipping their first paid app, often with Flutter, Rea
 
 ## The short answer
 
-- **Send the first one with an app version.** This applies to the first item of each type and to your first subscription group. After the first item of a type is approved, later items of that type can go to review without a new version ([Apple](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/submit-an-in-app-purchase)).
-- **Finish the metadata first.** A product needs a display name and description in at least one language, a price, availability, and a review screenshot ([Apple](https://developer.apple.com/help/app-store-connect/reference/in-app-purchases-and-subscriptions/in-app-purchase-information)).
+- **Send the first one with an app version.** This covers the first item of each type and your first subscription group. Later items of an approved type can go alone ([Apple](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/submit-an-in-app-purchase)).
+- **Finish the metadata first.** Add a display name, description, price, availability and review screenshot ([Apple](https://developer.apple.com/help/app-store-connect/reference/in-app-purchases-and-subscriptions/in-app-purchase-information)).
 - **Sign the Paid Apps Agreement.** Apple says it must be active "in order for you to submit or update paid apps and In-App Purchases" ([Apple](https://developer.apple.com/help/app-store-connect/manage-agreements/sign-and-update-agreements)).
-- **The reviewer buys in the sandbox.** Your release build must load products and accept a sandbox purchase, and your server must too ([Apple](https://developer.apple.com/documentation/storekit/validating-receipts-with-the-app-store)).
-- **Show price, length, terms and a restore button.** Most first rejections cite guideline 2.1(b), 3.1.1 or 3.1.2 ([Apple](https://developer.apple.com/app-store/review/guidelines/)).
+- **The reviewer buys in the sandbox.** Your release build and your server must accept sandbox purchases ([Apple](https://developer.apple.com/documentation/storekit/validating-receipts-with-the-app-store)).
+- **Show price, length, terms and a restore button.** The common rejections cite guideline 2.1(b), 3.1.1 or 3.1.2 ([Apple](https://developer.apple.com/app-store/review/guidelines/)).
 
 ## Why the first purchase needs an app version
 
-A reviewer cannot judge a subscription without seeing the paywall and what the customer gets, so the first item of each type goes with a build. Your first subscription group must also go with a new app version, together with at least one of its subscriptions ([Apple](https://developer.apple.com/help/app-store-connect/manage-subscriptions/offer-auto-renewable-subscriptions)).
+The first item of each type goes to review with a build, so the reviewer can see it inside the app. Your first subscription group must also go with a new app version, together with at least one of its subscriptions ([Apple](https://developer.apple.com/help/app-store-connect/manage-subscriptions/offer-auto-renewable-subscriptions)).
 
 The rule is per type. After a monthly subscription is approved, a yearly plan can later go without a build. A first lifetime purchase, which is a non-consumable, needs a new app version again.
 
@@ -138,14 +138,13 @@ Our [testing guide](sandbox-testing-in-app-purchases.md) covers each test setup.
 
 1. The Paid Apps Agreement is active, and tax and banking are complete.
 2. Each product has a display name, description, price, availability and review screenshot.
-3. Review notes say where the paywall is and give a demo account if your app needs a login.
-4. The build you submit asks for the exact product IDs in App Store Connect.
-5. A TestFlight build loads prices and completes a sandbox purchase.
-6. Your server accepts sandbox purchases from that build and grants access.
-7. The paywall shows the name, length and full price, with the billed amount most prominent.
-8. The paywall and settings have a Restore purchases button.
-9. The paywall links to your Terms of Use and Privacy Policy.
-10. The app version and the first product of each type, plus a new subscription group, are in one submission.
+3. Review notes say where the paywall is and give a demo account if the app needs a login.
+4. The build asks for the exact product IDs in App Store Connect.
+5. A TestFlight build loads prices, and a sandbox purchase grants access.
+6. The paywall shows the name, length and full price, with the billed amount most prominent.
+7. The paywall and settings have a Restore purchases button.
+8. The paywall links to your Terms of Use and Privacy Policy.
+9. The app version and the first product of each type, plus a new subscription group, are in one submission.
 
 ## Google Play works differently
 
@@ -188,15 +187,15 @@ Before launch, read the [going to production checklist](../docs/guides/going-to-
 
 ### Why does my first in-app purchase need a new app version?
 
-Apple requires the first item of each type, and your first subscription group, to go to review with a new app version. After the first item of a type is approved, later items of that type can go alone ([Apple](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/submit-an-in-app-purchase)).
+Apple wants to review the first item of each type, and your first subscription group, inside a build. Later items of an approved type can go alone ([Apple](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/submit-an-in-app-purchase)).
 
 ### Why can't I find In-App Purchases and Subscriptions on the version page?
 
-Developers report that the section lists only products that are ready to submit, so finish any missing metadata first. Some also report the section missing entirely ([Apple Developer Forums](https://developer.apple.com/forums/thread/829091)). Apple's help now describes **Add for Review** on the product page, where you pick the app version ([Apple](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/submit-an-in-app-purchase)).
+Developers report that it lists only products ready to submit, and some find it missing entirely ([Apple Developer Forums](https://developer.apple.com/forums/thread/829091)). Use **Add for Review** on the product page and pick the app version there ([Apple](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/submit-an-in-app-purchase)).
 
 ### What does guideline 2.1(b) mean for in-app purchases?
 
-It means the reviewer could not find or use a product you configured. Apple asks that in-app purchases be complete, visible to the reviewer and functional, and that you explain in your review notes any item that cannot be found ([Apple](https://developer.apple.com/app-store/review/guidelines/)).
+The reviewer could not find or use a product you configured. Apple asks that in-app purchases be complete, visible and functional, and that review notes explain any item the reviewer cannot find ([Apple](https://developer.apple.com/app-store/review/guidelines/)).
 
 ### Does App Review make real purchases?
 
@@ -204,6 +203,6 @@ No. Reviewers buy in the sandbox while the app is in review, so your build and s
 
 ### Do Google Play products need review?
 
-Google's setup guide describes no separate product review. You publish an app with the Play Billing Library to any track, including internal testing, and then create your products in Play Console ([Google](https://developer.android.com/google/play/billing/getting-ready)).
+Google's setup guide has no separate product review. You publish an app with the Play Billing Library to any track, then create products in Play Console ([Google](https://developer.android.com/google/play/billing/getting-ready)).
 
 **About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](../docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](../docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
