@@ -49953,6 +49953,11 @@ Description: Posts from the RevenueDot team about building RevenueDot Cloud, an 
 
 Posts from the team building RevenueDot, an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK, free to start on [RevenueDot Cloud](https://app.revenuedot.app/signup). Newest first.
 
+## 2026-11-16
+- [How to sync subscription status to your own backend](https://raw.githubusercontent.com/revenuedot/docs/main/blog/sync-subscription-status-to-your-backend.md): why the app alone cannot gate server features, the webhook as a trigger followed by one customer lookup, `logIn` with your own user ID, an Express receiver and SQL table, idempotency, a nightly check, and RevenueDot webhooks.
+- [How to check subscription status in StoreKit 2](https://raw.githubusercontent.com/revenuedot/docs/main/blog/storekit-2-check-subscription-status.md): `Transaction.currentEntitlements` and `Product.SubscriptionInfo.Status`, the five renewal states, renewal info, SwiftUI's `subscriptionStatusTask`, what the device cannot tell you, and pitfalls developers report.
+- [How to submit your first in-app purchase for App Review](https://raw.githubusercontent.com/revenuedot/docs/main/blog/submit-first-in-app-purchase-for-review.md): Apple's rule that the first item of each type ships with a new app version, the product states and metadata, rejections under 2.1(b), 3.1.1 and 3.1.2, sandbox purchases during review, a checklist, and how Google Play differs.
+
 ## 2026-11-09
 - [Leave RevenueCat with a Flutter or React Native app](https://raw.githubusercontent.com/revenuedot/docs/main/blog/leave-revenuecat-flutter-react-native.md): what RevenueCat costs a two-store app at $30K to $100K a month, the `setProxyURL` change for Flutter, React Native and Expo, the dual run for both stores, Google Play purchase tokens, and what does not move.
 - [How to get App Store transaction history in Node.js](https://raw.githubusercontent.com/revenuedot/docs/main/blog/app-store-transaction-history-nodejs.md): the In-App Purchase key, Apple's Node.js library with the V2 endpoint, paging and filters, the 50-per-second rate limit, error `4040010`, and keeping the data current.
@@ -57493,6 +57498,249 @@ No for Google: its FAQ says it does not require parity across platforms ([Google
 
 ---
 
+# How to check subscription status in StoreKit 2
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/storekit-2-check-subscription-status.md
+Description: How to tell if a user is subscribed in StoreKit 2: currentEntitlements, renewal states, subscriptionStatusTask in SwiftUI, and why your server checks too.
+
+To check whether a user is subscribed in StoreKit 2, read `Transaction.currentEntitlements`, keep only results that are verified, and skip any transaction with a `revocationDate`. Apple says this sequence holds the latest transaction for each auto-renewable subscription in the `subscribed` or `inGracePeriod` state, and leaves out refunded and revoked products ([Apple](https://developer.apple.com/documentation/storekit/transaction/currententitlements)). When you also need to know why access ended, or whether the plan will renew, read `Product.SubscriptionInfo.Status` for the subscription group.
+
+This post shows both checks in Swift, the SwiftUI modifier that does it for you on iOS 17, what the device cannot tell you, and the problems developers report on Apple's forums. Every Apple fact links Apple's documentation and was checked on November 16, 2026.
+
+![Two columns: what the device can tell you about a subscription, such as currentEntitlements and the renewal state, and what the server adds, such as Apple's subscription status API and server notifications](https://github.com/revenuedot/docs/blob/main/blog/assets/storekit-2-check-subscription-status/cover.svg)
+
+## The short answer
+
+- **For "does this user have access right now", use `Transaction.currentEntitlements`.** Grant access only for `.verified` results whose `revocationDate` is nil.
+- **For "what state is the plan in", use `Product.SubscriptionInfo.Status`.** Its `state` is one of `subscribed`, `expired`, `inBillingRetryPeriod`, `inGracePeriod` or `revoked` ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/renewalstate)).
+- **Only two states give access.** Apple says `subscribed` and `inGracePeriod` are entitled to service, and the other three are not.
+- **In SwiftUI on iOS 17 and later, use `subscriptionStatusTask(for:)`.** It loads the status before the view appears and calls you again when it changes ([Apple](https://developer.apple.com/documentation/swiftui/view/subscriptionstatustask(for:priority:action:))).
+- **The device only knows about this Apple account on this device.** For web, Android or a closed app, your server asks Apple with the App Store Server API and listens for App Store Server Notifications.
+
+## What currentEntitlements includes and leaves out
+
+Apple lists what the sequence emits ([Apple](https://developer.apple.com/documentation/storekit/transaction/currententitlements)):
+
+- One transaction for each non-consumable purchase.
+- The latest transaction for each auto-renewable subscription whose state is `subscribed` or `inGracePeriod`.
+- The latest transaction for each non-renewing subscription, including finished ones.
+
+It leaves out products the App Store refunded or revoked, and it never includes consumables. Since it keeps non-renewing subscriptions after they end, your app decides when their time is up.
+
+Each element is a `VerificationResult<Transaction>`, which tells you whether StoreKit's signature check passed. Apple's sample handles `.unverified` "based on your business model", but for a paid feature the safe rule is to grant nothing.
+
+Here is a check for one subscription group:
+
+```swift
+import StoreKit
+
+/// True when the user has a verified, unrevoked subscription in the group.
+func hasActiveSubscription(groupID: String) async -> Bool {
+    for await result in Transaction.currentEntitlements {
+        guard case .verified(let transaction) = result else { continue }
+        guard transaction.productType == .autoRenewable,
+              transaction.subscriptionGroupID == groupID,
+              transaction.revocationDate == nil else { continue }
+        return true
+    }
+    return false
+}
+```
+
+Two fields deserve a closer look.
+
+1. **`revocationDate`** is the date the App Store refunded or revoked the transaction. Apple says this happens after a refund, after a Family Sharing revocation, or when the customer loses access through an organization or group ([Apple](https://developer.apple.com/documentation/storekit/transaction/revocationdate)). Revoked products should already be missing, so this check is a second guard.
+2. **`expirationDate`** is "the date the subscription expires or renews" ([Apple](https://developer.apple.com/documentation/storekit/transaction/expirationdate)). Be careful with it. A grace period starts when a renewal payment fails, so the latest transaction stays in `currentEntitlements` after its `expirationDate` has passed. If you add `expirationDate > .now` to the check, you cut off customers Apple wants you to keep serving. Use it for "renews on" text, not for access.
+
+## Read the renewal state for the full picture
+
+`currentEntitlements` tells you yes or no, and `Product.SubscriptionInfo.Status` tells you why. You get an array of statuses for a subscription group with the static `Product.SubscriptionInfo.status(for:)`, or from a loaded product with `product.subscription?.status`, which is `async throws` ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo)).
+
+Each status has three parts ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/status-swift.struct)):
+
+- `state`, the renewal state.
+- `transaction`, the latest transaction for the group, as a `VerificationResult<Transaction>`.
+- `renewalInfo`, the signed renewal info, as a `VerificationResult<RenewalInfo>`.
+
+The five renewal states, with what your app should do in each:
+
+| State | Apple's meaning | Give access? | What to show |
+|---|---|---|---|
+| `subscribed` | The customer is currently subscribed | Yes | Nothing special |
+| `inGracePeriod` | The subscription is in a billing grace period | Yes | Ask the user to update their payment method |
+| `inBillingRetryPeriod` | The subscription is in a billing retry period | No | Explain the payment failed and link to settings |
+| `expired` | The subscription expired | No | A paywall, maybe a win-back offer |
+| `revoked` | The App Store revoked access to the group | No | A paywall |
+
+The meanings and the access rule come from Apple's `RenewalState` page ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/renewalstate)). Our post on [billing grace period and retry](https://raw.githubusercontent.com/revenuedot/docs/main/blog/billing-grace-period-and-retry.md) shows both timelines.
+
+The array is empty when the customer was never subscribed to the group, and it can hold several entries when the subscription supports Family Sharing. A customer can be `expired` on their own purchase and `subscribed` through a family member, and then they are entitled to service. Apple says to give the highest level of service where the state is `subscribed` ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/status-swift.property)), so never read only the first status.
+
+### What renewalInfo adds
+
+`RenewalInfo` describes the next renewal period ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/renewalinfo)). The fields most apps use:
+
+- `willAutoRenew` tells you whether the plan renews at the end of this period. When it is false, show a "your plan ends on" message.
+- `expirationReason` tells you why it ended. Apple lists `autoRenewDisabled`, `billingError`, `didNotConsentToPriceIncrease`, `productUnavailable`, `unbundled` and `unknown` ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/renewalinfo/expirationreason-swift.struct)).
+- `isInBillingRetry` and `gracePeriodExpirationDate` give the details of a billing problem.
+
+## A complete status check in Swift
+
+This function reads every status in the group, verifies both signed parts, and returns one summary your UI can use.
+
+```swift
+import StoreKit
+
+struct ProStatus {
+    var hasAccess = false
+    var willRenew = false
+    var billingProblem = false
+    var expirationReason: Product.SubscriptionInfo.RenewalInfo.ExpirationReason?
+}
+
+func loadProStatus(groupID: String) async -> ProStatus {
+    var summary = ProStatus()
+    guard let statuses = try? await Product.SubscriptionInfo.status(for: groupID) else {
+        return summary // Network or App Store error: keep your last known answer instead.
+    }
+    for status in statuses {
+        // Trust nothing that failed verification.
+        guard case .verified = status.transaction,
+              case .verified(let renewal) = status.renewalInfo else { continue }
+
+        switch status.state {
+        case .subscribed:
+            summary.hasAccess = true
+            summary.willRenew = summary.willRenew || renewal.willAutoRenew
+        case .inGracePeriod:
+            summary.hasAccess = true
+            summary.billingProblem = true
+        case .inBillingRetryPeriod:
+            summary.billingProblem = true
+        case .expired, .revoked:
+            summary.expirationReason = renewal.expirationReason
+        default:
+            break
+        }
+    }
+    return summary
+}
+```
+
+Because the loop reads every status, a family member's active plan still grants access when the user's own plan has expired. If the call throws, keep the last answer you had and try again later, rather than locking the user out.
+
+To react to changes while the app runs, iterate `Product.SubscriptionInfo.Status.updates`, which Apple describes as the sequence that emits status information when a subscription's status changes ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/status-swift.struct)). Keep your `Transaction.updates` listener too, because that is where you call `finish()`. Our post on [Transaction.updates](https://raw.githubusercontent.com/revenuedot/docs/main/blog/storekit-2-transaction-updates.md) covers that listener in full.
+
+## Let SwiftUI do it with subscriptionStatusTask
+
+On iOS 17, macOS 14 and later, SwiftUI has a view modifier for this. `subscriptionStatusTask(for:priority:action:)` starts a task before the view appears, gets the status for the group, and calls your action whenever the status or the task's state changes ([Apple](https://developer.apple.com/documentation/swiftui/view/subscriptionstatustask(for:priority:action:))). The action receives an `EntitlementTaskState`, which is `.loading`, `.success` or `.failure` ([Apple](https://developer.apple.com/documentation/storekit/entitlementtaskstate)).
+
+```swift
+import StoreKit
+import SwiftUI
+
+struct RootView: View {
+    @State private var isPro = false
+    let groupID = "21482939" // Your subscription group ID from App Store Connect.
+
+    var body: some View {
+        HomeScreen(isPro: isPro)
+            .subscriptionStatusTask(for: groupID) { taskState in
+                guard let statuses = taskState.value else { return } // Loading or failed.
+                isPro = statuses.contains { status in
+                    guard case .verified = status.transaction else { return false }
+                    return status.state == .subscribed || status.state == .inGracePeriod
+                }
+            }
+    }
+}
+```
+
+Put the modifier high in the view tree, so it stays alive while the user moves between screens. It only runs while the view is shown, so it does not replace the `Transaction.updates` listener. Our [SwiftUI subscriptions tutorial](https://raw.githubusercontent.com/revenuedot/docs/main/blog/swiftui-subscriptions-tutorial.md) builds a full paywall around a check like this.
+
+## What the device cannot tell you
+
+Everything above runs on one device, for the Apple account signed in to it. That leaves three gaps:
+
+- **The same user on the web or Android.** Your other apps cannot read StoreKit.
+- **Changes while the app is closed.** A renewal, a refund or a failed payment overnight is invisible until the next launch.
+- **Your backend's own checks.** If your server serves paid content or an API, it cannot trust a boolean your app sends.
+
+Apple gives servers two tools for this. The App Store Server API's [Get All Subscription Statuses](https://developer.apple.com/documentation/appstoreserverapi/get-all-subscription-statuses) endpoint, `GET /inApps/v1/subscriptions/{anyTransactionId}`, returns the status of every subscription the customer has in your app, grouped by subscription group. It takes any of the customer's transaction IDs, and its `status` field uses numbers: 1 is active, 2 expired, 3 billing retry, 4 grace period and 5 revoked, the same five states as on the device ([Apple](https://developer.apple.com/documentation/appstoreserverapi/status)).
+
+[App Store Server Notifications](https://developer.apple.com/documentation/appstoreservernotifications) is the other half. Apple calls it a server-to-server service that sends real-time notifications for purchases, renewals, offer redemptions, refunds and more, so your database stays current when the app never opens. Our guide to [App Store Server Notifications V2](https://raw.githubusercontent.com/revenuedot/docs/main/blog/app-store-server-notifications-v2.md) lists each type, and the post on [server-side receipt validation](https://raw.githubusercontent.com/revenuedot/docs/main/blog/server-side-receipt-validation.md) shows how to verify what Apple sends.
+
+## Problems developers report on Apple's forums
+
+These are reports from developers, not confirmed Apple bugs, but they are worth planning for.
+
+1. **An empty `currentEntitlements` for a paying user.** Developers report production cases where both `Transaction.currentEntitlements` and `subscription.status` return nothing for an active annual subscription, even after `AppStore.sync()`, with the user stuck on the paywall ([thread 841930](https://developer.apple.com/forums/thread/841930)). No reply had been posted when we checked. A server that knows the user paid gives you a way to let them in while you investigate.
+2. **Offer code redemptions that do not show up.** Developers report that a subscription from a redeemed offer code is active in the user's account settings but missing from `currentEntitlements`, even after a sync ([thread 836181](https://developer.apple.com/forums/thread/836181)). An Apple engineer asked whether the app listens to `Transaction.updates`, where redemptions arrive, and asked for a Feedback Assistant report. Apple's server notifications also cover offer redemptions, and [looking up a purchase by order ID](https://raw.githubusercontent.com/revenuedot/docs/main/blog/look-up-purchase-by-order-id.md) helps when the customer has a receipt.
+3. **Expired subscriptions still listed during tests.** Developers testing with a StoreKit configuration file and shortened subscription periods report `currentEntitlements` returning expired subscriptions ([thread 729770](https://developer.apple.com/forums/thread/729770)). One developer traced their case to the device's wrong time zone. Apple notes that the sandbox renews subscriptions at an accelerated rate, up to 12 times, and that a subscription can lapse briefly before it renews ([Apple](https://developer.apple.com/documentation/storekit/testing-an-auto-renewable-subscription)). Check your device clock, and test lapses on purpose.
+
+## Check status with RevenueDot
+
+RevenueDot is an open-source backend for in-app purchases. It receives Apple's server notifications and verifies each signed transaction with Apple, then gives your app and your server one answer per entitlement. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/ios.md). Its code says `import RevenueCat` because it is built from RevenueCat's MIT-licensed SDK, and it needs no RevenueCat account.
+
+In the app, the whole status check comes down to one entitlement:
+
+```swift
+import RevenueCat
+
+let customerInfo = try await Purchases.shared.customerInfo()
+let pro = customerInfo.entitlements["pro"]
+
+let isPro = pro?.isActive == true              // Includes a billing grace period.
+let willRenew = pro?.willRenew == true          // False after the user turns off auto-renew.
+let billingProblem = pro?.billingIssueDetectedAt != nil
+```
+
+`isActive` compares the entitlement's expiration date with the time of the server's answer ([source](https://github.com/revenuedot/purchases-ios/blob/revenuedot/main-patches/Sources/Purchasing/EntitlementInfo.swift)). The server sets that date for you: a grace period extends access to its end, and a refund ends access at the refund time ([source](https://github.com/revenuedot/revenuedot/blob/main/packages/core/src/entitlements.ts)). So the grace period rule and the revocation rule from earlier are already applied.
+
+On your server, ask RevenueDot with your secret key. `GET /v1/subscribers/{app_user_id}` returns the same customer info the SDK reads, and an entitlement is active while its `expires_date` is null or in the future ([SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md)).
+
+```js
+// Node.js 18 or later. Never ship the secret key in an app.
+export async function isPro(appUserId) {
+  const res = await fetch(
+    `https://api.revenuedot.app/v1/subscribers/${encodeURIComponent(appUserId)}`,
+    { headers: { Authorization: `Bearer ${process.env.REVENUEDOT_SECRET_KEY}` } },
+  );
+  if (!res.ok) throw new Error(`RevenueDot answered ${res.status}`);
+  const { subscriber } = await res.json();
+  const pro = subscriber.entitlements.pro;
+  return Boolean(pro) && (pro.expires_date === null || new Date(pro.expires_date) > new Date());
+}
+```
+
+For events instead of polling, add a [webhook](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md). The [App Store setup guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md) connects Apple's notifications, and [Why is my entitlement not active?](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/entitlement-not-active.md) covers what to check when the answer looks wrong. A real App Store sandbox purchase has run end to end against RevenueDot Cloud on a physical iPhone.
+
+**Switching from RevenueCat? Keep your SDK and change one line.** An app that ships the RevenueCat SDK points its proxy URL at RevenueDot, and `customerInfo.entitlements["pro"]?.isActive` keeps working as it is. See the [migration guide](https://revenuedot.app/migrate-from-revenuecat), the [comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) and the [RevenueCat fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator). RevenueCat is free under $2,500 of monthly tracked revenue, then charges 1% of all tracked revenue ([RevenueCat](https://www.revenuecat.com/pricing)). If you are still deciding whether you need a backend at all, read [StoreKit 2 vs RevenueCat](https://raw.githubusercontent.com/revenuedot/docs/main/blog/storekit-2-vs-revenuecat.md).
+
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month. See [pricing](https://revenuedot.app/pricing).
+
+## FAQ
+
+### How do I check if a user is subscribed in StoreKit 2?
+
+Loop over `Transaction.currentEntitlements`, keep `.verified` results for your subscription group, and skip any with a `revocationDate`. Apple includes auto-renewable subscriptions in the `subscribed` or `inGracePeriod` state and leaves out refunded ones ([Apple](https://developer.apple.com/documentation/storekit/transaction/currententitlements)).
+
+### Should I check expirationDate to decide access?
+
+Not for auto-renewable subscriptions. In a billing grace period the user keeps access after the `expirationDate` has passed. Decide access from `currentEntitlements` or the renewal state, and show `expirationDate` as text.
+
+### What is the difference between inGracePeriod and inBillingRetryPeriod?
+
+Both mean a renewal payment failed. In `inGracePeriod` the user keeps access while Apple retries, and in `inBillingRetryPeriod` they do not. Apple says only `subscribed` and `inGracePeriod` are entitled to service ([Apple](https://developer.apple.com/documentation/storekit/product/subscriptioninfo/renewalstate)).
+
+### Can I check subscription status without the app?
+
+Yes, on a server. Call the App Store Server API's Get All Subscription Statuses endpoint with any of the customer's transaction IDs, and listen for App Store Server Notifications ([Apple](https://developer.apple.com/documentation/appstoreserverapi/get-all-subscription-statuses)).
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
 # How to handle StoreKit 2 Transaction.updates
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/storekit-2-transaction-updates.md
@@ -57803,6 +58051,212 @@ RevenueCat's page says nothing is due up to $2,500 in monthly tracked revenue, t
 ### Can I move from RevenueCat to an open-source server?
 
 Yes. RevenueDot imports your data and works with the same SDK, so the app change is the proxy URL. See [migrating without losing a subscriber](https://raw.githubusercontent.com/revenuedot/docs/main/blog/migrating-from-revenuecat-without-data-loss.md).
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
+# How to submit your first in-app purchase for App Review
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/submit-first-in-app-purchase-for-review.md
+Description: Apple makes your first in-app purchase or subscription go to review with a new app version. The states, the metadata, common rejections and a checklist to pass.
+
+Your first in-app purchase does not go to App Review on its own. Apple says the first consumable, non-consumable, auto-renewable subscription and non-renewing subscription of each type "must be submitted with a new app version" ([Apple](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/submit-an-in-app-purchase)). If the app goes without its subscription, the reviewer sees a paywall with no prices and rejects it. The fix is to finish the product's metadata, sign the Paid Apps Agreement, and put the app version and the product in one submission.
+
+This post is for builders shipping their first paid app, often with Flutter, React Native, Expo or an AI coding tool. It covers the product states, where the product goes in the submission, the common rejections, how the reviewer buys, and a checklist. Every fact about Apple and Google links its source and was checked on November 16, 2026.
+
+![Two columns: what to finish in App Store Connect, such as the Paid Apps Agreement and the review screenshot, and what to finish in the app, such as showing price and length and adding a restore button](https://github.com/revenuedot/docs/blob/main/blog/assets/submit-first-in-app-purchase-for-review/cover.svg)
+
+## The short answer
+
+- **Send the first one with an app version.** This covers the first item of each type and your first subscription group. Later items of an approved type can go alone ([Apple](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/submit-an-in-app-purchase)).
+- **Finish the metadata first.** Add a display name, description, price, availability and review screenshot ([Apple](https://developer.apple.com/help/app-store-connect/reference/in-app-purchases-and-subscriptions/in-app-purchase-information)).
+- **Sign the Paid Apps Agreement.** Apple says it must be active "in order for you to submit or update paid apps and In-App Purchases" ([Apple](https://developer.apple.com/help/app-store-connect/manage-agreements/sign-and-update-agreements)).
+- **The reviewer buys in the sandbox.** Your release build and your server must accept sandbox purchases ([Apple](https://developer.apple.com/documentation/storekit/validating-receipts-with-the-app-store)).
+- **Show price, length, terms and a restore button.** The common rejections cite guideline 2.1(b), 3.1.1 or 3.1.2 ([Apple](https://developer.apple.com/app-store/review/guidelines/)).
+
+## Why the first purchase needs an app version
+
+The first item of each type goes to review with a build, so the reviewer can see it inside the app. Your first subscription group must also go with a new app version, together with at least one of its subscriptions ([Apple](https://developer.apple.com/help/app-store-connect/manage-subscriptions/offer-auto-renewable-subscriptions)).
+
+The rule is per type. After a monthly subscription is approved, a yearly plan can later go without a build. A first lifetime purchase, which is a non-consumable, needs a new app version again.
+
+Our post on [products that fail to load](https://raw.githubusercontent.com/revenuedot/docs/main/blog/in-app-products-not-loading.md) covers why StoreKit returns an empty list while you test. This post covers getting the product approved with the build.
+
+## The states your product moves through
+
+The App Store Connect API lists the product states, including `MISSING_METADATA`, `READY_TO_SUBMIT`, `WAITING_FOR_REVIEW`, `DEVELOPER_ACTION_NEEDED` and `APPROVED` ([Apple](https://developer.apple.com/documentation/appstoreconnectapi/inapppurchasestate)). Apple's help page uses other labels for some, such as Prepare for Submission ([Apple](https://developer.apple.com/help/app-store-connect/reference/in-app-purchases-and-subscriptions/in-app-purchase-statuses)).
+
+| State | What it means | What to do |
+|---|---|---|
+| Missing Metadata | Something required is empty | Add the display name, description, price, availability and review screenshot |
+| Ready to Submit (Prepare for Submission) | The product is complete but not in a submission | Add it for review with the app version |
+| Ready for Review | It is in a draft submission that has not been sent | Send the submission |
+| Waiting for Review, In Review | Apple has it | Wait. You can edit only the reference name, price and availability ([Apple](https://developer.apple.com/help/app-store-connect/reference/in-app-purchases-and-subscriptions/in-app-purchase-statuses)) |
+| Developer Action Needed, Rejected | Apple sent it back | Read the message, fix the item, and resubmit |
+| Approved | It is live | Later items of this type can go without a build |
+
+If the app version is rejected, a product in the same submission can show Accepted, and it "won't be approved until all items in the submission are accepted" ([Apple](https://developer.apple.com/help/app-store-connect/reference/in-app-purchases-and-subscriptions/in-app-purchase-statuses)).
+
+## What Missing Metadata usually means
+
+These are the fields first-timers skip ([Apple](https://developer.apple.com/help/app-store-connect/reference/in-app-purchases-and-subscriptions/in-app-purchase-information)):
+
+1. **Display name and description.** You need them in at least one language. The display name is 2 to 30 characters, and the description is at most 45.
+2. **Review screenshot.** It must clearly show what you sell, in one of the screenshot sizes your app supports. Only App Review sees it.
+3. **Review notes.** Apple suggests test accounts and passwords, up to 4,000 characters.
+4. **Price and availability.** Pick a price and at least one country or region. A subscription also needs a duration ([Apple](https://developer.apple.com/help/app-store-connect/manage-subscriptions/offer-auto-renewable-subscriptions)).
+
+Then check the account. The Account Holder signs the Paid Apps Agreement under Business, Agreements ([Apple](https://developer.apple.com/help/app-store-connect/manage-agreements/sign-and-update-agreements)). To get paid, you also need banking information and tax forms, and every developer completes a US tax form ([Apple](https://developer.apple.com/help/app-store-connect/manage-tax-information/provide-tax-information)).
+
+## Where the product goes in the submission
+
+Older guides tell you to select the product in the In-App Purchases and Subscriptions section of the app version page. Apple's current help starts from the product instead ([Apple](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/submit-an-in-app-purchase)):
+
+1. In Apps, open your app, and under Monetization open In-App Purchases or Subscriptions.
+2. Open the product and click **Add for Review**.
+3. Pick an existing draft submission or click **Create New Submission**.
+4. If the product needs an app version, choose the platform and version. Add the subscription group too if it is not approved yet.
+5. Check the list of items and click **Submit for Review**.
+
+Developers report that the version page section is often missing. In one thread, an Expo developer could not find it and was rejected twice under guideline 2.1(b) ([Apple Developer Forums](https://developer.apple.com/forums/thread/829091)). In another, a developer removed the version from a rejected submission, and App Store Connect moved it into the draft that held the subscription ([Apple Developer Forums](https://developer.apple.com/forums/thread/841193)). That developer believes Apple changed this flow in July 2026, which Apple's pages do not confirm.
+
+Developers also report that the section lists only products that are ready to submit, and that a rejected product moves to Developer Action Needed and drops off the list. If you cannot find your product, check its state, then use **Add for Review** on the product page.
+
+## The rejections that catch first submissions
+
+| Guideline | What it says, in short | The usual cause |
+|---|---|---|
+| 2.1(b) | In-app purchases must be "complete, up-to-date, visible to the reviewer and functional" | The product was not in the submission, or prices did not load in review |
+| 3.1.1 | Paid features must use in-app purchase, and restorable purchases need a restore mechanism | A license key or code that opens paid content, or no Restore button |
+| 3.1.2(a) | A subscription must give ongoing value and last at least seven days | A short or one-off item sold as a subscription |
+| 3.1.2(c) | Before asking a customer to subscribe, say what they get for the price | Missing price, length or terms on the paywall |
+
+Source for all rows: [Apple App Review Guidelines](https://developer.apple.com/app-store/review/guidelines/). Guideline 2.1(b) also says that if a configured item cannot be found or reviewed in your app, you should explain why in your review notes.
+
+### Guideline 2.1(b): the reviewer found no products
+
+Either the product was not in the submission, or the paywall loaded nothing during review. A blank paywall looks broken, so show an error with a retry button. This StoreKit 2 view also has the restore button that guideline 3.1.1 asks for.
+
+```swift
+import StoreKit
+import SwiftUI
+
+struct PaywallView: View {
+    @State private var products: [Product] = []
+    @State private var failed = false
+
+    var body: some View {
+        VStack(spacing: 12) {
+            ForEach(products) { product in
+                Button("\(product.displayName), \(product.displayPrice)") {
+                    Task { _ = try? await product.purchase() }
+                }
+            }
+            if failed {
+                Text("Prices could not load. Check your connection and try again.")
+                Button("Try again") { Task { await load() } }
+            }
+            Button("Restore purchases") { Task { try? await AppStore.sync() } }
+        }
+        .task { await load() }
+    }
+
+    func load() async {
+        products = (try? await Product.products(for: ["pro_monthly", "pro_annual"])) ?? []
+        failed = products.isEmpty
+    }
+}
+```
+
+`Product.products(for:)` leaves out IDs it cannot find and returns an empty list instead of an error ([Apple](https://developer.apple.com/documentation/storekit/product/products(for:))), which is why the empty case needs its own message.
+
+### Guideline 3.1.2: what the paywall must show
+
+Apple's subscription page says the sign-up screen needs the subscription's name and length, what the customer gets, the full renewal price, and a way to restore ([Apple](https://developer.apple.com/app-store/subscriptions/)). The billed amount must be the most prominent price, so a yearly plan shows the yearly total first. For a free trial, say how long it lasts and what is billed after. Your app and App Store metadata must also link to your Terms of Use and Privacy Policy.
+
+See our posts on the [free trial toggle rejection](https://raw.githubusercontent.com/revenuedot/docs/main/blog/apple-free-trial-toggle-rejection.md) and on [restore purchases](https://raw.githubusercontent.com/revenuedot/docs/main/blog/restore-purchases-ios-android.md).
+
+## How products load during review
+
+The reviewer runs your release build, but purchases happen in Apple's sandbox. Apple's receipt guide says to use the sandbox "while your app is in review" and to retry against the sandbox when production answers with status `21007` ([Apple](https://developer.apple.com/documentation/storekit/validating-receipts-with-the-app-store)). That guide covers the older receipt API, but the lesson holds for any server:
+
+- **Your server must accept sandbox purchases.** Otherwise the reviewer pays and gets nothing.
+- **Your products must reach the sandbox.** Apple says metadata changes can take up to one hour to appear there ([Apple](https://developer.apple.com/help/app-store-connect/manage-in-app-purchases/create-consumable-or-non-consumable-in-app-purchases)).
+- **TestFlight is the closest rehearsal.** Apps from TestFlight always run in the sandbox ([Apple](https://developer.apple.com/documentation/storekit/testing-in-app-purchases-with-sandbox)).
+
+Our [testing guide](https://raw.githubusercontent.com/revenuedot/docs/main/blog/sandbox-testing-in-app-purchases.md) covers each test setup.
+
+## Checklist before you press Submit
+
+1. The Paid Apps Agreement is active, and tax and banking are complete.
+2. Each product has a display name, description, price, availability and review screenshot.
+3. Review notes say where the paywall is and give a demo account if the app needs a login.
+4. The build asks for the exact product IDs in App Store Connect.
+5. A TestFlight build loads prices, and a sandbox purchase grants access.
+6. The paywall shows the name, length and full price, with the billed amount most prominent.
+7. The paywall and settings have a Restore purchases button.
+8. The paywall links to your Terms of Use and Privacy Policy.
+9. The app version and the first product of each type, plus a new subscription group, are in one submission.
+
+## Google Play works differently
+
+Google's setup guide has no separate review step for products. It says you first publish a version of your app that includes the Play Billing Library, to any track, including the internal test track. Only then can you create and sell products ([Google](https://developer.android.com/google/play/billing/getting-ready)). You also need a linked payments profile, and a new testing track can take a few hours to reach testers ([Google](https://developer.android.com/google/play/billing/test)). For a cross-platform app, upload an internal test build early.
+
+## Do it with RevenueDot
+
+RevenueDot is an open-source backend for in-app purchases and subscriptions. It helps with the parts of review outside App Store Connect.
+
+- **Build the paywall before Apple is ready.** The [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md) loads products with a `test_` key before the agreement and products are done. Ship your `appl_` and `goog_` keys in the release build.
+- **Use the store's own product IDs.** [Import products](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/import-products.md) reads your products from App Store Connect and Google Play, so your offerings use the same IDs. The [App Store guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/app-store.md) shows how to create a product from your catalog; you still add its price, screenshot and localizations in App Store Connect.
+- **Sandbox purchases work in release builds.** RevenueDot takes the environment from Apple's signed transaction, so the reviewer's sandbox purchase grants access like a real one, while charts count only production by default ([Sandbox](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/sandbox.md)).
+- **Paywalls with the required parts.** [Paywall](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md) templates ask for your Terms and Privacy links, and the editor has a Restore purchases button.
+
+New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md). Its code says `import RevenueCat` because it is built from RevenueCat's MIT-licensed SDK, and it needs no RevenueCat account. In React Native or Expo, the same empty check looks like this:
+
+```ts
+import Purchases from "react-native-purchases";
+
+export async function loadPaywall() {
+  const offerings = await Purchases.getOfferings();
+  const packages = offerings.current?.availablePackages ?? [];
+  if (packages.length === 0) return { error: "Prices could not load. Please try again." };
+  return { packages: packages.map((p) => ({ id: p.identifier, price: p.product.priceString })) };
+}
+
+export async function restore() {
+  const info = await Purchases.restorePurchases();
+  return Object.keys(info.entitlements.active).length > 0;
+}
+```
+
+Before launch, read the [going to production checklist](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/going-to-production.md) and our [SwiftUI subscriptions tutorial](https://raw.githubusercontent.com/revenuedot/docs/main/blog/swiftui-subscriptions-tutorial.md).
+
+**Switching from RevenueCat? Keep your SDK and change one line.** An app that ships the RevenueCat SDK can point its proxy URL at RevenueDot and keep its code, offerings and customers. See the [migration guide](https://revenuedot.app/migrate-from-revenuecat), the [comparison](https://revenuedot.app/compare) and the [tools](https://revenuedot.app/tools).
+
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month. See [pricing](https://revenuedot.app/pricing).
+
+## FAQ
+
+### Why does my first in-app purchase need a new app version?
+
+Apple wants to review the first item of each type, and your first subscription group, inside a build. Later items of an approved type can go alone ([Apple](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/submit-an-in-app-purchase)).
+
+### Why can't I find In-App Purchases and Subscriptions on the version page?
+
+Developers report that it lists only products ready to submit, and some find it missing entirely ([Apple Developer Forums](https://developer.apple.com/forums/thread/829091)). Use **Add for Review** on the product page and pick the app version there ([Apple](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/submit-an-in-app-purchase)).
+
+### What does guideline 2.1(b) mean for in-app purchases?
+
+The reviewer could not find or use a product you configured. Apple asks that in-app purchases be complete, visible and functional, and that review notes explain any item the reviewer cannot find ([Apple](https://developer.apple.com/app-store/review/guidelines/)).
+
+### Does App Review make real purchases?
+
+No. Reviewers buy in the sandbox while the app is in review, so your build and server must accept sandbox purchases ([Apple](https://developer.apple.com/documentation/storekit/validating-receipts-with-the-app-store)).
+
+### Do Google Play products need review?
+
+Google's setup guide has no separate product review. You publish an app with the Play Billing Library to any track, then create products in Play Console ([Google](https://developer.android.com/google/play/billing/getting-ready)).
 
 **About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
 
@@ -58531,6 +58985,226 @@ Use the app's notification URL from RevenueDot, in the form `https://api.revenue
 ### Can I test without an Apple account?
 
 Yes. Create a Test Store app in RevenueDot and use its `test_` key in a Debug build. The SDK shows a Test Store dialog instead of Apple's sheet. It proves your code path, not Apple's.
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
+# How to sync subscription status to your own backend
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/sync-subscription-status-to-your-backend.md
+Description: Keep a Firebase, Supabase or Node backend in sync with App Store and Google Play subscriptions: treat webhooks as a trigger, fetch the customer, check nightly.
+
+To sync subscription status to your own backend, use the same user ID in the app and on the server, and let a webhook tell your server when something changed. Do not write separate logic for each event type. When any webhook arrives, check its authorization header, fetch that customer's current state with one REST call, and save it in a table that your API reads before every paid call. A nightly job then re-checks the rows that are about to expire, in case a webhook never arrived.
+
+This post is for Flutter, React Native and Expo apps that sell on the App Store and Google Play and have their own backend on Firebase, Supabase or Node.js. It covers the three signals, a Node.js webhook receiver and a SQL table. Every fact about RevenueCat links its source and was checked on November 16, 2026.
+
+![Two columns: what your server does when a webhook arrives, such as fetching the customer's current state, and what your API checks before a paid call, such as the expiry date](https://github.com/revenuedot/docs/blob/main/blog/assets/sync-subscription-status-to-your-backend/cover.svg)
+
+## The short answer
+
+- **Do not trust the app for server features.** Your API should check its own database before it spends money on an AI call.
+- **Use one user ID everywhere.** Call `logIn` with your Firebase `uid` or Supabase user `id`, so webhooks name the same person your API sees.
+- **Treat every webhook as a trigger.** Check the `Authorization` header, then fetch the customer with `GET /v1/subscribers/{app_user_id}` and save what it says.
+- **Answer 200 only when you saved it.** Any other answer makes the sender try again later.
+- **Run a reconciliation job.** Once a day, re-fetch customers whose access ends soon or just ended.
+- **Store sandbox and production apart.** Only production rows should grant access in your live API.
+
+## Why the app alone is not enough
+
+The purchases SDK tells your app whether the customer has an active entitlement. That is the right place to decide whether to show a paywall, but not whether your server should run an expensive request. Anything the app sends can be changed by the person holding the phone, so a flag like `isPro: true` in a request body proves nothing. Many changes also happen while the app is closed, such as a renewal at night, a refund or a failed card. And some backend work runs with no app in the loop, such as a weekly report for paying users. So the server needs its own copy of the truth. The app is still useful as a fast path: after a purchase, it can ask your API to "check me now", and the server fetches the state itself.
+
+## The three signals your server can use
+
+| Signal | What it tells you | When it fires | Weakness |
+|---|---|---|---|
+| Webhook | Something changed for this customer | Seconds after the change, usually | Can repeat, arrive late or arrive out of order |
+| REST lookup per customer | The customer's full current state | Whenever you call it | You have to know when to call it |
+| Reconciliation job | Rows that drifted from the truth | On your schedule, for example nightly | Slow, so it is a safety net and not the main path |
+
+The webhook answers "when", the lookup answers "what", and the job catches what the other two missed.
+
+## Treat the webhook as a trigger, not as the data
+
+The tempting design is a big `switch` on the event type: add access on `INITIAL_PURCHASE`, extend it on `RENEWAL`, remove it on `EXPIRATION`. It breaks in quiet ways. You must get upgrades, refunds, pauses and transfers right, a late event can undo a newer one, and a missed event leaves the row wrong forever.
+
+The better design uses the event only as a signal. When any webhook arrives, read the user ID from it, fetch that customer's current state, and overwrite your row. A repeated event writes the same row again, a late event still writes today's state, and a new event type still works.
+
+This is not our idea. RevenueCat's webhook docs suggest calling `GET /subscribers` after every webhook instead of writing logic per event type ([RevenueCat](https://www.revenuecat.com/docs/integrations/webhooks)), and a RevenueCat staff member gave a Flutter developer the same advice in their community forum ([RevenueCat community](https://community.revenuecat.com/general-questions-7/syncing-backend-with-user-s-iap-subscription-status-in-flutter-projec-3507)). The same docs set the other rules a receiver must follow: check the authorization header on every request, answer with a 200 because any other status counts as a failure, answer within 60 seconds, and expect up to five retries spread over about 80 minutes.
+
+## Use the same user ID in the app and on the server
+
+Webhooks and lookups use the app user ID. Your server cannot match the SDK's anonymous ID, which starts with `$RCAnonymousID:`, to a user, so call `logIn` with your own ID as soon as the customer signs in.
+
+```dart
+// Flutter (purchases_flutter), after Firebase sign-in
+final user = FirebaseAuth.instance.currentUser!;
+final result = await Purchases.logIn(user.uid);
+```
+
+```ts
+// React Native or Expo (react-native-purchases), after Supabase sign-in
+const { data: { user } } = await supabase.auth.getUser();
+const { customerInfo } = await Purchases.logIn(user!.id);
+```
+
+When an anonymous customer who already bought something calls `logIn`, the purchase follows them to the new ID; the rules are in [customers and app user IDs](https://raw.githubusercontent.com/revenuedot/docs/main/docs/concepts/customers-and-app-user-ids.md). Use an ID that cannot be guessed, such as a database ID, rather than an email address. The same ID on every platform also lets one subscription work on iOS, Android and the web, as our post on [sharing a subscription across platforms](https://raw.githubusercontent.com/revenuedot/docs/main/blog/share-subscription-across-ios-android-web.md) shows.
+
+## What to store
+
+Store one row per user and entitlement, not one row per event, because your API only asks whether this user has this entitlement right now.
+
+```sql
+create table entitlements (
+  app_user_id  text        not null,
+  entitlement  text        not null,             -- for example 'pro'
+  product_id   text        not null,             -- the store product that gives it
+  store        text,                             -- app_store, play_store, stripe ...
+  environment  text        not null check (environment in ('sandbox', 'production')),
+  expires_at   timestamptz,                      -- null means lifetime access
+  synced_at    timestamptz not null,             -- server time of the lookup
+  primary key (app_user_id, entitlement)
+);
+```
+
+Your code checks `entitlement`, so you can change products without touching your API. `expires_at` lets the API decide without a network call. `store` and `product_id` tell support where the customer bought. `environment` keeps a tester's sandbox purchase from granting access to a live account, and `synced_at` stops a slow lookup from overwriting a newer one.
+
+The check in your API is then one query:
+
+```sql
+select 1 from entitlements
+where app_user_id = $1 and entitlement = 'pro' and environment = 'production'
+  and (expires_at is null or expires_at > now());
+```
+
+An app that sells credits needs a ledger instead, as our post on [selling credits](https://raw.githubusercontent.com/revenuedot/docs/main/blog/sell-credits-in-app-purchases.md) shows.
+
+## A Node.js webhook receiver
+
+This receiver uses Express and `pg`. It checks the `Authorization` header, fetches each changed customer with a secret key that stays on your server, and upserts their rows.
+
+```js
+import express from "express";
+import { timingSafeEqual } from "node:crypto";
+import pg from "pg";
+
+const db = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+const API = process.env.PURCHASES_API_URL; // https://api.revenuedot.app on RevenueDot Cloud
+const app = express();
+
+function authorized(req) {
+  const got = Buffer.from(req.get("Authorization") ?? "");
+  const want = Buffer.from(process.env.WEBHOOK_AUTHORIZATION);
+  return got.length === want.length && timingSafeEqual(got, want);
+}
+
+app.post("/webhooks/purchases", express.json(), async (req, res) => {
+  if (!authorized(req)) return res.sendStatus(401);
+  const { event } = req.body;
+  // A TRANSFER names two customers; every other type names one.
+  const ids = event.type === "TRANSFER"
+    ? [...event.transferred_from, ...event.transferred_to]
+    : [event.app_user_id];
+  try {
+    for (const id of ids) await syncCustomer(id);
+    res.sendStatus(200); // only 200 counts as delivered
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(500); // the sender retries later
+  }
+});
+
+export async function syncCustomer(appUserId) {
+  const r = await fetch(`${API}/v1/subscribers/${encodeURIComponent(appUserId)}`, {
+    headers: { Authorization: `Bearer ${process.env.SECRET_KEY}` },
+  });
+  if (!r.ok) throw new Error(`lookup failed with ${r.status}`);
+  const { request_date_ms, subscriber } = await r.json();
+  const names = Object.keys(subscriber.entitlements);
+  for (const name of names) {
+    const e = subscriber.entitlements[name];
+    const sub = subscriber.subscriptions[e.product_identifier]
+      ?? subscriber.non_subscriptions[e.product_identifier]?.at(-1);
+    await db.query(
+      `insert into entitlements as t
+         (app_user_id, entitlement, product_id, store, environment, expires_at, synced_at)
+       values ($1, $2, $3, $4, $5, $6, to_timestamp($7 / 1000.0))
+       on conflict (app_user_id, entitlement) do update set
+         product_id = excluded.product_id, store = excluded.store,
+         environment = excluded.environment, expires_at = excluded.expires_at,
+         synced_at = excluded.synced_at
+       where t.synced_at <= excluded.synced_at`,
+      [appUserId, name, e.product_identifier, sub?.store ?? null,
+       sub?.is_sandbox ? "sandbox" : "production", e.expires_date, request_date_ms],
+    );
+  }
+  // An entitlement that is gone from the answer, for example after a transfer, is gone here too.
+  await db.query(
+    "delete from entitlements where app_user_id = $1 and not (entitlement = any($2))",
+    [appUserId, names],
+  );
+}
+
+app.listen(3000);
+```
+
+The answer lists entitlements even after they expire, so an expired subscription writes an old `expires_at` and the check above denies it. The fetch runs before the 200, so if your database is down, the 500 makes the sender retry. Keep the handler well under the 60-second timeout; if your work is slow, save the event, answer 200, and process it in a queue. On Firebase the same code fits an HTTPS Cloud Function, and on Supabase an Edge Function.
+
+## Idempotency and ordering
+
+Webhooks are delivered at least once, so the same event can arrive twice, and delivery order is not guaranteed ([webhooks](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md#4-retries-and-delivery-guarantees)). The fetch-and-overwrite design is safe against repeats, because writing the same state twice changes nothing; saving each `event.id` and skipping repeats only saves a lookup. Order is the bigger risk. If your code acts on what each event says, an old `EXPIRATION` that arrives after a newer `RENEWAL` locks out a paying customer. With the handler above, the late event only triggers one more lookup, and the lookup returns the truth.
+
+## The reconciliation job
+
+A webhook can still be lost, for example when your server is down for longer than the retries last. A small daily job closes that gap by re-fetching every row whose `expires_at` falls near now, because those rows are the most likely to change.
+
+```js
+// Run once a day, for example with a cron trigger or a scheduled function.
+const { rows } = await db.query(
+  `select distinct app_user_id from entitlements
+   where expires_at between now() - interval '3 days' and now() + interval '1 day'`,
+);
+for (const { app_user_id } of rows) await syncCustomer(app_user_id);
+```
+
+A customer who bought while every webhook failed is not in your table yet, so also run `syncCustomer` when the app calls your API after a purchase or restore. For a full rebuild, REST API v2 can [list every customer](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-or-search-customers) in pages.
+
+## Do it with RevenueDot
+
+RevenueDot is an open-source backend for in-app purchases and subscriptions on the App Store, Google Play and the web. It sends webhooks in RevenueCat's format, so the receiver above works as written. Here is what its docs describe:
+
+- **Two kinds of proof.** Add a webhook in **Integrations → Webhooks** or with the API. It can send an `authorization_header` exactly as you typed it, and every delivery also carries an `X-RevenueCat-Webhook-Signature` header: an HMAC-SHA256 of the raw body, signed with a `whsec_...` secret that is shown once. The HMAC is the stronger check because it proves the body was not changed; read the body with `express.raw()` to verify it. The [webhooks guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/webhooks.md#3-verify-the-signature) has the code, and there is a [runnable receiver](https://github.com/revenuedot/examples/tree/main/backend/node-express-webhook).
+- **Clear retry rules.** Only HTTP 200 counts. Each attempt waits up to 60 seconds, and a failure is retried after 5, 10, 20, 40 and 80 minutes. The dashboard shows every attempt and your server's answer, with a Retry button.
+- **Filters.** Set `environment` to `production` or `sandbox`, or leave it empty for both, and use `app_id` for one app's events.
+- **A documented event list.** RevenueDot sends 19 of RevenueCat's 21 event types, each with its own page under [webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/docs/webhooks/README.md); every field is in [which webhook events RevenueDot sends](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md).
+- **The customer lookup.** `GET /v1/subscribers/{app_user_id}` with a secret key returns entitlements, subscriptions and one-time purchases ([SDK endpoints](https://raw.githubusercontent.com/revenuedot/docs/main/api/sdk-endpoints.md)). It creates the customer when the ID is new, so do not call it with made-up IDs. REST API v2 also lists [a customer's active entitlements](https://raw.githubusercontent.com/revenuedot/docs/main/api/rest-v2.md#list-a-customers-active-entitlements); [authentication](https://raw.githubusercontent.com/revenuedot/docs/main/api/authentication.md) explains secret keys.
+- **Test events.** **Send test event** delivers a signed `TEST` event, and the [Test Store](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/test-store.md) creates renewals, cancellations and refunds that fire real webhooks.
+
+To be clear about where this stands: a real App Store sandbox purchase has run end to end against RevenueDot Cloud on a physical iPhone, but no real Google Play purchase has yet; Google Play handling is tested against a copy of Google's API. If [webhooks are not arriving](https://raw.githubusercontent.com/revenuedot/docs/main/docs/help/webhooks-not-arriving.md), that page lists common causes.
+
+New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md). Its code says `import RevenueCat` because it is built from RevenueCat's MIT-licensed SDK, and it needs no RevenueCat account. Our [Flutter](https://raw.githubusercontent.com/revenuedot/docs/main/blog/flutter-in-app-purchases-tutorial.md) and [React Native and Expo](https://raw.githubusercontent.com/revenuedot/docs/main/blog/react-native-expo-subscriptions-tutorial.md) tutorials set up the app side, and [server-side receipt validation](https://raw.githubusercontent.com/revenuedot/docs/main/blog/server-side-receipt-validation.md) explains what the backend does with the stores.
+
+**Switching from RevenueCat? Keep your SDK and change one line.** An app that ships the RevenueCat SDK points its proxy URL at RevenueDot and keeps its code, offerings and customers. Your webhook handler stays too, because RevenueDot uses RevenueCat's payload shape and the same `GET /v1/subscribers` path. Webhooks are not imported. During the [dual run](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/dual-run.md), keep acting on RevenueCat's webhooks and point any RevenueDot webhook at an endpoint that only logs. At cutover, create your webhooks in RevenueDot, save each signing secret, and turn off RevenueCat's in the same hour ([cutover checklist](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/cutover-checklist.md)). See [migrating without data loss](https://raw.githubusercontent.com/revenuedot/docs/main/blog/migrating-from-revenuecat-without-data-loss.md), the [comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) and the [fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator). RevenueCat is free under $2,500 of monthly tracked revenue and then charges 1% of all of it ([RevenueCat](https://www.revenuecat.com/pricing)).
+
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month. See [pricing](https://revenuedot.app/pricing).
+
+## FAQ
+
+### Can I just send the subscription status from my Flutter app to my backend?
+
+Send it as a hint, but do not trust it. Anyone can change a request from their own phone, and renewals and refunds happen while the app is closed. Let the app ask your server to re-check, and have the server fetch the state itself.
+
+### Should I write a handler for each webhook event type?
+
+No. Treat every event as a sign that the customer changed, fetch the customer's current state, and save it. RevenueCat's docs suggest the same approach ([RevenueCat](https://www.revenuecat.com/docs/integrations/webhooks)). It handles repeats, late events and new event types with no extra code.
+
+### How do I keep sandbox purchases out of my production database?
+
+Store the environment on every row, and let only production rows grant access in your live API. On RevenueDot you can also give a webhook `environment: "production"`, and send sandbox events to a staging server with a second webhook.
+
+### Do I still need a cron job if I have webhooks?
+
+Yes, a small one. Retries stop after about 80 minutes, so a long outage on your side can lose a webhook. A daily job that re-fetches customers whose access ends soon or just ended fixes rows that drifted.
 
 **About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
 
