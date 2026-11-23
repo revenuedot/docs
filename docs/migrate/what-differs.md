@@ -90,21 +90,19 @@ Details: [Webhooks](../guides/webhooks.md) and [Webhook events](../../api/webhoo
 Source: [`prd/migration/PRD.md`](https://github.com/revenuedot/revenuedot/blob/main/prd/migration/PRD.md).
 
 ## Features still planned, by tier
-Built since the first release: [paywalls](../guides/paywalls.md) with a visual editor and an AI generator, [targeting and experiments](../guides/targeting-and-experiments.md), 43 [charts](../guides/charts.md) (RevenueCat's 42 plus App Store Save Outcomes), the [Customer Center editor](../guides/customer-center.md), virtual currencies, the [Amazon Appstore](../guides/amazon-appstore.md) and [Stripe](../guides/stripe.md) stores, [web billing](../guides/web-billing.md), [Refund Control](../guides/refund-control.md), [retention offers](../guides/retention.md), [win-back campaigns](../guides/win-back-campaigns.md), the [support view](../guides/support-integrations.md), [ads](../guides/ads.md), all 37 [integrations](../guides/integrations.md), [RevenueDot AI](../guides/revenuedot-ai.md) and [Cloud billing](../guides/cloud-billing.md) with two plans, Pro and Enterprise.
+Built since the first release: [paywalls](../guides/paywalls.md) with a visual editor and an AI generator, [targeting and experiments](../guides/targeting-and-experiments.md), 43 [charts](../guides/charts.md) (RevenueCat's 42 plus App Store Save Outcomes), the [Customer Center editor](../guides/customer-center.md), virtual currencies, the [Amazon Appstore](../guides/amazon-appstore.md) and [Stripe](../guides/stripe.md) stores, [web billing](../guides/web-billing.md), [Refund Control](../guides/refund-control.md), [retention offers](../guides/retention.md), [win-back campaigns](../guides/win-back-campaigns.md), the [support view](../guides/support-integrations.md), [ads](../guides/ads.md), all 37 [integrations](../guides/integrations.md), [RevenueDot AI](../guides/revenuedot-ai.md), [failed-payment recovery](../guides/payment-recovery.md), [full export and one-line moves between self-host and Cloud](../guides/move-projects.md) and [Cloud billing](../guides/cloud-billing.md) with two plans, Pro and Enterprise.
 
 **Tier 1 (the current build), not finished**
-- Google Play, Amazon Appstore and Stripe sandbox purchases have not run end to end yet. A real App Store sandbox purchase ran end to end on an iPhone on 2026-10-02, and the RevenueDot SDK is published for every platform (see [SDK guides](../sdks/README.md)). Store handling is tested against mocked store APIs, and Test Store purchases pass with the unmodified RevenueCat iOS and Android SDKs on a simulator and an emulator.
+- Google Play and Amazon Appstore sandbox purchases have not run end to end yet. A real App Store sandbox purchase ran end to end on an iPhone on 2026-10-02, real Stripe test-mode purchases, renewals, failed payments and refunds ran on 2026-10-03, and the RevenueDot SDK is published for every platform (see [SDK guides](../sdks/README.md)). Store handling is tested against mocked store APIs, and Test Store purchases pass with the unmodified RevenueCat iOS and Android SDKs on a simulator and an emulator.
 
 **Tier 2, still planned**
 - Paywalls with several screens and navigation between them. Today a multi-page paywall is one screen with swipeable pages. Video uploads are not built (a video takes a URL), and exit offers and custom variables have no editor yet; they pass through the API.
 - Memory and custom instructions for RevenueDot AI.
-- Moving between self-host and cloud in one step, and a full export.
 
 **Tier 3, still planned**
 - An EU region on RevenueDot Cloud. Organizations, custom roles and single sign-on are built and are included with Pro on Cloud, or with an Enterprise licence when self-hosting; SCIM, data location settings, audit retention and compliance exports are built and come with Enterprise ([which plan has which feature](../guides/enterprise.md)).
 - High-availability self-host (Helm, Terraform, clustering).
 - Web billing: "Connect with Stripe" (OAuth) on RevenueDot Cloud, Paddle as a web provider, an embedded checkout inside purchases-js, funnel A/B tests and automatic TLS for custom domains on Cloud.
-- Failed-payment recovery.
 - RevenueDot AI tools that write to App Store Connect and Google Play.
 - Paddle checkout inside purchases-js (Paddle purchases are posted from your backend instead); ad reward callbacks from AppLovin MAX, ironSource and Unity Ads; benchmarks.
 
