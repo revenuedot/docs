@@ -9,6 +9,11 @@ author: RevenueDot team
 
 Posts from the team building RevenueDot, an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK, free to start on [RevenueDot Cloud](https://app.revenuedot.app/signup). Newest first.
 
+## 2026-11-23
+- [Google Play refunds after 3 days: how to acknowledge purchases](google-play-acknowledge-purchases.md): which purchases need acknowledgement (new subscriptions, plan changes, resubscribes, prepaid plans, non-consumables), why pending purchases start the clock later, Node.js server code, `completePurchase` in Flutter, and how to find purchases you missed.
+- [How to build a paywall in Flutter that passes App Review](flutter-paywall.md): what Apple and Google require on the screen, a custom widget with store prices and a full trial sentence, a remote paywall with `PaywallView` and `presentPaywallIfNeeded`, how to choose, and how to test.
+- [Family Sharing for in-app subscriptions: iOS setup and Android](family-sharing-in-app-subscriptions.md): turning it on (and why it cannot be undone), StoreKit 2 `ownershipType`, the `SUBSCRIBED` and `REVOKE` notifications, keeping shared access out of revenue charts, and a family plan for Google Play.
+
 ## 2026-11-16
 - [How to sync subscription status to your own backend](sync-subscription-status-to-your-backend.md): why the app alone cannot gate server features, the webhook as a trigger followed by one customer lookup, `logIn` with your own user ID, an Express receiver and SQL table, idempotency, a nightly check, and RevenueDot webhooks.
 - [How to check subscription status in StoreKit 2](storekit-2-check-subscription-status.md): `Transaction.currentEntitlements` and `Product.SubscriptionInfo.Status`, the five renewal states, renewal info, SwiftUI's `subscriptionStatusTask`, what the device cannot tell you, and pitfalls developers report.

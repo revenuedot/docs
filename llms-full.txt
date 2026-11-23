@@ -49951,6 +49951,11 @@ Description: Posts from the RevenueDot team about building RevenueDot Cloud, an 
 
 Posts from the team building RevenueDot, an open-source (AGPL-3.0) backend for in-app purchases and subscriptions that works with the RevenueCat SDK, free to start on [RevenueDot Cloud](https://app.revenuedot.app/signup). Newest first.
 
+## 2026-11-23
+- [Google Play refunds after 3 days: how to acknowledge purchases](https://raw.githubusercontent.com/revenuedot/docs/main/blog/google-play-acknowledge-purchases.md): which purchases need acknowledgement (new subscriptions, plan changes, resubscribes, prepaid plans, non-consumables), why pending purchases start the clock later, Node.js server code, `completePurchase` in Flutter, and how to find purchases you missed.
+- [How to build a paywall in Flutter that passes App Review](https://raw.githubusercontent.com/revenuedot/docs/main/blog/flutter-paywall.md): what Apple and Google require on the screen, a custom widget with store prices and a full trial sentence, a remote paywall with `PaywallView` and `presentPaywallIfNeeded`, how to choose, and how to test.
+- [Family Sharing for in-app subscriptions: iOS setup and Android](https://raw.githubusercontent.com/revenuedot/docs/main/blog/family-sharing-in-app-subscriptions.md): turning it on (and why it cannot be undone), StoreKit 2 `ownershipType`, the `SUBSCRIBED` and `REVOKE` notifications, keeping shared access out of revenue charts, and a family plan for Google Play.
+
 ## 2026-11-16
 - [How to sync subscription status to your own backend](https://raw.githubusercontent.com/revenuedot/docs/main/blog/sync-subscription-status-to-your-backend.md): why the app alone cannot gate server features, the webhook as a trigger followed by one customer lookup, `logIn` with your own user ID, an Express receiver and SQL table, idempotency, a nightly check, and RevenueDot webhooks.
 - [How to check subscription status in StoreKit 2](https://raw.githubusercontent.com/revenuedot/docs/main/blog/storekit-2-check-subscription-status.md): `Transaction.currentEntitlements` and `Product.SubscriptionInfo.Status`, the five renewal states, renewal info, SwiftUI's `subscriptionStatusTask`, what the device cannot tell you, and pitfalls developers report.
@@ -51529,6 +51534,184 @@ Yes. RevenueCat can import existing subscriptions from store identifiers ([Reven
 
 ---
 
+# Family Sharing for in-app subscriptions: iOS setup and Android
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/family-sharing-in-app-subscriptions.md
+Description: How Apple Family Sharing works for subscriptions: turning it on, StoreKit 2 ownershipType, SUBSCRIBED and REVOKE notifications, metrics, and why Google Play has no equivalent.
+
+Apple Family Sharing lets one customer share an auto-renewable subscription or a non-consumable with up to five family members. You turn it on per product in App Store Connect, and you cannot turn it off again. Each family member then gets their own transaction with the ownership type `familyShared`, so your app unlocks access as it does for any purchase, and your server must also handle the `REVOKE` notification when sharing stops. Google Play has no matching feature for in-app purchases.
+
+This post is for apps that sell subscriptions on the App Store and Google Play, often built with Flutter, React Native or Expo. It covers the decision to turn it on, the StoreKit 2 and server code, what to do on Android, how shared access affects your metrics, and how to test. Every fact about Apple and Google links its source and was checked on November 23, 2026.
+
+![Two columns: what happens when a family member gains access, such as a SUBSCRIBED notification, and when they lose it, such as a REVOKE notification](https://github.com/revenuedot/docs/blob/main/blog/assets/family-sharing-in-app-subscriptions/cover.svg)
+
+## The short answer
+
+- **Up to five family members.** They share the purchaser's subscription on their own Apple devices ([Apple](https://developer.apple.com/documentation/storekit/supporting-family-sharing-in-your-app)).
+- **It is one-way.** Once you turn on Family Sharing for a product, you cannot turn it off ([App Store Connect Help](https://developer.apple.com/help/app-store-connect/configure-in-app-purchase-settings/turn-on-family-sharing-for-in-app-purchases)).
+- **No special purchase code.** Each member gets their own transactions, so you process them as usual.
+- **Handle loss of access.** Your server gets `REVOKE`, and the app sees a transaction with a `revocationDate`.
+- **Tell buyers.** Use `isFamilyShareable` to show on the paywall that a plan can be shared.
+- **Google Play does not share in-app purchases.** For a family plan on Android, you build it with your own accounts.
+
+## Should you turn it on?
+
+Apple's view is that sharing "can make your content or service more appealing to subscribers, and may encourage conversion to a paid subscription, increase customer engagement, and improve retention" ([Apple](https://developer.apple.com/documentation/storekit/supporting-family-sharing-in-your-app)). The cost is that some people who would have bought their own subscription will use a family member's instead.
+
+Because the switch cannot be undone, many apps do not turn it on for their main plan. They create a separate, more expensive family plan in the same subscription group and turn on sharing only for that product. Apple suggests this pattern: include Family Sharing in the plan's display name, and you can note the price difference on the sign-up screen ([Apple](https://developer.apple.com/app-store/subscriptions/)). The customer then picks "Pro" or "Pro Family", and your existing subscribers keep the plan they bought.
+
+Two more facts help the decision. The purchaser can always turn off sharing in their own subscription settings. And if you also turn on multiseat purchases for a subscription, only the group purchaser can share it with family, while the extra seats are for individual use ([App Store Connect Help](https://developer.apple.com/help/app-store-connect/configure-in-app-purchase-settings/turn-on-family-sharing-for-in-app-purchases)).
+
+## Turn it on in App Store Connect
+
+1. In **Apps**, select your app.
+2. In the sidebar, under **Monetization**, click **Subscriptions**, then the subscription group.
+3. Select the subscription.
+4. Scroll to the **Family Sharing** section and click **Turn On**.
+5. Read the terms in the dialog and click **Confirm**.
+
+You need the Account Holder or App Manager role. The steps for non-consumables are the same, under **In-App Purchases** ([App Store Connect Help](https://developer.apple.com/help/app-store-connect/configure-in-app-purchase-settings/turn-on-family-sharing-for-in-app-purchases)).
+
+## What changes in your app
+
+Very little. Apple says that each family member "gets their own unique receipts and transactions", and that you process them "in the same way you already handle purchases" ([Apple](https://developer.apple.com/documentation/storekit/supporting-family-sharing-in-your-app)). For a shared subscription, the family member never taps Buy. The transaction simply appears on their device, so the app must listen for transactions from launch, not only on the paywall.
+
+In StoreKit 2, every transaction has an `ownershipType`, which is `.purchased` for the buyer and `.familyShared` for family members. When sharing stops, the transaction gains a `revocationDate`. Apple says the App Store revokes a transaction when it refunds it, when it removes it from Family Sharing, or when the customer loses access through a group ([Apple](https://developer.apple.com/documentation/storekit/transaction/revocationdate)).
+
+```swift
+import StoreKit
+
+// Start at launch, for example in your App's init, so shared purchases that arrive later are seen.
+func listenForTransactions() -> Task<Void, Never> {
+  Task.detached {
+    for await result in Transaction.updates {
+      guard case .verified(let transaction) = result else { continue }
+      await refreshAccess()
+      await transaction.finish()
+    }
+  }
+}
+
+@MainActor
+func refreshAccess() async {
+  var hasPro = false
+  var isShared = false
+  for await result in Transaction.currentEntitlements {
+    guard case .verified(let t) = result, t.revocationDate == nil else { continue }
+    if t.productType == .autoRenewable {
+      hasPro = true
+      isShared = isShared || t.ownershipType == .familyShared
+    }
+  }
+  AppState.shared.hasPro = hasPro
+  AppState.shared.isFamilyMember = isShared   // for example, hide "Manage subscription" for members
+}
+```
+
+Apple says that refunded or revoked products do not appear in the current entitlements ([Apple](https://developer.apple.com/documentation/storekit/transaction/currententitlements)), so the extra check on `revocationDate` only makes the intent clear. Our posts on [checking subscription status in StoreKit 2](https://raw.githubusercontent.com/revenuedot/docs/main/blog/storekit-2-check-subscription-status.md) and [handling `Transaction.updates`](https://raw.githubusercontent.com/revenuedot/docs/main/blog/storekit-2-transaction-updates.md) cover the rest of this code.
+
+A family member did not buy the subscription and does not pay for it. So change your "Manage subscription" screen for them, and do not send them billing messages or win-back offers when the purchaser cancels.
+
+## Show it on the paywall
+
+Apple asks apps to say in the UI whether a product can be shared, and to read `isFamilyShareable` at runtime to find out ([Apple](https://developer.apple.com/documentation/storekit/supporting-family-sharing-in-your-app)). A short line under the plan, such as "Share with up to five family members", is enough.
+
+```swift
+let products = try await Product.products(for: ["pro_family_yearly", "pro_yearly"])
+for product in products where product.isFamilyShareable {
+  print("\(product.displayName) can be shared with family")   // add the line under this plan
+}
+```
+
+## What your server receives
+
+App Store Server Notifications V2 sends one notification for each family member, not only for the buyer ([Apple](https://developer.apple.com/documentation/storekit/testing-family-sharing)). Apple's list of notification types includes these cases ([Apple](https://developer.apple.com/documentation/appstoreservernotifications/notificationtype)):
+
+| Event | Notification type | Subtype |
+|---|---|---|
+| A family member gains access after the purchaser subscribes for the first time | `SUBSCRIBED` | `INITIAL_BUY` |
+| A family member gains access after the purchaser resubscribes | `SUBSCRIBED` | `RESUBSCRIBE` |
+| A family member gets a shared non-consumable | `ONE_TIME_CHARGE` | none |
+| A family member loses access | `REVOKE` | none |
+
+The signed transaction in each notification has `inAppOwnershipType` set to `PURCHASED` or `FAMILY_SHARED`. Because each member gets their own transactions, store each member's access as its own row, linked to that member's account. That is correct, because each member's access can end on its own.
+
+Treat `REVOKE` like a refund for that member only. Remove the member's access, keep the purchaser's, and do not send the member a cancellation email that talks about billing. Our [REVOKE](https://raw.githubusercontent.com/revenuedot/docs/main/docs/notifications/apple-revoke.md) and [SUBSCRIBED](https://raw.githubusercontent.com/revenuedot/docs/main/docs/notifications/apple-subscribed.md) pages explain each notification, and the post on [App Store Server Notifications V2](https://raw.githubusercontent.com/revenuedot/docs/main/blog/app-store-server-notifications-v2.md) shows how to verify and store them.
+
+## What about Google Play?
+
+Google Play has a Family Library for apps, games, books and films, but its help page says: "You can't share in-app purchases and apps downloaded at no charge with your family members" ([Google Play Help](https://support.google.com/googleplay/answer/7007852?hl=en)). There is no Play Billing setting that shares a subscription, and no notification for it.
+
+So for a family plan on Android, or one that works across both stores, you need your own accounts. The usual design is:
+
+1. Sell a family plan as a normal subscription on both stores, and on the web if you sell there.
+2. Let the buyer invite family members by email or with a link, and store the members in your database.
+3. When a member signs in, your server checks whether the owner's subscription is active and grants the member access.
+4. When the owner's subscription ends, every member loses access.
+
+This also lets an iPhone buyer share with a family member on Android, which Apple's Family Sharing cannot do. The cost is that you build the invite flow and keep the member list yourself. Our post on [sharing one subscription across iOS, Android and the web](https://raw.githubusercontent.com/revenuedot/docs/main/blog/share-subscription-across-ios-android-web.md) explains the account side, and [syncing subscription status to your backend](https://raw.githubusercontent.com/revenuedot/docs/main/blog/sync-subscription-status-to-your-backend.md) shows how your server learns about the owner's subscription.
+
+## Keep shared access out of your revenue numbers
+
+A family member's transaction looks like a subscription, but it brings in no money. If your charts count it as an active subscriber, your active subscriptions go up and your revenue per subscriber goes down. Exclude transactions with `FAMILY_SHARED` ownership from MRR, active subscriptions, trial conversion and churn, and track them as their own number, for example "family members with access". Our post on [subscription app metrics](https://raw.githubusercontent.com/revenuedot/docs/main/blog/subscription-app-metrics.md) defines each of these.
+
+## Test Family Sharing in the sandbox
+
+Apple supports this with Sandbox Test Families ([Apple](https://developer.apple.com/documentation/storekit/testing-family-sharing)):
+
+1. Create two or more sandbox accounts and put them in a Sandbox Test Family in App Store Connect.
+2. Buy a shareable product with the first account.
+3. Open the app on a device signed in with the second account, and check that the app unlocks and the transaction is `familyShared`. With notifications on in the sandbox, your server gets a `SUBSCRIBED` notification for the member.
+4. On the device, go to **Settings → Developer**, select the sandbox account, choose **Manage**, then **Family Sharing**, and select **Stop Sharing Purchases** for the member.
+5. Check that the app sees a transaction with a `revocationDate`, and that your server gets `REVOKE`.
+
+Changes to product settings can take up to an hour to reach the sandbox, so wait after you turn on sharing. Our guide to [testing in-app purchases](https://raw.githubusercontent.com/revenuedot/docs/main/blog/sandbox-testing-in-app-purchases.md) covers sandbox accounts in general.
+
+## Do it with RevenueDot
+
+RevenueDot is an open-source backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Here is how it handles Family Sharing today:
+
+- **Ownership on every purchase.** RevenueDot reads `inAppOwnershipType` from Apple's signed transaction and stores it, so the SDK's entitlement info and the REST API report whether access is `PURCHASED` or `FAMILY_SHARED`. Webhooks carry `is_family_share` ([webhook events](https://raw.githubusercontent.com/revenuedot/docs/main/api/webhook-events.md)).
+- **REVOKE ends the member's access.** RevenueDot verifies Apple's signature, applies the signed transaction, and reads its `revocationDate`. The member's purchase is then treated like a refunded one, and a `CANCELLATION` event follows ([REVOKE](https://raw.githubusercontent.com/revenuedot/docs/main/docs/notifications/apple-revoke.md)).
+- **Charts leave it out.** The [charts guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/charts.md) says that granted access and Family Sharing are excluded from every money and subscription number.
+- **Imports keep it.** Moving from RevenueCat keeps the family sharing flag on each subscription ([what moves](https://raw.githubusercontent.com/revenuedot/docs/main/docs/migrate/README.md)).
+
+A purchase that RevenueDot has not seen through the app is applied from a notification only when the app's **Track new purchases from server-to-server notifications** setting is on. Family members usually open the app, which sends their transactions, but turn the setting on if you want their access recorded even before they do.
+
+To be clear about where this stands: a real App Store sandbox purchase has run end to end against RevenueDot Cloud on a physical iPhone, but a Family Sharing purchase has not yet been run through a Sandbox Test Family. The handling above is covered by server tests that use Apple-format transactions and notifications.
+
+New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md). Its code says `import RevenueCat` because it is built from RevenueCat's MIT-licensed SDK, and it needs no RevenueCat account. Our [SwiftUI](https://raw.githubusercontent.com/revenuedot/docs/main/blog/swiftui-subscriptions-tutorial.md), [Flutter](https://raw.githubusercontent.com/revenuedot/docs/main/blog/flutter-in-app-purchases-tutorial.md) and [React Native and Expo](https://raw.githubusercontent.com/revenuedot/docs/main/blog/react-native-expo-subscriptions-tutorial.md) tutorials set up the app side.
+
+**Switching from RevenueCat? Keep your SDK and change one line.** An app that ships the RevenueCat SDK points its proxy URL at RevenueDot and keeps its code, offerings and customers. Its family-shared subscriptions are imported with their ownership type. See [migrating without data loss](https://raw.githubusercontent.com/revenuedot/docs/main/blog/migrating-from-revenuecat-without-data-loss.md), the [comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) and the [fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator). RevenueCat is free under $2,500 of monthly tracked revenue and then charges 1% of all of it ([RevenueCat](https://www.revenuecat.com/pricing)).
+
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month. See [pricing](https://revenuedot.app/pricing).
+
+## FAQ
+
+### How many people can share an App Store subscription with Family Sharing?
+
+The purchaser can share with up to five family members, so a family of six can use one subscription on their own Apple devices ([Apple](https://developer.apple.com/documentation/storekit/supporting-family-sharing-in-your-app)).
+
+### Can I turn off Family Sharing after I enable it?
+
+No. Apple says that once you turn on Family Sharing for an in-app purchase, you cannot turn it off ([App Store Connect Help](https://developer.apple.com/help/app-store-connect/configure-in-app-purchase-settings/turn-on-family-sharing-for-in-app-purchases)). To test the idea first, create a separate family plan and enable sharing only on it.
+
+### How do I know if a subscription is family shared in StoreKit 2?
+
+Read the transaction's `ownershipType`. It is `.familyShared` for a family member and `.purchased` for the buyer. On the server, the signed transaction's `inAppOwnershipType` is `FAMILY_SHARED` or `PURCHASED`.
+
+### Does Google Play support Family Sharing for subscriptions?
+
+No. Google Play's Family Library does not share in-app purchases ([Google Play Help](https://support.google.com/googleplay/answer/7007852?hl=en)). To offer a family plan on Android, sell it as a normal subscription and let the buyer add members through your own accounts.
+
+### What does the REVOKE notification mean?
+
+It means a family member lost access to a shared purchase. This happens when the purchaser stops sharing, someone leaves the family, or the purchaser gets a refund. Remove that member's access and keep the purchaser's.
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
 # Flutter in_app_purchase vs purchases_flutter: which to use
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/flutter-in-app-purchase-vs-purchases-flutter.md
@@ -52016,6 +52199,259 @@ Yes, with the RevenueDot SDK. On the web it buys with a Test Store (`test_`) key
 
 ---
 
+# How to build a paywall in Flutter that passes App Review
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/flutter-paywall.md
+Description: Build a Flutter paywall for iOS and Android: what Apple and Google require on screen, a custom widget with trial terms, a remote PaywallView, and the mistakes to avoid.
+
+To build a paywall in Flutter, load your products from the store, show each plan with its full billed price and length, explain any free trial, and add a restore button and links to your Terms of Use and Privacy Policy. You can draw that screen yourself as a widget, or show a paywall that you design on a server, so you can change it without an app release. Either way, the store rules decide what must be on the screen, and the layout decides how many people buy.
+
+This post is for Flutter apps that sell subscriptions on both the App Store and Google Play. It covers what Apple and Google require, a custom paywall widget, a remote paywall with `PaywallView`, how to choose between them, and how to test. Every fact about Apple, Google and other vendors links its source and was checked on November 23, 2026.
+
+![Two columns: what a Flutter paywall must show, such as the full billed price and a restore button, and the two ways to build it, a custom widget or a remote paywall](https://github.com/revenuedot/docs/blob/main/blog/assets/flutter-paywall/cover.svg)
+
+## The short answer
+
+- **Show the billed price first.** On iOS, the amount that is charged must be the most prominent price, and a per-week breakdown must be smaller ([Apple](https://developer.apple.com/app-store/subscriptions/)).
+- **Explain the trial in words.** Say how long the trial lasts and what is billed when it ends, on both stores ([Google Play](https://support.google.com/googleplay/android-developer/answer/9900533?hl=en)).
+- **Add restore, Terms and Privacy.** Apple requires a way for current subscribers to restore, and links to both documents ([Apple](https://developer.apple.com/app-store/subscriptions/)).
+- **Use store prices, never typed prices.** Read `priceString` from the product, so every country sees its own currency.
+- **Pick one of two builds.** A custom widget gives full control in code. A remote paywall changes without an app release and can be tested against other designs.
+- **Test on real store accounts.** Use a sandbox account on iOS and a license tester on Google Play before you submit.
+
+## What the stores require on a paywall
+
+Most paywall rejections come from missing text, not from bad code. Apple's subscriptions page lists what the sign-up screen must include ([Apple](https://developer.apple.com/app-store/subscriptions/)):
+
+1. The subscription's name and length, and what the customer gets during that time.
+2. The full renewal price, shown clearly and in the local currency.
+3. A way for current subscribers to sign in or restore their purchases.
+4. Links to your Terms of Use and Privacy Policy, in the app and in the App Store listing.
+
+Apple adds two rules that shape the layout. The amount that is billed must be the most prominent price, so a yearly plan shows its yearly total first, and any "per week" figure sits below it in a smaller size. For a free trial, the screen must say how long the trial lasts and what is billed after it. Guideline 3.1.2(c) also asks you to "clearly describe what the user will get for the price" before you ask anyone to subscribe ([App Review Guidelines](https://developer.apple.com/app-store/review/guidelines/#subscriptions)).
+
+Google Play's subscriptions policy asks for the same things in its own words. You must state the offer terms, the price and how often you bill, how a trial turns into a paid plan, and how to cancel, and the customer "should not have to perform any additional action to review the information" ([Google Play](https://support.google.com/googleplay/android-developer/answer/9900533?hl=en)). So do not hide the price behind a "See details" link.
+
+Our post on [submitting your first in-app purchase for App Review](https://raw.githubusercontent.com/revenuedot/docs/main/blog/submit-first-in-app-purchase-for-review.md) has the full checklist, and [Apple's free-trial toggle rejection](https://raw.githubusercontent.com/revenuedot/docs/main/blog/apple-free-trial-toggle-rejection.md) explains why a switch that adds or removes the trial now gets rejected.
+
+## Option 1: build the paywall as a Flutter widget
+
+A custom widget is the right choice when your design is fixed, or when the paywall is part of a larger onboarding flow you already built. The widget below reads the current offering, shows one card per plan with the billed price first, explains the trial in a full sentence, and includes the restore button and both links. It uses `purchases_flutter`, so the same code runs on iOS and Android.
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show PlatformException;
+import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+class Paywall extends StatefulWidget {
+  const Paywall({super.key, required this.onUnlocked});
+  final VoidCallback onUnlocked;
+  @override
+  State<Paywall> createState() => _PaywallState();
+}
+
+class _PaywallState extends State<Paywall> {
+  List<Package> plans = [];
+  Package? selected;
+  bool busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Purchases.getOfferings().then((o) {
+      final list = o.current?.availablePackages ?? [];
+      setState(() {
+        plans = list;
+        // Select the yearly plan when there is one.
+        selected = list.firstWhere((p) => p.packageType == PackageType.annual, orElse: () => list.first);
+      });
+    });
+  }
+
+  // One full sentence about the trial and the price after it, or null when there is no trial.
+  String? trialLine(StoreProduct p) {
+    final intro = p.introductoryPrice;
+    if (intro == null || intro.price != 0) return null;
+    final unit = intro.periodUnit.name.toLowerCase();   // day, week, month or year
+    final n = intro.periodNumberOfUnits;
+    return 'Free for $n $unit${n == 1 ? '' : 's'}, then ${p.priceString} each ${periodWord(p)}. Cancel at any time.';
+  }
+
+  String periodWord(StoreProduct p) => switch (p.subscriptionPeriod) {
+        'P1W' => 'week', 'P1M' => 'month', 'P3M' => '3 months', 'P6M' => '6 months', 'P1Y' => 'year', _ => 'period',
+      };
+
+  Future<void> buy() async {
+    if (selected == null) return;
+    setState(() => busy = true);
+    try {
+      final result = await Purchases.purchase(PurchaseParams.package(selected!));
+      if (result.customerInfo.entitlements.active.containsKey('pro')) widget.onUnlocked();
+    } on PlatformException catch (e) {
+      if (PurchasesErrorHelper.getErrorCode(e) != PurchasesErrorCode.purchaseCancelledError) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message ?? 'Purchase failed')));
+      }
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> restore() async {
+    final info = await Purchases.restorePurchases();
+    if (info.entitlements.active.containsKey('pro')) widget.onUnlocked();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (plans.isEmpty) return const Center(child: CircularProgressIndicator());
+    final trial = selected == null ? null : trialLine(selected!.storeProduct);
+    return SafeArea(
+      child: ListView(padding: const EdgeInsets.all(20), children: [
+        Text('Get Pro', style: Theme.of(context).textTheme.headlineMedium),
+        const Text('Unlimited projects, sync on every device, and no ads.'),
+        const SizedBox(height: 16),
+        for (final p in plans)
+          RadioListTile<Package>(
+            value: p,
+            groupValue: selected,
+            onChanged: (v) => setState(() => selected = v),
+            // The billed amount is the big number; a monthly breakdown stays small.
+            title: Text('${p.storeProduct.priceString} per ${periodWord(p.storeProduct)}'),
+            subtitle: p.storeProduct.pricePerMonthString != null && p.packageType == PackageType.annual
+                ? Text('Same as ${p.storeProduct.pricePerMonthString} a month')
+                : null,
+          ),
+        if (trial != null) Text(trial),
+        const SizedBox(height: 12),
+        FilledButton(onPressed: busy ? null : buy, child: Text(trial != null ? 'Start free trial' : 'Continue')),
+        TextButton(onPressed: restore, child: const Text('Restore purchases')),
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          TextButton(onPressed: () => launchUrl(Uri.parse('https://example.com/terms')), child: const Text('Terms of Use')),
+          TextButton(onPressed: () => launchUrl(Uri.parse('https://example.com/privacy')), child: const Text('Privacy Policy')),
+        ]),
+      ]),
+    );
+  }
+}
+```
+
+Three details in this code matter more than they look.
+
+**The trial line depends on eligibility.** A customer who already used a trial in the same subscription group does not get another one on iOS. On Android, Google only returns the offers a customer can use. Our post on [free trial eligibility](https://raw.githubusercontent.com/revenuedot/docs/main/blog/free-trial-eligibility-ios-android.md) shows how to check it, so that you only say "Start free trial" to people who will get one.
+
+**Prices come from the store.** `priceString` is already formatted in the customer's currency. A price typed into your code is wrong in most countries, and it goes stale the day you change the price in App Store Connect or Play Console.
+
+**The button text matches the offer.** When there is no trial, the button says "Continue" rather than "Start free trial". A button that promises something the store will not give is the kind of mismatch that guideline 3.1.2 warns about.
+
+If you use the official `in_app_purchase` package instead of a purchase SDK, the layout is the same, but you load `ProductDetails` yourself, and on Android you must also complete each purchase. Our post on [`in_app_purchase` vs `purchases_flutter`](https://raw.githubusercontent.com/revenuedot/docs/main/blog/flutter-in-app-purchase-vs-purchases-flutter.md) compares the two packages.
+
+## Option 2: show a remote paywall with PaywallView
+
+A remote paywall is designed in a dashboard and sent to the app as data. The app draws it with native views. You can change the headline, the plan order or the whole layout without a new release, and you can test two designs against each other. This matters because the paywall is the screen you will change most often after launch.
+
+The `purchases_ui_flutter` package draws these paywalls. It has two calls and one widget. `RevenueCatUI.presentPaywall()` opens the paywall full screen and returns a `PaywallResult`. `RevenueCatUI.presentPaywallIfNeeded('pro')` opens it only when the customer does not already have the `pro` entitlement. `PaywallView` is a widget you place inside your own screen, with callbacks for each step ([pub.dev](https://pub.dev/documentation/purchases_ui_flutter/latest/)).
+
+```dart
+import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
+
+// Show the paywall only to customers without Pro, then react to the result.
+Future<void> openPaywall() async {
+  final result = await RevenueCatUI.presentPaywallIfNeeded('pro');
+  switch (result) {
+    case PaywallResult.purchased:
+    case PaywallResult.restored:
+      unlockPro();
+    case PaywallResult.notPresented:   // already Pro
+    case PaywallResult.cancelled:
+    case PaywallResult.error:
+      break;
+  }
+}
+
+// Or place it inside your own screen, for example as the last onboarding page.
+Widget onboardingPaywall() => PaywallView(
+      onPurchaseCompleted: (customerInfo, transaction) => unlockPro(),
+      onRestoreCompleted: (customerInfo) {
+        if (customerInfo.entitlements.active.containsKey('pro')) unlockPro();
+      },
+      onDismiss: () => goToFreeVersion(),
+    );
+```
+
+`PaywallView` also has `onPurchaseStarted`, `onPurchaseCancelled`, `onPurchaseError` and `onRestoreError`, so you can log every step for your own analytics. On Android it accepts an `androidPlatformViewMode`, which the package docs show set to hybrid composition ([pub.dev](https://pub.dev/documentation/purchases_ui_flutter/latest/)).
+
+The store rules still apply to a remote paywall. You still need the billed price, the trial sentence, restore, and the Terms and Privacy links in the design. A good paywall editor asks for the links and adds a restore button for you, but check the final screen on a phone before you submit.
+
+## Which option to choose
+
+| | Custom widget | Remote paywall |
+|---|---|---|
+| Change without an app release | No | Yes |
+| A/B test two designs | Only with your own flag system | Yes, from the dashboard |
+| Full control of animation and layout | Yes | Within the components the renderer supports |
+| Work to build | You write and maintain the widget | You design it in an editor |
+| Fits inside a custom onboarding flow | Yes | Yes, with `PaywallView` |
+| Store rules | You must add every required element | The editor helps, but you still check |
+
+Many teams use both. They build the first paywall as a widget while the product is young, then move to a remote paywall once they want to run tests. Our [paywall A/B testing guide](https://raw.githubusercontent.com/revenuedot/docs/main/blog/paywall-ab-testing-guide.md) explains what to test first and how many customers you need, and [paywall best practices for 2026](https://raw.githubusercontent.com/revenuedot/docs/main/blog/paywall-best-practices-2026.md) collects the layouts that measured best.
+
+## Test the paywall before you submit
+
+1. **iOS sandbox.** Sign in with a sandbox account under **Settings → Developer**, buy each plan, and check that the trial sentence and price match the store sheet.
+2. **Google Play license testers.** Add your account as a license tester in Play Console and install the app from a test track. For license testers, Google renews test subscriptions much faster than real ones, so you can see a full cycle in minutes ([Android Developers](https://developer.android.com/google/play/billing/test#renewals)).
+3. **Every currency you sell in.** Change the sandbox storefront to another country and check that long prices still fit on one line.
+4. **Restore on a second device.** Buy on one phone and restore on another signed in to the same store account.
+5. **Small screens and dark mode.** The restore button and links must stay visible without scrolling far.
+
+Our guide to [testing in-app purchases](https://raw.githubusercontent.com/revenuedot/docs/main/blog/sandbox-testing-in-app-purchases.md) covers each store's test accounts step by step.
+
+## Common mistakes
+
+- **A per-week price in large type above a yearly charge.** Apple wants the billed yearly amount to be the most prominent price.
+- **"Start free trial" for customers who are not eligible.** Check eligibility first.
+- **No restore button, or a restore button only in Settings.** Put it on the paywall.
+- **A paywall that blocks the app with no way out**, when your app promised free features. That is a product choice, but the free path must work if your App Store description says it exists.
+- **Showing the paywall before products load.** Show a loading state, and a clear error with a retry if the store returns nothing. [Why in-app products fail to load](https://raw.githubusercontent.com/revenuedot/docs/main/blog/in-app-products-not-loading.md) lists the usual causes.
+
+## Do it with RevenueDot
+
+RevenueDot is an open-source backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Both options above work with it:
+
+- **Custom widgets.** The Flutter code in option 1 runs as written with the [RevenueDot SDK for Flutter](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/flutter.md). Offerings, packages and store prices come from RevenueDot.
+- **Remote paywalls.** The [paywalls guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/paywalls.md) describes a gallery of ten templates, a visual editor, AI generation and translations. Templates ask for your app name, accent color, and Terms and Privacy links, and the editor has a Restore purchases button. Publish a paywall to an offering, and the app shows it with `purchases_ui_flutter` from the RevenueDot git dependency.
+- **Experiments.** [Experiments](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/experiments.md) show each customer one of two to four offerings, each with its own paywall, and compare conversion, revenue and retention.
+
+To be clear about where this stands: RevenueDot paywalls have been rendered by the UI SDK on the iOS simulator, but not yet in a Flutter app on a device. A real App Store sandbox purchase has run end to end against RevenueDot Cloud on a physical iPhone, but no real Google Play purchase has yet. Google Play handling is tested against a copy of Google's API.
+
+New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md). Its code says `import RevenueCat` in Swift and uses the package names `purchases_flutter` and `purchases_ui_flutter` in Flutter, because it is built from RevenueCat's MIT-licensed SDK, and it needs no RevenueCat account. Our [Flutter tutorial](https://raw.githubusercontent.com/revenuedot/docs/main/blog/flutter-in-app-purchases-tutorial.md) sets up the stores, the products and the SDK.
+
+**Switching from RevenueCat? Keep your SDK and change one line.** A Flutter app that ships the RevenueCat SDK calls `Purchases.setProxyURL` with RevenueDot's address before `configure`, and keeps its code, offerings and customers. RevenueDot serves paywalls in the component format that the RevenueCat UI SDK draws, but RevenueCat paywalls are not imported, so you rebuild them in the editor. See [leaving RevenueCat with a Flutter or React Native app](https://raw.githubusercontent.com/revenuedot/docs/main/blog/leave-revenuecat-flutter-react-native.md), the [comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) and the [fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator). RevenueCat is free under $2,500 of monthly tracked revenue and then charges 1% of all of it ([RevenueCat](https://www.revenuecat.com/pricing)).
+
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month. See [pricing](https://revenuedot.app/pricing).
+
+## FAQ
+
+### What must a Flutter subscription paywall show to pass App Review?
+
+The plan's name and length, what the customer gets, the full billed price as the most prominent price, the trial length and the price after it, a restore button, and links to your Terms of Use and Privacy Policy ([Apple](https://developer.apple.com/app-store/subscriptions/)). Google Play asks for the price, the billing period, the trial terms and how to cancel.
+
+### Is there a paywall package for Flutter?
+
+Yes. `purchases_ui_flutter` draws remote paywalls with `RevenueCatUI.presentPaywall()`, `presentPaywallIfNeeded()` and the `PaywallView` widget ([pub.dev](https://pub.dev/documentation/purchases_ui_flutter/latest/)). There are also widget packages that only draw the screen, such as `in_app_purchases_paywall_ui` ([pub.dev](https://pub.dev/packages/in_app_purchases_paywall_ui)), which leave the purchase logic to you.
+
+### Can I change my Flutter paywall without an app update?
+
+Yes, with a remote paywall. The design lives on a server, the app downloads it with the offering, and a change reaches customers the next time the app fetches offerings. A custom widget needs a new release for every change.
+
+### How do I show the price per month for a yearly plan?
+
+Read `pricePerMonthString` from the store product and show it below the yearly price in a smaller size. Apple requires the billed amount, here the yearly total, to stay the most prominent price ([Apple](https://developer.apple.com/app-store/subscriptions/)).
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
 # How to check free trial eligibility on iOS and Android
 
 Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/free-trial-eligibility-ios-android.md
@@ -52300,6 +52736,187 @@ The reminder is a notification your app schedules on the user's device. RevenueD
 ### Will Apple approve a timeline paywall?
 
 A timeline is one of the compliant alternatives RevenueCat lists after Apple began rejecting trial toggles ([RevenueCat](https://www.revenuecat.com/blog/growth/rip-toggle-paywall)). Keep the trial on a plan, show the price and length clearly, and make the billed amount the biggest price.
+
+**About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
+
+---
+
+# Google Play refunds after 3 days: how to acknowledge purchases
+
+Source: https://raw.githubusercontent.com/revenuedot/docs/main/blog/google-play-acknowledge-purchases.md
+Description: Google Play refunds every purchase you do not acknowledge within three days. Learn which purchases need it, how to acknowledge from your server, and how to find the gaps.
+
+Google Play refunds a purchase and takes back access when your app does not acknowledge it within three days. To stop it, acknowledge every new subscription and every non-consumable after you grant access, and consume every consumable. The safest place to do this is your server, with the Google Play Developer API, because the server can still do it when the app crashes, loses its network or is never opened again.
+
+This post is for Flutter, React Native, Expo and native Android apps that sell on Google Play, often next to the App Store. It explains which purchases need acknowledgement, the cases that catch teams out, the server code, and how to find purchases that slipped through. Every fact about Google and RevenueCat links its source and was checked on November 23, 2026.
+
+![Two columns: purchases that need acknowledgement, such as new subscriptions and plan changes, and purchases that do not, such as renewals](https://github.com/revenuedot/docs/blob/main/blog/assets/google-play-acknowledge-purchases/cover.svg)
+
+## The short answer
+
+- **The window is three days.** Google refunds the purchase and revokes access when it is not acknowledged in time ([Android Developers](https://developer.android.com/google/play/billing/integrate#process)).
+- **Acknowledge only purchases in the PURCHASED state.** For a pending purchase, the three days start when it changes from PENDING to PURCHASED.
+- **Subscriptions need it once per purchase.** New subscriptions, upgrades, downgrades and resubscribes need it, but renewals do not ([Android Developers](https://developer.android.com/google/play/billing/lifecycle/subscriptions)).
+- **Consuming counts.** For a consumable, a consume call also acknowledges it.
+- **Do it on the server.** Use `purchases.subscriptions.acknowledge` or `purchases.products.acknowledge` after you verify the purchase.
+- **Never use the timeout to reject a purchase.** Revoke and refund it with the API instead.
+
+## What "acknowledge" means on Google Play
+
+When a customer buys on Google Play, Google takes the money, but it does not yet know whether your app delivered what was sold. The acknowledgement is your answer: it tells Google that the customer now has access. Google's integration guide lists it as the last step of every purchase, after you verify the purchase on your server and grant access ([Android Developers](https://developer.android.com/google/play/billing/integrate#process)).
+
+Google uses the three days as a safety net for customers. If an app took money and then crashed before unlocking anything, the customer gets the money back without asking. That is fair to the customer, but it is a quiet failure for you: the order shows as refunded, the customer loses access, and nothing in your logs says why. The App Store has no rule like this, so teams that build for iOS first often miss it on Android.
+
+## Which purchases need it
+
+| Purchase | Needs acknowledgement? | How |
+|---|---|---|
+| New subscription | Yes | `acknowledge` on the subscription token |
+| Subscription renewal | No | Nothing to do |
+| Upgrade, downgrade or resubscribe in the app | Yes, because it is a new purchase with a new token | `acknowledge` on the new token |
+| Resubscribe from the Play Store after expiry | Yes, and the app may never be opened | Acknowledge from the server after the notification |
+| Prepaid plan or top-up | Yes, with a shorter window for plans under one week | `acknowledge` on the token |
+| Non-consumable one-time product | Yes | `acknowledge` on the product token |
+| Consumable one-time product | Yes, by consuming it | `consume` acknowledges too |
+
+Three rows need a closer look.
+
+**Plan changes and resubscribes.** Google says that an upgrade, downgrade or resubscribe is a new purchase that you must acknowledge. Google also blocks a plan change while the current subscription is still waiting for acknowledgement ([Android Developers](https://developer.android.com/google/play/billing/lifecycle/subscriptions#upgrades-downgrades)). So an app that forgot to acknowledge the first purchase also breaks its upgrade button.
+
+**Resubscribes from the Play Store.** A customer can buy an expired subscription again inside the Play Store app. Google sends your server a `SUBSCRIPTION_PURCHASED` notification with a brand-new purchase token, and you must acknowledge it on the server. Google's page says this lets you acknowledge "even if the user doesn't open your app" ([Android Developers](https://developer.android.com/google/play/billing/lifecycle/subscriptions#resubscribe)). An app that only acknowledges on the device can never handle this case.
+
+**Prepaid plans.** Plans of one week or longer have three days. Plans shorter than a week must be acknowledged within half of their length, so a three-day plan has a day and a half. If a top-up is not acknowledged in time, Google refunds it and also revokes and cancels the rest of the plan ([Android Developers](https://developer.android.com/google/play/billing/lifecycle/subscriptions#prepaid)).
+
+## Pending purchases start the clock later
+
+Some payment methods, such as cash at a store, leave a purchase in the PENDING state for hours or days. Do not grant access and do not acknowledge while a purchase is pending. Google's note is clear: the three-day window "begins only when the purchase state transitions from 'PENDING' to 'PURCHASED'" ([Android Developers](https://developer.android.com/google/play/billing/integrate#pending)). Our post on [Google Play pending purchases](https://raw.githubusercontent.com/revenuedot/docs/main/blog/google-play-pending-purchases.md) shows how to handle that state in the app.
+
+## Acknowledge on the server
+
+Google recommends the server for this work. Its security guide gives the order: send the purchase token to your backend, check that you have not seen it before, verify it with `purchases.subscriptionsv2.get` or `purchases.products.get`, grant access, and then acknowledge "immediately after granting entitlement" ([Android Developers](https://developer.android.com/google/play/billing/security#verify)). The same page explains why the device is not enough. If a customer loses their network during the check and does not open the app again within three days, the purchase is refunded.
+
+This Node.js function uses Google's `googleapis` package with a service account that has access to your app in Play Console.
+
+```ts
+import { google } from "googleapis";
+
+const auth = new google.auth.GoogleAuth({
+  keyFile: "play-service-account.json",
+  scopes: ["https://www.googleapis.com/auth/androidpublisher"],
+});
+const play = google.androidpublisher({ version: "v3", auth });
+
+// Call this after you have stored the purchase and granted access.
+export async function acknowledgeSubscription(packageName: string, token: string) {
+  const { data } = await play.purchases.subscriptionsv2.get({ packageName, token });
+
+  // Pending purchases are not acknowledged; the window starts when they are paid.
+  if (data.subscriptionState === "SUBSCRIPTION_STATE_PENDING") return "pending";
+  if (data.acknowledgementState !== "ACKNOWLEDGEMENT_STATE_PENDING") return "already acknowledged";
+
+  const subscriptionId = data.lineItems?.[0]?.productId;
+  if (!subscriptionId) throw new Error("No product on this purchase token");
+
+  await play.purchases.subscriptions.acknowledge({ packageName, subscriptionId, token, requestBody: {} });
+  return "acknowledged";
+}
+
+export async function acknowledgeProduct(packageName: string, productId: string, token: string, consumable: boolean) {
+  const { data } = await play.purchases.products.get({ packageName, productId, token });
+  if (data.purchaseState !== 0) return "not purchased";        // 0 purchased, 1 canceled, 2 pending
+  if (consumable) {
+    if (data.consumptionState === 1) return "already consumed";
+    await play.purchases.products.consume({ packageName, productId, token });   // consuming also acknowledges
+    return "consumed";
+  }
+  if (data.acknowledgementState === 1) return "already acknowledged";
+  await play.purchases.products.acknowledge({ packageName, productId, token, requestBody: {} });
+  return "acknowledged";
+}
+```
+
+Run the same function from two places. The first is the endpoint the app calls after a purchase. The second is your handler for Google's real-time developer notifications, which covers resubscribes from the Play Store and purchases whose app call never arrived. If the acknowledge call fails, answer the notification with an error, so that Pub/Sub delivers it again and you get another try.
+
+## Acknowledge in the app
+
+When you have no backend, acknowledge on the device. With the Play Billing Library, check `purchase.isAcknowledged()` and call `acknowledgePurchase()` for subscriptions and non-consumables, or `consumeAsync()` for consumables ([Android Developers](https://developer.android.com/google/play/billing/integrate#process)).
+
+In Flutter, the official `in_app_purchase` package does this when you call `completePurchase`. Its README warns that not calling it and getting a successful response "within 3 days of the purchase will result in a refund on Android" ([pub.dev](https://pub.dev/packages/in_app_purchase)).
+
+```dart
+// Flutter, in_app_purchase 3.x: listen to the stream as early as possible, for example in initState.
+InAppPurchase.instance.purchaseStream.listen((purchases) async {
+  for (final p in purchases) {
+    if (p.status == PurchaseStatus.purchased || p.status == PurchaseStatus.restored) {
+      final ok = await verifyOnServer(p.verificationData.serverVerificationData);
+      if (ok) await grantAccess(p.productID);
+    }
+    if (p.pendingCompletePurchase) {
+      await InAppPurchase.instance.completePurchase(p);   // acknowledges on Android
+    }
+  }
+});
+```
+
+The weak spot of the device-only approach is the gap between paying and acknowledging. If the app is killed in that gap, the purchase waits until the next launch. That is why the listener must start at launch and not only on the paywall screen.
+
+## Purchase SDKs that do it for you
+
+A purchase SDK such as RevenueCat's finishes purchases for you by default. RevenueCat's docs describe a setting that hands this job back to your app, and say that with it "your app will complete the purchases itself" ([RevenueCat](https://www.revenuecat.com/docs/migrating-to-revenuecat/sdk-or-not/finishing-transactions)). So if you set `purchasesAreCompletedBy` to your app, for example to keep your own billing code, your code must acknowledge and consume on Android. A team that turns that setting on and forgets this step will see refunds three days later.
+
+## Never use the timeout to reject a purchase
+
+It is tempting to leave a suspicious purchase unacknowledged and let Google refund it. Google asks you not to. An expired window "is ambiguous to Google Play", because it can also come from a bug or a timeout. If a purchase fails your checks, do not grant access and do not acknowledge it. Revoke it with a full refund: `purchases.subscriptionsv2.revoke` for subscriptions, or `orders.refund` with `revoke` set to `true` for one-time products ([Android Developers](https://developer.android.com/google/play/billing/security#verify)).
+
+## How to find purchases you did not acknowledge
+
+These signs show that some purchases are slipping through:
+
+1. **Refunds you did not issue.** In Play Console, **Order management** lists refunded orders. A group of refunds about three days after purchase, with no request from the customer, points to missing acknowledgements.
+2. **A warning in Play Console.** Developers report a Play Console message that says "We've detected that your app is not acknowledging all in-app purchases" ([Unity forum](https://discussions.unity.com/t/weve-detected-that-your-app-is-not-acknowledging-all-in-app-purchases-android-iap-acknowledgment/824352)).
+3. **Voided purchases.** Google's Voided Purchases API lists purchases that were cancelled, and the list includes "unacknowledged auto-canceled purchases" ([Android Developers](https://developer.android.com/google/play/billing/security#voided)).
+4. **Upgrades that fail.** A plan change that Google blocks often means the current subscription was never acknowledged.
+5. **Your own database.** Run a daily job that lists purchases from the last three days and calls `get` on each one. Acknowledge any token whose `acknowledgementState` still says pending.
+
+Developers on other stacks report the same thing. A question about a .NET Android app describes in-app purchases that were "always refunded after 3 days" ([Microsoft Q&A](https://learn.microsoft.com/en-us/answers/questions/1664499/google-play-in-apps-are-always-refunded-after-3-da)). The fix is almost always the same: add the acknowledge call, ideally on the server.
+
+## Do it with RevenueDot
+
+RevenueDot is an open-source backend for in-app purchases and subscriptions on the App Store, Google Play and the web. It acknowledges Google Play purchases on the server, in the two places this post recommends:
+
+- **When the app posts a purchase.** After the SDK sends the purchase token, RevenueDot checks it with `purchases.subscriptionsv2.get` or `purchases.products.get` and acknowledges any subscription or non-consumable that still needs it. A pending purchase is answered with a temporary error, so the SDK sends it again later. The code is in [stores/google/index.ts](https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/index.ts).
+- **When Google sends a notification.** For subscription and one-time product notifications, RevenueDot reads the purchase from Google, updates the customer it belongs to, and acknowledges it. If the acknowledge call fails, it answers with a 5xx so that Pub/Sub delivers the message again. This covers resubscribes from the Play Store when the app is never opened. The code is in [stores/google/sync.ts](https://github.com/revenuedot/revenuedot/blob/main/apps/server/src/stores/google/sync.ts).
+- **Consumables stay with the device.** RevenueDot does not consume them; its answer to the SDK tells it to consume, and the SDK does so.
+
+To be clear about where this stands: Google Play handling is tested against a copy of Google's API, and no real Google Play purchase has yet run end to end against RevenueDot. A real App Store sandbox purchase has. The [Google Play setup guide](https://raw.githubusercontent.com/revenuedot/docs/main/docs/guides/google-play.md) explains the service account and the notification topic, and the [ONE_TIME_PRODUCT_PURCHASED](https://raw.githubusercontent.com/revenuedot/docs/main/docs/notifications/google-one-time-product-purchased.md) page describes one of the notifications.
+
+New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md). Its code says `import RevenueCat` because it is built from RevenueCat's MIT-licensed SDK, and it needs no RevenueCat account. Our [Android](https://raw.githubusercontent.com/revenuedot/docs/main/blog/android-google-play-billing-subscriptions.md), [Flutter](https://raw.githubusercontent.com/revenuedot/docs/main/blog/flutter-in-app-purchases-tutorial.md) and [React Native and Expo](https://raw.githubusercontent.com/revenuedot/docs/main/blog/react-native-expo-subscriptions-tutorial.md) tutorials set up the app side.
+
+**Switching from RevenueCat? Keep your SDK and change one line.** An app that ships the RevenueCat SDK points its proxy URL at RevenueDot and keeps its code, offerings and customers. Acknowledgement keeps working the same way, because the SDK still finishes purchases and RevenueDot acknowledges on the server. See [migrating without data loss](https://raw.githubusercontent.com/revenuedot/docs/main/blog/migrating-from-revenuecat-without-data-loss.md), the [comparison](https://revenuedot.app/compare/revenuedot-vs-revenuecat) and the [fee calculator](https://revenuedot.app/tools/revenuecat-fee-calculator). RevenueCat is free under $2,500 of monthly tracked revenue and then charges 1% of all of it ([RevenueCat](https://www.revenuecat.com/pricing)).
+
+[Start for free on RevenueDot Cloud](https://app.revenuedot.app/signup). Building and testing are free, no card needed. Add a card when you go live; Pro costs $0 until your apps make $10,000 a month. See [pricing](https://revenuedot.app/pricing).
+
+## FAQ
+
+### Why are my Google Play in-app purchases refunded after 3 days?
+
+Your app or server did not acknowledge them. Google refunds every purchase that is not acknowledged or consumed within three days of reaching the PURCHASED state, and takes back access ([Android Developers](https://developer.android.com/google/play/billing/integrate#process)). Add the acknowledge call after you grant access, ideally on your server.
+
+### Do subscription renewals need to be acknowledged?
+
+No. Google says that renewals do not need acknowledgement. The first purchase does, and so does every upgrade, downgrade and resubscribe, because each of those is a new purchase with a new token ([Android Developers](https://developer.android.com/google/play/billing/lifecycle/subscriptions)).
+
+### Should I acknowledge on the device or on the server?
+
+Use the server when you have one. Google recommends it because the server can acknowledge even when the app loses its network or is never opened again, for example after a resubscribe in the Play Store ([Android Developers](https://developer.android.com/google/play/billing/security#verify)).
+
+### Does consuming a purchase also acknowledge it?
+
+Yes. For consumables, `consumeAsync()` in the app or `purchases.products.consume` on the server meets the acknowledgement rule and lets the customer buy the item again ([Android Developers](https://developer.android.com/google/play/billing/integrate#process)).
+
+### Can I acknowledge a pending purchase?
+
+No. Wait until the purchase is in the PURCHASED state. The three-day window only starts at that moment, so a slow payment method does not shorten your time.
 
 **About RevenueDot.** RevenueDot is an open-source (AGPL-3.0) backend for in-app purchases and subscriptions on the App Store, Google Play and the web. Start for free on [RevenueDot Cloud](https://app.revenuedot.app/signup): Pro costs $0 until your apps make $10,000 a month, then 0.5% of revenue above $10,000, never more than $999 a month. New apps install the [RevenueDot SDK](https://raw.githubusercontent.com/revenuedot/docs/main/docs/sdks/README.md) and pass their key. Apps that ship the RevenueCat SDK point its proxy URL at RevenueDot and keep their code, offerings and customers. Read the [quickstart](https://raw.githubusercontent.com/revenuedot/docs/main/docs/getting-started/quickstart.md) or the code on [GitHub](https://github.com/revenuedot/revenuedot).
 
